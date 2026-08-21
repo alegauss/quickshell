@@ -1,0 +1,49 @@
+{
+  "enabledMcpjsonServers": [
+    "roadkeep"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/../roadkeep/scripts/roadkeep.py\" guard",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|NotebookEdit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/../roadkeep/scripts/roadkeep.py\" guard",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/../roadkeep/scripts/roadkeep.py\" guard",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(python \"../roadkeep/scripts/roadkeep.py\" engines --invoke)",
+      "Bash(python \"../roadkeep/scripts/roadkeep.py\" block list)",
+      "Bash(python \"../roadkeep/scripts/roadkeep.py\" next-id)",
+      "Bash(python \"../roadkeep/scripts/roadkeep.py\" lint)"
+    ]
+  }
+}
