@@ -2,14 +2,13 @@
 
 ## Priority
 
-- QS1
 - QS2
 - QS4
 - QS5
 
 ## Block A — A session that stays up, or says why it did not
 
-- 📋 **QS5** (deps: QS1) **Nothing measures whether the chosen protocol library reaches a modern sshd, so the network layer is unpriced risk** — That one library constrains authentication, jump hosts and throughput at once, so a gap found after the client is built means rewriting all three. → §QS5
+- 📋 **QS5** (deps: QS1 ✅) **Nothing measures whether the chosen protocol library reaches a modern sshd, so the network layer is unpriced risk** — That one library constrains authentication, jump hosts and throughput at once, so a gap found after the client is built means rewriting all three. → §QS5
 - 📋 **QS36** (deps: QS5, QS25) **Protocol library types would reach the terminal and the UI, so replacing that library means rewriting the client** — The gap analysis may well end in a different library, and a seam decided afterwards is one negotiated against code that already exists. → §QS36
 - 📋 **QS37** (deps: QS36, QS26) **No remote host's output has ever reached the emulator** — This is where the terminal stops being a local demonstration and becomes the product, and everything above it was already written to accept it. → §QS37
 - 📋 **QS38** (deps: QS37) **A link that drops for ten seconds costs the whole session and its scrollback** — Mobile and VPN links drop routinely, so a client treating every drop as final makes the user pay for the network's ordinary behaviour. → §QS38
@@ -26,14 +25,14 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS6** (deps: QS1) **Nothing opens a graphics device, so no pixel this client draws has ever reached a screen** — The device, its adapter choice and its loss recovery are the floor every later drawing line stands on, and none of the three has a default worth taking. → §QS6
+- 📋 **QS6** (deps: QS1 ✅) **Nothing opens a graphics device, so no pixel this client draws has ever reached a screen** — The device, its adapter choice and its loss recovery are the floor every later drawing line stands on, and none of the three has a default worth taking. → §QS6
 - 📋 **QS7** (deps: QS6, QS4) **A frame reaches the screen whenever the compositor chooses, so no bound on input-to-photon delay can be claimed** — Latency here is bought with three flags and a wait handle rather than with optimisation, and left unbought it silently costs two or three frames. → §QS7
 - 📋 **QS8** (deps: QS6) **No glyph is on the GPU, so drawing a character would cost a rasterisation on the frame that needs it** — A terminal redraws the same few hundred shapes forever, so rasterising each once and sampling it thereafter is the whole reason this renderer can be cheap. → §QS8
 - 📋 **QS9** (deps: QS8, QS7) **Nothing turns a grid of cells into a draw call, so text on this client's screen is still hypothetical** — One draw for the whole grid is what keeps frame cost flat as the window grows, and it is a decision about the vertex layout rather than an optimisation applied afterwards. → §QS9
 - 📋 **QS10** (deps: QS8, QS9) **A CJK character, a combining mark and a colour emoji each draw wrongly or not at all** — The monospaced grid is a convenient fiction, and the three places it stops being true are known in advance rather than discovered as bug reports. → §QS10
 - 📋 **QS11** (deps: QS9) **Underline, undercurl, strikethrough, the cursor and a selection have no representation on screen** — Each is derived in the pixel shader from flags the instance already carries, so the grid stays one draw and the decorations cost no extra bandwidth. → §QS11
 - 📋 **QS12** (deps: QS9, QS10, QS11) **Nothing catches a renderer that draws correctly on one vendor's driver and wrongly on another's** — Shader precision, sampling and blending differ between vendors in ways that never once surface on the machine the code was written on. → §QS12
-- 📋 **QS13** (deps: QS1) **A multi-byte character split across two network reads decodes as two broken ones** — Chunk boundaries are chosen by the network and never by the text, so the decoder has to carry a partial sequence across a read that ended mid-character. → §QS13
+- 📋 **QS13** (deps: QS1 ✅) **A multi-byte character split across two network reads decodes as two broken ones** — Chunk boundaries are chosen by the network and never by the text, so the decoder has to carry a partial sequence across a read that ended mid-character. → §QS13
 - 📋 **QS14** (deps: QS13) **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — This tokeniser sits under every terminal behaviour there will ever be, so it is a table rather than a branch tree nobody can prove complete. → §QS14
 - 📋 **QS15** (deps: QS14) **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — Scrolling is the structural operation a terminal performs most, so the layout is chosen to make scrolling free rather than to make indexing pretty. → §QS15
 - 📋 **QS16** (deps: QS15) **The cursor cannot be moved, a line cannot be erased and no character carries a colour** — These are the sequences every remote program emits before it emits anything interesting, so nothing above this line can be exercised until they exist. → §QS16
@@ -84,7 +83,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS4** (deps: QS1) **No decision records which window host can present a swapchain without adding frames of latency** — Tabs, panes and every dialog are built on that answer, so settling it after the pane code exists means writing the pane code a second time. → §QS4
+- 📋 **QS4** (deps: QS1 ✅) **No decision records which window host can present a swapchain without adding frames of latency** — Tabs, panes and every dialog are built on that answer, so settling it after the pane code exists means writing the pane code a second time. → §QS4
 - 📋 **QS46** (deps: QS4, QS9) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The shell is where the clean interface is either defended or lost, and its defaults decide what a user sees before they have configured anything. → §QS46
 - 📋 **QS47** (deps: QS46, QS26) **Every session needs its own window, so working across four hosts means four windows to arrange** — A tab is what makes several sessions one workspace, and it is the surface the window title, the session tree and the layout all attach to. → §QS47
 - 📋 **QS48** (deps: QS47) **Two sessions cannot be seen at once, so comparing output means alternating between tabs** — Watching a log while typing on another host is the ordinary case for this audience, and a tab-only client makes it impossible rather than merely awkward. → §QS48
@@ -97,10 +96,9 @@
 
 ## Block H — The reason to leave the incumbent
 
-- 📋 **QS1** (deps: —) **The repository holds no buildable tree, so no claim about this client's speed or size can be measured** — Every later line is judged against a number, and a number needs something to run, so the skeleton and the pipeline that builds it come before the first feature. → §QS1
 - 📋 **QS2** (deps: —) **Fast and lean are this client's whole premise, and no number anywhere states what either word means** — A target written down before the code exists is a design constraint, while one written afterwards is only a description of whatever got built. → §QS2
-- 📋 **QS3** (deps: QS1, QS2) **Nothing replays a real terminal workload, so a change that halves throughput lands unnoticed** — A regression in a hot loop is invisible to a unit test and obvious in a recording, so the recordings are captured once and replayed for the life of the project. → §QS3
-- 📋 **QS74** (deps: QS1) **Settings have no file, so nothing survives a restart and nothing can be moved to another machine** — The config format is a compatibility contract from the first release, and a schema with no version is one that cannot change without breaking somebody. → §QS74
+- 📋 **QS3** (deps: QS1 ✅, QS2) **Nothing replays a real terminal workload, so a change that halves throughput lands unnoticed** — A regression in a hot loop is invisible to a unit test and obvious in a recording, so the recordings are captured once and replayed for the life of the project. → §QS3
+- 📋 **QS74** (deps: QS1 ✅) **Settings have no file, so nothing survives a restart and nothing can be moved to another machine** — The config format is a compatibility contract from the first release, and a schema with no version is one that cannot change without breaking somebody. → §QS74
 - 📋 **QS75** (deps: QS2, QS46) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
 - 📋 **QS76** (deps: QS26, QS2) **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Idle cost is what a laptop user experiences as battery life, and it is the figure the incumbent loses on most clearly. → §QS76
 - 📋 **QS77** (deps: QS75) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
@@ -110,7 +108,7 @@
 ## Block I — An error a user can act on
 
 - 📋 **QS71** (deps: QS39) **When a connection fails there is nothing to read afterwards but the dialog that has gone** — A failure the user cannot reproduce is diagnosed from a log or not at all, and a log that holds secrets is one they are unable to send. → §QS71
-- 📋 **QS72** (deps: QS1) **A crash takes the session, the scrollback and any explanation of what happened with it** — A client holding four connections that simply vanishes is worse than one that fails visibly, and the difference is entirely what it does in its last second. → §QS72
+- 📋 **QS72** (deps: QS1 ✅) **A crash takes the session, the scrollback and any explanation of what happened with it** — A client holding four connections that simply vanishes is worse than one that fails visibly, and the difference is entirely what it does in its last second. → §QS72
 - 📋 **QS73** (deps: QS71, QS72) **A user reporting a defect has no way to say what their client was doing when it happened** — Every report arrives without the version, the server, the settings or the environment, and gathering those by correspondence costs days per defect. → §QS73
 
 ## Block J — Leaving MobaXterm, proven by the switch

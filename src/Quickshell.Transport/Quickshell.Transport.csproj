@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The protocol seam. It knows nothing about rendering and nothing about the terminal
+       buffer, so it carries no ProjectReference either. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Quickshell.Transport</RootNamespace>
+  </PropertyGroup>
+
+</Project>

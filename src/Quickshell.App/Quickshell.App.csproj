@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The only assembly allowed to reference all three. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.App</RootNamespace>
+    <AssemblyName>quickshell</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Quickshell.Terminal\Quickshell.Terminal.csproj" />
+    <ProjectReference Include="..\Quickshell.Transport\Quickshell.Transport.csproj" />
+    <ProjectReference Include="..\Quickshell.Render\Quickshell.Render.csproj" />
+  </ItemGroup>
+
+</Project>

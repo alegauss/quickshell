@@ -1756,31 +1756,6 @@ Falsified when a screen reader cannot read a line of output that is on screen.
 
 ## Block H — The reason to leave the incumbent
 
-### §QS1 The skeleton, and why the analyzers are on from commit one
-
-The tree is laid out as libraries first, application last: `Quickshell.Terminal` holds
-the buffer and the parser and references nothing graphical; `Quickshell.Render` holds
-the D3D11 code and references no network type; `Quickshell.Transport` holds the protocol
-seam; and `Quickshell.App` is the only assembly allowed to reference all three. Project
-references enforce that direction, because the one architectural failure this project
-cannot recover from is a protocol library's types reaching the render thread.
-
-Target .NET 8 or later, x64. Nullable reference types on, warnings as errors, and the
-allocation-sensitive analyzers enabled now rather than later: this codebase will
-eventually assert that the parse path allocates nothing, and a rule turned on after the
-code exists is a rule nobody turns on.
-
-CI builds and tests on every push. It deliberately does not yet gate on performance,
-because there is nothing to measure until the harness exists; the pipeline is here now
-so that adding that step later is a step and not a project.
-
-A `.gitignore` covering `bin`, `obj` and `.user` belongs to this line and not to a later
-tidy-up. The commit script stages everything, so a tree without one turns every commit
-into a review of build output.
-
-Falsified when a fresh clone does not build, or when a project reference that inverts
-the layering passes the build.
-
 ### §QS2 The numbers every later line is read against
 
 Six figures, fixed here, changed only by an amend that argues for the change.

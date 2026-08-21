@@ -1,0 +1,30 @@
+<Project>
+
+  <!-- Every setting here is a gate the roadmap asks for, applied to every project so that
+       none of them can be turned off in one .csproj without the diff showing it. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>9999</WarningLevel>
+
+    <!-- x64 only. There is no ARM or x86 build, and no AnyCPU that would pretend otherwise. -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+
+    <!-- The allocation-sensitive rules are on from commit one: the parse path will later
+         assert that it allocates nothing, and a rule turned on after the code exists is a
+         rule nobody turns on. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisModePerformance>All</AnalysisModePerformance>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Deterministic>true</Deterministic>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,21 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio / Rider per-user state
+*.user
+*.suo
+.vs/
+.idea/
+
+# Test and publish artifacts
+[Tt]est[Rr]esults/
+publish/
+artifacts/
+
+# NuGet
+*.nupkg
+packages/
+
+# roadkeep engine pin, when one is vendored
+.roadkeep/

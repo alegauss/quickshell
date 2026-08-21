@@ -16,6 +16,8 @@
 
 ## Block H — The reason to leave the incumbent
 
+- ✅ **QS1** **The repository holds no buildable tree, so no claim about this client's speed or size can be measured** — A fresh clone builds and tests four layered projects with nullable, warnings-as-errors and the allocation analyzers on, and a project reference that inverts the layering fails the build.
+
 ## Block I — An error a user can act on
 
 ## Block J — Leaving MobaXterm, proven by the switch

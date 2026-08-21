@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The D3D11 code. It may read what the terminal holds; it may never see a network
+       type, so Quickshell.Transport is deliberately absent from the references below. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.Render</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Quickshell.Terminal\Quickshell.Terminal.csproj" />
+  </ItemGroup>
+
+</Project>
