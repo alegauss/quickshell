@@ -1,3 +1,2139 @@
 # Improvements
 
-## Block A
+## Block A — A session that stays up, or says why it did not
+
+### §QS5 What the library does not do, found now rather than in Block B
+
+SSH.NET is mature and covers the shape of the problem: SFTP, local, remote and dynamic
+forwarding, ed25519 and ECDSA keys, and recent releases moved the ciphers onto the
+platform's hardware-backed implementations. What it may not cover is precisely what a
+MobaXterm user counts as table stakes, and every one of those gaps is cheap to find now
+and expensive to find in Block B.
+
+The probe runs against a live OpenSSH 9.x server and answers, with evidence, one
+question each. Can it consume a key held by the Windows OpenSSH agent, or by Pageant?
+Does it accept an OpenSSH certificate? Can a connection be carried inside another
+connection's channel, which is all a jump host is? Does it survive keyboard-interactive
+with a second factor? Does it read any of `~/.ssh/config`? And what does its shell
+stream actually sustain under `cat` of a large file, in megabytes per second and in
+allocations per megabyte?
+
+Each answer is a yes with a working call, a no with the shape of the work to close it,
+or a no with the reason it cannot be closed here.
+
+The output is a decision record carrying that matrix and a verdict: proceed, proceed
+with named work, or evaluate a second candidate. A library kept because it was the one
+chosen first is the failure this line exists to prevent.
+
+Falsified if the record answers any of the six from documentation instead of from a run.
+
+### §QS36 The seam, and exactly what may not cross it
+
+`ISshTransport` owns connecting, authenticating, opening channels and closing. Its
+vocabulary is this client's own: a host, a credential, a channel, a failure carrying a
+reason a user can read. No type from the protocol library appears in its signatures, and
+no assembly above it references that library at all — enforced by project references
+rather than by review.
+
+Three things must be able to cross it: a channel that behaves as an `IPtyChannel`, a
+channel carrying a file transfer session, and a channel carrying a forwarded connection.
+Those three are the entire surface the rest of the client needs, and a fourth is a
+question about whether the seam is in the right place.
+
+What must not cross: exception types, key objects, connection-info structures, and
+anything whose lifetime the library manages. Each is a hook that makes the library
+unremovable, and each looks harmless on its own.
+
+The seam earns its keep against two credible futures. The gap analysis may conclude the
+library cannot do agents or jump hosts, in which case a second implementation over
+libssh2 or a wrapped OpenSSH is the answer rather than a rewrite. And a synthetic
+implementation that replays recorded byte streams is what lets the client be tested with
+no server at all.
+
+Falsified when a search for the library's namespace finds a hit outside the transport
+assembly.
+
+### §QS37 The second implementation of an interface that already works
+
+Everything above `IPtyChannel` was built and proven against a local pseudo-console, so
+this is genuinely an implementation rather than an integration: open a session channel,
+request a pseudo-terminal with the right terminal type and geometry, request a shell,
+hand the channel's streams to the same pipeline that already runs.
+
+The terminal type this client claims is a decision with consequences. Claiming
+`xterm-256color` is a promise about behaviours the emulator then has to actually have,
+which is why the conformance work comes before this line and not after it. Claiming
+something smaller is safer and immediately visible to the user as a worse terminal.
+
+Terminal modes go out at pty-request time, and the one that matters is that the client
+does not want the server doing anything the terminal already does for itself.
+
+The buffering behaviour of the library's shell stream is a named risk from the gap
+analysis, so this line measures instead of assuming: throughput under `cat` of a large
+file, and allocations per megabyte, both against the same figures taken locally. A gap
+between them belongs to the library, and it is either closed here or it is the trigger
+for the second implementation the seam exists to permit.
+
+Channel close, a server-side exit and a dropped connection are three different endings,
+and the user is told which one happened.
+
+Falsified when local and remote throughput differ by more than the network explains.
+
+### §QS38 What survives a drop, and what honestly cannot
+
+Three distinct failures wearing one appearance: the server closed the session; the
+network went away and came back; the network went away and the TCP connection is still
+sitting there open, waiting, and will wait for a very long time.
+
+Keepalive addresses the third. Protocol-level keepalive at a configurable interval
+detects a dead peer in seconds rather than in the operating system's own good time, and
+it keeps a NAT mapping alive besides — which is what stops an idle session dying after
+twenty minutes on a corporate link.
+
+Reconnect addresses the second, and it is honest about its limits. A new connection
+means a new shell and a new remote state: working directory, environment and any running
+program are gone, and no client recovers those without cooperation on the far side. What
+quickshell keeps is the scrollback, the tab, the session's settings and the layout — so
+a drop costs the user a command, not an afternoon.
+
+Backoff is exponential with a ceiling and a cap on attempts, and every attempt is
+visible: which attempt this is, when the next one is due, and how to stop. A client that
+reconnects silently and forever is a client hammering a server that is deliberately
+refusing it.
+
+Reconnect is per-session, and off for hosts where an unexpected new login is itself an
+event.
+
+Falsified when a reconnect claims to restore state the protocol cannot restore.
+
+### §QS39 The message is the feature
+
+Every failure mode of a connection is enumerated here and given a sentence, because the
+alternative is a stack trace and a user who cannot tell which of six things went wrong.
+
+The list: the name did not resolve; the port refused; the port accepted but nothing
+there spoke SSH; the handshake failed with no algorithm overlap, naming what each side
+offered; the host key did not match, which belongs to Block B and gets the strongest
+wording of anything here; authentication failed, distinguishing no method accepted from
+a method that failed; the shell request was refused, which is what a restricted or
+SFTP-only account looks like; and the connection timed out, distinguishing a connect
+timeout from a handshake timeout.
+
+Each message says what happened, what it means, and what the user might do about it —
+three short clauses, not a paragraph, written for somebody who has not read the code.
+
+Where a technical detail matters for diagnosis it goes to the log rather than into the
+dialog, so the message stays readable while the detail stays available.
+
+An algorithm mismatch deserves particular care, being the failure most often met against
+old appliances: the useful message names the algorithm the server wanted and says
+whether it is refused as insecure or absent as unimplemented, because those two have
+opposite remedies.
+
+Falsified when a connection failure surfaces a library exception type to a user.
+
+### §QS40 The servers that are not OpenSSH on Linux
+
+OpenSSH on Linux is the easy case and the one every client passes. This matrix is
+deliberately weighted towards the others.
+
+**OpenSSH 7.x through 9.x**, which spans the deprecation of `ssh-rsa` with SHA-1 and the
+arrival of newer key exchanges. A client that has only ever met the newest fails against
+the oldest in a way that reads to the user as a broken server.
+
+**Dropbear**, which is what an embedded device runs, offering a much smaller algorithm
+set.
+
+**A network appliance**, Cisco IOS or similar: old algorithms, a shell that is not a
+shell, and terminal behaviour written decades ago. This is the case that most reliably
+exposes an emulator, so the terminal is exercised here and not only the transport.
+
+**Windows OpenSSH**, where the far side is `cmd` or PowerShell and the line-ending and
+console behaviour are entirely different from a Unix host's.
+
+**A commercial server**, and **a container image**, so the whole matrix is reproducible
+by somebody who owns none of this hardware.
+
+Each entry records what was connected to, which algorithms were negotiated, and what did
+not work. An entry saying only that it worked has not been tested; it has been visited.
+
+Falsified when the matrix records a pass with no negotiated algorithm list beside it.
+
+## Block B — Keys, agents, and the host you think you reached
+
+### §QS41 Every way in, and the order they are tried
+
+Four methods, and the order matters as much as the set.
+
+**Public key** first, since it is what most users have and costs nothing to attempt.
+Formats: OpenSSH's own, PEM, PKCS#8, and PuTTY's `.ppk`, because a MobaXterm user's keys
+are very often in that last one. Types: RSA with SHA-2 signatures, ECDSA, and ed25519. A
+passphrase is asked for once and the decrypted key is never written anywhere.
+
+**Keyboard-interactive** next, which is the shape a second factor actually arrives in:
+the server sends prompts and the client displays them *as the server worded them*.
+Rendering the server's own text rather than substituting the client's is the entire
+feature — a user reads "Duo push sent" or "Enter your token", and a client that says
+"Password:" has thrown away the only useful information in the exchange.
+
+**Password** last, and only where offered.
+
+Where several methods are available the server states an order, and the client follows
+it rather than imposing its own. A partial success — a key accepted with a second factor
+still required — is a normal state, not an error, and it is shown as progress.
+
+`none` is attempted first as the protocol intends, since that is what makes the server
+list its methods at all.
+
+Falsified when a server's own prompt text is replaced by wording of the client's.
+
+### §QS42 Fail closed, and the dialog with no default button
+
+An encrypted connection to an unverified host is an encrypted connection to whoever
+answered. So this fails closed: an unknown or mismatched key stops the connection, and
+no setting turns the check off globally.
+
+The store is OpenSSH `known_hosts` format, read from and written to the standard
+location, because the user already has one and a client with a private store of its own
+makes them maintain two. Hashed entries are read. Certificate authority lines are
+honoured where the library can, and the gap analysis has already said whether it can.
+
+Three outcomes. A known and matching key connects with no interaction at all. An unknown
+key raises trust-on-first-use: the fingerprint in SHA-256 and the legacy form, the
+algorithm, the host and port, and an explicit accept — with **no default button**,
+because a dialog whose default is Yes is a check that does not exist.
+
+A *changed* key is not that dialog and must not resemble it. It is a warning, it names
+what changed, it says plainly that this is what an interception looks like as well as
+what a rebuilt server looks like, and continuing requires removing the old entry
+deliberately rather than clicking through.
+
+Several keys of different algorithms for one host coexist, which is normal and not a
+mismatch.
+
+Falsified when any code path connects without consulting the store.
+
+### §QS43 Two agents, one protocol, and the key that never leaves
+
+An agent holds the private key and performs signatures on request, so the client never
+sees the key. That is what makes it more than convenience: for a key on a smart card or
+a hardware token the agent is the *only* possible route, because the key is not
+extractable at all.
+
+Two agents to reach on Windows. The Windows OpenSSH agent listens on a named pipe.
+Pageant, which PuTTY and MobaXterm users already run, uses a shared-memory protocol and,
+in recent versions, a named pipe as well. Both speak the same request format above the
+transport, so only the transport differs between them.
+
+Two operations are needed: list identities, and sign with a chosen one. The rest of the
+agent protocol is out of scope here and stays out.
+
+Ordering: agent identities are tried before file-based keys, since an agent key needs no
+prompt and a file key may. A user with ten identities in an agent will exceed a server's
+authentication attempt limit, so identities are filtered by what the session names
+wherever it names one.
+
+If the library cannot do this — and the gap analysis will already have said —
+implementing the agent client directly is the fallback, the protocol being small enough
+to be worth it.
+
+Falsified when a token-backed key cannot authenticate a session.
+
+### §QS44 Where a secret rests, and how long it stays in memory
+
+Saving a password is optional and off by default. Where a user chooses it, the storage
+decision is made here rather than improvised later.
+
+At rest, DPAPI scoped to the user is the floor: the ciphertext binds to the Windows
+account, so a copied file is useless on another machine. Windows Credential Manager is
+the alternative and is preferable for a per-host secret, because it gives the user a way
+to see and revoke what is stored using a tool they already have and already trust.
+
+An optional master password sits above that, for users who want the store to survive a
+stolen laptop, and it is a real key derivation — Argon2id or an equivalent memory-hard
+function — feeding an AEAD, not a hash and a comparison. Without one, DPAPI is honest
+but is no defence against an attacker already running as the user, and the settings
+surface says exactly that rather than implying more.
+
+In memory, secrets live in pinned buffers and are zeroed after use. They are never put
+in a `string`, which is immutable, garbage-collected, and may be copied by a compaction
+no code here will ever see.
+
+Portable mode complicates this, since DPAPI binds to the machine's user. There a master
+password is required rather than offered.
+
+Falsified when a stored secret can be read on another machine with no master password.
+
+### §QS45 The most dangerous convenience in the protocol
+
+Agent forwarding lets a remote host ask the local agent to sign. It is genuinely useful
+— it is how a user reaches a third machine from a bastion without leaving a key on the
+bastion — and it is also the sharpest edge in ordinary SSH use: while the session is
+open, anyone with root on that host can sign as the user, to anywhere the user's key
+opens.
+
+So the design is refusal by default and consent per host. Not a global setting, because
+the entire risk is host-specific: forwarding to a bastion the user administers is
+reasonable, and forwarding to a shared jump box is handing over a key.
+
+Where it is enabled for a host, the session's settings show it as enabled with the risk
+in a sentence, and the running session shows it too — a forward the user has forgotten
+about is a forward they cannot reason about.
+
+The forwarded socket closes with the session and is not left behind.
+
+The alternative worth offering in the same breath is a jump host configuration, which
+reaches the third machine without any agent ever being exposed on the second. Where that
+solves the user's actual problem it is the better answer, and the settings surface says
+so instead of staying neutral.
+
+Falsified when a session forwards an agent with no per-host consent recorded.
+
+## Block C — Emulation that does not lie about the remote
+
+### §QS6 One device, the fallback chain, and surviving its loss
+
+D3D11 at feature level 11_0, one device shared by the whole process. D3D12 and Vulkan
+are refused in the non-goals for a reason that applies squarely here: a cell grid never
+approaches the draw-call ceiling those APIs exist to raise, and each costs several times
+the code to reach the same picture.
+
+Adapter selection walks a chain instead of taking the first answer: the adapter the
+output window actually sits on, then the default hardware adapter, then WARP. WARP is
+not a curiosity. It is what runs inside an RDP session and on a machine whose driver is
+mid-update, and a client that shows a black window there has failed at the exact moment
+somebody needed it.
+
+Device loss is a certainty rather than an edge case. A driver update, a TDR, an external
+GPU unplugged, a session disconnected and reattached: each returns
+`DXGI_ERROR_DEVICE_REMOVED` from a call that had no other reason to fail. Recovery
+discards every GPU resource and rebuilds it while the terminal's own state survives
+untouched — which is possible only because the buffer and the parser live in an assembly
+that cannot reference this one.
+
+The debug layer is on in debug builds with a break on corruption, because a validation
+message ignored today is a vendor-specific crash in somebody's bug report later.
+
+Falsified when the client is run with the GPU driver disabled and does not reach WARP,
+or when a forced device removal costs one line of scrollback.
+
+### §QS7 Why the present path is worth three flags
+
+A flip-model swapchain, `DXGI_SWAP_EFFECT_FLIP_DISCARD`, is the baseline: the blt model
+copies through the desktop compositor and spends a frame for nothing.
+
+`DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT` with `SetMaximumFrameLatency(1)` is
+where the latency is actually won. The render thread waits on the swapchain's own handle
+rather than on a timer, so it starts the frame when the display is ready for it instead
+of a queue depth earlier. Without it the runtime buffers up to three frames ahead, and
+every one of those is a keystroke the user has already typed.
+
+`DXGI_PRESENT_ALLOW_TEARING`, with its matching swapchain flag and a capability check,
+is what makes the variable-refresh case honest: on a 144 Hz panel a torn frame arriving
+now beats a whole frame arriving later. This is a terminal, not a film.
+
+Resize reallocates buffers rather than stretching them, and does it without a visible
+flash, which means the first frame at the new size is drawn before the window is shown
+at it.
+
+Per-Monitor V2 DPI awareness is declared in the manifest, and `WM_DPICHANGED` rebuilds
+the glyph cache, because a glyph rasterised for one scale is wrong at another. Dragging
+the window between a laptop panel and an external monitor is the test, and it is a test
+this client will fail until it is written.
+
+Falsified when a frame-latency measurement shows a queue depth above one.
+
+### §QS8 The atlas: what is cached, keyed how, and evicted when
+
+DirectWrite rasterises, and `IDWriteGlyphRunAnalysis::CreateAlphaTexture` is the
+specific door, because it produces exactly the coverage bitmap Windows itself would
+produce. Text here then matches text everywhere else on the machine, instead of being
+subtly this project's own.
+
+Grayscale coverage first — `DWRITE_TEXTURE_ALIASED_1x1`, one channel. Subpixel coverage
+is a later line and a genuinely different pipeline, and shipping grayscale first means
+the renderer is correct before it is pretty.
+
+The cache key is the tuple that actually changes pixels: face, glyph index, weight,
+slant, size, and the horizontal subpixel offset quantised to four positions. Dropping
+that last field is the mistake that makes a whole line look faintly wrong without any
+single character being identifiably wrong, because advances are not integers.
+
+Packing is a skyline allocator over 2048-square pages, pages added on demand. Eviction
+is least-recently-used and takes a whole page rather than a glyph, since reclaiming a
+hole inside a page costs more bookkeeping than the memory is worth.
+
+Changing font, size or DPI does not evict, it rebuilds: every entry is invalid at once,
+and a rebuild is simpler than a sweep and easier to prove correct.
+
+The atlas is GPU state, so device loss discards it — which means it must be
+reconstructible from nothing but the font settings, with no state of its own that
+outlived the device.
+
+Falsified when one character drawn at two positions on a line differs visibly in weight.
+
+### §QS9 One draw, one instance per cell, and gamma
+
+A four-vertex unit quad issued once per frame through `DrawInstanced`, one instance per
+visible cell. The instance carries what changes pixels and nothing else: atlas slot,
+foreground colour, background colour, and a flags word for bold, slant, inverse,
+underline, strike and cursor. Twenty bytes or fewer, so a 200x50 grid is under 200 KB
+and the upload is never the cost worth optimising.
+
+The background comes from the same instance rather than from a separate pass: every cell
+has one, and a second pass would double the fill rate for no picture.
+
+The instance buffer is `MAP_WRITE_DISCARD` and double-buffered, so the render thread
+never waits on the GPU for a buffer it is about to rewrite.
+
+Blending is the part that is easy to get subtly wrong and hard to notice. Coverage is
+not colour, so the sample is taken to linear, blended in linear, and returned. Blending
+coverage directly in sRGB is why light-on-dark terminal text so often looks too thin and
+dark-on-light too heavy, and it is one line of shader code rather than a font problem —
+which is exactly why it goes unfixed for years elsewhere.
+
+Colours arrive as the terminal model produced them, with no palette lookup on the GPU:
+the palette changes under OSC, and the model is where that already lives.
+
+Falsified when the same text light-on-dark and dark-on-light does not have matching
+apparent weight.
+
+### §QS10 Where the monospaced grid stops being true
+
+Three separate failures in one line, because a fix for any one of them that ignores the
+other two is a fix that gets rewritten.
+
+**Fallback.** No monospaced font covers Unicode. `IDWriteFontFallback` maps a run the
+primary face cannot render onto a face that can, and since the atlas key already carries
+the face, a fallback glyph caches like any other. The substitute's metrics rarely match
+the primary's, so it is fitted to the cell rather than trusted.
+
+**Colour.** Emoji arrive as COLR layers or CBDT bitmaps. They are colour, not coverage,
+so they cannot share a single-channel page. The atlas gains RGBA pages and the instance
+gains one bit saying which kind of page its slot sits on; the shader branches on that
+bit and ignores the foreground colour entirely for a colour glyph.
+
+**Width.** A wide character occupies two cells and a combining mark occupies none. The
+model decides this and the renderer is told — a renderer that decides width for itself
+will eventually disagree with the model about which column the cursor is in, and that
+disagreement is invisible until a user is editing a filename in a remote shell. So the
+instance stream carries the span, and the trailing cell of a wide pair emits background
+only.
+
+Falsified when a line of mixed Latin, CJK and emoji leaves the cursor at a column the
+remote host disagrees with.
+
+### §QS11 Decorations are shader arithmetic, not geometry
+
+Every decoration is derived in the pixel shader from flags already in the instance, so
+none of them adds a draw, a vertex or a byte of upload.
+
+A straight underline is a band test against the cell's vertical coordinate, placed at
+the font's own underline position and thickness rather than at a guessed fraction of the
+cell. DirectWrite reports both, and using them is what stops the line cutting through
+descenders.
+
+An undercurl is that band with a sine offset, which is why it is procedural: as geometry
+it would be a per-cell mesh, and as a glyph it would not join across cells. Double
+underline and overline are the same test at two offsets; strikethrough uses the font's
+own metrics.
+
+The cursor is a shape, a state and a colour rule. Block, bar and underline shapes; a
+blink phase driven by a clock the renderer owns, which makes a blinking cursor the one
+thing that legitimately wakes an idle window — so a setting that turns blinking off must
+genuinely stop that wake-up. Under a block cursor the glyph inverts against the cursor
+colour instead of being overdrawn, which is the only way it stays legible against an
+arbitrary theme.
+
+Selection is a per-cell flag, so it composes with all of the above rather than being an
+overlay quad that fights with them for the same pixels.
+
+Falsified when an undercurl running across adjacent cells shows a discontinuity at the
+boundary.
+
+### §QS12 The picture is the test, and one machine is not the matrix
+
+Rendering is judged by looking, so the test looks. A fixed set of scenes is rendered
+offscreen, read back and compared against committed reference images: plain text at
+several sizes, every SGR attribute, the box-drawing set, a mixed CJK and emoji line, all
+four cursor shapes over a selection, an undercurl run, and a full screen of `htop`
+output replayed from the captured corpus.
+
+Comparison is per-pixel with a small tolerance, because two vendors will not agree on
+the last bit of a filtered sample. A difference beyond that tolerance writes out the
+reference, the actual and the difference image, since a failure reporting only a number
+is a failure nobody diagnoses.
+
+References are generated on one named machine and committed. That is a liability worth
+stating plainly: a reference regenerated to make a test pass is a test deleted, so any
+change to a reference is a deliberate act argued for in the commit that makes it.
+
+The matrix is NVIDIA, AMD, Intel integrated, WARP and a session over RDP. Five
+environments, because the first four are where the users are and the fifth is where a
+graphics assumption fails silently rather than loudly. A laptop with switchable graphics
+is its own case, since the adapter can change while the process is running.
+
+Falsified when the suite passes on the development machine and no other environment in
+the matrix has been run against it.
+
+### §QS13 Decoding a stream nobody chose the boundaries of
+
+A read returns whatever arrived. A three-byte character can straddle two reads and a
+grapheme cluster can straddle four, and the decoder is the only place that can be true
+about both at once.
+
+So the decoder is a struct with state rather than a function: it holds the pending bytes
+and resumes on the next call. `Encoding.UTF8.GetString` over a chunk is the wrong shape
+at any size, because it has nowhere to keep the tail.
+
+Invalid sequences produce U+FFFD by the substitution rules, one replacement per maximal
+subpart, and never an exception — a hostile or merely misconfigured host sending
+arbitrary bytes must not be able to end a session. A stream that is not UTF-8 lands here
+too, with its fallback encoding a session setting rather than a guess.
+
+Above the decoder, grapheme cluster segmentation by UAX #29 decides what one cell holds:
+a base with its combining marks, a regional indicator pair, an emoji ZWJ sequence with
+its variation selectors. Below that boundary a cell would hold a code point, and every
+one of those is a cell too many.
+
+Width comes from UAX #11 plus the emoji presentation rules — wide is two, a combining
+mark is zero, everything else is one. The table is generated from the Unicode data files
+rather than hand-written, and the version it came from is recorded.
+
+Falsified when a stream fed one byte at a time does not produce what that stream fed
+whole produces.
+
+### §QS14 The Williams table, and why it is a table
+
+Paul Williams' published DEC ANSI state diagram is the specification: ground, escape,
+escape-intermediate, CSI entry, CSI param, CSI intermediate, CSI ignore, the DCS states,
+OSC string, and SOS/PM/APC. It is transcribed as a transition table indexed by state and
+byte, never as nested switches, for three reasons.
+
+It is provably complete: all 256 byte values have an entry in every state, so no input
+exists that the parser has no answer for. It is auditable against a published document
+rather than against the author's memory of one. And it is fast in the way this project
+needs — one lookup and one action dispatch per byte, with no branch tree whose depth
+depends on what arrived.
+
+The parser emits events and holds no terminal state at all: print, execute, CSI dispatch
+with parameters and intermediates, OSC start, put and end, the DCS equivalents, and
+escape dispatch. What those events *mean* belongs to the layer above, and that
+separation is what lets the emulator be tested by feeding it events directly, with no
+bytes involved.
+
+Parameters land in a fixed-size array with the sub-parameter separator handled, because
+a colon inside an SGR parameter is how true colour and styled underlines are actually
+spelled by the programs that emit them.
+
+No allocation, no `string`, no `List`: bytes in, structs out, spans throughout.
+
+Falsified when a byte value exists for which the table has no transition.
+
+### §QS15 A ring, not an array, and two screens
+
+Scrolling by one line is the most frequent structural operation a terminal performs. As
+an array of rows it is a move of the entire screen; as a ring with a moving origin it is
+an increment. The ring is therefore not an optimisation, it is the data structure, and
+every index into the buffer goes through that origin.
+
+Scrollback is the same ring extended. The visible screen is a window onto it, and a line
+leaving the top is only a line the window no longer covers. Capacity is in lines and
+configurable; eviction is by overwrite, never by copy.
+
+A row is a span of cells plus a wrapped flag, and that flag is not cosmetic. It is the
+only record that a line the host wrote as one logical line occupies two rows, which is
+exactly what reflow, selection and copy each need later and cannot reconstruct.
+
+A cell is a struct of at most sixteen bytes: the cluster, or an index into a side table
+when it does not fit inline, plus foreground, background and attributes. Cells are
+values, so a row is contiguous and clearing one is a fill.
+
+The alternate screen is a second ring with no scrollback, entered by DECSET 1049, which
+also saves and restores the cursor. `vim` exiting and leaving the shell's output
+untouched behind it is that mode working.
+
+Falsified when scrolling a full buffer by one line copies more than a bounded amount of
+memory.
+
+### §QS16 The sequences a shell prompt already needs
+
+Two families, filed as one line because neither is testable without the other: a shell
+prompt uses both before the user has typed anything.
+
+**Cursor and editing.** CUU, CUD, CUF, CUB, CUP and HVP, CHA and VPA, ED and EL in all
+three forms, IL and DL, ICH and DCH, ECH, SU and SD, and REP. Each is defined against
+the buffer, and the two rules that get them wrong everywhere are clamping and defaults:
+a missing parameter is one, a zero parameter is one, and a movement clamps at the margin
+rather than wrapping. DECSC and DECRC save and restore the whole cursor state, including
+attributes and the designated charset, not merely the position.
+
+**SGR.** The base sixteen, the 256-colour cube through `38;5` and `48;5`, and 24-bit
+colour through `38;2` and `48;2` in both the semicolon and the colon spellings, because
+real programs emit both. Bold, faint, italic, underline, slow and rapid blink, inverse,
+conceal and strike, each with its own reset code rather than a blanket reset, since
+programs turn one attribute off and expect the others to survive.
+
+Default foreground and background are a distinct state from any concrete colour, so that
+a theme change repaints them. Storing the theme's resolved colour instead is the bug
+that makes old scrollback stop matching a new theme.
+
+Falsified when a parameter of zero and an absent parameter are treated differently.
+
+### §QS17 Pending wrap, the margin, and the tab stop
+
+DECSTBM sets a top and a bottom margin, and inside it scrolling, IL, DL, SU and SD all
+operate on the region instead of the screen. `less` and `tmux` both depend on this, so
+it is not an optional refinement.
+
+DECOM decides whether row one means the screen or the region, which changes what CUP
+means — and is why it is a mode rather than a flag anything may ignore.
+
+The pending-wrap state is the subtle one, and the one most implementations skip. Writing
+to the last column does *not* move the cursor to the next row: it leaves the cursor on
+that column with a pending flag, and only the next printable character wraps. Anything
+else — a cursor movement, an erase, a carriage return — clears the flag. Get this wrong
+and a line exactly the width of the terminal is followed by a blank line the host never
+sent, which the user sees at once and blames on the remote program.
+
+DECAWM turns wrapping off entirely, and then the last column simply overwrites itself.
+
+Tab stops are a real column set and never a modulo-eight assumption: HTS sets one, TBC
+clears one or all, CHT and CBT move forward and back. A program that sets its own stops
+and then tabs is testing whether that set exists.
+
+Falsified when a line of exactly terminal width is followed by a blank line nothing
+sent.
+
+### §QS18 The character sets and the operating system commands
+
+Two groups of sequences, cheap individually and conspicuous when absent.
+
+**Character sets.** SCS designates G0 and G1, shift-in and shift-out select between
+them, and the one that matters in practice is DEC Special Graphics: a program drawing a
+box sends `ESC ( 0` and then ASCII letters, so a terminal that ignores the designation
+draws `lqqqk` where the user expects a corner. The mapping is a fixed table and nothing
+more.
+
+**Operating system commands.** OSC 0 and 2 set the window title, which is how a user
+tells one tab from another and therefore feeds straight into the tab strip. OSC 4 sets a
+palette entry, and 10, 11 and 12 set the default foreground, background and cursor
+colours — all of which repaint correctly only because the model stores colour roles
+rather than resolved values. OSC 7 reports the working directory, which is the whole
+mechanism behind opening a new tab in the same place. OSC 8 carries a hyperlink across a
+run of cells, so the cell gains a link identifier and the renderer needs no change at
+all.
+
+Both a terminating BEL and a terminating ST are accepted, because both are in the wild.
+
+OSC 52 is deliberately not in this line. It writes the local clipboard from the remote
+side, which is a security decision rather than an emulation one.
+
+Falsified when `ESC ( 0` followed by `lqqqk` does not draw a box corner.
+
+### §QS19 The two sequences that reach back out of the terminal
+
+Most escape sequences change what is on screen. Two of them change something outside it,
+and those two are an attack surface rather than a feature to finish.
+
+**OSC 52** lets the remote side write the local clipboard. It is genuinely useful — it
+is how copying out of a remote `tmux` works at all — and it is equally how a compromised
+host silently replaces what the user is about to paste into a local shell. So it is off
+by default, enabled per session, and when enabled it is write-only: the read direction,
+which lets a host exfiltrate whatever the user last copied, is not implemented and is
+not offered as a setting.
+
+**Title report.** A host may set the window title and, on terminals that answer, ask for
+it back. Together those two are a channel that turns the title into a command line: the
+host plants text, asks for it, and the terminal types it at the shell. The answer here
+is that this client sets titles and never reports them.
+
+Generalised: no reply this client sends may contain a byte the host supplied. That rule
+is what makes the device-attribute and cursor-position replies safe, since each answers
+with a constant or a number, and it is the rule the next such sequence gets judged
+against.
+
+Falsified when any reply the terminal sends back contains host-chosen text.
+
+### §QS20 Answering the questions programs actually ask
+
+A program discovers what it is talking to by asking, so silence here is not neutral. It
+is answered as a VT52.
+
+DA1 reports the device attributes this client actually implements, and that list is a
+claim: advertising a capability that is not there is worse than omitting one, because a
+program will then go and use it. DA2 reports a version, which is what allows a remote
+script to special- case this terminal at all.
+
+DSR 5 reports terminal status; DSR 6 reports the cursor position as CPR. The second
+matters most in practice — a shell prompt uses it to discover where the cursor ended up
+after printing something of unknown width, and a terminal that does not answer leaves
+the shell to guess. It is also where a wrong width model stops being visible only to the
+user and becomes visible to the program.
+
+DECRQSS asks for a setting to be reported back in its own syntax. Answering it for the
+settings this client tracks is worth doing; the important half is that an unrecognised
+request is answered as invalid rather than ignored, so the asker stops waiting for a
+reply that is never coming.
+
+Every reply is a constant or a number, never text the host supplied.
+
+Falsified when a request this client does not implement is swallowed with no reply at
+all.
+
+### §QS21 Four modes, two encodings, and the 223-column cliff
+
+Mouse reporting is not one switch. It is a reporting mode and an encoding, chosen
+independently by the program, and both have to be right or the program receives
+coordinates it misreads without knowing it.
+
+The modes: DECSET 9 reports presses only; 1000 reports press and release; 1002 adds
+motion while a button is held, which is what makes dragging a `tmux` pane divider work;
+1003 reports all motion, which a mouse-driven menu needs and which makes an otherwise
+idle terminal generate constant traffic — so it is honoured when asked for and never
+assumed.
+
+The encodings matter more than they appear to. The original scheme adds 32 to each
+coordinate and packs it into a byte, which stops working at column 223: a terminal
+offering only this misreports every click on the right-hand side of any modern window,
+silently. SGR encoding, DECSET 1006, has no such limit and distinguishes release, so it
+is what this client advertises and prefers whenever the program enables it. The legacy
+scheme is still implemented, because programs that never learned the newer one are still
+deployed.
+
+Buttons carry modifier bits for shift, meta and control, and the wheel arrives as
+buttons four and five.
+
+Shift held is reserved for local selection, so a user can always select text over a
+program that has taken the mouse. Without that escape hatch a full-screen program makes
+copying impossible.
+
+Falsified when a click past column 223 reports a column the host disagrees with.
+
+### §QS22 What changed, and the generation counter that says so
+
+The model is mutated by the parser and read by the renderer, and those are different
+threads. The cheapest correct thing to pass between them is not the changed content but
+the fact that something changed.
+
+Each row carries a generation stamp, incremented when the row is written. The buffer
+carries a monotonic generation of its own, incremented on any mutation. The renderer
+remembers the generation it last drew: equal means there is nothing to do and the thread
+goes back to waiting, which is the entire mechanism behind an idle window costing
+nothing.
+
+A dirty-row bitset accompanies it, so a screen where one row changed rebuilds one row of
+instances instead of all of them. That part is an optimisation and is labelled as one —
+correctness needs only the generation.
+
+Structural change is the trap. A scroll changes every row's *position* without changing
+any row's content, so a naive per-row scheme reports the whole screen dirty on the
+single operation a terminal performs most. The ring's origin is therefore part of what
+the renderer compares, and a pure scroll is recognised as one.
+
+The cursor is its own damage source, because a blink changes what is on screen while the
+buffer is untouched.
+
+Falsified when a window nobody is typing into issues a draw call.
+
+### §QS23 Reflow, and the honest fallback if it does not converge
+
+Resizing is where terminals lose their reputation. The wrapped flag on each row records
+which physical rows belong to one logical line, so reflow is definable at all: recover
+the logical lines, re-wrap them at the new width, put the result back.
+
+The hard parts are not the wrapping. They are the cursor, which must end on the same
+*character* rather than the same coordinates; the scrollback, where re-wrapping the
+visible screen but not the history leaves a discontinuity exactly at the boundary the
+user is looking at; a selection that was live across the resize; wide characters that no
+longer fit against the new right margin; and the alternate screen, which is not reflowed
+at all, because a full-screen program is about to redraw it at the new size anyway.
+
+Because the rules are this fiddly and the inputs this enumerable, it is written as a
+pure function over a buffer and a width and tested with property-based cases: widening
+and then narrowing back must restore the original rows, and the character under the
+cursor must be invariant across any sequence of resizes.
+
+If it does not converge to correct, shipping *without* reflow is an acceptable answer
+and shipping reflow that loses text is not. That fallback is recorded here so the
+decision is available rather than improvised under pressure.
+
+Falsified when narrowing and widening again does not restore the original line breaks.
+
+### §QS24 The two properties that hold for every input
+
+The parser's input is chosen by a remote machine. That makes two properties worth
+proving rather than assuming.
+
+**It does not fail.** `SharpFuzz` drives the decoder and the state machine with mutated
+input seeded from the captured corpus. No input may throw, hang, or read outside a
+buffer. Truncated sequences, an OSC string with no terminator, parameter counts far past
+the array, a DCS that never ends, deeply nested introducers — these are seeds, not
+discoveries. A crash here is a remote host ending the user's session; a hang is worse,
+because it looks like the network and gets diagnosed as one.
+
+**It does not allocate.** In steady state, on any input, the parse path allocates zero
+bytes. This is asserted by a test measuring the allocated-bytes counter across a corpus
+replay, not by inspection, and it fails the build. The reason is specific rather than
+aesthetic: a collection pause of thirty milliseconds is four dropped frames at 120 Hz,
+and it will land during somebody's `vim` session, which is exactly when it is least
+forgivable.
+
+Bounded state is part of the same claim. An unterminated OSC string must not grow a
+buffer without limit, so string collection has a cap and a sequence exceeding it is
+discarded rather than accumulated.
+
+Falsified by any input that throws, or by one allocated byte in the steady-state path.
+
+### §QS25 A local pseudo-console, and why it comes before SSH
+
+`IPtyChannel` is four members: read bytes, write bytes, resize, and a closed signal
+carrying an exit code or a reason. Everything above it — parser, buffer, renderer, input
+map — knows only this interface, and that is precisely what makes the SSH channel a
+later *implementation* rather than a later rewrite.
+
+The first implementation is ConPTY. `CreatePseudoConsole` with a pair of pipes, a
+process created with `PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE`, and careful handle lifetime:
+the classic defect here is retaining the write end of the input pipe after handing it to
+the child, so the child never sees end-of-file and the session hangs on exit instead of
+closing.
+
+Doing this before SSH is a deliberate ordering. It gives the emulator a real producer of
+VT bytes with no network latency and no authentication, which makes a rendering fault, a
+parsing fault and a transport fault three distinguishable things from the first day
+rather than one confusing thing three months in. Every conformance suite and every
+benchmark runs against it.
+
+It is also a feature. A local shell in a terminal this fast is the cheapest thing this
+client will ever ship, and users of the incumbent already expect one to be there.
+
+Reading is asynchronous and never spins; the read thread's only job is moving bytes
+onward.
+
+Falsified when a shell exiting leaves a process or a handle behind.
+
+### §QS26 Three stages, one barrier, and why frames are dropped on purpose
+
+This is the line the whole architecture is arranged around, so the design is stated in
+full.
+
+Three threads. **Transport** does nothing but read into pooled buffers and hand them to
+a bounded channel; it takes no lock and knows no terminal concept. **Parser** drains
+that channel, mutates the model, and raises the generation counter. **Render** waits on
+the swapchain's latency handle, and where the generation has not moved, waits on a
+damage event instead and issues nothing at all.
+
+The decisive property is that the parser drains the *entire* pending queue before it
+signals. A terminal is a state machine, so intermediate states are not frames anyone is
+owed: `cat` of a 100 MB file scrolls a million lines, and the user is owed the last
+screen, not a million screens. Parsing runs near a gigabyte per second and presenting
+runs at 120 Hz — coalescing is not an optimisation, it is the only way those two numbers
+coexist.
+
+Backpressure goes into the bounded channel and from there into the transport's own flow
+control, which is where it belongs. Bytes are never dropped, because dropping bytes
+corrupts a state machine. Only frames are dropped, and only ones nobody would have seen.
+
+Hand-off is by generation plus double-buffered instance data, so the render thread
+copies and never blocks the parser.
+
+Falsified when echo latency degrades measurably while a large file is printing.
+
+### §QS27 The path a keystroke takes, and everything it does not touch
+
+A keystroke's route to the host is deliberately the shortest thing in this codebase: the
+window's input handler encodes it and writes it to the channel. It does not enter the
+render pipeline, does not take the model's lock, does not wait for a frame, and does not
+allocate.
+
+That matters because output volume is chosen by the remote host while echo latency is
+what the user attributes to the client. During a `find /` the client is at its busiest
+and the user is most likely to reach for control-C — which is exactly the moment a
+shared queue would make that keypress arrive last.
+
+`TCP_NODELAY` is set on the underlying socket and verified rather than assumed. A
+forty-millisecond Nagle delay on a single-byte write is invisible in code review and
+unmistakable to a person typing.
+
+Writes are not batched. Coalescing keystrokes to save syscalls trades away the one
+resource everything else here is being spent to protect.
+
+The measurement is the point of the line, not a check afterwards: input to photon on a
+local pseudo-console, under load and at rest, against the figure the budget already
+fixed. A design argument is not evidence — the number is, taken with a high-speed
+capture or an equivalent instrumented path.
+
+Falsified when echo latency under load differs measurably from echo latency at rest.
+
+### §QS28 A key is not a byte, and the host changed the rules
+
+What a key sends is a function of the key, its modifiers, and terminal state the host
+has changed — which is why a static table is wrong before it is finished.
+
+Application cursor key mode, DECCKM, swaps the arrows between their CSI and SS3 forms. A
+shell in line-editing mode and the same shell running `vim` disagree about what Up
+sends, and the terminal is the thing that has to know which. Application keypad mode
+does the same for the numeric pad.
+
+Function keys follow the xterm convention, including the modified forms where the
+modifier arrives as a parameter: `CSI 1 ; 5 D` for control-Left is what a modern shell
+expects for word-wise movement, and its absence is why control-arrow silently does
+nothing on so many clients.
+
+Home, End, Insert, Delete, PageUp and PageDown each have a form and each has a competing
+legacy form. The choice follows `$TERM`, which this client sets and is therefore obliged
+to honour rather than to contradict.
+
+Alt is escape-prefix by default, because that is what shells expect, with the option to
+treat it as a meta bit for users who want it.
+
+The local keybinding layer sits above and takes priority: a chord bound locally never
+reaches the host. That reserved set stays small and documented, since every reserved
+chord is one stolen from the remote program.
+
+Falsified when the `$TERM` this client sets claims a form the key map does not send.
+
+### §QS29 Composition over a surface the IME cannot see
+
+An input method needs two things from the client: somewhere to draw the candidate list,
+and the composition string as it evolves. A GPU-rendered surface offers neither by
+default, because the IME cannot inspect what is on it.
+
+So the client handles the IME messages itself rather than letting a default window
+procedure guess. `WM_IME_STARTCOMPOSITION` opens composition, `WM_IME_COMPOSITION`
+delivers the string in progress and then the committed result, and the candidate window
+is positioned explicitly at the cursor's cell — converted out of grid coordinates, which
+the client is the only thing capable of doing.
+
+The composition string is drawn by the terminal as part of its own grid, at the cursor,
+with the underline the convention expects. It is *not* written into the buffer: it is
+display state that vanishes when composition is cancelled, and putting it in the buffer
+is what leaves abandoned text behind after a cancel.
+
+The committed result goes to the host as encoded characters, down the same path any
+other typed character takes.
+
+Wide characters compound this with the width model: a composition of CJK characters
+occupies two cells each, so the candidate window must be placed against real width and
+never against a character count.
+
+Falsified when the candidate window appears anywhere other than at the cursor.
+
+### §QS30 Selecting over a wrapped line, and the paste that runs itself
+
+Selection has three modes because users have three intents: character, word and line, on
+single, double and triple click. Dragging past the edge scrolls; shift-click extends an
+existing selection rather than starting a new one. Block selection on a modifier is the
+fourth, and it is what makes copying one column out of tabular output possible at all.
+
+Copying is where the wrapped flag earns its place. A logical line broken across three
+rows must copy as one line with no inserted break, and trailing whitespace is stripped
+per row, because a terminal pads rows and the user did not type that padding. Text goes
+to the clipboard, and hyperlinks with it where the selection carries any.
+
+Pasting is the security half of this line. Text pasted into a shell executes the moment
+it contains a newline, and a command with a newline hidden in it is an old and effective
+trick. So bracketed paste, DECSET 2004, is honoured whenever the program enables it,
+which lets the program itself decline to run the text. Where bracketed paste is
+unavailable, a paste containing a newline raises a confirmation that shows exactly what
+will be sent.
+
+Control characters in a paste are filtered out, since nothing legitimate pastes an
+escape sequence.
+
+Falsified when a wrapped line copies with a line break inside it.
+
+### §QS31 A viewport onto the ring, and finding something in it
+
+The ring already holds the history, so scrolling back is a viewport offset rather than a
+data structure. Wheel, scrollbar, shift-PageUp and a configurable line-wise chord all
+move that same offset.
+
+Two behaviours decide whether this feels right. New output arriving while the user is
+scrolled back does *not* yank the viewport to the bottom — somebody reading does not
+want the screen stolen — though the scrollbar shows that output arrived. Typing does
+return to the bottom, because typing means the reading is finished.
+
+Under the alternate screen there is no scrollback at all, and the wheel is instead
+translated into arrow keys or mouse events for the program. That is what makes scrolling
+inside `less` and `man` behave the way users expect, rather than scrolling the terminal
+out from under a full-screen program.
+
+Search runs over logical lines and not physical rows, so a match spanning a wrap is
+found. Case-insensitive by default with a case-sensitive option, regular expressions
+optional, matches highlighted in place and navigable, and the count shown. Searching a
+large scrollback must not stall the parser, so it runs against a consistent snapshot
+instead of holding a lock across the whole scan.
+
+Falsified when a match spanning a wrapped line is not found.
+
+### §QS32 Three parties who must agree on one number
+
+Three things hold a copy of the terminal's size: the client's own grid, the
+pseudo-console or channel, and the remote program. Only the client knows when it
+changed, which makes telling the other two an obligation.
+
+The order is not arbitrary. The model resizes and reflows first, so the buffer is
+consistent before anything else observes it. Then the channel is told —
+`ResizePseudoConsole` for ConPTY, a window-change request for an SSH channel. The remote
+side then delivers SIGWINCH to the program, which redraws itself.
+
+Resizing is a drag, so it fires continuously. The notification is debounced, because a
+drag across a screen would otherwise issue hundreds of window-change requests over the
+network and a remote `vim` would redraw for every one. Debounced, never dropped: the
+final size always arrives, since a resize that ends with no notification leaves the
+program permanently wrong about its own width.
+
+A size of zero rows or columns is clamped rather than sent. Some programs divide by it.
+
+Restoring a maximised window, a DPI change and a move to another monitor each produce a
+resize, and each takes this same path.
+
+Falsified when a remote full-screen program is still drawing at the old width a second
+after the drag ended.
+
+### §QS33 Judged by somebody else's tests
+
+Two external suites, run against the headless model with a pseudo-console driving them
+and no renderer or network involved.
+
+`esctest`, from the iTerm2 project, is the more valuable of the two: it is programmatic,
+it asserts specific buffer states, and it covers exactly the corners this project would
+otherwise discover from a user — parameter defaults, clamping at margins, the
+interaction of origin mode with CUP, DECSC across a screen switch.
+
+`vttest` is interactive and older, and its value is different in kind: it exercises the
+DEC behaviours a program written in 1985 still depends on, and network appliances are
+full of programs written in 1985.
+
+The result is a pass rate per section, committed to the repository, so a change that
+improves one area while quietly breaking another shows up as a number rather than as a
+feeling. Known failures are listed with a reason each — not implemented, deliberately
+not implemented, or a defect with a task id beside it. A failure with no entry in that
+list is a regression by definition.
+
+The target is above ninety per cent of `esctest` before the emulator is called finished,
+with the remaining tenth named individually rather than waved at.
+
+Falsified when a pass rate is quoted without the run and the date that produced it.
+
+### §QS34 Shaping across a boundary the grid says exists
+
+A cell grid and a ligature disagree by construction. `=>` in a programming font is one
+glyph spanning two cells, so the renderer must draw a glyph belonging to no single cell
+and the atlas key must be the run rather than the character.
+
+The approach: runs of identical attributes are shaped by `IDWriteTextAnalyzer`, and the
+resulting glyphs are cached against the run's text instead of against a code point. A
+cached run draws as a short sequence of instances whose positions come from the shaper
+rather than from the grid. The grid still owns the cursor, the selection and the copy —
+a ligature changes only what is drawn.
+
+That is also where the cost hides. Shaping is per run, so a line where every cell
+carries a different colour degenerates into per-cell shaping, and a syntax-highlighted
+source file is exactly that line. The cache must be measured against that case and not
+against prose.
+
+Two behaviours are non-negotiable either way: the cursor sits on a character and never
+on half a ligature, and a ligature under the cursor breaks apart so the user can see
+which character they are on.
+
+Off by default, and a per-font setting, because a sizeable share of this client's users
+consider ligatures a defect rather than a feature.
+
+Falsified when the cursor cannot be placed between the two characters of a ligature.
+
+### §QS35 Three channels of alpha, and what that costs the blend
+
+Grayscale antialiasing is correct and slightly thin. ClearType is what Windows users
+have looked at for twenty years, and text differing from every other application on the
+machine reads as wrong even when nobody can say why.
+
+The obstacle is arithmetic. Subpixel coverage produces a separate alpha per colour
+channel and standard alpha blending has one. There are two honest ways out: dual-source
+blending computes the per-channel factor in the shader and blends in a single pass,
+which is the right answer wherever the hardware supports it; otherwise the pass splits,
+at the cost of a second draw over the same fill.
+
+`DWRITE_TEXTURE_CLEARTYPE_3x1` is the rasteriser half, and an atlas page for a face
+rendered this way becomes three channels. Both kinds of page coexist, since emoji stay
+RGBA and a fallback face may stay grayscale.
+
+Two conditions make it wrong to switch on blindly, which is why it is a setting and not
+an upgrade. It assumes a horizontal RGB subpixel layout, so it is wrong on a rotated
+display and on some panels. And it assumes an opaque background, so it degrades wherever
+the window is translucent.
+
+Gamma becomes visible here in a way it is not in grayscale, so DirectWrite's contrast
+enhancement has to be carried through rather than dropped on the floor.
+
+Falsified when text on a rotated display shows colour fringing.
+
+## Block D — The tree a user organises work in
+
+### §QS55 The file a user will still have in five years
+
+The session store is what a user accumulates and what they will not abandon. That makes
+its format a commitment: human-readable, diffable and documented, so it can go under
+version control and be edited without this client running at all.
+
+The structure is a tree of folders, because that is how people organise fleets — by
+environment, by customer, by datacentre. A folder carries defaults its children inherit
+and may override: user, port, key, jump host, terminal settings, colour scheme.
+Inheritance is what makes a hundred hosts manageable, and each node states explicitly
+where a value came from, so a user can see the source rather than deduce it.
+
+Search across the tree by name, host, tag and folder, with results reachable from the
+palette — above about fifty entries the tree stops being how anybody finds anything.
+
+Secrets are not in this file. It holds a *reference* to a credential and never a
+credential, so the file is safe to commit, share and back up. Which is what a user will
+do with it whether or not the design allowed for it, so the design allows for it.
+
+Opening a session is one action from the palette or a double click, and one already open
+is focused rather than opened twice unless the user asks for a second.
+
+Falsified when the store cannot be edited by hand and reloaded.
+
+### §QS56 Reading a file the user already maintains
+
+A developer arriving at this client very often has a `~/.ssh/config` that already works:
+hosts, users, ports, keys, jump chains, per-host options accumulated over years. Reading
+it is the difference between switching in an evening and not switching.
+
+The directives worth honouring are the ones people actually use: `Host` with its
+patterns and negation, `HostName`, `User`, `Port`, `IdentityFile`, `IdentitiesOnly`,
+`ProxyJump`, `ProxyCommand`, `ServerAliveInterval`, `StrictHostKeyChecking`, `Include`,
+and `Match host`. First-value-wins is the OpenSSH rule, and it has to be the rule here
+too, because a config written against it behaves differently under any other.
+
+Read-only, and that is the important decision. A user's `ssh_config` is shared with
+`ssh`, `scp`, `rsync` and `git`, so a client that reformats or reorders it is a client
+that quietly broke four other tools. quickshell's own additions live in quickshell's own
+store, which may reference a config host by name.
+
+Directives that are not honoured are reported rather than ignored. Silently dropping
+`ProxyCommand` produces a host that looks configured and simply never connects, which is
+the worst diagnostic outcome available.
+
+Falsified when this client writes to a file OpenSSH also reads.
+
+### §QS57 A connection carried inside another connection
+
+A jump host is not a proxy setting. It is a connection nested inside another:
+authenticate to the bastion, open a direct-tcpip channel from it to the real target, and
+run an entire second SSH session over that channel's stream. The target's host key is
+the target's own, verified like any other, and the bastion never sees the target's
+traffic in the clear.
+
+That framing decides the design. The transport seam must accept a *stream* and not only
+a socket — a requirement on the seam, and the reason the seam was drawn where it was.
+Chains follow by recursion: a jump through two bastions is the same operation twice, to
+whatever depth the user configured.
+
+`ProxyCommand` is the other route, spawning an external process and using its pipes. It
+is supported because `ssh_config` files in the wild are full of it, and because it is
+the escape hatch for everything the built-in path will never cover: a corporate SSO
+helper, a cloud provider's session manager, somebody's shell script.
+
+Failures must name which hop failed. A bare connection-refused with no hop named is the
+least useful message a chain can produce, and producing it is what this line exists to
+prevent.
+
+Each hop's credentials are its own, and a chain never silently reuses the first hop's
+key.
+
+Falsified when a failure in a two-hop chain does not name the hop that failed.
+
+### §QS58 The dialog is the settings surface with the highest traffic
+
+Most users will configure a session here rather than in the file, so this dialog is
+where the store's model becomes visible and where a bad default silently becomes
+everybody's default.
+
+It asks for the minimum that can open a connection — a host, and nothing else that can
+be inherited or defaulted — with everything further behind a disclosure. A dialog
+demanding twelve fields for a machine on the local network is a dialog that makes simple
+work feel heavy, and that impression is formed once.
+
+Inherited values are shown as inherited with their source named, and overriding one is a
+deliberate act. Without that, a user cannot tell why one session behaves unlike its
+siblings, and answering that question is where an evening goes.
+
+Post-login commands are supported and are exactly as dangerous as they sound: text sent
+to a shell as though typed. So they are visible on the session, they are never silently
+inherited from a folder, and the dialog states what will happen. Sending a password this
+way is refused, with the credential store named as the alternative.
+
+Per-session terminal settings — scheme, font size, terminal type, scrollback — override
+the global ones, which is what lets a production host look visibly unlike a staging one.
+That visual difference is a safety feature far more than a preference.
+
+Falsified when the dialog requires a field the store could have inherited.
+
+## Block E — SCP and SFTP as a thing a person operates
+
+### §QS59 A second channel, not a second connection
+
+SFTP is a subsystem channel on an existing SSH connection. That is the whole design
+decision, and it is worth stating because the alternative — opening a fresh connection
+for the file browser — is what most clients do, and it costs the user another password,
+another second factor, and another entry in the server's auth log.
+
+So the transport seam exposes a file-transfer channel alongside the shell channel, and
+the session owns both. Closing the session closes both.
+
+SFTP version 3 is the floor, since that is what nearly every server speaks; later
+versions are used where offered, because they carry better attribute and rename
+semantics.
+
+The operations needed are ordinary: list, stat, read, write, mkdir, remove, rename,
+symlink, chmod, set times. Reading and writing keep multiple requests in flight rather
+than looping request-and-wait, which is where SFTP throughput actually comes from — a
+naive implementation over a high-latency link runs at a fraction of the available
+bandwidth and is universally misdiagnosed as a network problem.
+
+Paths belong to the server, not to Windows. Case sensitivity, separators, permitted
+characters and length limits are all the far side's, and a client that normalises them
+corrupts names.
+
+Falsified when opening the file browser prompts for a credential the session already
+used.
+
+### §QS60 Two panes, and the operations between them
+
+Local on one side, remote on the other, because that is the shape of the task and every
+alternative makes the user hold the direction in their head.
+
+Each side lists name, size, modified time and permissions, sorts by any of them, and
+shows hidden entries on a toggle. Navigation is by double click, by typing a path, and
+by history. A large listing arrives incrementally rather than after it completes: a
+directory of fifty thousand files should show its first screen immediately, and a
+browser that blocks until the listing finishes is a browser people stop opening.
+
+The operations are the ordinary ones — copy either direction, rename, delete, create a
+directory, change permissions — plus opening a remote file in a local editor with
+write-back on save. That last one earns its cost: editing a config file remotely is why
+people open a file browser at all, and the manual download-edit-upload round trip is
+exactly what they are trying to avoid.
+
+The remote pane follows the session's working directory wherever the shell reports one,
+which is what the OSC work already bought.
+
+Deleting asks, and says how many entries and whether any of them is a directory.
+
+Falsified when listing fifty thousand entries blocks the pane until it completes.
+
+### §QS61 The queue, and what resume actually means
+
+Transfers are a queue that outlives the dialog which created them, so a user can queue
+work and go and do something else in the client. Each entry shows the file, its size,
+bytes done, rate and estimated time; the queue shows the aggregate.
+
+Concurrency is configurable and low by default. Several files at once helps over a
+high-latency link and hurts on a saturated one, and a default that saturates somebody's
+uplink is a default that gets this client blamed for the network.
+
+Cancel and pause work per entry and for the whole queue, and cancel genuinely stops
+rather than letting the current file run to completion first.
+
+Resume is why this line exists. SFTP reads and writes at an offset, so an interrupted
+transfer continues from where it stopped — but only when the client can establish that
+the partial file is genuinely a prefix of the source. Size alone does not establish
+that. So resume is offered where size and modification time agree, with a checksum
+comparison wherever the server can compute one, and where neither is available the
+honest answer is to restart and to say why.
+
+A failed entry stays in the queue carrying its reason and retryable, rather than
+vanishing.
+
+Falsified when a resumed transfer produces a file that differs from the source.
+
+### §QS62 Recursion, and the four answers to a collision
+
+Copying a directory is a walk, and the walk has to answer questions the flat case never
+poses.
+
+**Symbolic links**: followed, copied as links, or skipped. Following one is how a
+recursive copy walks into a loop or drags in an entire filesystem, so the default is to
+copy the link and the choice is explicit rather than buried.
+
+**Permissions and times**: preserved wherever the destination can express them, and
+where it cannot — a Unix mode landing on NTFS — the loss is stated once rather than once
+per file. The reverse direction has the same asymmetry and the same treatment.
+
+**Order**: directories created before their contents, and an empty directory in the
+source is an empty directory in the destination. That sounds too obvious to write down
+and is the most commonly skipped part of a recursive copy.
+
+**Collisions** get four answers and no fifth: overwrite, skip, rename, or compare and
+take the newer. The dialog shows both sides with size and time, and offers to apply the
+answer to the rest — a user answering the same question four hundred times will pick
+whichever option ends it soonest, and that is a data-loss mechanism.
+
+Overwrite writes to a temporary name and renames into place wherever the server allows
+it, so an interruption does not leave a truncated file where a complete one used to be.
+
+Falsified when an interrupted overwrite destroys the destination file.
+
+### §QS63 Kept for the appliance, and honest about why
+
+The non-goal is already written: SCP is not the primary transfer path, because it has no
+directory listing, no resume, no reliable progress and a long history of
+filename-handling flaws — and OpenSSH itself moved its own `scp` onto SFTP for those
+reasons.
+
+What it is kept for is narrow and real: an embedded device, a network appliance or an
+old server whose sshd offers no SFTP subsystem. For those hosts, SCP is the difference
+between transferring a file and not transferring one.
+
+So it is a fallback, offered when the subsystem request is refused, and it announces
+itself rather than switching silently. The user is told which protocol is in use and
+what it costs them: no listing, no resume, and progress that is an estimate.
+
+The implementation is deliberately minimal — send and receive a file or a directory,
+nothing else. The browser does not run on top of it, because a browser needs a listing
+and this protocol has none; the usual workaround is to parse the output of a shell
+command, which is exactly where the filename injection flaws live and is not somewhere
+this client is going.
+
+Filenames are escaped for the remote shell without exception, since this protocol's
+entire vulnerability class is a filename that becomes a command.
+
+Falsified when a filename containing a shell metacharacter transfers without escaping.
+
+### §QS64 The gesture users try before reading anything
+
+Two drop targets, and they mean different things.
+
+Dropping onto a **file browser pane** is a transfer into the directory shown, which is
+the obvious case, and it joins the existing queue like anything else.
+
+Dropping onto a **terminal pane** is not a transfer. It types the path, quoted for the
+remote shell — because what a user dropping a file onto a shell prompt wants, nine times
+in ten, is the path as an argument. A modifier turns it into a transfer to the working
+directory instead, and that difference is stated in the reference rather than left to be
+discovered.
+
+Dragging *out* of a remote pane to Explorer is a download, and it is the harder
+direction: Windows wants the data during the drop rather than afterwards. Deferred
+rendering through `CFSTR_FILECONTENTS` is the mechanism, and where a file is large
+enough that the drop would stall, it is queued and the drop completes against a
+placeholder.
+
+Dragging between two remote panes on different hosts transfers through this client, and
+it says so — the user may reasonably have assumed the two servers were talking to each
+other.
+
+Several files and directories are one operation, one group in the queue, one progress
+figure.
+
+Falsified when a path typed into a terminal by a drop is not quoted for the remote
+shell.
+
+### §QS65 Comparing two trees before touching either
+
+Synchronising is a comparison followed by a transfer, and the comparison is the part
+worth designing.
+
+Both trees are walked and compared on size and modification time, with tolerance for
+clock skew and for filesystems whose timestamp resolution differs — one-second
+granularity on one side against hundred-nanosecond on the other will otherwise report
+every file as changed and the feature is useless. A content comparison is offered
+wherever the server can compute a hash, and it is opt-in, since it costs a full read of
+both sides.
+
+The result is shown before anything is transferred: what is new, what changed, what
+exists only on the destination. Nothing runs until the user has seen that list. A sync
+that acts first and reports afterwards is a sync that deletes something.
+
+Direction is explicit — upload, download, or mirror — and mirror, which deletes on the
+destination, takes its own confirmation naming what will be deleted.
+
+A two-way sync with conflict resolution is deliberately out of scope. It needs a change
+history this client does not have, and guessing in its absence is precisely how a
+two-way sync loses somebody's work.
+
+Filters exclude by pattern, using a syntax people already know rather than one invented
+here.
+
+Falsified when a mirror deletes anything the user was not shown first.
+
+## Block F — A forward is a lifecycle, not a checkbox
+
+### §QS66 Listen here, connect there, and the parts that go wrong
+
+A local forward listens on a local address and, for each accepted connection, opens a
+direct-tcpip channel to a host and port resolved by the *server*. That the resolution
+happens on the far side is the whole point, and the thing users most often
+misunderstand: the target name is resolved in the remote network's DNS, never in the
+local one.
+
+Binding is a decision with a security consequence. The default is loopback only, because
+binding to all interfaces turns the user's laptop into an open route into the remote
+network for anybody on the same cafe wifi. Binding wider is possible, and it warns.
+
+Port zero means the operating system chooses, and the chosen port is reported back —
+which is what lets several forwards to the same service coexist without the user
+allocating ports by hand.
+
+Each accepted connection is its own channel, so a forward carrying twenty connections is
+twenty channels and one closing disturbs none of the others. Half-close propagates in
+both directions, since a protocol that shuts one direction down and waits — and many do
+— hangs otherwise.
+
+Three errors must be told apart: the local port is already in use, the server refused to
+open the channel, or the target refused the connection. Three remedies, one symptom.
+
+Falsified when a forward binds beyond loopback without the user asking for it.
+
+### §QS67 The direction where the server holds the veto
+
+A remote forward asks the server to listen and to send each accepted connection back as
+a channel. Everything about it mirrors a local forward except the part that matters: the
+server decides whether it happens.
+
+`GatewayPorts` on the server governs whether that listener binds beyond the server's own
+loopback, and it is usually off. So a forward that appears to succeed and is unreachable
+from a third machine is almost always this setting — and the client says so, rather than
+leaving the user to go and read `sshd_config` to find out.
+
+Port zero here means the server allocates, and it reports the port in its reply. Reading
+that reply is what lets the client show the user the actual port instead of the zero
+they asked for.
+
+Incoming channels are handled as they arrive, each connected to the local target, with
+no assumption about how many arrive at once.
+
+The forward's life is the connection's life, and a server that fails to clean up a stale
+listener is a real situation rather than a hypothetical — so a reconnect explicitly
+re-requests, and a request refused because the port is still held says that, not
+something generic.
+
+Refusal is the common case here rather than the exception, and every refusal carries the
+server's own stated reason wherever it gave one.
+
+Falsified when a refused remote forward is reported without the server's reason.
+
+### §QS68 One forward that covers a network
+
+Dynamic forwarding is a SOCKS proxy served by the client: the application says where it
+wants to go and the client opens a channel there. One forward covers everything
+reachable from the remote host, which is why this is the forward a browser or a cloud
+CLI actually wants.
+
+SOCKS5 with no authentication on loopback is the working configuration, and SOCKS4a is
+supported because old tools still speak it. `CONNECT` is the command that matters;
+`BIND` and UDP associate are not implemented and are refused cleanly rather than left to
+time out.
+
+Hostname targets are passed to the server unresolved, and that is the whole security
+property. Resolving locally leaks every hostname the user visits to the local network's
+DNS, and it also breaks any name that exists only inside the remote network. A SOCKS
+proxy that resolves locally is a common defect and a quiet one, because most names
+happen to resolve both places.
+
+Binding follows the local forward's rule — loopback by default, a warning beyond it —
+with more force here, since this listener is a route into an entire network rather than
+to one port.
+
+Failures are reported with the correct SOCKS reply code, because an application handed a
+generic failure retries forever instead of telling its user anything.
+
+Falsified when a hostname is resolved locally rather than by the server.
+
+### §QS69 A forward has a life, and it outlives attention
+
+A forward is configured on a session rather than created ad hoc, so it survives the
+session being closed and reopened, and so it travels with the session store when that
+store is shared.
+
+It starts with the session where it is marked to, and a start that fails does not stop
+the session connecting. The terminal is the primary thing, and a port conflict must
+never cost the user their shell.
+
+A local port already in use is the most common failure here by a wide margin. The client
+names the port and, where it can, what is holding it — the answer is usually a previous
+instance of this client, and knowing that saves somebody a reboot.
+
+Reconnect re-establishes every forward the session had, and reports which came back and
+which did not. A forward silently absent after a reconnect is worse than one that failed
+loudly, because the application using it then fails in a way that points at the
+application.
+
+Stopping and starting one individually, without touching the session, is available,
+since a user debugging a port conflict needs exactly that and nothing else.
+
+The teardown path is the one tested least and mattering most: closing a session closes
+its listeners and its live channels, and a listener outliving its session is what makes
+the next start fail.
+
+Falsified when a closed session leaves a listening socket behind.
+
+### §QS70 Showing the thing that has no window of its own
+
+Forwards have no window, no output and no obvious presence, which is exactly why they
+have to be shown. One view lists every forward this client currently holds across every
+session: direction, local address and port, remote target, owning session, state, and
+the number of connections currently carried.
+
+Live connection counts are what make the view diagnostic rather than decorative. A
+forward listening with nothing connected and a forward carrying eight connections look
+identical in any list that omits the count, and those are precisely the two states a
+user is trying to tell apart.
+
+Each row stops and starts, and each copies as an address the user can paste into
+whatever tool needs it.
+
+The window's own chrome carries a small indicator whenever any forward is active,
+because a user who has forgotten one is running has an open route into a production
+network on their laptop and does not know it.
+
+Recent failures appear in the same view with their reasons. A forward that failed an
+hour ago is invisible everywhere else by now, and it is exactly what the user is
+currently trying to explain to somebody.
+
+This is a surface that survives the leanness argument, because the alternative to it is
+`netstat`.
+
+Falsified when a running forward does not appear in this view.
+
+## Block G — The clean interface, defended
+
+### §QS4 Three hosts, one measurement, one decision
+
+Three candidates, each prototyped far enough to be measured rather than argued about.
+
+**WPF with `D3DImage`** composes perfectly and has no airspace problem, but the interop
+path runs through a shared D3D9Ex surface and presentation is clocked by WPF's own
+compositor. The prototype exists to confirm or refute the expectation that this caps the
+achievable rate. If it does, the option closes here and the measurement is what closed
+it.
+
+**WPF hosting a child HWND per pane** gives each pane its own swapchain and its own
+present clock, at the cost of airspace: nothing can be composed over the child window,
+so menus, popups and drag adorners must themselves be HWND-backed. WPF popups already
+are, which is the only reason this option is credible — so the prototype must show a
+dropdown and a modal dialog correctly overlapping a running pane, or it fails.
+
+**WinUI 3 with `SwapChainPanel`** is the sanctioned path and the one Windows Terminal
+took: no airspace problem, independent presentation, against a Windows App SDK
+dependency and its deployment consequences.
+
+All three run the same test — a pane presenting continuously at the display's rate with
+an overlapping dropdown open — measured for presented frame rate and for the delay
+between a click and the pixel that answers it.
+
+The output is a decision record naming the winner and, for each loser, the number that
+closed it, so the choice is not reopened by opinion.
+
+Falsified if that record states a preference without a measurement behind it.
+
+### §QS46 What is on screen by default, and what is not
+
+The window is the first argument this project makes. The incumbent opens onto a toolbar,
+a sidebar, a status bar and an advertisement. quickshell opens onto a terminal.
+
+So the default is a title bar, a tab strip that hides itself while there is one tab, and
+the terminal. No toolbar, no status bar, no sidebar until a user opens one. Every
+element added later is spending a budget this line is what establishes.
+
+Theme is light, dark, or follow the system — and following the system means reacting
+while running, not reading it once at start-up. The terminal's own colour scheme is a
+separate thing from the application chrome's theme, because a user with a favourite
+scheme wants it under either chrome; conflating the two is a common and irritating
+mistake.
+
+The window remembers position, size and maximised state per monitor configuration, so
+plugging in a dock does not scatter it across a screen it can no longer see.
+
+Start-up sits on the critical path for the cold-start figure, so the window appears and
+is interactive before any session work begins, and the first paint waits on neither
+configuration parsing nor a network call.
+
+Closing with sessions open asks once, listing what is open, with a way to say never
+again — and then honouring it.
+
+Falsified when a default installation shows chrome beyond a title bar and a terminal.
+
+### §QS47 Tabs, and the title the remote host is writing
+
+A tab owns a session, its terminal state and its lifetime. Create, close, reorder by
+drag, and detach into a new window — and a detached tab keeps its connection rather than
+reconnecting, which is the observable consequence of the session living in the tab and
+not in the window.
+
+The title comes from three places in priority order: a name the user set, the title the
+remote host is writing through OSC, and the session's host name. That middle source is
+why tabs are worth building on top of the OSC work: a shell reporting its working
+directory or its running command turns the tab strip into information rather than a row
+of identical host names.
+
+Closing a tab with a live session asks, unless the session already ended by itself. A
+tab whose session died stays open showing why, with a reconnect — a tab that vanishes
+takes the error message with it, which is the one thing the user needed.
+
+Keyboard navigation is next, previous, by index, and most-recently-used. Those chords
+are reserved from the remote program, and that cost is stated in the keybinding
+reference rather than discovered.
+
+A tab shows activity: output arrived while it was hidden, or the session dropped. A dot,
+not a badge with a count, because a terminal has no meaningful unit to count.
+
+Falsified when detaching a tab reconnects its session.
+
+### §QS48 A tree of panes, and who owns the focus
+
+A tab holds a tree rather than a session: each node is a horizontal or vertical split,
+each leaf is a session. Recursive, so any pane can be split again — the only model that
+does not run out at some arbitrary depth chosen by whoever wrote it.
+
+Sizing is proportional, so resizing the window preserves the arrangement's shape.
+Dragging a divider sets the proportion; a chord equalises. A pane can be zoomed to fill
+the tab temporarily and restored, which is the cheapest genuinely useful feature here:
+it turns a cramped four-way split into a workable one without disturbing the layout.
+
+Focus follows click and moves by direction from the keyboard, and directional movement
+over a tree needs geometry rather than tree order — moving right means the pane whose
+rectangle lies to the right, which is often not the sibling.
+
+Closing a pane collapses its parent and gives the space to the remaining sibling.
+
+Each pane is a full terminal with its own scrollback, size and title, so each resizes
+independently and each notifies its own host. The resize path is now exercised several
+times per window drag, which makes the debounce there load-bearing rather than tidy.
+
+Falsified when directional focus movement follows tree order instead of screen position.
+
+### §QS49 One device, many surfaces, one atlas
+
+Panes multiply, and the naive arrangement multiplies everything along with them. The
+device, the shaders, the constant buffers and — above all — the glyph atlas are
+process-wide. Only the swapchain and the instance buffer are per pane.
+
+The atlas is why this matters. Sixteen panes at the same font share one atlas and one
+copy of every glyph; sixteen atlases would be sixteen copies of the same texture memory
+and sixteen rasterisation passes over the same characters. Panes at different sizes
+share it too, since size is already part of the cache key.
+
+Rendering is one thread for all panes rather than a thread each. It waits on whichever
+pane has damage, draws only those, presents only those. A thread per pane would multiply
+both the context switching and the number of things contending for the device's
+immediate context, which is not free-threaded and will serialise them anyway.
+
+An invisible pane — another tab, a minimised window, an occluded one — draws nothing at
+all. `DXGI_STATUS_OCCLUDED` from a present is the signal to stop; damage is what resumes
+it.
+
+Device loss now takes every pane at once, so recovery is process-wide, and each pane
+rebuilds from terminal state that never touched the GPU.
+
+Falsified when atlas memory in use scales with the number of open panes.
+
+### §QS50 A good default beats a checkbox
+
+The rule this surface is built on: prefer a good default to an option. Every setting is
+a permanent compatibility contract, a line in a reference nobody reads, and one more
+state combination a bug report can arrive in.
+
+What is genuinely worth exposing: font family, size and fallback chain; the ligature
+setting, since users are sincerely divided on it; the colour scheme; cursor shape and
+blink; scrollback capacity; keybindings; and the terminal behaviours that are
+host-dependent rather than a matter of taste — the paste warning, clipboard access from
+the remote side, and the reported terminal type.
+
+Settings are a file the user can edit *and* a UI over that same file, with the file as
+the source of truth. That way it goes under version control, and support can ask for it.
+The UI writes it back preserving comments, or the UI is not worth having.
+
+Changes apply live. A font size that needs a restart is a font size nobody experiments
+with, and experimenting is the entire reason to expose it.
+
+Anything not on the list above needs an argument rather than a preference, and the
+argument is a user's task and never a feature comparison — which is the parity non-goal
+applied to the one surface where it is hardest to hold the line.
+
+Falsified when a setting exists that no reference documents.
+
+### §QS51 Reading the two formats that already exist
+
+Nobody types twenty colours. Schemes circulate as files, in two formats that between
+them cover very nearly everything published: the iTerm2 `.itermcolors` property list,
+and the Windows Terminal JSON fragment.
+
+Reading both is a small piece of work with a disproportionate effect. It means a user
+arrives with the scheme they already use, on the first evening, instead of approximating
+it and quietly resenting the result.
+
+A scheme is twenty values: sixteen palette entries, default foreground and background,
+cursor, and selection. Where a format omits one, the omission is derived by a stated
+rule rather than guessed, and that rule lives in the reference.
+
+The client ships a small set of defaults and no more. A scheme gallery is a maintenance
+burden and an invitation to screenshots, and an import path makes it unnecessary.
+
+Applying a scheme repaints existing scrollback — which works only because the model
+stores colour roles rather than resolved values. This line is where that earlier
+decision gets spent.
+
+Contrast is checked and reported, never enforced: a scheme with unreadable combinations
+is the user's choice to make, and a warning naming which pair is unreadable is more use
+than a refusal.
+
+Falsified when applying a scheme leaves existing scrollback in the previous palette.
+
+### §QS52 The surface that lets the other surfaces stay small
+
+A palette is the mechanism that makes the non-goal about toolbars affordable. Every
+action the client can perform is reachable by typing part of its name, so an action does
+not need a button in order to be findable, and the interface stays as empty as the
+window line promised it would.
+
+It lists sessions to connect to, tabs and panes to switch to, settings to change, and
+the client's own commands. Fuzzy matching over the name, ranked with recency, because
+what a user wants is usually what they wanted recently.
+
+Each entry shows its keybinding where it has one, which turns the palette into how
+chords are discovered rather than something a user has to read a reference to learn.
+
+It opens on a chord, closes on escape, and never takes focus without being asked. It has
+no configuration of its own.
+
+The discipline that keeps it useful is that the action list is generated from the
+actions themselves rather than maintained alongside them. A hand-maintained list drifts,
+and a palette missing a third of the actions is worse than no palette, because the user
+stops trusting it and never comes back.
+
+Falsified when an action exists that the palette cannot reach.
+
+### §QS53 Typing once into several hosts, visibly
+
+Input broadcast sends what is typed to several panes at once. It is one of the few
+incumbent features that earns its place unarguably, because the alternative is a person
+typing the same command eight times and getting the seventh one wrong.
+
+The target set is explicit: the panes in this tab, a selection the user made, or a saved
+group. Never all sessions everywhere — the mistake this feature enables is precisely a
+command reaching a host the user did not have in mind.
+
+While it is on, the client says so unmistakably: the panes receiving input are outlined,
+and the state is visible without hunting for it. This is a mode, and an invisible mode
+that sends keystrokes to production hosts is the worst kind of mode there is.
+
+Each pane keeps its own output, which is the point. Eight hosts answering differently is
+the information the user was after.
+
+It ends when the tab loses focus or the user turns it off, and it never survives a
+restart, because a mode restored from a previous session is a mode nobody remembers
+enabling.
+
+Falsified when broadcast is on and any receiving pane is not visibly marked.
+
+### §QS54 Publishing a buffer nothing else can see
+
+Everything this renderer does well is what makes it invisible to a screen reader. There
+are no controls, no text elements and no automation tree — there is a texture. So the
+accessibility surface is built rather than inherited, and if it is not built it does not
+exist.
+
+A UI Automation provider over the terminal exposes the buffer as a text pattern: the
+visible screen and the scrollback as one document, with ranges so a reader can move by
+character, word and line, and the cursor exposed as the caret.
+
+Change notification decides whether this works in practice. Output arriving raises
+text-changed events, and those must be throttled by the same reasoning that governs
+frames — a screen reader handed one notification per row during a `cat` says nothing
+useful for a minute, by which time the user has lost the session.
+
+The cursor moving raises a caret event, which is what lets a reader follow a shell
+prompt as the user types.
+
+Everything else in the shell — tabs, dialogs, settings — is built from framework
+controls that already carry names and roles, so the work there is labelling, and it is
+done as those surfaces are built rather than swept up here at the end.
+
+Falsified when a screen reader cannot read a line of output that is on screen.
+
+## Block H — The reason to leave the incumbent
+
+### §QS1 The skeleton, and why the analyzers are on from commit one
+
+The tree is laid out as libraries first, application last: `Quickshell.Terminal` holds
+the buffer and the parser and references nothing graphical; `Quickshell.Render` holds
+the D3D11 code and references no network type; `Quickshell.Transport` holds the protocol
+seam; and `Quickshell.App` is the only assembly allowed to reference all three. Project
+references enforce that direction, because the one architectural failure this project
+cannot recover from is a protocol library's types reaching the render thread.
+
+Target .NET 8 or later, x64. Nullable reference types on, warnings as errors, and the
+allocation-sensitive analyzers enabled now rather than later: this codebase will
+eventually assert that the parse path allocates nothing, and a rule turned on after the
+code exists is a rule nobody turns on.
+
+CI builds and tests on every push. It deliberately does not yet gate on performance,
+because there is nothing to measure until the harness exists; the pipeline is here now
+so that adding that step later is a step and not a project.
+
+A `.gitignore` covering `bin`, `obj` and `.user` belongs to this line and not to a later
+tidy-up. The commit script stages everything, so a tree without one turns every commit
+into a review of build output.
+
+Falsified when a fresh clone does not build, or when a project reference that inverts
+the layering passes the build.
+
+### §QS2 The numbers every later line is read against
+
+Six figures, fixed here, changed only by an amend that argues for the change.
+
+**Input to photon** for a keystroke echoed by a local shell: under one refresh interval
+at 120 Hz, measured with a high-speed capture or an equivalent instrumented path, never
+by feel.
+
+**Sustained parse throughput**: at least 400 MB/s on the reference machine over a stream
+of mixed text and escape sequences, measured headless with no renderer attached, because
+parsing must never be the reason output is slow.
+
+**Steady-state frame cost**: under 2 ms for a filled 200x50 grid, so one pane leaves the
+frame budget almost entirely unspent and several panes stay affordable.
+
+**Idle cost**: zero draw calls and no measurable core occupancy on a window nobody is
+typing into. This is the figure the incumbent loses on and the one a laptop user
+actually feels.
+
+**Cold start** to an interactive local shell: under 400 ms, from a cold file cache
+wherever the measurement can arrange one.
+
+**Resident memory**: under 120 MB for one connected session at default scrollback.
+
+The reference machine is named in the file with its CPU, GPU and display refresh,
+because a number without a machine is a mood. Each figure states how it is measured, and
+a claim made by any other method does not count.
+
+Falsified the moment a figure here is quoted in a commit message without the run that
+produced it.
+
+### §QS3 The corpus, and why it is captured rather than generated
+
+Synthetic input flatters a parser. Real output does not, so the corpus is captured from
+live sessions and stored as raw byte streams with no interpretation: a full-screen
+`htop` refresh cycle, `vim` opening and scrolling a large source file, `ls --color -R`
+over a deep tree, `cat` of a hundred-megabyte log, a `tmux` session redrawing after a
+resize, and a `dmesg` burst of long wrapping lines.
+
+Each stream is replayed twice. Headless, with no renderer attached, which measures the
+parser alone; and through the whole pipeline with a renderer present, which measures
+what coalescing actually saves. The gap between those two numbers is the single most
+informative figure this project will produce, and neither number means much without the
+other.
+
+BenchmarkDotNet drives the microbenchmarks. The whole-stream replays get a harness of
+their own, because a one-shot stream of that size does not fit BenchmarkDotNet's
+iteration model.
+
+Allocation is a first-class result and never a footnote. A run that got faster while
+allocating more has not got faster; it has borrowed from a collection that will happen
+during somebody's `vim` session.
+
+Results are written to a file the repository keeps, so two runs months apart on the same
+machine are comparable. Gating CI on them is a later line and deliberately not this one:
+a measurement has to be trusted before it is allowed to fail a build.
+
+Falsified when a corpus entry turns out to have been generated by a script rather than
+captured from a session.
+
+### §QS74 A format that can change without breaking anyone
+
+Settings, the session store and keybindings are files. Text, commented, hand-editable,
+under the user's own control — which is what lets them be versioned, shared and diffed,
+and what makes support possible without screenshots.
+
+Every file carries a schema version from the first release, because the alternative is
+discovering at version 1.4 that no key can be changed without breaking every
+installation that exists. Migration is forward-only, runs on load, and writes a backup
+of the original beside it before touching anything.
+
+An unknown key is preserved rather than dropped. A user running a newer build on one
+machine and an older build on another must not have their settings silently pruned by
+the older one, which is exactly what discarding unknown keys does.
+
+Portable mode is that file layout beside the executable instead of in the user profile,
+chosen by a marker file. It is what the footprint argument implies in practice: this
+client on a USB stick with no installation. Its consequence for credentials is already
+stated in Block B and is not softened here.
+
+Otherwise the location follows the platform's own convention, and the client can say
+where its files are — a user who cannot find them cannot back them up.
+
+Falsified when a key an older build does not recognise is lost on save.
+
+### §QS75 Where the first four hundred milliseconds go
+
+Cold start is a publishing decision more than a coding one, so it is measured and tuned
+here rather than hoped for.
+
+Self-contained, so a user installs one thing and no runtime. ReadyToRun over the startup
+path, which removes the JIT cost from precisely the code that runs before the window
+appears. Trimming reduces size and is measured rather than assumed — it interacts badly
+with reflection, and the interop-heavy parts of this client are where that will bite.
+
+What must not happen before the first frame: parsing the session store, resolving fonts
+beyond the one needed, opening a connection, checking for an update, or reading anything
+at all from the network. The window appears, and *then* the client does its work. That
+ordering is the entire technique.
+
+The graphics device is on the critical path and cannot be deferred, so its creation is
+measured separately: an adapter enumeration that walks a slow external GPU is a real and
+thoroughly unobvious cost.
+
+Measurement is process start to an interactive local shell, on the named reference
+machine, with a cold file cache where that can be arranged and warm where it cannot —
+both reported. A single number that does not say which it was is not a measurement.
+
+The result is compared against the incumbent on the same machine, because that
+comparison is the actual claim being made.
+
+Falsified when a cold start figure is published without the machine and cache state.
+
+### §QS76 Proving the window does nothing
+
+The renderer was designed to do nothing when nothing has changed. This line proves it,
+because a design intention is not a measurement, and this is the figure most likely to
+have quietly regressed since it was designed.
+
+The measurement is a window open, connected, with a shell at a prompt, untouched for ten
+minutes: draw calls issued, CPU time consumed, GPU utilisation, and timer resolution
+requested. The target is zero draw calls and no measurable occupancy.
+
+The things that break it are known, and each is checked separately. A cursor blink is a
+legitimate wake, its cost is bounded, and it disappears when blinking is off. A UI
+framework animating something invisible is not legitimate and is a common cause. A timer
+polling anything is not legitimate. Keepalive traffic wakes the process, and its
+interval is a genuine trade against battery.
+
+Requesting a high timer resolution is the one that is invisible and expensive: it
+affects the whole system, so a client that raises it and never lowers it is costing
+battery inside every other application on the machine too.
+
+Several idle panes must cost what one costs, which is the occlusion and damage work
+verified rather than assumed.
+
+The comparison against the incumbent on the same machine is part of the result, since
+this is the claim the project is built on.
+
+Falsified when an idle window issues a draw call or holds a raised timer resolution.
+
+### §QS77 Installing, signing, and updating without a service
+
+An installer that does the least: a per-user install with no administrator prompt by
+default, a machine-wide option for managed deployment, and a portable archive with no
+installer at all. Per-user by default matters because this audience frequently cannot
+elevate on the machine they actually work on.
+
+Code signing is not optional. An unsigned binary is blocked by SmartScreen, refused by
+corporate policy, and reported as suspicious — which, for a client that handles
+credentials, is the worst possible first impression available. The certificate and the
+signing step are part of the release process rather than a later improvement.
+
+Updating checks a static file over HTTPS on a schedule, and never at start-up, because a
+start-up check spends the cold-start figure this project is measured on. It says what
+changed and lets the user decline. It never installs while sessions are open.
+
+The payload is signed and verified before anything is replaced, and verified against a
+pinned key rather than only against the transport. A client that updates itself is a
+client able to run arbitrary code as the user, which makes that check the security
+boundary rather than a formality.
+
+Uninstall removes the application and leaves the configuration, asking before removing
+that.
+
+Falsified when an update is applied without verifying a signature against a pinned key.
+
+### §QS78 Seventy-two hours, and what is watched over them
+
+A terminal client stays open for weeks. Every defect that scales with time is therefore
+invisible to every test written up to this point.
+
+The soak is seventy-two hours with twenty sessions: some idle, some printing
+continuously, some opening and closing on a loop, some with forwards carrying traffic,
+some deliberately dropped and reconnected on a timer, and at least one running a
+full-screen program that redraws constantly.
+
+Watched throughout: resident memory, managed heap by generation, GPU memory, handle
+count, thread count, socket count. Every one of those must be *flat* after warm-up. Flat
+is the criterion rather than merely bounded — a slow rise that stays under a limit for
+three days is a leak that reaches the limit in three weeks, and three weeks is an
+ordinary uptime here.
+
+Atlas memory is watched specifically, being the one cache with an eviction policy and
+therefore the one where a policy defect is indistinguishable from a leak.
+
+The scrollback ring is the deliberate counter-example: it grows to its configured
+capacity and stops, and confirming that it stops is part of the run rather than an
+exception to it.
+
+Anything that rises is a defect with a line of its own, found here rather than by a user
+three weeks in.
+
+Falsified when a watched counter rises across the run and the run is called a pass.
+
+### §QS79 Making the number a gate instead of a report
+
+The harness and the budgets have both existed for a long time by this point, and the
+numbers have been watched long enough for their noise to be known. That is the
+precondition this line waited for: a gate built on a measurement nobody trusts gets
+disabled inside a month, and then there is no gate and no measurement.
+
+CI runs parse throughput, frame cost, the allocation assertion and cold start on a
+consistent machine, and fails a build that regresses beyond a threshold. The threshold
+is derived from observed variance rather than chosen, and it is written down.
+
+A deliberate regression is allowed and is an explicit act: a marker in the commit naming
+which figure moved and why, so the history records the trade that was made. Silence is
+what is refused here, not the regression itself.
+
+Results are published per commit, so gradual drift shows as a trend. The failure a
+threshold cannot catch is one per cent on every commit for a year, and only the trend
+reveals it.
+
+The allocation assertion is the strictest of the four because it is exact rather than
+statistical: zero is zero, and no noise threshold applies to it.
+
+Falsified when the gate is disabled to land a change and the disabling is not itself a
+filed line.
+
+## Block I — An error a user can act on
+
+### §QS71 A log worth sending, which means a log without secrets
+
+Two levels of detail and one hard rule.
+
+**Ordinary logging** records the shape of what happened: connections opened and closed
+with their outcome, authentication methods attempted and their results, channels opened,
+forwards started and stopped, transfers, and every error in the same wording the user
+saw. On by default, at a level that costs nothing, and it is what a bug report needs.
+
+**A transport trace** is the second level, off by default and enabled per session:
+version exchange, algorithm negotiation with what each side offered, key exchange, and
+the sequence of channel operations. This is what diagnoses an appliance that will not
+negotiate, which is the failure class this client will meet most often.
+
+The hard rule is that neither level may contain a secret. Passwords, key material,
+passphrases, agent responses and channel contents are redacted *at the point of writing*
+rather than filtered afterwards — a filter is a list of things somebody remembered, and
+the forgotten one is always the one that matters. Payloads are logged as lengths and
+types, never as bytes.
+
+Logs rotate by size against a bounded total, because a trace left running overnight must
+not fill a disk.
+
+The file's location is discoverable from inside the client, since a log a user cannot
+find is a log that does not exist.
+
+Falsified when any secret appears in a log at any level.
+
+### §QS72 The last second, and what is kept from it
+
+Crashes happen, and this client has unusually good reasons to expect them: a graphics
+driver, a native interop boundary, and a protocol library parsing input chosen by a
+remote machine.
+
+An unhandled exception writes a report before anything else — the exception, the stack,
+the version, the GPU and driver in use, the number of open sessions, and the last log
+entries under the same redaction rules the log itself uses. Written to a file, locally.
+Nothing is sent anywhere.
+
+Then it tells the user plainly that the client crashed, where the report is, and what it
+was doing at the time. A silent disappearance is the outcome this line exists to
+prevent, because a user whose client vanished has nothing to report and nothing to
+report it with.
+
+Sending is entirely the user's own act: a button that opens the file so they can read it
+before deciding. A report a user has not seen is a report they should not be asked to
+send. This is the telemetry non-goal applied at the exact moment it is most tempting to
+break.
+
+A render-thread failure gets separate handling, since a lost device is recoverable and
+must not be reported as a crash. Drawing that distinction carefully is what stops the
+reports filling with the one failure that is already handled.
+
+Falsified when a crash exits with no report and no message.
+
+### §QS73 One action that produces everything a maintainer will ask for
+
+A defect report costs several round trips because the first message never carries what
+is needed. This is one action that collects it: version and build, Windows version, GPU
+and driver, the render backend actually in use and whether it fell back, the negotiated
+algorithms of the affected session, the configuration with secrets removed, the recent
+log, and any crash reports.
+
+It writes one file the user can inspect before sending, and inspecting it is the point —
+the same reasoning as the crash path, and the reason this is not a button that uploads.
+
+The terminal has one thing to add that nothing else can: recording a session's raw byte
+stream. Terminal defects are close to impossible to describe and trivial to reproduce
+from bytes, so a recording turns *the box drawing looks wrong on this router* into a
+file that reproduces it on a maintainer's machine. Per session, explicit, visibly
+indicated while running, and it captures output only — input is what the user typed, and
+may be a password.
+
+That recording is also a corpus entry, so a defect found this way becomes a regression
+test by moving one file rather than by writing one.
+
+Nothing here is automatic and nothing is sent.
+
+Falsified when a recording captures typed input.
+
+## Block J — Leaving MobaXterm, proven by the switch
+
+### §QS80 Reading the incumbent's files
+
+The barrier to leaving is not features. It is the two hundred sessions somebody has
+accumulated over five years. So this reads them.
+
+MobaXterm keeps sessions in an INI file in a positional format. PuTTY keeps them in the
+registry under its own key, one subkey per session, and the PuTTY-derived clients follow
+it. Both are readable, and reading them is the single highest-leverage piece of work in
+this block.
+
+What maps cleanly: name, folder, host, port, user, key file, and the terminal settings
+with an equivalent here. What does *not* map is at least as important, and it is
+reported per session rather than dropped: X11 settings, macros, and everything else the
+non-goals already refuse. A user who imports and is told what was not carried over has
+an accurate picture; one who is told nothing discovers it three weeks later and blames
+the client for hiding it.
+
+Keys are referenced rather than copied, and a `.ppk` is read where it lies rather than
+converted — converting somebody's key without being asked is the kind of surprise that
+costs trust in the first ten minutes.
+
+Import is previewed before it writes: what will be created, where, and what will be
+skipped. Nothing lands unseen.
+
+Falsified when an import silently drops a setting the source file carried.
+
+### §QS81 The document the non-goals were written for
+
+The non-goals are a decision record aimed inward. This is the same content aimed
+outward, at somebody deciding whether to move their working life onto this client.
+
+It states what quickshell does, what it deliberately does not, and what the alternative
+is for each refusal — because a user who genuinely needs an X server is better served by
+being told to keep one than by discovering the absence after migrating. Every refusal
+names the thing to use instead, or says plainly that there is not one.
+
+It states the migration path: import, what carries over, what does not, and roughly how
+long it takes.
+
+And it states the comparison honestly, with numbers rather than adjectives, on a named
+machine: start-up, memory, idle cost, terminal throughput. A comparison with no
+methodology is marketing, and this audience will re-run it themselves within an hour of
+reading it.
+
+Where the incumbent is better, that is written down too. A client claiming to win
+everywhere is a client nobody believes about anything, and this audience in particular
+will find the one exception and then discount the rest of the page.
+
+This is the last thing written rather than the first, since every claim in it has to be
+true of the shipped build and not of the plan.
+
+Falsified when a figure in it cannot be reproduced from a documented run.
