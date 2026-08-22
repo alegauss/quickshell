@@ -7,4 +7,10 @@
     <RootNamespace>Quickshell.Terminal</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- The transition table is internal because nothing outside the parser may index it, and the
+         test that proves it complete has to. -->
+    <InternalsVisibleTo Include="Quickshell.Terminal.Tests" />
+  </ItemGroup>
+
 </Project>

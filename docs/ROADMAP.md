@@ -20,8 +20,7 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS14** (deps: QS13 ✅) **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — This tokeniser sits under every terminal behaviour there will ever be, so it is a table rather than a branch tree nobody can prove complete. → §QS14
-- 📋 **QS15** (deps: QS14) **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — Scrolling is the structural operation a terminal performs most, so the layout is chosen to make scrolling free rather than to make indexing pretty. → §QS15
+- 📋 **QS15** (deps: QS14 ✅) **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — Scrolling is the structural operation a terminal performs most, so the layout is chosen to make scrolling free rather than to make indexing pretty. → §QS15
 - 📋 **QS16** (deps: QS15) **The cursor cannot be moved, a line cannot be erased and no character carries a colour** — These are the sequences every remote program emits before it emits anything interesting, so nothing above this line can be exercised until they exist. → §QS16
 - 📋 **QS17** (deps: QS16) **A full-width line wraps a column early and a scrolled region redraws the wrong rows** — The pending-wrap state and the origin mode are the two pieces of terminal behaviour most often left out, and a user sees both immediately. → §QS17
 - 📋 **QS18** (deps: QS16) **Box drawing renders as letters, and the title, palette and working directory a host sends are ignored** — Each of these is small on its own, and together they are most of the difference between output that looks native and output that looks broken. → §QS18
@@ -30,7 +29,7 @@
 - 📋 **QS21** (deps: QS16) **A click inside a remote editor or pager does nothing, because no mouse event reaches the host** — Mouse support is a set of modes and two encodings rather than one feature, and the older encoding silently caps usable width at 223 columns. → §QS21
 - 📋 **QS22** (deps: QS16) **Nothing records which rows changed, so any redraw is a whole-screen redraw** — The renderer has to know what changed before it can decide not to draw at all, and that decision is where the idle-cost figure is actually won. → §QS22
 - 📋 **QS23** (deps: QS17) **Narrowing the window turns wrapped output into ragged fragments that never recover** — This is the single behaviour terminal emulators most reliably get wrong, so it is isolated behind a pure function that can be tested without a window. → §QS23
-- 📋 **QS24** (deps: QS14) **A malformed escape sequence from a hostile host has never been shown not to crash or allocate** — The parser is the one component whose input is chosen entirely by a remote machine, so its failure modes belong to somebody else until they are tested. → §QS24
+- 📋 **QS24** (deps: QS14 ✅) **A malformed escape sequence from a hostile host has never been shown not to crash or allocate** — The parser is the one component whose input is chosen entirely by a remote machine, so its failure modes belong to somebody else until they are tested. → §QS24
 - 📋 **QS25** (deps: QS15) **The emulator has no real producer of bytes, so every test of it is a fixture its own author wrote** — A pseudo-console gives the terminal a genuine adversary locally, which tells a terminal defect apart from a network defect before the network exists. → §QS25
 - 📋 **QS26** (deps: QS25, QS22, QS9 ✅) **Under heavy output the delay before a typed character appears grows without bound** — The parser and the renderer run at rates differing by orders of magnitude, and any design that couples them makes the faster one wait for the slower. → §QS26
 - 📋 **QS27** (deps: QS26) **A keystroke queues behind a screenful of pending output before it is written to the host** — Output volume is the host's choice while echo latency is what the user feels and blames the client for, so the two paths must not share a queue. → §QS27
@@ -86,7 +85,7 @@
 
 ## Block H — The reason to leave the incumbent
 
-- ⏳ **QS3** (deps: QS1 ✅, QS2 ✅, QS14, QS9 ✅) **Nothing replays a real terminal workload, so a change that halves throughput lands unnoticed** — The headless and with-renderer arms of each replay are empty until a parser and a renderer exist to be the consumers. → §QS3
+- ⏳ **QS3** (deps: QS1 ✅, QS2 ✅, QS14 ✅, QS9 ✅) **Nothing replays a real terminal workload, so a change that halves throughput lands unnoticed** — The headless and with-renderer arms of each replay are empty until a parser and a renderer exist to be the consumers. → §QS3
 - 📋 **QS74** (deps: QS1 ✅) **Settings have no file, so nothing survives a restart and nothing can be moved to another machine** — The config format is a compatibility contract from the first release, and a schema with no version is one that cannot change without breaking somebody. → §QS74
 - 📋 **QS75** (deps: QS2 ✅, QS46) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
 - 📋 **QS76** (deps: QS26, QS2 ✅) **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Idle cost is what a laptop user experiences as battery life, and it is the figure the incumbent loses on most clearly. → §QS76

@@ -266,33 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS14 The Williams table, and why it is a table
-
-Paul Williams' published DEC ANSI state diagram is the specification: ground, escape,
-escape-intermediate, CSI entry, CSI param, CSI intermediate, CSI ignore, the DCS states,
-OSC string, and SOS/PM/APC. It is transcribed as a transition table indexed by state and
-byte, never as nested switches, for three reasons.
-
-It is provably complete: all 256 byte values have an entry in every state, so no input
-exists that the parser has no answer for. It is auditable against a published document
-rather than against the author's memory of one. And it is fast in the way this project
-needs — one lookup and one action dispatch per byte, with no branch tree whose depth
-depends on what arrived.
-
-The parser emits events and holds no terminal state at all: print, execute, CSI dispatch
-with parameters and intermediates, OSC start, put and end, the DCS equivalents, and
-escape dispatch. What those events *mean* belongs to the layer above, and that
-separation is what lets the emulator be tested by feeding it events directly, with no
-bytes involved.
-
-Parameters land in a fixed-size array with the sub-parameter separator handled, because
-a colon inside an SGR parameter is how true colour and styled underlines are actually
-spelled by the programs that emit them.
-
-No allocation, no `string`, no `List`: bytes in, structs out, spans throughout.
-
-Falsified when a byte value exists for which the table has no transition.
-
 ### §QS15 A ring, not an array, and two screens
 
 Scrolling by one line is the most frequent structural operation a terminal performs. As
