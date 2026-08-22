@@ -20,8 +20,7 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS13** (deps: QS1 ✅) **A multi-byte character split across two network reads decodes as two broken ones** — Chunk boundaries are chosen by the network and never by the text, so the decoder has to carry a partial sequence across a read that ended mid-character. → §QS13
-- 📋 **QS14** (deps: QS13) **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — This tokeniser sits under every terminal behaviour there will ever be, so it is a table rather than a branch tree nobody can prove complete. → §QS14
+- 📋 **QS14** (deps: QS13 ✅) **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — This tokeniser sits under every terminal behaviour there will ever be, so it is a table rather than a branch tree nobody can prove complete. → §QS14
 - 📋 **QS15** (deps: QS14) **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — Scrolling is the structural operation a terminal performs most, so the layout is chosen to make scrolling free rather than to make indexing pretty. → §QS15
 - 📋 **QS16** (deps: QS15) **The cursor cannot be moved, a line cannot be erased and no character carries a colour** — These are the sequences every remote program emits before it emits anything interesting, so nothing above this line can be exercised until they exist. → §QS16
 - 📋 **QS17** (deps: QS16) **A full-width line wraps a column early and a scrolled region redraws the wrong rows** — The pending-wrap state and the origin mode are the two pieces of terminal behaviour most often left out, and a user sees both immediately. → §QS17

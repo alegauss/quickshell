@@ -266,33 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS13 Decoding a stream nobody chose the boundaries of
-
-A read returns whatever arrived. A three-byte character can straddle two reads and a
-grapheme cluster can straddle four, and the decoder is the only place that can be true
-about both at once.
-
-So the decoder is a struct with state rather than a function: it holds the pending bytes
-and resumes on the next call. `Encoding.UTF8.GetString` over a chunk is the wrong shape
-at any size, because it has nowhere to keep the tail.
-
-Invalid sequences produce U+FFFD by the substitution rules, one replacement per maximal
-subpart, and never an exception — a hostile or merely misconfigured host sending
-arbitrary bytes must not be able to end a session. A stream that is not UTF-8 lands here
-too, with its fallback encoding a session setting rather than a guess.
-
-Above the decoder, grapheme cluster segmentation by UAX #29 decides what one cell holds:
-a base with its combining marks, a regional indicator pair, an emoji ZWJ sequence with
-its variation selectors. Below that boundary a cell would hold a code point, and every
-one of those is a cell too many.
-
-Width comes from UAX #11 plus the emoji presentation rules — wide is two, a combining
-mark is zero, everything else is one. The table is generated from the Unicode data files
-rather than hand-written, and the version it came from is recorded.
-
-Falsified when a stream fed one byte at a time does not produce what that stream fed
-whole produces.
-
 ### §QS14 The Williams table, and why it is a table
 
 Paul Williams' published DEC ANSI state diagram is the specification: ground, escape,

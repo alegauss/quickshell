@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Quickshell.Terminal;
 
 /// <summary>
@@ -10,86 +8,21 @@ namespace Quickshell.Terminal;
 /// disagreement is invisible until somebody is editing a filename in a remote shell — at which
 /// point it is not a rendering bug any more, it is the client typing into the wrong place.</para>
 ///
-/// <para>The table is East Asian Width's <c>W</c> and <c>F</c> classes plus the emoji that Unicode
-/// gives emoji presentation by default. It is deliberately the same rule every <c>wcwidth</c> on
-/// the other side of the connection is trying to implement, because agreeing with the host matters
-/// far more than being right in the abstract.</para>
+/// <para><b>The tables are generated, not written.</b> They come from the Unicode Character
+/// Database by <c>tools/generate-width-table.py</c>, and <see cref="UnicodeVersion"/> says which
+/// release. A hand-written range list is one nobody will ever diff against a new Unicode; a
+/// generated one is a file anybody can rebuild and compare, which is the whole difference when
+/// this decides which column the cursor is in.</para>
 /// </summary>
-public static class CharacterWidth
+public static partial class CharacterWidth
 {
-    /// <summary>
-    /// Ranges of codepoints that occupy two cells, sorted and non-overlapping. Stored as pairs so
-    /// the lookup is a binary search over a flat array rather than a walk over objects.
-    /// </summary>
-    private static readonly int[] Wide =
-    [
-        0x1100, 0x115F,     // Hangul Jamo initial consonants
-        0x2329, 0x232A,     // angle brackets
-        0x2E80, 0x303E,     // CJK radicals, Kangxi, CJK symbols
-        0x3041, 0x33FF,     // kana, Hangul compatibility jamo, CJK compatibility
-        0x3400, 0x4DBF,     // CJK unified ideographs extension A
-        0x4E00, 0x9FFF,     // CJK unified ideographs
-        0xA000, 0xA4CF,     // Yi
-        0xA960, 0xA97F,     // Hangul jamo extended A
-        0xAC00, 0xD7A3,     // Hangul syllables
-        0xF900, 0xFAFF,     // CJK compatibility ideographs
-        0xFE10, 0xFE19,     // vertical forms
-        0xFE30, 0xFE6F,     // CJK compatibility forms, small form variants
-        0xFF00, 0xFF60,     // fullwidth forms
-        0xFFE0, 0xFFE6,     // fullwidth signs
-        0x1B000, 0x1B001,   // kana supplement
-        0x1F004, 0x1F004,   // mahjong red dragon
-        0x1F0CF, 0x1F0CF,   // playing card black joker
-        0x1F18E, 0x1F18E,   // negative squared AB
-        0x1F191, 0x1F19A,   // squared CL through squared VS
-        0x1F200, 0x1F320,   // enclosed ideographic supplement into miscellaneous symbols
-        0x1F32D, 0x1F335,
-        0x1F337, 0x1F37C,
-        0x1F37E, 0x1F393,
-        0x1F3A0, 0x1F3CA,
-        0x1F3CF, 0x1F3D3,
-        0x1F3E0, 0x1F3F0,
-        0x1F3F4, 0x1F3F4,
-        0x1F3F8, 0x1F43E,
-        0x1F440, 0x1F440,
-        0x1F442, 0x1F4FC,
-        0x1F4FF, 0x1F53D,
-        0x1F54B, 0x1F54E,
-        0x1F550, 0x1F567,
-        0x1F57A, 0x1F57A,
-        0x1F595, 0x1F596,
-        0x1F5A4, 0x1F5A4,
-        0x1F5FB, 0x1F64F,
-        0x1F680, 0x1F6C5,
-        0x1F6CC, 0x1F6CC,
-        0x1F6D0, 0x1F6D2,
-        0x1F6D5, 0x1F6D7,
-        0x1F6EB, 0x1F6EC,
-        0x1F6F4, 0x1F6FC,
-        0x1F7E0, 0x1F7EB,
-        0x1F90C, 0x1F93A,
-        0x1F93C, 0x1F945,
-        0x1F947, 0x1F978,
-        0x1F97A, 0x1F9CB,
-        0x1F9CD, 0x1F9FF,
-        0x1FA70, 0x1FA74,
-        0x1FA78, 0x1FA7A,
-        0x1FA80, 0x1FA86,
-        0x1FA90, 0x1FAA8,
-        0x1FAB0, 0x1FAB6,
-        0x1FAC0, 0x1FAC2,
-        0x1FAD0, 0x1FAD6,
-        0x20000, 0x2FFFD,   // CJK extension B and beyond
-        0x30000, 0x3FFFD,
-    ];
-
     /// <summary>
     /// How many cells <paramref name="codepoint"/> occupies.
     ///
     /// <para>Zero for a combining mark, which attaches to the cell before it; zero for a control
     /// character and for the format characters that mark direction and joining, none of which the
-    /// host advances its own cursor for. Two for East Asian wide and fullwidth forms and for emoji.
-    /// One for everything else.</para>
+    /// host advances its own cursor for. Two for East Asian wide and fullwidth forms and for the
+    /// emoji Unicode gives emoji presentation. One for everything else.</para>
     /// </summary>
     public static int Of(int codepoint)
     {
@@ -116,52 +49,19 @@ public static class CharacterWidth
     /// <summary>Whether this codepoint attaches to the cell before it rather than taking its own.</summary>
     public static bool IsZeroWidth(int codepoint)
     {
-        // The joiners and the direction marks: invisible, and the host does not advance for them.
+        // The joiners and the direction marks. These are format characters rather than marks, so
+        // they are not in the generated table, and the host does not advance for them either.
         if (codepoint is 0x200B or 0x200C or 0x200D or 0x200E or 0x200F or 0xFEFF
             or (>= 0x2028 and <= 0x202E) or (>= 0x2060 and <= 0x2064))
         {
             return true;
         }
 
-        // A variation selector chooses a presentation; it never occupies a cell of its own.
-        if (codepoint is (>= 0xFE00 and <= 0xFE0F) or (>= 0xE0100 and <= 0xE01EF))
-        {
-            return true;
-        }
-
-        UnicodeCategory category = codepoint <= 0xFFFF
-            ? CharUnicodeInfo.GetUnicodeCategory((char)codepoint)
-            : CharUnicodeInfo.GetUnicodeCategory(char.ConvertFromUtf32(codepoint), 0);
-
-        return category is UnicodeCategory.NonSpacingMark or UnicodeCategory.EnclosingMark;
+        return Contains(ZeroRanges, codepoint);
     }
 
     /// <summary>Whether this codepoint takes two cells.</summary>
-    public static bool IsWide(int codepoint)
-    {
-        int low = 0;
-        int high = (Wide.Length / 2) - 1;
-
-        while (low <= high)
-        {
-            int middle = (low + high) / 2;
-
-            if (codepoint < Wide[middle * 2])
-            {
-                high = middle - 1;
-            }
-            else if (codepoint > Wide[(middle * 2) + 1])
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    public static bool IsWide(int codepoint) => Contains(WideRanges, codepoint);
 
     /// <summary>
     /// How many cells a string occupies, which is what the cursor column is a running total of.
@@ -186,5 +86,53 @@ public static class CharacterWidth
         }
 
         return total;
+    }
+
+    /// <summary>
+    /// How many cells a grapheme cluster occupies. The cluster's width is its base character's:
+    /// everything after the base is a mark, a joiner or a variation selector, and none of those
+    /// moves the cursor.
+    /// </summary>
+    public static int OfCluster(ReadOnlySpan<char> cluster)
+    {
+        if (cluster.IsEmpty)
+        {
+            return 0;
+        }
+
+        int codepoint = char.IsHighSurrogate(cluster[0]) && cluster.Length > 1
+            ? char.ConvertToUtf32(cluster[0], cluster[1])
+            : cluster[0];
+
+        // A cluster whose base takes no cell still takes one: a lone combining mark arriving with
+        // nothing to attach to is drawn on its own, and the host advanced for it.
+        return Math.Max(Of(codepoint), IsZeroWidth(codepoint) || codepoint < 0x20 ? 1 : 0);
+    }
+
+    /// <summary>Binary search over a flat array of sorted, non-overlapping first/last pairs.</summary>
+    private static bool Contains(int[] ranges, int codepoint)
+    {
+        int low = 0;
+        int high = (ranges.Length / 2) - 1;
+
+        while (low <= high)
+        {
+            int middle = (low + high) / 2;
+
+            if (codepoint < ranges[middle * 2])
+            {
+                high = middle - 1;
+            }
+            else if (codepoint > ranges[(middle * 2) + 1])
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

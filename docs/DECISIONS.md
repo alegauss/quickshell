@@ -16,6 +16,7 @@
 - ✅ **QS87** **The frame-queue measurement reads two on runs where nothing regressed, so its result is not evidence either way** — A frame-queue reading is only meaningful once DXGI's statistics exist, and its absolute value is a startup phase rather than a depth.
 - ✅ **QS11** **Underline, undercurl, strikethrough, the cursor and a selection have no representation on screen** — A blinking cursor is the only thing that may wake an idle window, so turning blinking off must answer with no wake at all.
 - ✅ **QS12** **Nothing catches a renderer that draws correctly on one vendor's driver and wrongly on another's** — A reference image changes only by a deliberate run with QUICKSHELL_GOLDEN=write, and never by a test that failed against it.
+- ✅ **QS13** **A multi-byte character split across two network reads decodes as two broken ones** — The width table is generated from the Unicode Character Database and records its version, so a release is a rebuild and a diff.
 
 ## Block D — The tree a user organises work in
 

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The model's own tests. No device, no window: this project references nothing graphical,
+       which is what keeps a decoder defect from being reported as a rendering one. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.Terminal.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Quickshell.Terminal\Quickshell.Terminal.csproj" />
+  </ItemGroup>
+
+</Project>
