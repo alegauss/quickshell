@@ -12,6 +12,7 @@
 - ✅ **QS7** **A frame reaches the screen whenever the compositor chooses, so no bound on input-to-photon delay can be claimed** — The present path is flip-discard with a frame-latency waitable object at maximum latency one, tearing behind its capability check, Scaling.None on resize, and Per-Monitor V2 in the manifest.
 - ✅ **QS8** **No glyph is on the GPU, so drawing a character would cost a rasterisation on the frame that needs it** — Glyph coverage is grayscale in a one-channel atlas, and ClearType subpixel coverage is a separate pipeline rather than a flag on this one.
 - ✅ **QS9** **Nothing turns a grid of cells into a draw call, so text on this client's screen is still hypothetical** — Coverage is blended in linear light and never in sRGB: half a pixel covered is half the light, not half the stored byte.
+- ✅ **QS10** **A CJK character, a combining mark and a colour emoji each draw wrongly or not at all** — A colour glyph is painted and not tinted, so a cell's foreground means nothing for one and the shader ignores it.
 
 ## Block D — The tree a user organises work in
 

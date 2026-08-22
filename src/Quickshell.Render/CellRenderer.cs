@@ -276,18 +276,19 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
 
     private void BindAtlas(ID3D11DeviceContext context)
     {
-        if (_atlas.PageCount == 0)
-        {
-            // Nothing has been rasterised yet, so every cell is a background and no slot is read.
-            return;
-        }
-
         // A slot past the last page gets page zero rather than being left as whatever was there:
         // no instance can name it, and a stale binding from somewhere else is worse than a
-        // duplicate. Four is the shader's own ceiling, and the atlas is opened under it.
-        for (int slot = 0; slot < AtlasSlots; slot++)
+        // duplicate. Four of each is the shader's own ceiling, and the atlas is opened under it.
+        for (int slot = 0; slot < AtlasSlots && _atlas.PageCount > 0; slot++)
         {
             context.PSSetShaderResource((uint)slot, _atlas.PageView(Math.Min(slot, _atlas.PageCount - 1)));
+        }
+
+        for (int slot = 0; slot < AtlasSlots && _atlas.ColourPageCount > 0; slot++)
+        {
+            context.PSSetShaderResource(
+                (uint)(AtlasSlots + slot),
+                _atlas.ColourPageView(Math.Min(slot, _atlas.ColourPageCount - 1)));
         }
     }
 

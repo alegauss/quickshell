@@ -266,31 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS10 Where the monospaced grid stops being true
-
-Three separate failures in one line, because a fix for any one of them that ignores the
-other two is a fix that gets rewritten.
-
-**Fallback.** No monospaced font covers Unicode. `IDWriteFontFallback` maps a run the
-primary face cannot render onto a face that can, and since the atlas key already carries
-the face, a fallback glyph caches like any other. The substitute's metrics rarely match
-the primary's, so it is fitted to the cell rather than trusted.
-
-**Colour.** Emoji arrive as COLR layers or CBDT bitmaps. They are colour, not coverage,
-so they cannot share a single-channel page. The atlas gains RGBA pages and the instance
-gains one bit saying which kind of page its slot sits on; the shader branches on that
-bit and ignores the foreground colour entirely for a colour glyph.
-
-**Width.** A wide character occupies two cells and a combining mark occupies none. The
-model decides this and the renderer is told — a renderer that decides width for itself
-will eventually disagree with the model about which column the cursor is in, and that
-disagreement is invisible until a user is editing a filename in a remote shell. So the
-instance stream carries the span, and the trailing cell of a wide pair emits background
-only.
-
-Falsified when a line of mixed Latin, CJK and emoji leaves the cursor at a column the
-remote host disagrees with.
-
 ### §QS11 Decorations are shader arithmetic, not geometry
 
 Every decoration is derived in the pixel shader from flags already in the instance, so

@@ -28,6 +28,13 @@ Texture2D<float> Atlas1 : register(t1);
 Texture2D<float> Atlas2 : register(t2);
 Texture2D<float> Atlas3 : register(t3);
 
+// The colour pages, for glyphs that are painted rather than tinted. An emoji carries its own
+// colours, so the cell's foreground means nothing for one and is ignored below.
+Texture2D<float4> Colour0 : register(t4);
+Texture2D<float4> Colour1 : register(t5);
+Texture2D<float4> Colour2 : register(t6);
+Texture2D<float4> Colour3 : register(t7);
+
 struct Instance
 {
     uint Foreground   : FOREGROUND;
@@ -48,6 +55,7 @@ struct Fragment
     nointerpolation int4 Glyph : GLYPH;      // origin x, origin y, width, height
     nointerpolation int2 Bearing : BEARING;  // left of the pen, top of the baseline
     nointerpolation uint Page : PAGE;
+    nointerpolation uint IsColour : ISCOLOUR;
 };
 
 float3 Unpack(uint packed)
@@ -93,16 +101,43 @@ float SampleAtlas(uint page, int2 texel)
     return Atlas0.Load(int3(texel, 0));
 }
 
+float4 SampleColour(uint page, int2 texel)
+{
+    if (page == 1u)
+    {
+        return Colour1.Load(int3(texel, 0));
+    }
+
+    if (page == 2u)
+    {
+        return Colour2.Load(int3(texel, 0));
+    }
+
+    if (page == 3u)
+    {
+        return Colour3.Load(int3(texel, 0));
+    }
+
+    return Colour0.Load(int3(texel, 0));
+}
+
 Fragment VertexMain(Instance input)
 {
     // 0,0  1,0  0,1  1,1 - a triangle strip, so no index buffer and no vertex buffer either.
     float2 corner = float2(input.Vertex & 1u, (input.Vertex >> 1) & 1u);
 
-    float2 cell = float2(input.Index % Columns, input.Index / Columns);
-    float2 pixel = (cell + corner) * CellSize;
+    uint attributes = input.Foreground >> 24;
 
-    uint flags = input.Foreground >> 24;
-    bool inverse = (flags & 4u) != 0u;
+    // How many cells this one occupies, from the model. Two widens the quad so a wide character is
+    // drawn across both of its cells; zero collapses it, which is the trailing cell of such a pair
+    // saying it has nothing of its own to draw.
+    uint span = attributes >> 6;
+    float2 extent = float2(CellSize.x * span, CellSize.y);
+
+    float2 cell = float2(input.Index % Columns, input.Index / Columns);
+    float2 pixel = (cell * CellSize) + (corner * extent);
+
+    bool inverse = (attributes & 4u) != 0u;
     float3 foreground = Unpack(input.Foreground);
     float3 background = Unpack(input.Background);
 
@@ -110,13 +145,14 @@ Fragment VertexMain(Instance input)
     output.Position = float4(((pixel.x / ViewportSize.x) * 2.0) - 1.0,
                              1.0 - ((pixel.y / ViewportSize.y) * 2.0),
                              0.0, 1.0);
-    output.CellPixel = corner * CellSize;
+    output.CellPixel = corner * extent;
     output.Foreground = inverse ? background : foreground;
     output.Background = inverse ? foreground : background;
     output.Glyph = int4((int)(input.GlyphOrigin & 0xFFFFu), (int)(input.GlyphOrigin >> 16),
                         (int)(input.GlyphSize & 0xFFFFu), (int)(input.GlyphSize >> 16));
     output.Bearing = int2(Signed16(input.GlyphBearing), Signed16(input.GlyphBearing >> 16));
-    output.Page = input.Background >> 24;
+    output.Page = (input.Background >> 24) & 3u;
+    output.IsColour = (input.Background >> 24) & 0x80u;
     return output;
 }
 
@@ -128,14 +164,29 @@ float4 PixelMain(Fragment input) : SV_Target
     int2 cellPixel = int2(floor(input.CellPixel));
     int2 inGlyph = cellPixel - int2(input.Bearing.x, (int)Baseline + input.Bearing.y);
 
+    bool inside = input.Glyph.z > 0 && input.Glyph.w > 0 &&
+                  inGlyph.x >= 0 && inGlyph.y >= 0 &&
+                  inGlyph.x < input.Glyph.z && inGlyph.y < input.Glyph.w;
+
+    // A colour glyph carries its own colours, so the foreground is not consulted at all: what the
+    // atlas holds is already the picture, and the alpha is the only thing the cell contributes to.
+    float3 ink = input.Foreground;
     float coverage = 0.0;
 
-    if (input.Glyph.z > 0 && input.Glyph.w > 0 &&
-        inGlyph.x >= 0 && inGlyph.y >= 0 && inGlyph.x < input.Glyph.z && inGlyph.y < input.Glyph.w)
+    if (inside)
     {
-        coverage = SampleAtlas(input.Page, input.Glyph.xy + inGlyph);
+        if (input.IsColour != 0u)
+        {
+            float4 painted = SampleColour(input.Page, input.Glyph.xy + inGlyph);
+            ink = painted.rgb;
+            coverage = painted.a;
+        }
+        else
+        {
+            coverage = SampleAtlas(input.Page, input.Glyph.xy + inGlyph);
+        }
     }
 
-    float3 blended = lerp(ToLinear(input.Background), ToLinear(input.Foreground), coverage);
+    float3 blended = lerp(ToLinear(input.Background), ToLinear(ink), coverage);
     return float4(ToEncoded(blended), 1.0);
 }

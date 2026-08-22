@@ -1,35 +1,62 @@
+using SharpGen.Runtime;
 using Vortice;
 using Vortice.DCommon;
 using Vortice.DirectWrite;
+using Vortice.Mathematics;
 
 namespace Quickshell.Render;
 
 /// <summary>
-/// One rasterised glyph: its coverage, and where that coverage sits relative to the pen.
+/// Which face draws a codepoint and at what size, once fallback and fitting have been decided.
+/// </summary>
+/// <param name="Family">The family that actually has the character, which may not be the one asked for.</param>
+/// <param name="Glyph">The glyph index within that family.</param>
+/// <param name="SizeInPixels">The em size to rasterise at, reduced where the face would not fit.</param>
+/// <param name="Substituted">Whether this is a fallback rather than the preferred family.</param>
+public readonly record struct GlyphResolution(string Family, ushort Glyph, float SizeInPixels, bool Substituted);
+
+/// <summary>What a rasterised glyph is made of, which decides what kind of atlas page holds it.</summary>
+public enum GlyphKind
+{
+    /// <summary>One byte of coverage per pixel, tinted by the cell's foreground colour.</summary>
+    Coverage,
+
+    /// <summary>Four bytes per pixel, its own colour. An emoji is not a shape somebody tints.</summary>
+    Colour,
+}
+
+/// <summary>
+/// One rasterised glyph: its pixels, and where they sit relative to the pen.
 ///
 /// <para><see cref="Left"/> and <see cref="Top"/> are DirectWrite's own bounds, so they are signed
 /// and usually negative on the vertical: a glyph rises above the baseline the run was stated at.</para>
+///
+/// <para>A colour glyph carries four bytes per pixel — straight, not premultiplied, sRGB-encoded
+/// RGB with coverage in the alpha. That is deliberately the same shape as the grayscale case with
+/// the tint already applied, so the shader's blend is one expression for both.</para>
 /// </summary>
 public sealed class GlyphBitmap
 {
-    private readonly byte[] _coverage;
+    private readonly byte[] _pixels;
 
-    internal GlyphBitmap(int width, int height, int left, int top, byte[] coverage)
+    internal GlyphBitmap(int width, int height, int left, int top, byte[] pixels,
+                         GlyphKind kind = GlyphKind.Coverage)
     {
         Width = width;
         Height = height;
         Left = left;
         Top = top;
-        _coverage = coverage;
+        Kind = kind;
+        _pixels = pixels;
     }
 
     /// <summary>A glyph that marks no pixels: a space, or a control character with no shape.</summary>
     public static GlyphBitmap Empty { get; } = new(0, 0, 0, 0, []);
 
-    /// <summary>The coverage bitmap's width in pixels.</summary>
+    /// <summary>The bitmap's width in pixels.</summary>
     public int Width { get; }
 
-    /// <summary>The coverage bitmap's height in pixels.</summary>
+    /// <summary>The bitmap's height in pixels.</summary>
     public int Height { get; }
 
     /// <summary>The left edge relative to the pen position the run was rasterised at.</summary>
@@ -38,11 +65,17 @@ public sealed class GlyphBitmap
     /// <summary>The top edge relative to the baseline, negative for anything that rises above it.</summary>
     public int Top { get; }
 
+    /// <summary>Coverage or colour, which is which kind of page it lands on.</summary>
+    public GlyphKind Kind { get; }
+
+    /// <summary>Bytes per pixel: one for coverage, four for colour.</summary>
+    public int BytesPerPixel => Kind == GlyphKind.Colour ? 4 : 1;
+
     /// <summary>Whether this glyph marks no pixels at all.</summary>
     public bool IsEmpty => Width <= 0 || Height <= 0;
 
-    /// <summary>One byte of coverage per pixel, row-major, <see cref="Width"/> bytes to a row.</summary>
-    public ReadOnlySpan<byte> Coverage => _coverage;
+    /// <summary>The pixels, row-major, <see cref="Width"/> times <see cref="BytesPerPixel"/> to a row.</summary>
+    public ReadOnlySpan<byte> Coverage => _pixels;
 }
 
 /// <summary>
@@ -61,7 +94,26 @@ public sealed class GlyphBitmap
 /// </summary>
 public sealed class GlyphRasteriser : IDisposable
 {
+    /// <summary>
+    /// The faces Windows itself falls back to, asked in this order. Emoji first, because a colour
+    /// glyph found in a symbol font is a monochrome outline of something the user expected to be an
+    /// emoji, and that is a worse answer than the one below it.
+    /// </summary>
+    private static readonly string[] Fallbacks =
+    [
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        "Segoe UI Historic",
+        "Microsoft YaHei",      // Simplified Chinese
+        "Microsoft JhengHei",   // Traditional Chinese
+        "Yu Gothic",            // Japanese
+        "Malgun Gothic",        // Korean
+        "Nirmala UI",           // the Indic scripts
+        "Segoe UI",
+    ];
+
     private readonly Dictionary<(string Family, FontWeight Weight, FontStyle Slant), IDWriteFontFace> _faces = [];
+    private readonly Dictionary<(string Family, FontWeight Weight, FontStyle Slant, int Codepoint), string> _resolved = [];
     private readonly IDWriteFactory2 _factory;
     private readonly IDWriteFontCollection _installed;
 
@@ -127,9 +179,54 @@ public sealed class GlyphRasteriser : IDisposable
     }
 
     /// <summary>
+    /// Which face actually draws this codepoint, and at what em size it fits the space allowed.
+    ///
+    /// <para><b>No monospaced font covers Unicode.</b> When the preferred family has no glyph, the
+    /// families Windows itself falls back to are asked in turn, and then anything installed that
+    /// has the character. The answer is a family name, which is a field the cache key already
+    /// carries — so a fallback glyph caches like any other and this probe runs once per character
+    /// rather than once per cell.</para>
+    ///
+    /// <para><b>The substitute's metrics are not trusted.</b> A face chosen for coverage has its own
+    /// idea of an advance, and drawn at the primary's em size it would spill into the cells beside
+    /// it. <paramref name="maximumAdvance"/> is the room there is; a face wider than that is
+    /// rasterised smaller so it fits, which is what "fitted to the cell" means in pixels.</para>
+    /// </summary>
+    public GlyphResolution Resolve(FontSettings font, FontWeight weight, FontStyle slant,
+                                   int codepoint, float maximumAdvance = 0f)
+    {
+        (string Family, FontWeight Weight, FontStyle Slant, int Codepoint) question =
+            (font.Family, weight, slant, codepoint);
+
+        if (!_resolved.TryGetValue(question, out string? family))
+        {
+            family = FamilyFor(font.Family, weight, slant, codepoint);
+            _resolved[question] = family;
+        }
+
+        ushort glyph = GlyphIndex(family, weight, slant, codepoint);
+        float size = font.SizeInPixels;
+
+        if (maximumAdvance > 0f)
+        {
+            float advance = AdvanceOf(family, weight, slant, glyph, size);
+
+            if (advance > maximumAdvance)
+            {
+                size *= maximumAdvance / advance;
+            }
+        }
+
+        return new GlyphResolution(family, glyph, size, !string.Equals(family, font.Family, StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// Rasterises one glyph at one subpixel offset. The em size is taken as physical pixels and
     /// DirectWrite is told one pixel per DIP, so the key's size field and the bitmap's size are the
     /// same number rather than two that have to be kept in step.
+    ///
+    /// <para>A glyph with colour layers comes back as <see cref="GlyphKind.Colour"/>: emoji are
+    /// painted, not tinted, so there is nothing a foreground colour could mean for one.</para>
     /// </summary>
     public GlyphBitmap Rasterise(in GlyphKey key)
     {
@@ -143,6 +240,15 @@ public sealed class GlyphRasteriser : IDisposable
             IsSideways = false,
         };
 
+        Rasterisations++;
+
+        GlyphBitmap? colour = RasteriseColour(run, key.SubpixelOffsetInPixels);
+
+        return colour ?? RasteriseCoverage(run, key.SubpixelOffsetInPixels);
+    }
+
+    private GlyphBitmap RasteriseCoverage(GlyphRun run, float subpixelOffset)
+    {
         using IDWriteGlyphRunAnalysis analysis = _factory.CreateGlyphRunAnalysis(
             run,
             null,
@@ -150,10 +256,8 @@ public sealed class GlyphRasteriser : IDisposable
             MeasuringMode.Natural,
             GridFitMode.Default,
             TextAntialiasMode.Grayscale,
-            key.SubpixelOffsetInPixels,
+            subpixelOffset,
             0f);
-
-        Rasterisations++;
 
         RawRect bounds = analysis.GetAlphaTextureBounds(TextureType.Aliased1x1);
         int width = bounds.Right - bounds.Left;
@@ -170,6 +274,124 @@ public sealed class GlyphRasteriser : IDisposable
         return new GlyphBitmap(width, height, bounds.Left, bounds.Top, coverage);
     }
 
+    /// <summary>
+    /// Composites a colour glyph's layers, or answers null when the glyph has none and the
+    /// grayscale path is the right one.
+    ///
+    /// <para>Each layer is an ordinary coverage run with a colour attached, so the layers are
+    /// rasterised through the same door as everything else and mixed here. The mixing is done in
+    /// linear light and encoded back on the way out, for the same reason the shader does: coverage
+    /// is light, and averaging it in sRGB is what makes the edges of an emoji look dirty.</para>
+    /// </summary>
+    private GlyphBitmap? RasteriseColour(GlyphRun run, float subpixelOffset)
+    {
+        IDWriteColorGlyphRunEnumerator? layers = TranslateColour(run, subpixelOffset);
+
+        if (layers is null)
+        {
+            return null;
+        }
+
+        using (layers)
+        {
+            List<(GlyphBitmap Bitmap, Color4 Colour)> painted = [];
+            int left = int.MaxValue;
+            int top = int.MaxValue;
+            int right = int.MinValue;
+            int bottom = int.MinValue;
+
+            while (layers.MoveNext())
+            {
+                ColorGlyphRun layer = layers.CurrentRun;
+                GlyphBitmap bitmap = RasteriseCoverage(layer.GlyphRun, subpixelOffset);
+
+                if (bitmap.IsEmpty)
+                {
+                    continue;
+                }
+
+                painted.Add((bitmap, layer.RunColor));
+                left = Math.Min(left, bitmap.Left);
+                top = Math.Min(top, bitmap.Top);
+                right = Math.Max(right, bitmap.Left + bitmap.Width);
+                bottom = Math.Max(bottom, bitmap.Top + bitmap.Height);
+            }
+
+            if (painted.Count == 0)
+            {
+                return GlyphBitmap.Empty;
+            }
+
+            return Composite(painted, left, top, right - left, bottom - top);
+        }
+    }
+
+    private static GlyphBitmap Composite(List<(GlyphBitmap Bitmap, Color4 Colour)> layers,
+                                         int left, int top, int width, int height)
+    {
+        // Linear premultiplied while compositing, straight sRGB on the way out: the shader reads
+        // this the same way it reads a foreground colour, so the tile is what a tinted coverage
+        // bitmap would have been had the tint varied per pixel.
+        float[] accumulated = new float[width * height * 4];
+
+        foreach ((GlyphBitmap bitmap, Color4 colour) in layers)
+        {
+            ReadOnlySpan<byte> pixels = bitmap.Coverage;
+            float red = ToLinear(colour.R);
+            float green = ToLinear(colour.G);
+            float blue = ToLinear(colour.B);
+
+            for (int row = 0; row < bitmap.Height; row++)
+            {
+                for (int column = 0; column < bitmap.Width; column++)
+                {
+                    float alpha = pixels[(row * bitmap.Width) + column] / 255f * colour.A;
+
+                    if (alpha <= 0f)
+                    {
+                        continue;
+                    }
+
+                    int target = ((((bitmap.Top - top + row) * width) + bitmap.Left - left + column) * 4);
+                    float behind = 1f - alpha;
+
+                    accumulated[target] = (red * alpha) + (accumulated[target] * behind);
+                    accumulated[target + 1] = (green * alpha) + (accumulated[target + 1] * behind);
+                    accumulated[target + 2] = (blue * alpha) + (accumulated[target + 2] * behind);
+                    accumulated[target + 3] = alpha + (accumulated[target + 3] * behind);
+                }
+            }
+        }
+
+        byte[] tile = new byte[width * height * 4];
+
+        for (int pixel = 0; pixel < width * height; pixel++)
+        {
+            float alpha = accumulated[(pixel * 4) + 3];
+
+            // Back to straight alpha, because a premultiplied tile would need a second blend mode
+            // in the shader for no picture anybody could tell apart.
+            tile[(pixel * 4)] = Encode(alpha > 0f ? accumulated[pixel * 4] / alpha : 0f);
+            tile[(pixel * 4) + 1] = Encode(alpha > 0f ? accumulated[(pixel * 4) + 1] / alpha : 0f);
+            tile[(pixel * 4) + 2] = Encode(alpha > 0f ? accumulated[(pixel * 4) + 2] / alpha : 0f);
+            tile[(pixel * 4) + 3] = (byte)Math.Clamp((int)MathF.Round(alpha * 255f), 0, 255);
+        }
+
+        return new GlyphBitmap(width, height, left, top, tile, GlyphKind.Colour);
+    }
+
+    private static float ToLinear(float encoded) =>
+        encoded <= 0.04045f ? encoded / 12.92f : MathF.Pow((encoded + 0.055f) / 1.055f, 2.4f);
+
+    private static byte Encode(float linearLight)
+    {
+        float encoded = linearLight <= 0.0031308f
+            ? linearLight * 12.92f
+            : (1.055f * MathF.Pow(linearLight, 1f / 2.4f)) - 0.055f;
+
+        return (byte)Math.Clamp((int)MathF.Round(encoded * 255f), 0, 255);
+    }
+
     /// <summary>Releases the cached faces, the font collection and the factory.</summary>
     public void Dispose()
     {
@@ -181,6 +403,107 @@ public sealed class GlyphRasteriser : IDisposable
         _faces.Clear();
         _installed.Dispose();
         _factory.Dispose();
+    }
+
+    /// <summary>
+    /// Asks DirectWrite for the colour layers of a run, or answers null when it has none.
+    ///
+    /// <para><c>DWRITE_E_NOCOLOR</c> is the ordinary answer for the overwhelming majority of
+    /// characters, so it is a state and not an error: every letter on screen arrives here first.</para>
+    /// </summary>
+    private IDWriteColorGlyphRunEnumerator? TranslateColour(GlyphRun run, float subpixelOffset)
+    {
+        try
+        {
+            Result result = _factory.TranslateColorGlyphRun(
+                subpixelOffset, 0f, run, null, MeasuringMode.Natural, null, 0,
+                out IDWriteColorGlyphRunEnumerator? layers);
+
+            return result.Success ? layers : null;
+        }
+        catch (SharpGenException)
+        {
+            return null;
+        }
+    }
+
+    private float AdvanceOf(string family, FontWeight weight, FontStyle slant, ushort glyph, float size)
+    {
+        IDWriteFontFace face = Face(family, weight, slant);
+        GlyphMetrics[] metrics = new GlyphMetrics[1];
+
+        _glyph[0] = glyph;
+        face.GetDesignGlyphMetrics(_glyph, metrics, false);
+
+        return metrics[0].AdvanceWidth * size / face.Metrics.DesignUnitsPerEm;
+    }
+
+    /// <summary>
+    /// The first family that actually has this character: the preferred one, then the faces Windows
+    /// itself reaches for, then anything installed.
+    ///
+    /// <para>The ordered list is what keeps the answer stable and recognisable. A bare scan of the
+    /// collection finds <em>a</em> face with the character, and which one depends on what somebody
+    /// installed last — so the same text renders in a different font on two machines, which is worse
+    /// than not rendering at all because nobody files it as a bug.</para>
+    /// </summary>
+    private string FamilyFor(string preferred, FontWeight weight, FontStyle slant, int codepoint)
+    {
+        if (!_installed.FindFamilyName(preferred, out _))
+        {
+            // A family nobody has is a configuration error and not a fallback: the user asked for a
+            // font, and quietly drawing in a different one is how somebody spends an afternoon
+            // wondering why their terminal ignores its own settings. Fallback is for a character
+            // the chosen face lacks, which is a different thing entirely.
+            throw new InvalidOperationException($"no font family named '{preferred}' is installed");
+        }
+
+        if (HasCharacter(preferred, codepoint))
+        {
+            return preferred;
+        }
+
+        foreach (string family in Fallbacks)
+        {
+            if (HasCharacter(family, codepoint))
+            {
+                return family;
+            }
+        }
+
+        for (uint index = 0; index < _installed.FontFamilyCount; index++)
+        {
+            using IDWriteFontFamily family = _installed.GetFontFamily(index);
+            using IDWriteFont font = family.GetFirstMatchingFont(weight, FontStretch.Normal, slant);
+
+            if (font.HasCharacter((uint)codepoint))
+            {
+                using IDWriteLocalizedStrings names = family.FamilyNames;
+                return NameOf(names) ?? preferred;
+            }
+        }
+
+        // Nothing has it. The preferred face answers with .notdef, which is a box the user can see
+        // and report, and is the honest picture of a character this machine cannot draw.
+        return preferred;
+    }
+
+    private bool HasCharacter(string family, int codepoint)
+    {
+        if (!_installed.FindFamilyName(family, out uint index))
+        {
+            return false;
+        }
+
+        using IDWriteFontFamily matched = _installed.GetFontFamily(index);
+        using IDWriteFont font = matched.GetFirstMatchingFont(FontWeight.Normal, FontStretch.Normal, FontStyle.Normal);
+
+        return font.HasCharacter((uint)codepoint);
+    }
+
+    private static string? NameOf(IDWriteLocalizedStrings names)
+    {
+        return names.Count == 0 ? null : names.GetString(0);
     }
 
     private IDWriteFontFace Face(string family, FontWeight weight, FontStyle slant)
