@@ -1,6 +1,6 @@
 ---
 name: roadmap-docs
-description: quickshell's own shipping discipline — the one-task-one-commit rule and the `run-commit.cmd` that closes every task, design-before-ship, the blocks A–J that are reused rather than opened, the `## Done when` criteria a block is read against before it is called finished, and the user-facing surface a shipped feature must reach. The roadmap/changelog/rationale write path itself is NOT here: roadkeep owns it, and its own skill says which command to call. Use whenever a task is finished, before committing, when picking the next task, or when a governed file needs to change.
+description: quickshell's own shipping discipline — the one-task-one-commit rule and the `run-commit.cmd` that closes every task, design-before-ship, the blocks A–K that are reused rather than opened, the `## Done when` criteria a block is read against before it is called finished, and the user-facing surface a shipped feature must reach. The roadmap/changelog/rationale write path itself is NOT here: roadkeep owns it, and its own skill says which command to call. Use whenever a task is finished, before committing, when picking the next task, or when a governed file needs to change.
 ---
 
 # Shipping discipline
