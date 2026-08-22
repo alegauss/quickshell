@@ -2,7 +2,6 @@
 
 ## Priority
 
-- QS4
 - QS5
 
 ## Block A — A session that stays up, or says why it did not
@@ -25,7 +24,7 @@
 ## Block C — Emulation that does not lie about the remote
 
 - 📋 **QS6** (deps: QS1 ✅) **Nothing opens a graphics device, so no pixel this client draws has ever reached a screen** — The device, its adapter choice and its loss recovery are the floor every later drawing line stands on, and none of the three has a default worth taking. → §QS6
-- 📋 **QS7** (deps: QS6, QS4) **A frame reaches the screen whenever the compositor chooses, so no bound on input-to-photon delay can be claimed** — Latency here is bought with three flags and a wait handle rather than with optimisation, and left unbought it silently costs two or three frames. → §QS7
+- 📋 **QS7** (deps: QS6, QS4 ✅) **A frame reaches the screen whenever the compositor chooses, so no bound on input-to-photon delay can be claimed** — Latency here is bought with three flags and a wait handle rather than with optimisation, and left unbought it silently costs two or three frames. → §QS7
 - 📋 **QS8** (deps: QS6) **No glyph is on the GPU, so drawing a character would cost a rasterisation on the frame that needs it** — A terminal redraws the same few hundred shapes forever, so rasterising each once and sampling it thereafter is the whole reason this renderer can be cheap. → §QS8
 - 📋 **QS9** (deps: QS8, QS7) **Nothing turns a grid of cells into a draw call, so text on this client's screen is still hypothetical** — One draw for the whole grid is what keeps frame cost flat as the window grows, and it is a decision about the vertex layout rather than an optimisation applied afterwards. → §QS9
 - 📋 **QS10** (deps: QS8, QS9) **A CJK character, a combining mark and a colour emoji each draw wrongly or not at all** — The monospaced grid is a convenient fiction, and the three places it stops being true are known in advance rather than discovered as bug reports. → §QS10
@@ -82,8 +81,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS4** (deps: QS1 ✅) **No decision records which window host can present a swapchain without adding frames of latency** — Tabs, panes and every dialog are built on that answer, so settling it after the pane code exists means writing the pane code a second time. → §QS4
-- 📋 **QS46** (deps: QS4, QS9) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The shell is where the clean interface is either defended or lost, and its defaults decide what a user sees before they have configured anything. → §QS46
+- 📋 **QS46** (deps: QS4 ✅, QS9) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The shell is where the clean interface is either defended or lost, and its defaults decide what a user sees before they have configured anything. → §QS46
 - 📋 **QS47** (deps: QS46, QS26) **Every session needs its own window, so working across four hosts means four windows to arrange** — A tab is what makes several sessions one workspace, and it is the surface the window title, the session tree and the layout all attach to. → §QS47
 - 📋 **QS48** (deps: QS47) **Two sessions cannot be seen at once, so comparing output means alternating between tabs** — Watching a log while typing on another host is the ordinary case for this audience, and a tab-only client makes it impossible rather than merely awkward. → §QS48
 - 📋 **QS49** (deps: QS48, QS6) **Each pane would open its own graphics device, so four panes cost four times the driver's attention** — The device, the atlas and the shaders are process-wide resources panes should share, and sharing them is a decision about ownership rather than an optimisation. → §QS49
@@ -242,18 +240,6 @@
 - **Every figure in the comparison document reproduces from a documented run** Settled
   by re-running each measurement it cites, from its own stated method, on its own stated
   machine.
-
-## Done when — QS4
-
-- **All three hosts are prototyped, not two** Settled by three running prototypes in the
-  repository; an option closed by reasoning rather than by a run is an option somebody
-  reopens next quarter.
-- **The record names a measured frame rate and click latency for each** Settled by
-  reading the decision record: a preference stated without both numbers, per candidate,
-  does not close this line.
-- **A dropdown and a modal overlap a running pane in the chosen host** Settled by a
-  screenshot of each, since airspace is the one failure that appears only when something
-  is composed over the surface.
 
 ## Done when — QS5
 

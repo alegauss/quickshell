@@ -1,0 +1,12 @@
+<Project>
+
+  <!-- Inherit the repository's gates, then relax the two that only make sense for shipped
+       code: these are measurement rigs, and their interop surface is not an API. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1401;CA1806;CA1810;CA1815;CA1051;SYSLIB1054;CA1416</NoWarn>
+  </PropertyGroup>
+
+</Project>

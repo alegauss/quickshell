@@ -14,6 +14,8 @@
 
 ## Block G — The clean interface, defended
 
+- ✅ **QS4** **No decision records which window host can present a swapchain without adding frames of latency** — WPF with a child HWND per pane won on a click-to-pixel floor of 13.8 ms, the only host of three to answer within one refresh interval (design §QS4 recorded in `docs/measurements/host-probe.md`).
+
 ## Block H — The reason to leave the incumbent
 
 - ✅ **QS1** **The repository holds no buildable tree, so no claim about this client's speed or size can be measured** — A fresh clone builds and tests four layered projects with nullable, warnings-as-errors and the allocation analyzers on, and a project reference that inverts the layering fails the build.

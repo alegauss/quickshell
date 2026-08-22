@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>HostProbe.WpfD3DImage</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Vortice.Direct3D9" Version="3.8.3" />
+    <ProjectReference Include="..\HostProbe.Core\HostProbe.Core.csproj" />
+  </ItemGroup>
+
+</Project>

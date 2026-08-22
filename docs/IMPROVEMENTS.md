@@ -1500,35 +1500,6 @@ Falsified when a running forward does not appear in this view.
 
 ## Block G — The clean interface, defended
 
-### §QS4 Three hosts, one measurement, one decision
-
-Three candidates, each prototyped far enough to be measured rather than argued about.
-
-**WPF with `D3DImage`** composes perfectly and has no airspace problem, but the interop
-path runs through a shared D3D9Ex surface and presentation is clocked by WPF's own
-compositor. The prototype exists to confirm or refute the expectation that this caps the
-achievable rate. If it does, the option closes here and the measurement is what closed
-it.
-
-**WPF hosting a child HWND per pane** gives each pane its own swapchain and its own
-present clock, at the cost of airspace: nothing can be composed over the child window,
-so menus, popups and drag adorners must themselves be HWND-backed. WPF popups already
-are, which is the only reason this option is credible — so the prototype must show a
-dropdown and a modal dialog correctly overlapping a running pane, or it fails.
-
-**WinUI 3 with `SwapChainPanel`** is the sanctioned path and the one Windows Terminal
-took: no airspace problem, independent presentation, against a Windows App SDK
-dependency and its deployment consequences.
-
-All three run the same test — a pane presenting continuously at the display's rate with
-an overlapping dropdown open — measured for presented frame rate and for the delay
-between a click and the pixel that answers it.
-
-The output is a decision record naming the winner and, for each loser, the number that
-closed it, so the choice is not reopened by opinion.
-
-Falsified if that record states a preference without a measurement behind it.
-
 ### §QS46 What is on screen by default, and what is not
 
 The window is the first argument this project makes. The incumbent opens onto a toolbar,
