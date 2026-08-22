@@ -20,9 +20,8 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS8** (deps: QS6 ✅) **No glyph is on the GPU, so drawing a character would cost a rasterisation on the frame that needs it** — A terminal redraws the same few hundred shapes forever, so rasterising each once and sampling it thereafter is the whole reason this renderer can be cheap. → §QS8
-- 📋 **QS9** (deps: QS8, QS7 ✅) **Nothing turns a grid of cells into a draw call, so text on this client's screen is still hypothetical** — One draw for the whole grid is what keeps frame cost flat as the window grows, and it is a decision about the vertex layout rather than an optimisation applied afterwards. → §QS9
-- 📋 **QS10** (deps: QS8, QS9) **A CJK character, a combining mark and a colour emoji each draw wrongly or not at all** — The monospaced grid is a convenient fiction, and the three places it stops being true are known in advance rather than discovered as bug reports. → §QS10
+- 📋 **QS9** (deps: QS8 ✅, QS7 ✅) **Nothing turns a grid of cells into a draw call, so text on this client's screen is still hypothetical** — One draw for the whole grid is what keeps frame cost flat as the window grows, and it is a decision about the vertex layout rather than an optimisation applied afterwards. → §QS9
+- 📋 **QS10** (deps: QS8 ✅, QS9) **A CJK character, a combining mark and a colour emoji each draw wrongly or not at all** — The monospaced grid is a convenient fiction, and the three places it stops being true are known in advance rather than discovered as bug reports. → §QS10
 - 📋 **QS11** (deps: QS9) **Underline, undercurl, strikethrough, the cursor and a selection have no representation on screen** — Each is derived in the pixel shader from flags the instance already carries, so the grid stays one draw and the decorations cost no extra bandwidth. → §QS11
 - 📋 **QS12** (deps: QS9, QS10, QS11) **Nothing catches a renderer that draws correctly on one vendor's driver and wrongly on another's** — Shader precision, sampling and blending differ between vendors in ways that never once surface on the machine the code was written on. → §QS12
 - 📋 **QS13** (deps: QS1 ✅) **A multi-byte character split across two network reads decodes as two broken ones** — Chunk boundaries are chosen by the network and never by the text, so the decoder has to carry a partial sequence across a read that ended mid-character. → §QS13
@@ -47,7 +46,7 @@
 - 📋 **QS32** (deps: QS25, QS23) **Resizing the window leaves the remote program drawing to the geometry it had before** — Three parties hold a copy of the size and only the client knows it changed, so telling the other two is an obligation rather than a convenience. → §QS32
 - 📋 **QS33** (deps: QS17, QS18, QS20, QS21, QS25) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — A test written by whoever wrote the parser tests that person's understanding of the specification, which is the thing most likely to be wrong. → §QS33
 - 📋 **QS34** (deps: QS10) **A programming font's ligatures do not form, so text set in it looks unlike the same text elsewhere** — Shaping a run across cell boundaries contradicts the grid the renderer is built on, so it is a deliberate later decision and not a font setting. → §QS34
-- 📋 **QS35** (deps: QS8, QS9) **Text is rasterised in grayscale, so it looks thinner here than in every other Windows application** — Subpixel coverage is three channels of alpha where the blend and the atlas were both built assuming one. → §QS35
+- 📋 **QS35** (deps: QS8 ✅, QS9) **Text is rasterised in grayscale, so it looks thinner here than in every other Windows application** — Subpixel coverage is three channels of alpha where the blend and the atlas were both built assuming one. → §QS35
 
 ## Block D — The tree a user organises work in
 

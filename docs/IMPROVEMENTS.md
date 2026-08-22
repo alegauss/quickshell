@@ -266,35 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS8 The atlas: what is cached, keyed how, and evicted when
-
-DirectWrite rasterises, and `IDWriteGlyphRunAnalysis::CreateAlphaTexture` is the
-specific door, because it produces exactly the coverage bitmap Windows itself would
-produce. Text here then matches text everywhere else on the machine, instead of being
-subtly this project's own.
-
-Grayscale coverage first — `DWRITE_TEXTURE_ALIASED_1x1`, one channel. Subpixel coverage
-is a later line and a genuinely different pipeline, and shipping grayscale first means
-the renderer is correct before it is pretty.
-
-The cache key is the tuple that actually changes pixels: face, glyph index, weight,
-slant, size, and the horizontal subpixel offset quantised to four positions. Dropping
-that last field is the mistake that makes a whole line look faintly wrong without any
-single character being identifiably wrong, because advances are not integers.
-
-Packing is a skyline allocator over 2048-square pages, pages added on demand. Eviction
-is least-recently-used and takes a whole page rather than a glyph, since reclaiming a
-hole inside a page costs more bookkeeping than the memory is worth.
-
-Changing font, size or DPI does not evict, it rebuilds: every entry is invalid at once,
-and a rebuild is simpler than a sweep and easier to prove correct.
-
-The atlas is GPU state, so device loss discards it — which means it must be
-reconstructible from nothing but the font settings, with no state of its own that
-outlived the device.
-
-Falsified when one character drawn at two positions on a line differs visibly in weight.
-
 ### §QS9 One draw, one instance per cell, and gamma
 
 A four-vertex unit quad issued once per frame through `DrawInstanced`, one instance per

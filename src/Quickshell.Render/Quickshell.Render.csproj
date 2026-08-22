@@ -10,6 +10,9 @@
   <ItemGroup>
     <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
     <PackageReference Include="Vortice.DXGI" Version="3.8.3" />
+    <!-- DirectWrite ships inside the Direct2D1 package. Only the text half is used: the glyph
+         coverage bitmap Windows itself would draw. Direct2D is not a second backend here. -->
+    <PackageReference Include="Vortice.Direct2D1" Version="3.8.3" />
   </ItemGroup>
 
   <ItemGroup>
