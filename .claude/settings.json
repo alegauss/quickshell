@@ -1,4 +1,13 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(python \"../roadkeep/scripts/roadkeep.py\" engines --invoke)",
+      "Bash(python \"../roadkeep/scripts/roadkeep.py\" block list)",
+      "Bash(python \"../roadkeep/scripts/roadkeep.py\" next-id)",
+      "Bash(python \"../roadkeep/scripts/roadkeep.py\" lint)",
+      "Edit(/.claude/skills/roadmap-docs/**)"
+    ]
+  },
   "enabledMcpjsonServers": [
     "roadkeep"
   ],
@@ -36,14 +45,6 @@
           }
         ]
       }
-    ]
-  },
-  "permissions": {
-    "allow": [
-      "Bash(python \"../roadkeep/scripts/roadkeep.py\" engines --invoke)",
-      "Bash(python \"../roadkeep/scripts/roadkeep.py\" block list)",
-      "Bash(python \"../roadkeep/scripts/roadkeep.py\" next-id)",
-      "Bash(python \"../roadkeep/scripts/roadkeep.py\" lint)"
     ]
   }
 }
