@@ -1,0 +1,25 @@
+<Project>
+
+  <!-- Inherits the repository's own gates, then adds what only a test project needs. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <OutputType>Exe</OutputType>
+
+    <!-- xunit.v3 ships two runners. Its own console runner is what an assembly launched directly
+         gets, and it does not speak the protocol `dotnet test` uses: handed those arguments it
+         discovers nothing, reports "zero tests ran" and exits 5 on a suite that passes. This
+         switches both to the Microsoft.Testing.Platform runner, so the one command and the
+         assembly agree about what is in the tree. -->
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.0" />
+  </ItemGroup>
+
+</Project>

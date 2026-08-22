@@ -30,5 +30,7 @@ jobs:
       - name: Build
         run: dotnet build Quickshell.sln --configuration Release --no-restore -warnaserror
 
+      # run-tests.cmd and not `dotnet test`: that command reports "zero tests ran" and exits 5 on
+      # a tree where every assembly passes, so a pipeline gated on it is gated on nothing.
       - name: Test
-        run: dotnet test Quickshell.sln --configuration Release --no-build --verbosity normal
+        run: .\run-tests.cmd Release

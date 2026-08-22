@@ -13,6 +13,17 @@
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
 
+    <!-- One output tree per configuration, not two.
+         The solution pins every project to x64 while a bare `dotnet build <csproj>` resolves no
+         platform at all, so without this the same project writes bin\x64\Debug\ from one command
+         and bin\Debug\ from the other - and running a binary from the tree the last build did not
+         touch is how a change that was already made gets debugged for an hour.
+         It is also what makes `dotnet test` work: the platform segment is not in the path its MTP
+         integration launches the test app from, so under x64 it found nothing, reported "zero
+         tests ran" and exited 5 on a suite that passes. There is only one platform here, so the
+         segment carried no information to lose. -->
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+
     <!-- The allocation-sensitive rules are on from commit one: the parse path will later
          assert that it allocates nothing, and a rule turned on after the code exists is a
          rule nobody turns on. -->

@@ -34,3 +34,4 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
+- ✅ **QS88** **dotnet test reports zero tests and exits non-zero on a tree whose suite passes when the assembly is run directly** — The suite's verdict is run-tests.cmd's exit code, and every configuration builds into exactly one tree under bin.

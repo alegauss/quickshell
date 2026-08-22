@@ -225,6 +225,13 @@ quickshell's users are people driving a terminal, so a shipped feature owes them
 
 ## Prove it by running
 
+**`.\run-tests.cmd` is the suite, and `dotnet test` is not.** The script builds the solution and
+runs every test application under `tests\`, and its exit code is the verdict — zero with the count,
+non-zero naming the assembly and the test. `dotnet test` on this tree reports *"zero tests ran"* and
+exits 5 while all of it passes, so a green from that command is not evidence of anything; CI runs the
+script, with `Release` as its one argument. Output lands in `bin\<Configuration>\` and nowhere else,
+so there is no second tree holding an older binary to run by accident.
+
 A terminal client is judged on behaviour under a real connection, so its own tasks are held to that:
 
 - **A claim is proven by a run, against a real endpoint** — a live sshd, a container, a jump host,

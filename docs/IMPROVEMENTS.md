@@ -1998,29 +1998,3 @@ true of the shipped build and not of the plan.
 Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
-
-### §QS88 One command, one output tree, and an exit code that means something
-
-Two facts, measured on 2026-08-22 against a tree whose suite was green.
-
-`dotnet test tests/Quickshell.Render.Tests/Quickshell.Render.Tests.csproj` prints "Zero
-tests ran" and exits 5. Running the same assembly directly —
-`bin/Debug/net10.0-windows/Quickshell.Render.Tests.exe` — discovers and passes forty. So
-the standard command reports a failure the tree does not have, and somebody who trusts
-it either stops running the tests or stops believing them.
-
-Separately, every project has two output trees: `bin/Debug/` and `bin/x64/Debug/`.
-`dotnet build <csproj>` writes the first and `dotnet build Quickshell.sln` writes the
-second, because `Directory.Build.props` declares `Platforms` as x64 while a bare project
-build resolves no platform. A solution build followed by running the binary under
-`bin/Debug` therefore runs whatever was there before — which happened, and cost a
-debugging cycle chasing a shader change that had already been made.
-
-The two are one problem in the end: there is no single command whose green is evidence.
-The remedy is one command that builds and runs everything, and one output tree per
-configuration rather than two. Which of `dotnet test`, `dotnet run --project`, or a
-script is the door is a decision this task makes; what it may not do is leave the exit
-code lying.
-
-Falsified when `dotnet test` on a clean tree exits zero and reports the same count as
-running the assemblies by hand, and `bin/Debug` no longer exists beside `bin/x64/Debug`.

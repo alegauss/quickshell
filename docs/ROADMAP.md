@@ -110,8 +110,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS88** (deps: —) **dotnet test reports zero tests and exits non-zero on a tree whose suite passes when the assembly is run directly** — There is no single command whose green run is evidence, and a repository where the standard one lies is one where the suite stops being consulted. → §QS88
-
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a
