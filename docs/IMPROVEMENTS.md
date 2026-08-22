@@ -963,6 +963,30 @@ enhancement has to be carried through rather than dropped on the floor.
 
 Falsified when text on a rotated display shows colour fringing.
 
+### §QS87 The frame-queue instrument, and why its two counters disagree
+
+The depth reported by `PresentSurface.QueueDepth` is a subtraction between two counters
+that are not the same counter. One is `_presented`, incremented in this process every
+time `Present` returns anything but occluded. The other is
+`FrameStatistics.PresentCount`, which DXGI refreshes at vblank. A sample taken between
+vblanks is therefore up to one frame stale, which the existing test already allows for
+by permitting a mean of 1.5.
+
+Observed on 2026-08-22: a mean of 1.84, on an idle machine, with occlusions zero. That
+is not a one-frame skew — it is every sample reading two, which means the two counters
+were a whole frame apart for the length of the run rather than at the moment of
+sampling.
+
+The candidate is `_presented` itself. It counts what this process submitted, and DXGI
+has its own count of what it accepted: `IDXGISwapChain::GetLastPresentCount`. Where the
+two disagree the local counter is the wrong one, because the queue being measured is
+DXGI's queue. Replacing the local side of the subtraction with that call makes both
+sides DXGI's own, sampled from the same object.
+
+Falsified when the substituted instrument still reads above 1.5 on an idle machine,
+which would put the disagreement in the statistics themselves and make this an argument
+for a different measurement rather than a different counter.
+
 ## Block D — The tree a user organises work in
 
 ### §QS55 The file a user will still have in five years
