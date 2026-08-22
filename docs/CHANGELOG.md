@@ -25,6 +25,7 @@
 - ✅ **QS82** **The tree targets net8.0, where WPF has no Fluent theme, so the chrome the sibling clients share cannot be built here** — Every project targets net10.0-windows, so WPF's Fluent ThemeMode is reachable here and a guard test fails any retarget that would take it back out.
 - ✅ **QS84** **The pipeline pins its actions by tag and nothing watches them, so a stale or advisory-bearing action is found by chance** — Dependabot watches the actions the pipeline pins and opens one grouped pull request a week, so a stale action arrives as a review rather than as a surprise.
 - ✅ **QS85** **The commit script stages the whole tree, so a second session's half-written work lands inside another task's commit** — run-commit.cmd stages only the paths a commit declares after --, and says what it is sweeping when none are declared, so a second session's files stay out.
+- ✅ **QS3 (the corpus and the whole-stream harness)** **Nothing replays a real terminal workload, so a change that halves throughput lands unnoticed** — Six streams captured from live sessions replay through a harness that reports MB/s and allocation per MB, and the results file is committed.
 
 ## Block I — An error a user can act on
 
