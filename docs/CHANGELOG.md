@@ -11,6 +11,7 @@
 - ✅ **QS6** **Nothing opens a graphics device, so no pixel this client draws has ever reached a screen** — A D3D11 device opens on the window's adapter, the default one or WARP, names what it skipped, and rebuilds every GPU resource on a loss.
 - ✅ **QS7** **A frame reaches the screen whenever the compositor chooses, so no bound on input-to-photon delay can be claimed** — A flip-discard swapchain waits on its own latency handle at a queue measured one frame deep, asks for tearing, and resizes without a stretch.
 - ✅ **QS8** **No glyph is on the GPU, so drawing a character would cost a rasterisation on the frame that needs it** — Every glyph is rasterised once and sampled thereafter, keyed on the subpixel offset so a character keeps its weight in every column (design §QS8 recorded in `src/Quickshell.Render/GlyphAtlas.cs`).
+- ✅ **QS9** **Nothing turns a grid of cells into a draw call, so text on this client's screen is still hypothetical** — The whole grid is one DrawInstanced of twenty-byte cells, blended in linear light so text weighs the same either way round (design §QS9 recorded in `src/Quickshell.Render/CellRenderer.cs`).
 
 ## Block D — The tree a user organises work in
 

@@ -5,7 +5,16 @@
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Quickshell.Render</RootNamespace>
+
+    <!-- Writing into memory the GPU handed back from Map. There is no safe overload of that call,
+         and copying through an intermediate array would defeat the point of mapping at all. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Compiled at startup from this source, so what is in the repository is what ran. -->
+    <EmbeddedResource Include="Grid.hlsl" LogicalName="Quickshell.Render.Grid.hlsl" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
@@ -13,6 +22,7 @@
     <!-- DirectWrite ships inside the Direct2D1 package. Only the text half is used: the glyph
          coverage bitmap Windows itself would draw. Direct2D is not a second backend here. -->
     <PackageReference Include="Vortice.Direct2D1" Version="3.8.3" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
   </ItemGroup>
 
   <ItemGroup>

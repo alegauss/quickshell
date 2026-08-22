@@ -266,32 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS9 One draw, one instance per cell, and gamma
-
-A four-vertex unit quad issued once per frame through `DrawInstanced`, one instance per
-visible cell. The instance carries what changes pixels and nothing else: atlas slot,
-foreground colour, background colour, and a flags word for bold, slant, inverse,
-underline, strike and cursor. Twenty bytes or fewer, so a 200x50 grid is under 200 KB
-and the upload is never the cost worth optimising.
-
-The background comes from the same instance rather than from a separate pass: every cell
-has one, and a second pass would double the fill rate for no picture.
-
-The instance buffer is `MAP_WRITE_DISCARD` and double-buffered, so the render thread
-never waits on the GPU for a buffer it is about to rewrite.
-
-Blending is the part that is easy to get subtly wrong and hard to notice. Coverage is
-not colour, so the sample is taken to linear, blended in linear, and returned. Blending
-coverage directly in sRGB is why light-on-dark terminal text so often looks too thin and
-dark-on-light too heavy, and it is one line of shader code rather than a font problem —
-which is exactly why it goes unfixed for years elsewhere.
-
-Colours arrive as the terminal model produced them, with no palette lookup on the GPU:
-the palette changes under OSC, and the model is where that already lives.
-
-Falsified when the same text light-on-dark and dark-on-light does not have matching
-apparent weight.
-
 ### §QS10 Where the monospaced grid stops being true
 
 Three separate failures in one line, because a fix for any one of them that ignores the

@@ -101,6 +101,32 @@ public sealed class GlyphRasteriser : IDisposable
     }
 
     /// <summary>
+    /// The grid geometry a font implies: one cell's advance, the line height, and where the
+    /// baseline falls inside it.
+    ///
+    /// <para>The advance is read off a reference glyph rather than averaged, because the fonts a
+    /// terminal is set in are monospaced and the average of a monospaced face is its advance. A
+    /// proportional face measured this way gives a grid that is wrong in a way the user can see at
+    /// once, which is better than one that is wrong subtly.</para>
+    /// </summary>
+    public CellMetrics Measure(FontSettings font, FontWeight weight = FontWeight.Normal,
+                               FontStyle slant = FontStyle.Normal)
+    {
+        IDWriteFontFace face = Face(font.Family, weight, slant);
+        FontMetrics metrics = face.Metrics;
+        float scale = font.SizeInPixels / metrics.DesignUnitsPerEm;
+
+        _glyph[0] = GlyphIndex(font.Family, weight, slant, 'M');
+        GlyphMetrics[] reference = new GlyphMetrics[1];
+        face.GetDesignGlyphMetrics(_glyph, reference, false);
+
+        return new CellMetrics(
+            Math.Max(1, (int)MathF.Ceiling(reference[0].AdvanceWidth * scale)),
+            Math.Max(1, (int)MathF.Ceiling((metrics.Ascent + metrics.Descent + metrics.LineGap) * scale)),
+            (int)MathF.Round(metrics.Ascent * scale));
+    }
+
+    /// <summary>
     /// Rasterises one glyph at one subpixel offset. The em size is taken as physical pixels and
     /// DirectWrite is told one pixel per DIP, so the key's size field and the bitmap's size are the
     /// same number rather than two that have to be kept in step.

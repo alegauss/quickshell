@@ -102,8 +102,11 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
     /// <summary>The font every key handed to <see cref="Cache(int, FontWeight, FontStyle, float)"/> is rasterised at.</summary>
     public FontSettings Font { get; private set; }
 
-    /// <summary>How many pages are currently allocated. Never above the ceiling given to <see cref="For"/>.</summary>
+    /// <summary>How many pages are currently allocated. Never above <see cref="MaximumPages"/>.</summary>
     public int PageCount => _pages.Count;
+
+    /// <summary>The page ceiling this atlas was opened with. Beyond it a whole page is evicted.</summary>
+    public int MaximumPages => _maximumPages;
 
     /// <summary>How many distinct glyphs the cache is currently holding.</summary>
     public int CachedGlyphs => _entries.Count;
