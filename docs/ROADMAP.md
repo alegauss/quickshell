@@ -91,7 +91,7 @@
 
 ## Block H — The reason to leave the incumbent
 
-- ⏳ **QS3** (deps: QS1 ✅, QS2 ✅) **Nothing replays a real terminal workload, so a change that halves throughput lands unnoticed** — The headless and with-renderer arms of each replay are empty until a parser and a renderer exist to be the consumers. → §QS3
+- ⏳ **QS3** (deps: QS1 ✅, QS2 ✅, QS14, QS9) **Nothing replays a real terminal workload, so a change that halves throughput lands unnoticed** — The headless and with-renderer arms of each replay are empty until a parser and a renderer exist to be the consumers. → §QS3
 - 📋 **QS74** (deps: QS1 ✅) **Settings have no file, so nothing survives a restart and nothing can be moved to another machine** — The config format is a compatibility contract from the first release, and a schema with no version is one that cannot change without breaking somebody. → §QS74
 - 📋 **QS75** (deps: QS2 ✅, QS46) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
 - 📋 **QS76** (deps: QS26, QS2 ✅) **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Idle cost is what a laptop user experiences as battery life, and it is the figure the incumbent loses on most clearly. → §QS76
