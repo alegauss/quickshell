@@ -301,6 +301,25 @@
   the commit that changes any reference, which must argue for the change rather than
   record it as a test fix.
 
+## Done when — Block K
+
+- **One command builds and runs every test, and its exit code is the verdict** Run it on
+  a clean tree and again on a tree with one deliberately broken test: the first exits
+  zero and names the count, the second exits non-zero and names the test. A command that
+  reports zero tests and exits five satisfies neither half.
+- **Each configuration has exactly one output tree** Build the solution, edit one source
+  file, build a single project, and look for an assembly older than that edit anywhere a
+  runner might load one. Two trees under `bin` is how a stale binary gets run and
+  believed, which has already cost a debugging cycle here.
+- **A clean clone builds and passes with nothing taken from memory** Clone into an empty
+  directory on a machine carrying only the .NET SDK, run the one command, read the
+  count. Any step supplied from someone's head — a package source, an SDK component, a
+  path — is a step the next machine will not take and the CI runner never had.
+- **No test fails intermittently on an unchanged tree** Twenty runs over one unchanged
+  checkout report the same result twenty times, and a failure that is not reproducible
+  that way is a defect filed against the test rather than a re-run. A flake teaches
+  everyone to re-run, and the first real regression is then re-run away as the flake.
+
 ## Non-goals
 
 - **No X11 server or X11 forwarding** The bundled X server is the largest single piece
