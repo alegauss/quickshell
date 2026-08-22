@@ -101,7 +101,6 @@
 - 📋 **QS77** (deps: QS75) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
 - 📋 **QS78** (deps: QS37, QS66) **Nothing has run for longer than a working session, so a slow leak would reach users first** — Leaks in a long-lived client appear after days rather than minutes, which is exactly the interval no test covers and every user reaches. → §QS78
 - 📋 **QS79** (deps: QS3, QS75) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
-- 📋 **QS85** (deps: —) **The commit script stages the whole tree, so a second session's half-written work lands inside another task's commit** — It already happened once in this checkout, and the history now credits one task with files that belonged to another. → §QS85
 
 ## Block I — An error a user can act on
 

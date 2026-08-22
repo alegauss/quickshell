@@ -57,11 +57,23 @@ what a person sees — a pane, a keybinding, a settings key, an error message �
   that defers commits.
 - **Self-check before starting task N+1:** run `git status` / `git log -1`. If the previous task's
   work is not committed, stop and commit it first.
-- `run-commit.cmd -m "<ascii conventional-commits title>"` from the repo root. **`-m` always**, and
-  ASCII. It **stages everything**, so check `git status` first — a stray scratch file rides along,
-  and in a .NET tree that means `bin/`, `obj/` and a `.user` file. **`.gitignore` earns its keep
-  here:** if it does not yet cover the build output, that is the first thing to fix, not something to
-  work around by staging selectively.
+- `.\run-commit.cmd -m "<ascii conventional-commits title>" -- <path> ...` from the repo root.
+  **`-m` always**, and ASCII.
+  - **The leading `.\` is not decoration.** `run-commit.cmd` is also a name on this machine's
+    `PATH` — a different script, which writes its own commit message and stages everything — and
+    `NoDefaultCurrentDirectoryInExePath` is set here, so a bare `run-commit.cmd` finds *that* one
+    and not the repository's.
+  - **Pass the paths.** They are the scope the task's claim declared, and `roadkeep ship` prints
+    them as a `git add --` line at the moment it releases the claim — copy that line's paths in.
+    Then the commit contains this task and nothing else, which is the whole point of the rule
+    above.
+  - **Without them the whole tree is staged.** That is fine for one session in one checkout, and it
+    is how a second session's half-written work once landed inside another task's commit, credited
+    to the wrong id in a history nobody can correct afterwards. The script now lists what it is
+    about to sweep before it does; read the list.
+  - Either way a stray scratch file rides along, and in a .NET tree that means `bin/`, `obj/` and a
+    `.user` file. **`.gitignore` earns its keep here:** if it does not yet cover the build output,
+    that is the first thing to fix.
 - **`roadkeep lint` must be clean for what you touched** before that commit. The `Stop` guard runs it
   for you, but the commit is yours to hold: never let a task add a finding.
 

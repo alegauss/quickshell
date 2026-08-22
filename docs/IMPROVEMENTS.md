@@ -1942,31 +1942,6 @@ statistical: zero is zero, and no noise threshold applies to it.
 Falsified when the gate is disabled to land a change and the disabling is not itself a
 filed line.
 
-### §QS85 Staging what the claim owns, not what the tree holds
-
-This is not hypothetical. Two sessions worked in this checkout at once, and the second
-ran `run-commit.cmd` while the first had a retarget half-written on disk. The commit
-carried both, under the second session's id and message. Nothing was lost, which is what
-makes it dangerous: the history says one task changed files another task changed, and
-the only way to know otherwise is to have been there.
-
-`git add -A` is the cause, and it was a deliberate convenience. That is worth keeping
-for one session in one tree; what is not is a script with no idea what the commit is
-for.
-
-roadkeep already answers that question and is already being called on every task here. A
-claim carries a scope, `scope <id> --porcelain` prints the paths that claim owns, and
-the governed files are supplied by the tool rather than declared. So the script can
-stage a task's own paths and nothing else, and it can say so when it does.
-
-What it must not become is a script that refuses to commit. A task with no claim, a
-release commit, a fix to the script itself: all of those are ordinary, and all of them
-stage everything. The scope narrows the commit when there is one and gets out of the way
-when there is not, saying which of the two happened either way.
-
-Falsified when two sessions in one checkout can still land each other's files in one
-commit without either being told.
-
 ## Block I — An error a user can act on
 
 ### §QS71 A log worth sending, which means a log without secrets
