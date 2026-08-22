@@ -8,6 +8,8 @@
 
 ## Block C — Emulation that does not lie about the remote
 
+- ✅ **QS6** **Nothing opens a graphics device, so no pixel this client draws has ever reached a screen** — A D3D11 device opens on the window's adapter, the default one or WARP, names what it skipped, and rebuilds every GPU resource on a loss.
+
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates

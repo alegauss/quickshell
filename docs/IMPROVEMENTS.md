@@ -266,32 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS6 One device, the fallback chain, and surviving its loss
-
-D3D11 at feature level 11_0, one device shared by the whole process. D3D12 and Vulkan
-are refused in the non-goals for a reason that applies squarely here: a cell grid never
-approaches the draw-call ceiling those APIs exist to raise, and each costs several times
-the code to reach the same picture.
-
-Adapter selection walks a chain instead of taking the first answer: the adapter the
-output window actually sits on, then the default hardware adapter, then WARP. WARP is
-not a curiosity. It is what runs inside an RDP session and on a machine whose driver is
-mid-update, and a client that shows a black window there has failed at the exact moment
-somebody needed it.
-
-Device loss is a certainty rather than an edge case. A driver update, a TDR, an external
-GPU unplugged, a session disconnected and reattached: each returns
-`DXGI_ERROR_DEVICE_REMOVED` from a call that had no other reason to fail. Recovery
-discards every GPU resource and rebuilds it while the terminal's own state survives
-untouched — which is possible only because the buffer and the parser live in an assembly
-that cannot reference this one.
-
-The debug layer is on in debug builds with a break on corruption, because a validation
-message ignored today is a vendor-specific crash in somebody's bug report later.
-
-Falsified when the client is run with the GPU driver disabled and does not reach WARP,
-or when a forced device removal costs one line of scrollback.
-
 ### §QS7 Why the present path is worth three flags
 
 A flip-model swapchain, `DXGI_SWAP_EFFECT_FLIP_DISCARD`, is the baseline: the blt model

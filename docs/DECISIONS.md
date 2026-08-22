@@ -8,6 +8,8 @@
 
 ## Block C — Emulation that does not lie about the remote
 
+- ✅ **QS6** **Nothing opens a graphics device, so no pixel this client draws has ever reached a screen** — Adapter selection walks output-window, then default hardware, then WARP, recording each skip; a device loss rebuilds GPU resources and cannot touch terminal state.
+
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates
