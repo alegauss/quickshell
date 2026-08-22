@@ -13,6 +13,10 @@ obj/
 publish/
 artifacts/
 
+# BenchmarkDotNet writes its logs and reports beside the project. They are build output of a run,
+# not the committed results file, which the harness writes to benchmarks/results.
+BenchmarkDotNet.Artifacts/
+
 # NuGet
 *.nupkg
 packages/
