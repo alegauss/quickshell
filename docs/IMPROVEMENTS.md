@@ -886,6 +886,56 @@ line rather than the renderer's.
 
 Falsified when a decomposed accent renders identically to its precomposed form.
 
+### §QS92 The three environments this machine is not
+
+QS12 landed the suite and ran it on two environments: this machine's own adapter, which
+reproduces the references bit for bit, and WARP, which is a separate rasteriser
+altogether and differs by at most one level of 255 on under 0.3 per cent of pixels. That
+agreement is worth something — two implementations of the same shader arithmetic
+reaching the same picture — and it is not the matrix.
+
+Missing: NVIDIA, AMD and Intel integrated, which is where the users are, and a session
+over RDP, which is where a graphics assumption fails silently rather than loudly. A
+laptop with switchable graphics is its own case again, because the adapter can change
+while the process is running.
+
+Nothing here is a code change. What it needs is machines, and the shapes are: a
+self-hosted CI runner per vendor; a cloud instance with a passed-through GPU, which
+covers NVIDIA and AMD and not Intel; or a person running `run-tests.cmd` on hardware
+they have and reporting the numbers the failure message already prints.
+
+What must not happen is the tolerance being raised until a vendor passes. The measured
+drift is one level; if a driver needs more than the two allowed, that is a finding about
+the shader — most likely `pow` precision in the sRGB conversion — and it is filed rather
+than absorbed.
+
+Falsified when this repository claims cross-vendor correctness with no run behind it on
+any vendor's silicon.
+
+### §QS93 The screen no author would have written
+
+QS12's design asks for one scene more than QS12 shipped: a full screen of `htop` output
+replayed from a captured corpus. It could not be built, because there is no parser to
+replay bytes through and no corpus to replay.
+
+The seven scenes that exist are each a sentence somebody chose. That is exactly their
+weakness: they cover the attributes their author remembered, in the combinations their
+author thought of. A real screen from a real program is dense, has colour changes
+mid-run, box-drawing meeting text, wide characters against narrow ones, and the specific
+adjacencies nobody would think to write down.
+
+What this needs is the pseudo-console landing, so a program can be run locally and its
+byte stream captured; then a scene is a recorded stream replayed into the model and
+drawn once. The corpus is committed beside the references, because a scene whose input
+is regenerated is a reference that moves on its own.
+
+`htop` is the design's example and a good one - colour, box drawing, bars, rapid update.
+Worth having beside it: `git log --graph --oneline`, which is box-drawing meeting
+proportional-looking text, and `ls --color` in a directory of long unicode filenames.
+
+Falsified when a capture replays to a different screen than the one it was recorded
+from, which would make the corpus a picture of a bug rather than of a program.
+
 ## Block D — The tree a user organises work in
 
 ### §QS55 The file a user will still have in five years
