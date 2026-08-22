@@ -8,4 +8,10 @@
     <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
 
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Quickshell.Terminal\Quickshell.Terminal.csproj" />
+    <ProjectReference Include="..\..\src\Quickshell.Render\Quickshell.Render.csproj" />
+  </ItemGroup>
+
 </Project>

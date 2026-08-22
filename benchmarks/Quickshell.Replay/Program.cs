@@ -18,7 +18,8 @@ if (streams.Count == 0)
     return 1;
 }
 
-IStreamConsumer[] consumers = [new EscapeScanConsumer()];
+using RenderConsumer renderConsumer = new();
+IStreamConsumer[] consumers = [new EscapeScanConsumer(), new ParseConsumer(), renderConsumer];
 
 const int ChunkSize = 64 * 1024;
 const int Warmups = 1;
@@ -98,13 +99,30 @@ foreach (Corpus stream in streams)
 }
 
 report.AppendLine();
-report.AppendLine("## The arms that are empty");
+report.AppendLine("## Reading these numbers");
 report.AppendLine();
-report.AppendLine("Each stream is meant to be replayed twice: headless, which measures the parser alone, and");
-report.AppendLine("through the whole pipeline with a renderer, which measures what coalescing saves. Neither");
-report.AppendLine("consumer exists yet - there is no parser and no renderer - so the table above has one arm,");
-report.AppendLine("and it is the floor rather than either of them. A number here is a ceiling: whatever the");
-report.AppendLine("parser costs is on top of touching the bytes at all.");
+report.AppendLine("Each stream is replayed through three consumers. `escape-scan` is the floor: it touches every");
+report.AppendLine("byte and does the cheapest thing a parser must also do, so no parser can beat it. `parse` is the");
+report.AppendLine("Williams table with a handler that only counts. `render` is the whole path - parse, decode,");
+report.AppendLine("segment into grapheme clusters, resolve each through the glyph atlas, fill instances, and one");
+report.AppendLine("draw call per 16 KB of stream.");
+report.AppendLine();
+report.AppendLine("**The gap between `parse` and `render` is the figure this harness exists for.** Today it is");
+report.AppendLine("dominated by allocation rather than by drawing: the render arm allocates tens of megabytes per");
+report.AppendLine("megabyte of stream, and the cause is `GraphemeSegmenter.Feed` returning a `List<string>` - one");
+report.AppendLine("string per cluster, which for a screen of text is one per character.");
+report.AppendLine();
+report.AppendLine("**Read the allocation column against `escape-scan`, not against zero.** That consumer allocates");
+report.AppendLine("nothing whatsoever, so whatever it reports is the harness's own fixed cost divided by the size");
+report.AppendLine("of the stream - which is why a 0.02 MB stream shows tens of KB per MB and the 32 MB one shows");
+report.AppendLine("zero. `parse` reports the same figure as `escape-scan` on every stream, to the decimal, which");
+report.AppendLine("is what says the parser itself allocates nothing. `render` does not.");
+report.AppendLine();
+report.AppendLine("The render arm also stands in for a terminal buffer that does not exist yet: cursor, wrap,");
+report.AppendLine("carriage return, line feed and erase-display, and nothing else. What it measures is the volume");
+report.AppendLine("of glyph and instance work a stream implies, which is the part a real buffer would not change.");
+report.AppendLine("It never presents - a vsync-locked present would cap the replay at the display's refresh rate");
+report.AppendLine("rather than measure the renderer.");
 
 foreach (IStreamConsumer consumer in consumers)
 {
