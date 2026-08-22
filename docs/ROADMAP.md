@@ -110,6 +110,9 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
+- 📋 **QS89** (deps: —) **dotnet test reports zero tests and exits 5 while run-tests.cmd runs the same assemblies and passes** — Every .NET tool and CI template reaches for that command first, so a repository where it lies looks broken to everyone who has not read the script. → §QS89
+- 📋 **QS90** (deps: —) **Nobody has built this repository from a clean clone, so the steps it needs beyond the SDK are unknown** — Every build so far has run on the machine that wrote the code, which is the one machine whose caches and installed components prove nothing about the next. → §QS90
+
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a

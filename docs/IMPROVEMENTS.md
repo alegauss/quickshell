@@ -1998,3 +1998,55 @@ true of the shipped build and not of the plan.
 Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+### §QS89 What dotnet test does with this tree that the assembly does not
+
+QS88 delivered a command whose exit code is the verdict; it is not this one, and this
+one is still wrong. What is known, measured on 2026-08-22 against SDK 10.0.303 and
+xunit.v3 4.0.0:
+
+The test assembly run directly — `bin\Debug\net10.0-windows\*.Tests.exe`, or through
+`dotnet exec` on its dll — discovers and passes every test and exits 0. Handed the same
+tree, `dotnet test` prints "zero tests ran" and exits 5, in about 150 ms, having plainly
+never started the assembly.
+
+`Platform` correlates with it. Before `AppendPlatformToOutputPath` was turned off,
+`dotnet test <csproj>` passed and `dotnet test <csproj> -p:Platform=x64` and `dotnet
+test Quickshell.sln` both reported zero. After it, all three report zero. So the
+platform segment in the output path is part of the story and not all of it.
+
+`global.json` already declares the Microsoft.Testing.Platform runner, the projects now
+build against it, and `Microsoft.Testing.Extensions.MSBuild` is in the output — so this
+is not a project that forgot to opt in.
+
+The three candidates worth separating: the path the SDK's MTP integration launches the
+app from under a non-default platform; a protocol version between that integration and
+the one xunit.v3 4.0.0 carries; and something in `Directory.Build.props` that only bites
+when MSBuild is the launcher. Each is answerable by one run.
+
+Falsified when `dotnet test Quickshell.sln` reports the same count as `run-tests.cmd`
+and exits zero, and non-zero when a test is broken.
+
+### §QS90 The clone that has never been made
+
+Block K asks that a clean clone build and pass with nothing taken from memory. That has
+never been checked here, and the checking is the whole task: what a machine already has
+is invisible from on top of it.
+
+The specific things this tree might be leaning on without saying so. A NuGet cache that
+already holds Vortice, xunit and their transitive graph, so a restore that would fail
+behind a proxy succeeds here. A D3D debug layer `GraphicsDevice` asks for and quietly
+does without — the fallback is deliberate, but nobody has watched it taken. A
+`global.json` pinned to 10.0.100 with `rollForward` at `latestFeature`, satisfied here
+by 10.0.303 and by nothing on a machine carrying only the pinned one. And DirectWrite
+finding Consolas, which every Windows has and no container necessarily does.
+
+The check is one run: clone into an empty directory on a machine carrying only the .NET
+SDK, run `run-tests.cmd`, and read the count. What it turns up goes in a README naming
+the prerequisites, or into the repository as a step — a requirement discovered and then
+written only into a commit message is one the next machine still will not meet.
+
+CI is the closest thing that exists and is not the same: the runner image carries a
+Windows SDK and a warm tool cache, and has never been asked what it used.
+
+Falsified when the clean clone needs a step this task did not name.
