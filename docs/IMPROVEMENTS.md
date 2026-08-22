@@ -266,31 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS12 The picture is the test, and one machine is not the matrix
-
-Rendering is judged by looking, so the test looks. A fixed set of scenes is rendered
-offscreen, read back and compared against committed reference images: plain text at
-several sizes, every SGR attribute, the box-drawing set, a mixed CJK and emoji line, all
-four cursor shapes over a selection, an undercurl run, and a full screen of `htop`
-output replayed from the captured corpus.
-
-Comparison is per-pixel with a small tolerance, because two vendors will not agree on
-the last bit of a filtered sample. A difference beyond that tolerance writes out the
-reference, the actual and the difference image, since a failure reporting only a number
-is a failure nobody diagnoses.
-
-References are generated on one named machine and committed. That is a liability worth
-stating plainly: a reference regenerated to make a test pass is a test deleted, so any
-change to a reference is a deliberate act argued for in the commit that makes it.
-
-The matrix is NVIDIA, AMD, Intel integrated, WARP and a session over RDP. Five
-environments, because the first four are where the users are and the fifth is where a
-graphics assumption fails silently rather than loudly. A laptop with switchable graphics
-is its own case, since the adapter can change while the process is running.
-
-Falsified when the suite passes on the development machine and no other environment in
-the matrix has been run against it.
-
 ### §QS13 Decoding a stream nobody chose the boundaries of
 
 A read returns whatever arrived. A three-byte character can straddle two reads and a

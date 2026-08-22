@@ -1,0 +1,339 @@
+using System.IO;
+using System.Runtime.InteropServices;
+using Quickshell.Render;
+using Vortice.Direct3D11;
+using Vortice.DXGI;
+using Xunit;
+
+namespace Quickshell.Render.Tests.Golden;
+
+/// <summary>
+/// Rendering is judged by looking, so this looks. Each scene is rendered offscreen, read back and
+/// compared against a committed reference image.
+///
+/// <para><b>The tolerance is not a way to make failures go away.</b> Two vendors will not agree on
+/// the last bit of a filtered sample, so a handful of levels per channel is expected; a shape in the
+/// wrong place is not, and it moves whole pixels rather than levels. Both bounds are checked — how
+/// far a pixel may drift, and how many may drift at all.</para>
+///
+/// <para><b>A reference is never regenerated to make a test pass.</b> Nothing here writes one: the
+/// only door is <c>QUICKSHELL_GOLDEN=write</c> in the environment, which is a deliberate act
+/// somebody has to argue for in the commit that changes the picture. A missing reference is a
+/// failure, not an invitation.</para>
+///
+/// <para><b>One machine is not the matrix.</b> Every scene runs on this machine's own adapter and
+/// again on WARP, which is a completely separate rasteriser rather than a second driver for the
+/// same silicon — so a scene that agrees on both has survived two implementations. That is two of
+/// the five environments the design names; the other three are not reachable from here and are
+/// filed rather than implied.</para>
+/// </summary>
+public sealed class GoldenImageTests
+{
+    /// <summary>
+    /// How far one channel of one pixel may differ from the reference.
+    ///
+    /// <para>Measured rather than guessed. Against references generated on this machine's own
+    /// adapter, that adapter reproduces them <b>bit for bit</b> and WARP - a completely separate
+    /// rasteriser - differs by <b>at most one level</b> on between 13 and 335 pixels of 123,200.
+    /// Two is that measurement with a little room, not a number chosen to make something pass.</para>
+    /// </summary>
+    private const int LevelTolerance = 2;
+
+    /// <summary>
+    /// What share of the pixels may differ at all. The worst scene measured 0.27 per cent, so half
+    /// a per cent is the same reasoning: a shape in the wrong place moves far more of the picture
+    /// than this, which is what keeps the bound from hiding one.
+    /// </summary>
+    private const double DriftTolerance = 0.005;
+
+    public static TheoryData<string, bool> Scenes
+    {
+        get
+        {
+            TheoryData<string, bool> data = [];
+
+            foreach (GoldenScenes.Scene scene in GoldenScenes.All)
+            {
+                data.Add(scene.Name, false);   // this machine's own adapter
+                data.Add(scene.Name, true);    // WARP, a separate rasteriser entirely
+            }
+
+            return data;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(Scenes))]
+    public void TheSceneMatchesItsReference(string name, bool warp)
+    {
+        GoldenScenes.Scene scene = GoldenScenes.All.Single(candidate => candidate.Name == name);
+        byte[] actual = Render(scene, warp);
+
+        if (Environment.GetEnvironmentVariable("QUICKSHELL_GOLDEN") == "write")
+        {
+            // The one door, and it is never taken by a test run that was only meant to check.
+            if (!warp)
+            {
+                Directory.CreateDirectory(GoldenDirectory());
+                File.WriteAllBytes(ReferencePath(name),
+                                   Png.Encode(actual, (int)GoldenScenes.Width, (int)GoldenScenes.Height));
+            }
+
+            return;
+        }
+
+        Assert.True(File.Exists(ReferencePath(name)),
+            $"no reference image for '{name}'. Look at the scene, decide it is right, and then run " +
+            "the suite once with QUICKSHELL_GOLDEN=write. A missing reference is not a pass.");
+
+        byte[] reference = Png.Decode(File.ReadAllBytes(ReferencePath(name)), out int width, out int height);
+
+        Assert.Equal((int)GoldenScenes.Width, width);
+        Assert.Equal((int)GoldenScenes.Height, height);
+
+        Comparison difference = Compare(reference, actual, width, height);
+
+        if (difference.Worst <= LevelTolerance && difference.Drifted <= DriftTolerance * width * height)
+        {
+            return;
+        }
+
+        string written = WriteFailureImages(name, warp, reference, actual, width, height);
+
+        Assert.Fail(
+            $"'{name}' on {(warp ? "WARP" : "this machine's adapter")} differs from its reference: " +
+            $"{difference.Drifted} of {width * height} pixels drifted, the worst by " +
+            $"{difference.Worst} levels at ({difference.WorstX},{difference.WorstY}). " +
+            $"The reference, what was drawn and the difference are in {written}.");
+    }
+
+    /// <summary>
+    /// The suite is worth nothing if a reference can be regenerated by accident, so the door is
+    /// checked as well as used: a run that was not told to write must not write.
+    /// </summary>
+    [Fact]
+    public void NothingWritesAReferenceUnlessItWasAskedTo()
+    {
+        Assert.SkipWhen(Environment.GetEnvironmentVariable("QUICKSHELL_GOLDEN") == "write",
+            "this run was deliberately told to write references, which is the case this guards against");
+
+        string[] before = Directory.Exists(GoldenDirectory())
+            ? Directory.GetFiles(GoldenDirectory(), "*.png").Select(File.GetLastWriteTimeUtc)
+                       .Select(time => time.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                       .ToArray()
+            : [];
+
+        GoldenScenes.Scene scene = GoldenScenes.All[0];
+        Render(scene, warp: false);
+
+        string[] after = Directory.Exists(GoldenDirectory())
+            ? Directory.GetFiles(GoldenDirectory(), "*.png").Select(File.GetLastWriteTimeUtc)
+                       .Select(time => time.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                       .ToArray()
+            : [];
+
+        Assert.Equal(before, after);
+    }
+
+    [Fact]
+    public void EverySceneHasAReferenceCommitted()
+    {
+        string[] missing = GoldenScenes.All.Select(scene => scene.Name)
+                                           .Where(name => !File.Exists(ReferencePath(name)))
+                                           .ToArray();
+
+        Assert.True(missing.Length == 0,
+            $"these scenes have no committed reference: {string.Join(", ", missing)}");
+    }
+
+    /// <summary>A reference that decodes to something other than what was encoded is not a reference.</summary>
+    [Fact]
+    public void ThePngCodecRoundTripsWhatItWasGiven()
+    {
+        byte[] pixels = new byte[64 * 48 * 4];
+
+        for (int index = 0; index < 64 * 48; index++)
+        {
+            pixels[index * 4] = (byte)(index % 251);
+            pixels[(index * 4) + 1] = (byte)(index % 199);
+            pixels[(index * 4) + 2] = (byte)(index % 173);
+            pixels[(index * 4) + 3] = 255;
+        }
+
+        byte[] decoded = Png.Decode(Png.Encode(pixels, 64, 48), out int width, out int height);
+
+        Assert.Equal(64, width);
+        Assert.Equal(48, height);
+        Assert.Equal(pixels, decoded);
+    }
+
+    private readonly record struct Comparison(int Drifted, int Worst, int WorstX, int WorstY);
+
+    private static Comparison Compare(byte[] reference, byte[] actual, int width, int height)
+    {
+        int drifted = 0;
+        int worst = 0;
+        int worstX = 0;
+        int worstY = 0;
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                int offset = ((y * width) + x) * 4;
+                int channel = Math.Max(
+                    Math.Abs(reference[offset] - actual[offset]),
+                    Math.Max(Math.Abs(reference[offset + 1] - actual[offset + 1]),
+                             Math.Abs(reference[offset + 2] - actual[offset + 2])));
+
+                if (channel == 0)
+                {
+                    continue;
+                }
+
+                drifted++;
+
+                if (channel > worst)
+                {
+                    worst = channel;
+                    worstX = x;
+                    worstY = y;
+                }
+            }
+        }
+
+        return new Comparison(drifted, worst, worstX, worstY);
+    }
+
+    /// <summary>
+    /// Writes the reference, what was drawn and a difference image beside each other. The difference
+    /// is amplified: a four-level drift is invisible at its own scale and obvious at eight times it.
+    /// </summary>
+    private static string WriteFailureImages(string name, bool warp, byte[] reference, byte[] actual,
+                                             int width, int height)
+    {
+        string directory = Path.Combine(RepositoryRoot(), "TestResults", "golden");
+        Directory.CreateDirectory(directory);
+
+        string adapter = warp ? "warp" : "adapter";
+        byte[] difference = new byte[width * height * 4];
+
+        for (int index = 0; index < width * height; index++)
+        {
+            for (int channel = 0; channel < 3; channel++)
+            {
+                int offset = (index * 4) + channel;
+                difference[offset] = (byte)Math.Min(255, Math.Abs(reference[offset] - actual[offset]) * 8);
+            }
+
+            difference[(index * 4) + 3] = 255;
+        }
+
+        File.WriteAllBytes(Path.Combine(directory, $"{name}.{adapter}.reference.png"),
+                           Png.Encode(reference, width, height));
+        File.WriteAllBytes(Path.Combine(directory, $"{name}.{adapter}.actual.png"),
+                           Png.Encode(actual, width, height));
+        File.WriteAllBytes(Path.Combine(directory, $"{name}.{adapter}.difference.png"),
+                           Png.Encode(difference, width, height));
+
+        return directory;
+    }
+
+    private static byte[] Render(GoldenScenes.Scene scene, bool warp)
+    {
+        using TestWindow window = new((int)GoldenScenes.Width, (int)GoldenScenes.Height);
+        using GraphicsDevice device = warp
+            ? GraphicsDevice.Open(new WarpOnlyProbe())
+            : GraphicsDevice.Open(outputWindow: window.Handle);
+        using PresentSurface surface = PresentSurface.For(device, window.Handle,
+                                                          GoldenScenes.Width, GoldenScenes.Height);
+        using GlyphRasteriser rasteriser = new();
+        using GlyphAtlas atlas = GlyphAtlas.For(device, scene.Font, rasteriser: rasteriser);
+
+        CellMetrics metrics = rasteriser.Measure(scene.Font);
+        using CellRenderer renderer = CellRenderer.For(device, atlas, metrics);
+
+        // The blink phase is a clock, and a clock in a reference image is a test that fails at
+        // random. Pinned to zero, which is the phase a cursor is showing in.
+        renderer.Elapsed = TimeSpan.Zero;
+
+        (int columns, int rows) = metrics.GridFor(GoldenScenes.Width, GoldenScenes.Height);
+        CellInstance[] cells = new CellInstance[columns * rows];
+
+        scene.Paint(new GoldenScenes.Painter(cells, atlas, metrics, columns, rows));
+        renderer.Draw(surface, cells, columns);
+
+        return ReadBack(device, surface);
+    }
+
+    private static byte[] ReadBack(GraphicsDevice device, PresentSurface surface)
+    {
+        using ID3D11Resource resource = surface.View.Resource;
+        using ID3D11Texture2D back = resource.QueryInterface<ID3D11Texture2D>();
+        using ID3D11Texture2D staging = device.Device.CreateTexture2D(new Texture2DDescription
+        {
+            Width = GoldenScenes.Width,
+            Height = GoldenScenes.Height,
+            MipLevels = 1,
+            ArraySize = 1,
+            Format = Format.B8G8R8A8_UNorm,
+            SampleDescription = new SampleDescription(1, 0),
+            Usage = ResourceUsage.Staging,
+            BindFlags = BindFlags.None,
+            CPUAccessFlags = CpuAccessFlags.Read,
+        });
+
+        device.Context.CopyResource(staging, back);
+
+        MappedSubresource mapped = device.Context.Map(staging, 0, MapMode.Read);
+        byte[] frame = new byte[GoldenScenes.Width * GoldenScenes.Height * 4];
+
+        try
+        {
+            for (int row = 0; row < GoldenScenes.Height; row++)
+            {
+                Marshal.Copy(mapped.DataPointer + (row * (int)mapped.RowPitch), frame,
+                             row * (int)GoldenScenes.Width * 4, (int)GoldenScenes.Width * 4);
+            }
+        }
+        finally
+        {
+            device.Context.Unmap(staging, 0);
+        }
+
+        return frame;
+    }
+
+    /// <summary>Makes the adapter chain end at WARP, which is how the second environment is reached.</summary>
+    private sealed class WarpOnlyProbe : IAdapterProbe
+    {
+        public AdapterInfo? ForOutputWindow(nint outputWindow) => null;
+
+        public AdapterInfo? DefaultHardware() => null;
+
+        public AdapterInfo Warp() => new("WARP software rasteriser", 0);
+    }
+
+    private static string ReferencePath(string name) => Path.Combine(GoldenDirectory(), name + ".png");
+
+    /// <summary>
+    /// Where the committed references live. Deliberately not <c>golden</c>: this tree already has a
+    /// <c>Golden</c> source folder, Windows does not tell the two apart, and the first write put
+    /// seven PNGs in among the C# files.
+    /// </summary>
+    private static string GoldenDirectory() =>
+        Path.Combine(RepositoryRoot(), "tests", "Quickshell.Render.Tests", "references");
+
+    private static string RepositoryRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.NotNull(directory);
+        return directory!.FullName;
+    }
+}

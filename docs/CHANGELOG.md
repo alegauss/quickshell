@@ -15,6 +15,7 @@
 - ✅ **QS10** **A CJK character, a combining mark and a colour emoji each draw wrongly or not at all** — A fallback face, a colour page and a two-cell span, so CJK and emoji draw where the model says they are (design §QS10 superseded: its fallback API needs a callback Vortice cannot marshal).
 - ✅ **QS87** **The frame-queue measurement reads two on runs where nothing regressed, so its result is not evidence either way** — The warm-up waits for DXGI's statistics instead of counting frames, and the assertion is the bound the instrument can see (design §QS87 superseded: the counter it blamed reads identical).
 - ✅ **QS11** **Underline, undercurl, strikethrough, the cursor and a selection have no representation on screen** — Five underline styles, overline, strike, three cursor shapes and selection, all derived in the pixel shader from the same twenty bytes (design §QS11 recorded in `src/Quickshell.Render/Grid.hlsl`).
+- ✅ **QS12** **Nothing catches a renderer that draws correctly on one vendor's driver and wrongly on another's** — Seven scenes rendered offscreen and compared against committed references, on this machine's adapter and on WARP.
 
 ## Block D — The tree a user organises work in
 
