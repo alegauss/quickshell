@@ -1865,6 +1865,32 @@ statistical: zero is zero, and no noise threshold applies to it.
 Falsified when the gate is disabled to land a change and the disabling is not itself a
 filed line.
 
+### §QS86 The figure the flags were bought for
+
+QS7 bought the present path its three flags and proved one thing: with the waitable
+object the frame queue is one deep. What it could not prove is what that is worth, and
+the failed attempt is the useful part of this line.
+
+Two controls were run and neither discriminated: latency one against three both averaged
+0.98 frames queued, and waiting on the handle against not waiting also both averaged
+0.98. The reason is not the flags but the workload - one clear per frame with a vsync
+present, where `Present` blocks on the flip and the application can never get ahead of
+the display. A queue cannot be deep if nothing is ever queued.
+
+So the figure the budget opens with - input to photon - has never been measured on this
+client, and the flags that exist to bound it are an argument rather than a number.
+
+What closes this is a frame with real work in it: a grid drawn from an atlas, which is
+what QS9 lands. Then the two arms differ, because an application that spends
+milliseconds per frame is one the runtime can queue ahead of, and the wait is what stops
+it.
+
+The display bounds the absolute answer at 16.7 ms, as PERFORMANCE.md records, so what
+this line settles is the shape - one frame against several - not the eight milliseconds
+a 120 Hz panel would allow.
+
+Falsified when this repository quotes an input-to-photon figure with no run behind it.
+
 ## Block I — An error a user can act on
 
 ### §QS71 A log worth sending, which means a log without secrets
