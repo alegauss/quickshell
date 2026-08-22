@@ -44,6 +44,7 @@
 - 📋 **QS91** (deps: —) **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — Text that arrives decomposed is ordinary on macOS and in Git output, and a client that silently drops the accent is one that shows the wrong filename. → §QS91
 - 📋 **QS92** (deps: —) **The golden suite has run on two rasterisers and none of the three vendor drivers its matrix names** — A driver bug is by definition the thing the machine that wrote the code cannot see, so a suite that has only ever run here is one nobody has tested yet. → §QS92
 - 📋 **QS93** (deps: QS25) **Every golden scene is text somebody typed into the test, so none of them is a screen a real program drew** — A scene an author invented exercises what that author thought of, which is never the combination that turns out to break on somebody's machine. → §QS93
+- 📋 **QS94** (deps: QS13 ✅) **Segmenting a printed run allocates a string per character, which is the whole of the render arm's cost** — The parser was built to allocate nothing and the layer directly above it allocates more than the bytes it was given, so the zero it achieved buys nothing. → §QS94
 
 ## Block D — The tree a user organises work in
 
