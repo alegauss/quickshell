@@ -2,6 +2,8 @@
 
 ## Block A — A session that stays up, or says why it did not
 
+- ✅ **QS5** **Nothing measures whether the chosen protocol library reaches a modern sshd, so the network layer is unpriced risk** — SSH.NET stays: it answers certificates, jump hosts and two factors against OpenSSH 9.6, and the two it does not answer are additive work on a public seam.
+
 ## Block B — Keys, agents, and the host you think you reached
 
 ## Block C — Emulation that does not lie about the remote

@@ -1,0 +1,19 @@
+# Two servers, because a jump host is not a jump host with one: the probe reaches `target` only
+# through a channel opened on `jump`, and `target` publishes a port only so the direct answers
+# have something to be compared against.
+services:
+  target:
+    build: .
+    container_name: qs-sshd-target
+    ports:
+      - "127.0.0.1:2222:22"
+    volumes:
+      - ./keys:/keys:ro
+
+  jump:
+    build: .
+    container_name: qs-sshd-jump
+    ports:
+      - "127.0.0.1:2223:22"
+    volumes:
+      - ./keys:/keys:ro

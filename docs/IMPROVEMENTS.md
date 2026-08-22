@@ -2,31 +2,6 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-### §QS5 What the library does not do, found now rather than in Block B
-
-SSH.NET is mature and covers the shape of the problem: SFTP, local, remote and dynamic
-forwarding, ed25519 and ECDSA keys, and recent releases moved the ciphers onto the
-platform's hardware-backed implementations. What it may not cover is precisely what a
-MobaXterm user counts as table stakes, and every one of those gaps is cheap to find now
-and expensive to find in Block B.
-
-The probe runs against a live OpenSSH 9.x server and answers, with evidence, one
-question each. Can it consume a key held by the Windows OpenSSH agent, or by Pageant?
-Does it accept an OpenSSH certificate? Can a connection be carried inside another
-connection's channel, which is all a jump host is? Does it survive keyboard-interactive
-with a second factor? Does it read any of `~/.ssh/config`? And what does its shell
-stream actually sustain under `cat` of a large file, in megabytes per second and in
-allocations per megabyte?
-
-Each answer is a yes with a working call, a no with the shape of the work to close it,
-or a no with the reason it cannot be closed here.
-
-The output is a decision record carrying that matrix and a verdict: proceed, proceed
-with named work, or evaluate a second candidate. A library kept because it was the one
-chosen first is the failure this line exists to prevent.
-
-Falsified if the record answers any of the six from documentation instead of from a run.
-
 ### §QS36 The seam, and exactly what may not cross it
 
 `ISshTransport` owns connecting, authenticating, opening channels and closing. Its

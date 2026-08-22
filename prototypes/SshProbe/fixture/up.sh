@@ -1,0 +1,31 @@
+#!/bin/sh
+# Brings the fixture up from nothing: keys, a CA, a signed certificate, two servers.
+set -e
+
+cd "$(dirname "$0")"
+mkdir -p keys
+
+if [ ! -f keys/probe_ed25519 ]; then
+    ssh-keygen -t ed25519 -N "" -C "quickshell-probe" -f keys/probe_ed25519
+fi
+
+if [ ! -f keys/ca ]; then
+    ssh-keygen -t ed25519 -N "" -C "quickshell-probe-ca" -f keys/ca
+fi
+
+# The certificate names `certonly` as its principal, which is the account with no authorized_keys.
+if [ ! -f keys/probe_ed25519-cert.pub ]; then
+    ssh-keygen -s keys/ca -I quickshell-probe -n certonly,probe -V -5m:+52w keys/probe_ed25519.pub
+fi
+
+docker compose up -d --build
+
+echo "waiting for sshd"
+for _ in $(seq 1 30); do
+    if ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+           -o BatchMode=yes -i keys/probe_ed25519 -p 2222 probe@127.0.0.1 true 2>/dev/null; then
+        echo "target is up"
+        break
+    fi
+    sleep 1
+done

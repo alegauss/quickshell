@@ -17,5 +17,10 @@ artifacts/
 *.nupkg
 packages/
 
+# The SSH probe's fixture makes a private key and a signing CA on every run. They authorise two
+# throwaway containers on loopback and nothing else, and a committed private key is a habit rather
+# than an incident.
+prototypes/SshProbe/fixture/keys/
+
 # roadkeep engine pin, when one is vendored
 .roadkeep/

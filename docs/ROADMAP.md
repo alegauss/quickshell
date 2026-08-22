@@ -2,12 +2,9 @@
 
 ## Priority
 
-- QS5
-
 ## Block A — A session that stays up, or says why it did not
 
-- 📋 **QS5** (deps: QS1 ✅) **Nothing measures whether the chosen protocol library reaches a modern sshd, so the network layer is unpriced risk** — That one library constrains authentication, jump hosts and throughput at once, so a gap found after the client is built means rewriting all three. → §QS5
-- 📋 **QS36** (deps: QS5, QS25) **Protocol library types would reach the terminal and the UI, so replacing that library means rewriting the client** — The gap analysis may well end in a different library, and a seam decided afterwards is one negotiated against code that already exists. → §QS36
+- 📋 **QS36** (deps: QS5 ✅, QS25) **Protocol library types would reach the terminal and the UI, so replacing that library means rewriting the client** — The gap analysis may well end in a different library, and a seam decided afterwards is one negotiated against code that already exists. → §QS36
 - 📋 **QS37** (deps: QS36, QS26) **No remote host's output has ever reached the emulator** — This is where the terminal stops being a local demonstration and becomes the product, and everything above it was already written to accept it. → §QS37
 - 📋 **QS38** (deps: QS37) **A link that drops for ten seconds costs the whole session and its scrollback** — Mobile and VPN links drop routinely, so a client treating every drop as final makes the user pay for the network's ordinary behaviour. → §QS38
 - 📋 **QS39** (deps: QS37) **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — The error message is the documentation a user reads at the moment something fails, which is far more often than they read anything else. → §QS39
@@ -241,15 +238,6 @@
 - **Every figure in the comparison document reproduces from a documented run** Settled
   by re-running each measurement it cites, from its own stated method, on its own stated
   machine.
-
-## Done when — QS5
-
-- **All six questions are answered from a run against a live sshd** Settled by reading
-  the matrix: an answer citing documentation instead of a call is not an answer this
-  line accepts.
-- **The verdict names a go-ahead, named work, or a second candidate** Settled by the
-  record carrying one of those three, because a matrix with no conclusion leaves the
-  risk exactly as unpriced as before.
 
 ## Done when — QS23
 

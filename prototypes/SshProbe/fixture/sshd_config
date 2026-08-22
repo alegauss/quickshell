@@ -1,0 +1,25 @@
+Port 22
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication yes
+UsePAM yes
+PubkeyAuthentication yes
+AllowAgentForwarding yes
+AllowTcpForwarding yes
+PermitTunnel yes
+LogLevel VERBOSE
+
+# The certificate question needs a CA the server trusts and a user with no authorized_keys,
+# so a connection that succeeds can only have succeeded on the certificate.
+TrustedUserCAKeys /keys/ca.pub
+
+Subsystem sftp /usr/lib/openssh/sftp-server
+
+Match User twofactor
+    AuthenticationMethods publickey,keyboard-interactive
+
+Match User probe
+    AuthenticationMethods publickey
+
+Match User certonly
+    AuthenticationMethods publickey

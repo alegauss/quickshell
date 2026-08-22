@@ -1,0 +1,43 @@
+{
+  "Library": "SSH.NET",
+  "Version": "2026.0.0.1",
+  "RanAt": "2026-08-21T21:56:07.9394834-03:00",
+  "Answers": [
+    {
+      "Question": "Can it consume a key held by the Windows OpenSSH agent, or by Pageant?",
+      "Verdict": "no",
+      "Evidence": "the assembly exports 4 authentication method(s) - KeyboardInteractiveAuthenticationMethod, NoneAuthenticationMethod, PasswordAuthenticationMethod, PrivateKeyAuthenticationMethod - and no exported type whose name mentions an agent. IPrivateKeySource is exported, PrivateKeyFile is open. The Windows OpenSSH agent pipe was absent on this machine, so no positive control against a live agent was run: the ssh-agent service needs elevation to start and this run had none.",
+      "Work": "implement an authentication method that signs through \\\\.\\pipe\\openssh-ssh-agent and through Pageant\u0027s window-message protocol; IPrivateKeySource is exported, so the signing seam is reachable without forking"
+    },
+    {
+      "Question": "Does it accept an OpenSSH certificate?",
+      "Verdict": "yes",
+      "Evidence": "connected as certonly and the server answered id -un = \u0027certonly\u0027. That account has no authorized_keys at all - the server\u0027s only route in for it is TrustedUserCAKeys - so the certificate is what authenticated. The same connection without the certificate is refused with \u0027Permission denied (publickey)\u0027.",
+      "Work": ""
+    },
+    {
+      "Question": "Can a connection be carried inside another connection\u0027s channel?",
+      "Verdict": "yes",
+      "Evidence": "opened a direct-tcpip channel on the jump connection (hostname \u002734602c31da4b\u0027) to target:22, bound it to local port 64782, and completed a second SSH handshake through it to a different host (hostname \u00272ada2aa09927\u0027). The target\u0027s own published port was not used.",
+      "Work": ""
+    },
+    {
+      "Question": "Does it survive keyboard-interactive with a second factor?",
+      "Verdict": "yes",
+      "Evidence": "the server requires AuthenticationMethods publickey,keyboard-interactive for this account. Both methods were offered in one ConnectionInfo, the prompt(s) [Password:] were answered from the handler, and the session reported id -un = \u0027twofactor\u0027.",
+      "Work": ""
+    },
+    {
+      "Question": "Does it read any of ~/.ssh/config?",
+      "Verdict": "no",
+      "Evidence": "the OpenSSH client given the same alias file resolved it and answered id -un = \u0027probe\u0027. SSH.NET handed the bare alias \u0027qs-probe-alias\u0027 answered with SocketException: Este host n\u00E3o \u00E9 conhecido.. The assembly exports no config-file type at all: host, port, user and key are constructor arguments and nothing reads a file.",
+      "Work": "parse ~/.ssh/config in this repository and resolve Host/HostName/Port/User/IdentityFile/ProxyJump into a ConnectionInfo before the library is called"
+    },
+    {
+      "Question": "What does its shell stream sustain under cat of a large file?",
+      "Verdict": "measured",
+      "Evidence": "cat of a 64 MB printable-ASCII file through a ShellStream: 64.0 MB in 0.79 s = 81.4 MB/s, allocating 7.8 MB across the process = 126 KB per MB read.",
+      "Work": ""
+    }
+  ]
+}
