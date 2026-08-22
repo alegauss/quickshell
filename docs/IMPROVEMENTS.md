@@ -1725,6 +1725,32 @@ done as those surfaces are built rather than swept up here at the end.
 
 Falsified when a screen reader cannot read a line of output that is on screen.
 
+### §QS83 Borrowing a design system rather than rediscovering one
+
+Two shipped clients in this family have already answered this, and what they share is a
+pattern rather than a library - which is the only reason it can be borrowed at all.
+
+Colour is declared once as bytes - freewilly's `Palette.cs`, claude-tray's `Brand.cs` -
+because no single type serves every edge: the tray icon is GDI+ and wants a
+`System.Drawing.Color`, the window is WPF and wants a frozen `Brush`, and markup wants
+something `{x:Static}` can reach. Each edge converts. One `Theme.cs` makes the
+application and merges one `Theme.xaml`; `ThemeMode="System"` stays on each window and
+never moves to the application or to code, which freewilly settled with four captures.
+`RowStyle` shapes a row, and each screen is a page in a page window.
+
+quickshell adds a third edge to the colour rule and nothing else: the pane is D3D11 and
+wants floats, so the same bytes feed the brush, the icon and the clear colour, and the
+terminal's own palette and the chrome's accent stop being two decisions.
+
+The boundary is where the pane starts. The grid is D3D11 and a non-goal forbids WPF text
+in it, so the design system covers tabs, settings, the palette, the session tree and
+every dialog, and stops at the pane's edge.
+
+One consequence is already measured. With a child HWND per pane, anything over a pane
+must be a popup or drawn by the pane itself; an adorner will not appear.
+
+Falsified when two windows in this repository declare the same colour.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS3 The corpus, and why it is captured rather than generated
@@ -1915,6 +1941,35 @@ statistical: zero is zero, and no noise threshold applies to it.
 
 Falsified when the gate is disabled to land a change and the disabling is not itself a
 filed line.
+
+### §QS82 The framework the chrome needs, and why it is not a later bump
+
+The skeleton targets net8.0 because that is the floor the roadmap named, and nothing had
+yet been built that argued for more. The chrome argues for more.
+
+WPF's Fluent theme and the `ThemeMode` property arrived in .NET 9. They are what the two
+clients in this family already ship on: claude-tray and freewilly both target
+net10.0-windows and both set `ThemeMode="System"` on every window, with `WPF0001`
+suppressed because the switch is still marked experimental. On net8.0 that property does
+not exist, so a window here renders pre-Fluent WPF - different control metrics and
+different button chrome, which freewilly measured against byte-identical captures rather
+than assumed.
+
+So the choice is not cosmetic and it is not deferrable: it decides whether the shell's
+chrome is borrowed from two shipped clients or written a second time in a theme they do
+not use.
+
+What it costs belongs to this block, which is why the line is filed here rather than
+under the shell. The runtime a user must have moves from .NET 8 to .NET 10, and the
+installer question that follows - framework-dependent against self-contained, and what
+that does to the download - is the same question this block already asks about cold
+start and about what ships in the box.
+
+The host decision is unaffected. That one is about HWNDs, swapchains and a compositor;
+none of it is a function of the framework's version.
+
+Falsified when a window in this repository sets `ThemeMode` and renders Fluent while the
+tree still targets net8.0.
 
 ## Block I — An error a user can act on
 
