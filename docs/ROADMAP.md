@@ -108,6 +108,10 @@
 - 📋 **QS80** (deps: QS55) **A MobaXterm or PuTTY user has to recreate every session by hand before they can start** — The session tree is the whole cost of switching, so a client that cannot read the incumbent's is one most users never get past the first evening with. → §QS80
 - 📋 **QS81** (deps: QS80) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
 
+## Block K — The build and the harness — what a green run is evidence of
+
+- 📋 **QS88** (deps: —) **dotnet test reports zero tests and exits non-zero on a tree whose suite passes when the assembly is run directly** — There is no single command whose green run is evidence, and a repository where the standard one lies is one where the suite stops being consulted. → §QS88
+
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a

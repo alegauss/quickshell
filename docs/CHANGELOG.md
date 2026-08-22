@@ -36,3 +36,5 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
+## Block K — The build and the harness — what a green run is evidence of
+

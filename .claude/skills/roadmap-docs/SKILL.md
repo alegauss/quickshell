@@ -110,6 +110,7 @@ question is *which theme is this*, never *which letter is next*.
 | **H** | Footprint — the reason to leave the incumbent | cold start, memory and idle CPU, the installer and update path, portability, what ships in the box |
 | **I** | Diagnostics — an error a user can act on | logs and their level, the transport trace, redaction of secrets in output, the crash path, reproducing a report without telemetry |
 | **J** | Leaving MobaXterm — the proof is the switch | importing its sessions and keys, the migration path, and the checklist naming what quickshell deliberately does not carry over |
+| **K** | The build and the harness — what a green run is evidence of | the one command that builds and runs everything, the output tree, exit codes that mean what they say, the CI matrix, determinism of the build itself |
 
 **Only `## Block A` is declared in the governed files today.** The table above is the intended map,
 not the current state: `roadkeep block add B --title "…"` writes the heading into every governed file
