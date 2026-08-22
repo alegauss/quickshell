@@ -1,0 +1,33 @@
+version: 2
+
+# The pipeline pins its actions by major tag, and a pinned tag is a decision nobody revisits.
+# This is the watcher for it. Only GitHub Actions is watched: NuGet is a separate ecosystem with a
+# separate risk profile - a package bump can change what the client does - and it is filed when the
+# dependency tree is large enough to be worth the noise.
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+
+    # Weekly rather than daily, and one open pull request at a time: this is maintenance and not
+    # work, and a queue of dependency branches competes with the roadmap for attention.
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 1
+
+    # One group, everything in it. Ungrouped, a week where checkout and setup-dotnet both move
+    # costs two branches, two CI runs and two reviews of the same one-line change. Grouped, that
+    # week is one pull request the whole workflow file is read against once - which is how an
+    # action bump is actually reviewed, since the question is whether CI still passes and never
+    # whether one action in isolation is fine.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+    commit-message:
+      prefix: "chore"
+
+    labels:
+      - "dependencies"

@@ -21,6 +21,7 @@
 - ✅ **QS1** **The repository holds no buildable tree, so no claim about this client's speed or size can be measured** — A fresh clone builds and tests four layered projects with nullable, warnings-as-errors and the allocation analyzers on, and a project reference that inverts the layering fails the build.
 - ✅ **QS2** **Fast and lean are this client's whole premise, and no number anywhere states what either word means** — docs/PERFORMANCE.md fixes six figures, the method that settles each and the machine they are measured on, so a claim about speed or size is checked against a number instead of a word.
 - ✅ **QS82** **The tree targets net8.0, where WPF has no Fluent theme, so the chrome the sibling clients share cannot be built here** — Every project targets net10.0-windows, so WPF's Fluent ThemeMode is reachable here and a guard test fails any retarget that would take it back out.
+- ✅ **QS84** **The pipeline pins its actions by tag and nothing watches them, so a stale or advisory-bearing action is found by chance** — Dependabot watches the actions the pipeline pins and opens one grouped pull request a week, so a stale action arrives as a review rather than as a surprise.
 
 ## Block I — An error a user can act on
 
