@@ -45,7 +45,6 @@
 - 📋 **QS33** (deps: QS17, QS18, QS20, QS21, QS25) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — A test written by whoever wrote the parser tests that person's understanding of the specification, which is the thing most likely to be wrong. → §QS33
 - 📋 **QS34** (deps: QS10 ✅) **A programming font's ligatures do not form, so text set in it looks unlike the same text elsewhere** — Shaping a run across cell boundaries contradicts the grid the renderer is built on, so it is a deliberate later decision and not a font setting. → §QS34
 - 📋 **QS35** (deps: QS8 ✅, QS9 ✅) **Text is rasterised in grayscale, so it looks thinner here than in every other Windows application** — Subpixel coverage is three channels of alpha where the blend and the atlas were both built assuming one. → §QS35
-- 📋 **QS87** (deps: —) **The frame-queue measurement reads two on runs where nothing regressed, so its result is not evidence either way** — A latency check that fails at random on an unchanged tree teaches everyone to re-run it, and the first real regression is then re-run away as the flake. → §QS87
 - 📋 **QS91** (deps: —) **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — Text that arrives decomposed is ordinary on macOS and in Git output, and a client that silently drops the accent is one that shows the wrong filename. → §QS91
 
 ## Block D — The tree a user organises work in

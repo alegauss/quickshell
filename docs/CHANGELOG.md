@@ -13,6 +13,7 @@
 - ✅ **QS8** **No glyph is on the GPU, so drawing a character would cost a rasterisation on the frame that needs it** — Every glyph is rasterised once and sampled thereafter, keyed on the subpixel offset so a character keeps its weight in every column (design §QS8 recorded in `src/Quickshell.Render/GlyphAtlas.cs`).
 - ✅ **QS9** **Nothing turns a grid of cells into a draw call, so text on this client's screen is still hypothetical** — The whole grid is one DrawInstanced of twenty-byte cells, blended in linear light so text weighs the same either way round (design §QS9 recorded in `src/Quickshell.Render/CellRenderer.cs`).
 - ✅ **QS10** **A CJK character, a combining mark and a colour emoji each draw wrongly or not at all** — A fallback face, a colour page and a two-cell span, so CJK and emoji draw where the model says they are (design §QS10 superseded: its fallback API needs a callback Vortice cannot marshal).
+- ✅ **QS87** **The frame-queue measurement reads two on runs where nothing regressed, so its result is not evidence either way** — The warm-up waits for DXGI's statistics instead of counting frames, and the assertion is the bound the instrument can see (design §QS87 superseded: the counter it blamed reads identical).
 
 ## Block D — The tree a user organises work in
 

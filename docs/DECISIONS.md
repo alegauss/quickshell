@@ -13,6 +13,7 @@
 - ✅ **QS8** **No glyph is on the GPU, so drawing a character would cost a rasterisation on the frame that needs it** — Glyph coverage is grayscale in a one-channel atlas, and ClearType subpixel coverage is a separate pipeline rather than a flag on this one.
 - ✅ **QS9** **Nothing turns a grid of cells into a draw call, so text on this client's screen is still hypothetical** — Coverage is blended in linear light and never in sRGB: half a pixel covered is half the light, not half the stored byte.
 - ✅ **QS10** **A CJK character, a combining mark and a colour emoji each draw wrongly or not at all** — A colour glyph is painted and not tinted, so a cell's foreground means nothing for one and the shader ignores it.
+- ✅ **QS87** **The frame-queue measurement reads two on runs where nothing regressed, so its result is not evidence either way** — A frame-queue reading is only meaningful once DXGI's statistics exist, and its absolute value is a startup phase rather than a depth.
 
 ## Block D — The tree a user organises work in
 
