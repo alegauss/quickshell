@@ -1,3 +1,6 @@
+// System.IO is not in a WPF project's implicit usings, and this file is the reason the test
+// project became one.
+using System.IO;
 using System.Xml.Linq;
 using Xunit;
 

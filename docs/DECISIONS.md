@@ -18,6 +18,8 @@
 
 ## Block H — The reason to leave the incumbent
 
+- ✅ **QS82** **The tree targets net8.0, where WPF has no Fluent theme, so the chrome the sibling clients share cannot be built here** — The tree targets net10.0-windows: WPF's Fluent theme and ThemeMode arrived in .NET 9, and that is what lets the chrome be borrowed from the sibling clients instead of rewritten.
+
 ## Block I — An error a user can act on
 
 ## Block J — Leaving MobaXterm, proven by the switch

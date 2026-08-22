@@ -1,16 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Quickshell.Architecture.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <OutputType>Exe</OutputType>
+
+    <!-- WPF is referenced by the tests and by nothing else yet: the Fluent guard below asserts
+         against the real PresentationFramework this tree targets, which is the only way to
+         answer "is Fluent reachable here" with a run instead of with a version number. -->
+    <UseWPF>true</UseWPF>
+    <!-- WPF0001: ThemeMode is still marked [Experimental] in the SDK and is the supported way in,
+         the same suppression claude-tray and freewilly carry. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="xunit" Version="2.9.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- xunit v3 carries its own Microsoft.Testing.Platform runner, so there is no VSTest adapter
+         package here and no Microsoft.NET.Test.Sdk either. -->
+    <PackageReference Include="xunit.v3" Version="4.0.0" />
   </ItemGroup>
 
 </Project>

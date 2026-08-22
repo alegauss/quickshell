@@ -90,7 +90,7 @@
 - 📋 **QS52** (deps: QS47) **Every action needs a chord the user memorised or a menu they have to go looking for** — A palette is how a lean interface keeps its actions reachable without growing toolbars, which is the same trade this project makes everywhere else. → §QS52
 - 📋 **QS53** (deps: QS48) **The same command on eight hosts has to be typed eight times** — Fleet work is a large part of why this audience uses a tabbed client at all, and mistyping the eighth is how that pattern fails today. → §QS53
 - 📋 **QS54** (deps: QS9, QS15) **A screen reader finds nothing on the terminal surface, so the client cannot be used without sight** — A GPU surface is opaque to assistive technology by construction, so the text is published deliberately or it does not exist to anything but a camera. → §QS54
-- 📋 **QS83** (deps: QS82, QS46) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83
+- 📋 **QS83** (deps: QS82 ✅, QS46) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83
 
 ## Block H — The reason to leave the incumbent
 
@@ -101,7 +101,6 @@
 - 📋 **QS77** (deps: QS75) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
 - 📋 **QS78** (deps: QS37, QS66) **Nothing has run for longer than a working session, so a slow leak would reach users first** — Leaks in a long-lived client appear after days rather than minutes, which is exactly the interval no test covers and every user reaches. → §QS78
 - 📋 **QS79** (deps: QS3, QS75) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
-- 📋 **QS82** (deps: —) **The tree targets net8.0, where WPF has no Fluent theme, so the chrome the sibling clients share cannot be built here** — A framework choice is cheapest before there is code on it, and this one decides whether the shell's chrome is written twice or borrowed. → §QS82
 
 ## Block I — An error a user can act on
 

@@ -3,7 +3,7 @@
   <!-- The buffer and the parser. This project references nothing graphical and nothing
        from the network, which is why it carries no ProjectReference at all. -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Quickshell.Terminal</RootNamespace>
   </PropertyGroup>
 
