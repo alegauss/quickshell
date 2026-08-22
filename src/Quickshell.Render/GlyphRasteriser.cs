@@ -172,10 +172,21 @@ public sealed class GlyphRasteriser : IDisposable
         GlyphMetrics[] reference = new GlyphMetrics[1];
         face.GetDesignGlyphMetrics(_glyph, reference, false);
 
+        int baseline = (int)MathF.Round(metrics.Ascent * scale);
+
         return new CellMetrics(
             Math.Max(1, (int)MathF.Ceiling(reference[0].AdvanceWidth * scale)),
             Math.Max(1, (int)MathF.Ceiling((metrics.Ascent + metrics.Descent + metrics.LineGap) * scale)),
-            (int)MathF.Round(metrics.Ascent * scale));
+            baseline)
+        {
+            // DirectWrite states both of these relative to the baseline and positive upwards, so a
+            // negative underline position is one below the baseline - which is where every
+            // underline goes. The cell's own coordinates run downwards from its top, hence the sign.
+            UnderlineY = baseline - (int)MathF.Round(metrics.UnderlinePosition * scale),
+            UnderlineThickness = Math.Max(1, (int)MathF.Round(metrics.UnderlineThickness * scale)),
+            StrikeY = baseline - (int)MathF.Round(metrics.StrikethroughPosition * scale),
+            StrikeThickness = Math.Max(1, (int)MathF.Round(metrics.StrikethroughThickness * scale)),
+        };
     }
 
     /// <summary>

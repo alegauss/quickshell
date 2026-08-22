@@ -266,34 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS11 Decorations are shader arithmetic, not geometry
-
-Every decoration is derived in the pixel shader from flags already in the instance, so
-none of them adds a draw, a vertex or a byte of upload.
-
-A straight underline is a band test against the cell's vertical coordinate, placed at
-the font's own underline position and thickness rather than at a guessed fraction of the
-cell. DirectWrite reports both, and using them is what stops the line cutting through
-descenders.
-
-An undercurl is that band with a sine offset, which is why it is procedural: as geometry
-it would be a per-cell mesh, and as a glyph it would not join across cells. Double
-underline and overline are the same test at two offsets; strikethrough uses the font's
-own metrics.
-
-The cursor is a shape, a state and a colour rule. Block, bar and underline shapes; a
-blink phase driven by a clock the renderer owns, which makes a blinking cursor the one
-thing that legitimately wakes an idle window — so a setting that turns blinking off must
-genuinely stop that wake-up. Under a block cursor the glyph inverts against the cursor
-colour instead of being overdrawn, which is the only way it stays legible against an
-arbitrary theme.
-
-Selection is a per-cell flag, so it composes with all of the above rather than being an
-overlay quad that fights with them for the same pixels.
-
-Falsified when an undercurl running across adjacent cells shows a discontinuity at the
-boundary.
-
 ### §QS12 The picture is the test, and one machine is not the matrix
 
 Rendering is judged by looking, so the test looks. A fixed set of scenes is rendered

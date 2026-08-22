@@ -30,10 +30,14 @@ public readonly record struct CellInstance(uint Foreground, uint Background,
     public const int Stride = 20;
 
     /// <summary>
-    /// The bit of the background's top byte that says the glyph is on a colour page. Three bits are
-    /// left for the page index, which is more than the shader can reach anyway.
+    /// The bit of the background's top byte that says the glyph is on a colour page.
+    ///
+    /// <para>That byte is full: two bits of page index, this one, three of underline style and two
+    /// of cursor shape. The foreground's byte is full too — six flags and two of span. Every
+    /// decoration this renderer draws is in those sixteen bits, which is what keeps a decorated
+    /// cell the same twenty bytes as a plain one.</para>
     /// </summary>
-    public const uint ColourPage = 0x80;
+    public const uint ColourPage = 0x04;
 
     /// <summary>
     /// Packs a cell.
@@ -47,16 +51,27 @@ public readonly record struct CellInstance(uint Foreground, uint Background,
     /// <b>Zero</b> is the trailing cell of a wide pair: it draws nothing at all, because the cell
     /// before it has already painted that ground and a second quad over the top would erase the
     /// right half of the character.</para>
+    ///
+    /// <para><paramref name="underline"/> and <paramref name="cursor"/> are the two attributes that
+    /// are states rather than switches. Neither costs a draw: both are read in the pixel shader and
+    /// turned into arithmetic on the cell's own coordinates.</para>
     /// </summary>
     public static CellInstance For(GlyphPlacement glyph, Rgb foreground, Rgb background,
-                                   CellFlags flags = CellFlags.None, int span = 1)
+                                   CellFlags flags = CellFlags.None, int span = 1,
+                                   UnderlineStyle underline = UnderlineStyle.None,
+                                   CursorShape cursor = CursorShape.None)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(span);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(span, 2);
 
+        uint attributes = (uint)glyph.Page
+            | (glyph.IsColour ? ColourPage : 0u)
+            | ((uint)underline << 3)
+            | ((uint)cursor << 6);
+
         return new CellInstance(
             foreground.Packed | ((uint)flags << 24) | ((uint)span << 30),
-            background.Packed | ((uint)glyph.Page << 24) | (glyph.IsColour ? ColourPage << 24 : 0u),
+            background.Packed | (attributes << 24),
             Pair(glyph.X, glyph.Y),
             Pair(glyph.Width, glyph.Height),
             Pair(glyph.Left, glyph.Top));

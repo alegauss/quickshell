@@ -20,8 +20,7 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS11** (deps: QS9 ✅) **Underline, undercurl, strikethrough, the cursor and a selection have no representation on screen** — Each is derived in the pixel shader from flags the instance already carries, so the grid stays one draw and the decorations cost no extra bandwidth. → §QS11
-- 📋 **QS12** (deps: QS9 ✅, QS10 ✅, QS11) **Nothing catches a renderer that draws correctly on one vendor's driver and wrongly on another's** — Shader precision, sampling and blending differ between vendors in ways that never once surface on the machine the code was written on. → §QS12
+- 📋 **QS12** (deps: QS9 ✅, QS10 ✅, QS11 ✅) **Nothing catches a renderer that draws correctly on one vendor's driver and wrongly on another's** — Shader precision, sampling and blending differ between vendors in ways that never once surface on the machine the code was written on. → §QS12
 - 📋 **QS13** (deps: QS1 ✅) **A multi-byte character split across two network reads decodes as two broken ones** — Chunk boundaries are chosen by the network and never by the text, so the decoder has to carry a partial sequence across a read that ended mid-character. → §QS13
 - 📋 **QS14** (deps: QS13) **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — This tokeniser sits under every terminal behaviour there will ever be, so it is a table rather than a branch tree nobody can prove complete. → §QS14
 - 📋 **QS15** (deps: QS14) **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — Scrolling is the structural operation a terminal performs most, so the layout is chosen to make scrolling free rather than to make indexing pretty. → §QS15

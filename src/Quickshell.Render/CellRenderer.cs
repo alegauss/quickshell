@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Quickshell.Terminal;
 using Vortice.D3DCompiler;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
@@ -46,7 +47,10 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
     private ID3D11InputLayout? _layout;
     private ID3D11Buffer? _frame;
     private ID3D11RasterizerState? _rasteriser;
+    private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+
     private ID3D11Device? _device;
+    private TimeSpan? _elapsed;
     private int _capacity;
     private int _next;
 
@@ -57,7 +61,11 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
         Metrics = metrics;
     }
 
-    /// <summary>What the shader is told once per frame. Thirty-two bytes, so two constant registers.</summary>
+    /// <summary>
+    /// What the shader is told once per frame. Eighty bytes, laid out so that no three-float vector
+    /// straddles a sixteen-byte boundary — HLSL would silently move one that did, and the picture
+    /// would be wrong in a way that looks like a shader bug rather than a packing one.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     private struct FrameConstants
     {
@@ -67,8 +75,20 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
         public float ViewportHeight;
         public uint Columns;
         public float Baseline;
-        public float AtlasPageSize;
+        public float UnderlineY;
+        public float UnderlineThickness;
+        public float StrikeY;
+        public float StrikeThickness;
+        public float CursorShowing;
         public float Reserved;
+        public float CursorRed;
+        public float CursorGreen;
+        public float CursorBlue;
+        public float Reserved2;
+        public float SelectionRed;
+        public float SelectionGreen;
+        public float SelectionBlue;
+        public float Reserved3;
     }
 
     /// <summary>Opens the renderer and registers it, so a device loss rebuilds its shaders with everything else.</summary>
@@ -95,6 +115,40 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
 
     /// <summary>The grid geometry every instance is placed against.</summary>
     public CellMetrics Metrics { get; private set; }
+
+    /// <summary>
+    /// Whether the cursor is showing right now, and when that next changes.
+    ///
+    /// <para>Turning <see cref="CursorBlink.Enabled"/> off makes <see cref="NextCursorWake"/> answer
+    /// null, which is the difference between a cursor that stops flickering and an idle window that
+    /// genuinely stops drawing.</para>
+    /// </summary>
+    public CursorBlink Blink { get; } = new();
+
+    /// <summary>The cursor's colour, which a block cursor inverts the glyph against.</summary>
+    public Rgb CursorColour { get; set; } = new(220, 220, 220);
+
+    /// <summary>The background a selected cell takes.</summary>
+    public Rgb SelectionColour { get; set; } = new(52, 78, 120);
+
+    /// <summary>
+    /// How long this renderer has been running, which is what the blink phase is measured from.
+    /// Settable so a test can put the cursor in either phase without waiting for a real clock.
+    /// </summary>
+    public TimeSpan Elapsed
+    {
+        get => _elapsed ?? _clock.Elapsed;
+        set => _elapsed = value;
+    }
+
+    /// <summary>Whether the cursor is drawn on the next frame.</summary>
+    public bool CursorShowing => Blink.IsShowingAt(Elapsed);
+
+    /// <summary>
+    /// How long until the cursor's phase changes, or null when nothing is going to change on its
+    /// own. An idle loop sleeps on this, and a null is a window that issues no draw calls at all.
+    /// </summary>
+    public TimeSpan? NextCursorWake() => Blink.NextChangeAfter(Elapsed);
 
     /// <summary>Draw calls issued. One per frame drawn, which is the whole claim this line makes.</summary>
     public long Draws { get; private set; }
@@ -259,7 +313,17 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
             ViewportHeight = surface.Height,
             Columns = (uint)columns,
             Baseline = Metrics.Baseline,
-            AtlasPageSize = GlyphAtlas.PageSize,
+            UnderlineY = Metrics.UnderlineY,
+            UnderlineThickness = Metrics.UnderlineThickness,
+            StrikeY = Metrics.StrikeY,
+            StrikeThickness = Metrics.StrikeThickness,
+            CursorShowing = CursorShowing ? 1f : 0f,
+            CursorRed = CursorColour.Red / 255f,
+            CursorGreen = CursorColour.Green / 255f,
+            CursorBlue = CursorColour.Blue / 255f,
+            SelectionRed = SelectionColour.Red / 255f,
+            SelectionGreen = SelectionColour.Green / 255f,
+            SelectionBlue = SelectionColour.Blue / 255f,
         };
 
         MappedSubresource mapped = context.Map(_frame!, MapMode.WriteDiscard);

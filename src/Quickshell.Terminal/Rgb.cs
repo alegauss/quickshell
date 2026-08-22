@@ -23,7 +23,8 @@ public readonly record struct Rgb(byte Red, byte Green, byte Blue)
 }
 
 /// <summary>
-/// What a cell is, beyond its character and its two colours.
+/// What a cell is, beyond its character, its two colours and the two things that have their own
+/// enumerations because they are more than on or off.
 ///
 /// <para>Bold and slant are here because they are what the model was told, not what the renderer
 /// does: both are resolved when the glyph is cached, by picking a different face. They ride along
@@ -44,12 +45,58 @@ public enum CellFlags : byte
     /// <summary>Foreground and background are swapped when the cell is drawn.</summary>
     Inverse = 4,
 
-    /// <summary>The cell carries an underline.</summary>
-    Underline = 8,
+    /// <summary>A rule above the text, at the same thickness the underline uses.</summary>
+    Overline = 8,
 
-    /// <summary>The cell carries a strikethrough.</summary>
+    /// <summary>A rule through the text, at the font's own strikethrough position.</summary>
     Strike = 16,
 
-    /// <summary>The cursor is on this cell.</summary>
-    Cursor = 32,
+    /// <summary>The cell is inside the selection.</summary>
+    Selected = 32,
+}
+
+/// <summary>
+/// How a cell's underline is drawn. A style rather than a flag, because SGR 4 has had five of them
+/// since ECMA-48 and compilers have been colouring errors with the curly one for a decade.
+/// </summary>
+public enum UnderlineStyle : byte
+{
+    /// <summary>No underline.</summary>
+    None = 0,
+
+    /// <summary>One rule at the font's own underline position.</summary>
+    Single = 1,
+
+    /// <summary>Two rules, the second below the first.</summary>
+    Double = 2,
+
+    /// <summary>A sine wave. What a compiler underlines a mistake with.</summary>
+    Curly = 3,
+
+    /// <summary>A dotted rule.</summary>
+    Dotted = 4,
+
+    /// <summary>A dashed rule.</summary>
+    Dashed = 5,
+}
+
+/// <summary>
+/// What the cursor looks like on the cell it is on.
+///
+/// <para>The shape is the model's, because a host can ask for it with DECSCUSR and a user can set
+/// it; whether it is <em>visible</em> at this instant is the renderer's, because that is a clock.</para>
+/// </summary>
+public enum CursorShape : byte
+{
+    /// <summary>The cursor is not on this cell.</summary>
+    None = 0,
+
+    /// <summary>A filled cell, with the glyph inverted against the cursor colour.</summary>
+    Block = 1,
+
+    /// <summary>A vertical bar at the left edge of the cell.</summary>
+    Bar = 2,
+
+    /// <summary>A rule along the bottom of the cell.</summary>
+    Underline = 3,
 }
