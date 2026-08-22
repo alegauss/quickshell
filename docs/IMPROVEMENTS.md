@@ -1756,37 +1756,6 @@ Falsified when a screen reader cannot read a line of output that is on screen.
 
 ## Block H — The reason to leave the incumbent
 
-### §QS2 The numbers every later line is read against
-
-Six figures, fixed here, changed only by an amend that argues for the change.
-
-**Input to photon** for a keystroke echoed by a local shell: under one refresh interval
-at 120 Hz, measured with a high-speed capture or an equivalent instrumented path, never
-by feel.
-
-**Sustained parse throughput**: at least 400 MB/s on the reference machine over a stream
-of mixed text and escape sequences, measured headless with no renderer attached, because
-parsing must never be the reason output is slow.
-
-**Steady-state frame cost**: under 2 ms for a filled 200x50 grid, so one pane leaves the
-frame budget almost entirely unspent and several panes stay affordable.
-
-**Idle cost**: zero draw calls and no measurable core occupancy on a window nobody is
-typing into. This is the figure the incumbent loses on and the one a laptop user
-actually feels.
-
-**Cold start** to an interactive local shell: under 400 ms, from a cold file cache
-wherever the measurement can arrange one.
-
-**Resident memory**: under 120 MB for one connected session at default scrollback.
-
-The reference machine is named in the file with its CPU, GPU and display refresh,
-because a number without a machine is a mood. Each figure states how it is measured, and
-a claim made by any other method does not count.
-
-Falsified the moment a figure here is quoted in a commit message without the run that
-produced it.
-
 ### §QS3 The corpus, and why it is captured rather than generated
 
 Synthetic input flatters a parser. Real output does not, so the corpus is captured from
