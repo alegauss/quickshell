@@ -266,32 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS7 Why the present path is worth three flags
-
-A flip-model swapchain, `DXGI_SWAP_EFFECT_FLIP_DISCARD`, is the baseline: the blt model
-copies through the desktop compositor and spends a frame for nothing.
-
-`DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT` with `SetMaximumFrameLatency(1)` is
-where the latency is actually won. The render thread waits on the swapchain's own handle
-rather than on a timer, so it starts the frame when the display is ready for it instead
-of a queue depth earlier. Without it the runtime buffers up to three frames ahead, and
-every one of those is a keystroke the user has already typed.
-
-`DXGI_PRESENT_ALLOW_TEARING`, with its matching swapchain flag and a capability check,
-is what makes the variable-refresh case honest: on a 144 Hz panel a torn frame arriving
-now beats a whole frame arriving later. This is a terminal, not a film.
-
-Resize reallocates buffers rather than stretching them, and does it without a visible
-flash, which means the first frame at the new size is drawn before the window is shown
-at it.
-
-Per-Monitor V2 DPI awareness is declared in the manifest, and `WM_DPICHANGED` rebuilds
-the glyph cache, because a glyph rasterised for one scale is wrong at another. Dragging
-the window between a laptop panel and an external monitor is the test, and it is a test
-this client will fail until it is written.
-
-Falsified when a frame-latency measurement shows a queue depth above one.
-
 ### §QS8 The atlas: what is cached, keyed how, and evicted when
 
 DirectWrite rasterises, and `IDWriteGlyphRunAnalysis::CreateAlphaTexture` is the

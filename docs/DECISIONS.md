@@ -9,6 +9,7 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ✅ **QS6** **Nothing opens a graphics device, so no pixel this client draws has ever reached a screen** — Adapter selection walks output-window, then default hardware, then WARP, recording each skip; a device loss rebuilds GPU resources and cannot touch terminal state.
+- ✅ **QS7** **A frame reaches the screen whenever the compositor chooses, so no bound on input-to-photon delay can be claimed** — The present path is flip-discard with a frame-latency waitable object at maximum latency one, tearing behind its capability check, Scaling.None on resize, and Per-Monitor V2 in the manifest.
 
 ## Block D — The tree a user organises work in
 

@@ -9,6 +9,7 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ✅ **QS6** **Nothing opens a graphics device, so no pixel this client draws has ever reached a screen** — A D3D11 device opens on the window's adapter, the default one or WARP, names what it skipped, and rebuilds every GPU resource on a loss.
+- ✅ **QS7** **A frame reaches the screen whenever the compositor chooses, so no bound on input-to-photon delay can be claimed** — A flip-discard swapchain waits on its own latency handle at a queue measured one frame deep, asks for tearing, and resizes without a stretch.
 
 ## Block D — The tree a user organises work in
 

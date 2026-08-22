@@ -20,9 +20,8 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS7** (deps: QS6 ✅, QS4 ✅) **A frame reaches the screen whenever the compositor chooses, so no bound on input-to-photon delay can be claimed** — Latency here is bought with three flags and a wait handle rather than with optimisation, and left unbought it silently costs two or three frames. → §QS7
 - 📋 **QS8** (deps: QS6 ✅) **No glyph is on the GPU, so drawing a character would cost a rasterisation on the frame that needs it** — A terminal redraws the same few hundred shapes forever, so rasterising each once and sampling it thereafter is the whole reason this renderer can be cheap. → §QS8
-- 📋 **QS9** (deps: QS8, QS7) **Nothing turns a grid of cells into a draw call, so text on this client's screen is still hypothetical** — One draw for the whole grid is what keeps frame cost flat as the window grows, and it is a decision about the vertex layout rather than an optimisation applied afterwards. → §QS9
+- 📋 **QS9** (deps: QS8, QS7 ✅) **Nothing turns a grid of cells into a draw call, so text on this client's screen is still hypothetical** — One draw for the whole grid is what keeps frame cost flat as the window grows, and it is a decision about the vertex layout rather than an optimisation applied afterwards. → §QS9
 - 📋 **QS10** (deps: QS8, QS9) **A CJK character, a combining mark and a colour emoji each draw wrongly or not at all** — The monospaced grid is a convenient fiction, and the three places it stops being true are known in advance rather than discovered as bug reports. → §QS10
 - 📋 **QS11** (deps: QS9) **Underline, undercurl, strikethrough, the cursor and a selection have no representation on screen** — Each is derived in the pixel shader from flags the instance already carries, so the grid stays one draw and the decorations cost no extra bandwidth. → §QS11
 - 📋 **QS12** (deps: QS9, QS10, QS11) **Nothing catches a renderer that draws correctly on one vendor's driver and wrongly on another's** — Shader precision, sampling and blending differ between vendors in ways that never once surface on the machine the code was written on. → §QS12

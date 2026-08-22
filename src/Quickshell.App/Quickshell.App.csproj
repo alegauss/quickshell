@@ -8,6 +8,9 @@
     <AssemblyName>quickshell</AssemblyName>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
+    <!-- Per-Monitor V2 DPI awareness. A glyph rasterised for one scale is wrong at another, and a
+         process that lies about its awareness gets a bitmap-stretched window instead. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
