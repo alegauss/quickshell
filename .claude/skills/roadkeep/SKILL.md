@@ -141,6 +141,13 @@ is the decision**: `--decides "<the constraint>"` files one line into the `decis
 this format. It writes a fourth file, so it lands before the deletion and refuses the whole
 transaction where the role is undeclared, naming `declare decisions`; it reaches the
 closure door too, that one deleting the section as well, and is refused on a `--part`.
+**A decision keeps a body, and the ship names where it goes**: that line is one sentence, and
+what was *weighed* — the alternatives rejected, the consequences accepted — is a paragraph
+`section add <id> --role decisions --title "…"` writes into that same file, under
+`[limits.decisions] section`, its own word limit. Never the design section moved: that one
+says how the work was built and is correctly deleted by this very ship, and this one says
+what it cost, which is the half no other store keeps. Nothing deletes it — `section drop`
+included, while the entry stands — so the file grows only by decisions somebody made.
 **And that file's one departure is `supersede <id> --by <id>`**: a decision leaves by being
 replaced, so both entries stay and the marker says which is live — the forward pointer and
 the retired marker in one write, both ids being decisions already filed. No reason field:

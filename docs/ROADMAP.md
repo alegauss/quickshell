@@ -106,6 +106,7 @@
 
 - 📋 **QS89** (deps: —) **dotnet test reports zero tests and exits 5 while run-tests.cmd runs the same assemblies and passes** — Every .NET tool and CI template reaches for that command first, so a repository where it lies looks broken to everyone who has not read the script. → §QS89
 - 📋 **QS90** (deps: —) **Nobody has built this repository from a clean clone, so the steps it needs beyond the SDK are unknown** — Every build so far has run on the machine that wrote the code, which is the one machine whose caches and installed components prove nothing about the next. → §QS90
+- 📋 **QS98** (deps: —) **A test can carry a raw escape byte, and a file where it went missing fails as though the code were wrong** — A control byte in source is invisible in every diff and every editor, so whether it survived is a property of the tooling rather than of the test. → §QS98
 
 ## Done when — Block A
 

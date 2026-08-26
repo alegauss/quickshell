@@ -1896,3 +1896,29 @@ CI is the closest thing that exists and is not the same: the runner image carrie
 Windows SDK and a warm tool cache, and has never been asked what it used.
 
 Falsified when the clean clone needs a step this task did not name.
+
+### §QS98 The escape byte nothing shows you
+
+Measured on 2026-08-26, and it cost a debug cycle. `WrapAndMarginTests.cs` was written
+with literal `ESC` bytes in its string literals, the way `EmulatorTests.cs` and
+`AnsiParserTests.cs` already are. Counted afterwards: those two hold 67 and 29 of them,
+and the new file held **zero**. The sequences had become ordinary text.
+
+That does not fail loudly. `"\x1b[?25l"` with the escape gone is five printable
+characters, and the emulator does exactly what it should with them. Eight tests failed
+on assertions about modes that had never been set, and every one read as a defect in the
+code under test.
+
+Two reasons this must not stay possible. A control byte in source is invisible in every
+diff, review and editor — nothing shows the difference between the two files above. And
+whether it survives is a property of whatever wrote the file rather than of the test.
+
+So the rule: a terminal sequence in a test is spelled with escapes, never a raw byte. It
+reads better too, since a reader can see where the sequence starts.
+
+What makes it a rule rather than a habit is a check: a test over this repository's own
+sources, asserting no `.cs` file under `tests/` holds byte 0x1B. The two existing files
+convert in the same change, or the check is one somebody disables on its first run.
+
+Falsified when a raw escape in a test source is caught by something other than a person
+noticing eight strange failures.
