@@ -885,6 +885,57 @@ Falsified when the render arm's allocation per megabyte stops being dominated by
 and the remaining figure is the atlas and the instance buffer, which is where it
 belongs.
 
+### §QS96 The six levels a second driver moved
+
+The first vendor driver to run the golden suite disagreed with it, and QS92 said in
+advance what that would mean.
+
+Measured on 2026-08-26, through QS95's guest. The `attributes` scene differs from its
+committed reference in exactly **one pixel of 123,200**, at (208,12): `d6dbe4` against
+`d0d5de`. Six levels, and the *same* six on all three channels.
+
+That uniformity is the whole clue. Glyph coverage comes from DirectWrite on the CPU and
+is identical everywhere, so the difference is not the rasterisation — it is the blend. A
+uniform shift across R, G and B at one coverage value is what a slightly different `pow`
+gives in the sRGB conversion, which is the candidate QS92 named before any of this ran.
+
+Two things must not happen. The tolerance must not be raised until this passes: QS12
+calibrated it on a measurement, and a limit moved to fit a failure measures nothing. And
+the reference must not be regenerated, for the reason QS12's own decision states.
+
+What settles it is arithmetic rather than another run. Evaluate the shader's `ToLinear`
+and `ToEncoded` at the coverage that pixel carries, in single precision and in double,
+and see whether six levels is the distance between them. If it is, the fix is a
+conversion that does not lean on `pow` — a lookup, or the polynomial every renderer that
+has met this uses.
+
+Falsified when the same pixel differs by six levels with `pow` gone from the path.
+
+### §QS97 The bound that was measured on one display
+
+QS87 replaced a mean with a bound: every sample sits at one or two — a queued frame and
+the one on the glass — and never at three. Thirty runs on this desk said two was the
+deepest.
+
+QS95's guest reaches three. Measured 2026-08-26: the assertion fires, and nothing else
+in the render suite does except QS96's one pixel.
+
+There is no virtual vblank in a VMware guest the way there is on a panel. The display is
+synthesised, `Present` returns on a schedule the host decides, and `FrameStatistics`
+counts against that. So a queue one deeper is what the environment is, not what the
+renderer did — and the same will be true of RDP, which QS92 already names as the
+environment where a graphics assumption fails quietly rather than loudly.
+
+Three shapes. Read the bound off the swapchain rather than from a constant, since
+`MaximumFrameLatency` is what the queue is allowed to be and the extra frame is the one
+being scanned out. Or skip where the presentation path is synthesised, which needs a way
+to know — and inventing one to make a test pass is how a suite stops covering its own
+case. Or state the bound per environment, which is a table somebody has to keep true.
+
+The first needs no new fact, and it is where to start.
+
+Falsified when a bound read off the swapchain still reads three on real hardware.
+
 ## Block D — The tree a user organises work in
 
 ### §QS55 The file a user will still have in five years
