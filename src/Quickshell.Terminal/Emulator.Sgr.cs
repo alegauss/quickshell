@@ -28,6 +28,15 @@ public sealed partial class Emulator
             ReadOnlySpan<int> values = parameters.Group(group);
             int code = values.Length == 0 || values[0] < 0 ? 0 : values[0];
 
+            // SGR 4:3 is the curly underline, and which one it is lives inside the group. Falling
+            // through to the plain code is how every one of the five styles came out a straight
+            // rule - found by QS20, because a report of the setting said 4:1 where 4:3 was set.
+            if (values.Length > 1 && code == 4)
+            {
+                _pen = _pen with { Underline = StyleOf(values[1]) };
+                continue;
+            }
+
             // The colon spelling: everything the attribute needs is inside this one group.
             if (values.Length > 1 && code is 38 or 48 or 58)
             {
@@ -46,6 +55,21 @@ public sealed partial class Emulator
             ApplySimple(code);
         }
     }
+
+    /// <summary>
+    /// Which underline a style number names. A number nothing here draws becomes a plain underline
+    /// rather than none, because the host asked for an underline and the style was the detail.
+    /// </summary>
+    private static UnderlineStyle StyleOf(int style) => style switch
+    {
+        0 => UnderlineStyle.None,
+        1 => UnderlineStyle.Single,
+        2 => UnderlineStyle.Double,
+        3 => UnderlineStyle.Curly,
+        4 => UnderlineStyle.Dotted,
+        5 => UnderlineStyle.Dashed,
+        _ => UnderlineStyle.Single,
+    };
 
     private void ApplySimple(int code)
     {

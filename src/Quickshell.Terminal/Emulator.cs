@@ -801,16 +801,5 @@ public sealed partial class Emulator : IAnsiHandler
         row[(row.Length - shift)..].Fill(Cell.Blank);
     }
 
-    // ---- Strings, which this line does not answer for ----
-
-    void IAnsiHandler.DcsHook(in CsiParameters parameters, ReadOnlySpan<byte> intermediates, byte final) =>
-        FlushText();
-
-    void IAnsiHandler.DcsPut(ReadOnlySpan<byte> bytes)
-    {
-    }
-
-    void IAnsiHandler.DcsUnhook()
-    {
-    }
+    // Device control strings are answered in Emulator.Dcs.cs, which is where DECRQSS lives.
 }

@@ -266,32 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS20 Answering the questions programs actually ask
-
-A program discovers what it is talking to by asking, so silence here is not neutral. It
-is answered as a VT52.
-
-DA1 reports the device attributes this client actually implements, and that list is a
-claim: advertising a capability that is not there is worse than omitting one, because a
-program will then go and use it. DA2 reports a version, which is what allows a remote
-script to special- case this terminal at all.
-
-DSR 5 reports terminal status; DSR 6 reports the cursor position as CPR. The second
-matters most in practice — a shell prompt uses it to discover where the cursor ended up
-after printing something of unknown width, and a terminal that does not answer leaves
-the shell to guess. It is also where a wrong width model stops being visible only to the
-user and becomes visible to the program.
-
-DECRQSS asks for a setting to be reported back in its own syntax. Answering it for the
-settings this client tracks is worth doing; the important half is that an unrecognised
-request is answered as invalid rather than ignored, so the asker stops waiting for a
-reply that is never coming.
-
-Every reply is a constant or a number, never text the host supplied.
-
-Falsified when a request this client does not implement is swallowed with no reply at
-all.
-
 ### §QS21 Four modes, two encodings, and the 223-column cliff
 
 Mouse reporting is not one switch. It is a reporting mode and an encoding, chosen

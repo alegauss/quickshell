@@ -22,6 +22,12 @@ internal enum Answer : byte
 
     /// <summary>The window's size, in rows and columns of text.</summary>
     ScreenSize,
+
+    /// <summary>
+    /// DECRQSS: one setting, reported in its own syntax so the asker can send it straight back, or
+    /// refused outright. Which setting arrives as the first number.
+    /// </summary>
+    SettingReport,
 }
 
 public sealed partial class Emulator
@@ -33,6 +39,17 @@ public sealed partial class Emulator
     /// bound is what stops that being a way to make this process grow without limit.</para>
     /// </summary>
     public const int MaximumReplyLength = 4096;
+
+    /// <summary>
+    /// The bytes that frame a reply, named rather than escaped.
+    ///
+    /// <para>Spelled as numbers on purpose. An escape in a string literal is one careless edit away
+    /// from being a raw control byte instead, which is invisible in every diff and every editor —
+    /// QS100 is what that cost, and there is no escape anywhere in this file for it to happen to.</para>
+    /// </summary>
+    private const byte Escape = 0x1B;
+    private const byte Bracket = (byte)'[';
+    private const byte Backslash = 0x5C;
 
     private readonly List<byte> _reply = [];
 
@@ -82,19 +99,22 @@ public sealed partial class Emulator
         {
             case Answer.DeviceAttributes:
                 // VT220 with ANSI colour. What programs check for before they use 256 colours.
-                Literal("\u001b[?62;22c");
+                Csi();
+                Literal("?62;22c");
                 break;
 
             case Answer.SecondaryDeviceAttributes:
-                Literal("\u001b[>1;0;0c");
+                Csi();
+                Literal(">1;0;0c");
                 break;
 
             case Answer.Ok:
-                Literal("\u001b[0n");
+                Csi();
+                Literal("0n");
                 break;
 
             case Answer.CursorPosition:
-                Literal("\u001b[");
+                Csi();
                 Number(first);
                 Literal(";");
                 Number(second);
@@ -102,7 +122,8 @@ public sealed partial class Emulator
                 break;
 
             case Answer.ExtendedCursorPosition:
-                Literal("\u001b[?");
+                Csi();
+                Literal("?");
                 Number(first);
                 Literal(";");
                 Number(second);
@@ -110,17 +131,35 @@ public sealed partial class Emulator
                 break;
 
             case Answer.ScreenSize:
-                Literal("\u001b[8;");
+                Csi();
+                Literal("8;");
                 Number(first);
                 Literal(";");
                 Number(second);
                 Literal("t");
                 break;
 
+            case Answer.SettingReport:
+                // A device control string rather than a control sequence, because that is the shape
+                // DECRQSS asks in and the shape the asker parses.
+                _reply.Add(Escape);
+                _reply.Add((byte)'P');
+                SettingReport((Setting)first);
+                _reply.Add(Escape);
+                _reply.Add(Backslash);
+                break;
+
             default:
                 Unhandled++;
                 break;
         }
+    }
+
+    /// <summary>The control sequence introducer, which nearly every reply begins with.</summary>
+    private void Csi()
+    {
+        _reply.Add(Escape);
+        _reply.Add(Bracket);
     }
 
     /// <summary>A constant from this file, which is the only text a reply is ever built from.</summary>
@@ -138,7 +177,10 @@ public sealed partial class Emulator
 
         if (value.TryFormat(digits, out int written, provider: System.Globalization.CultureInfo.InvariantCulture))
         {
-            Literal(new string(digits[..written]));
+            foreach (char digit in digits[..written])
+            {
+                _reply.Add((byte)digit);
+            }
         }
     }
 
@@ -180,10 +222,10 @@ public sealed partial class Emulator
     /// <summary>
     /// The window manipulations. Only the one that answers with the geometry is answered.
     ///
-    /// <para><b>Reports 20 and 21 are the attack this task is about</b> and are refused here rather
-    /// than left to a default. They ask for the icon label and the window title, and a host that has
-    /// just set the title with OSC 2 can use them to have the terminal type its own text at the
-    /// shell. This client sets titles and never reports them.</para>
+    /// <para><b>Reports 20 and 21 are the attack QS19 was about</b> and are refused here rather than
+    /// left to a default. They ask for the icon label and the window title, and a host that has just
+    /// set the title with OSC 2 can use them to have the terminal type its own text at the shell.
+    /// This client sets titles and never reports them.</para>
     /// </summary>
     private void WindowOperation(int operation)
     {
