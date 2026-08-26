@@ -82,19 +82,19 @@ public sealed partial class Emulator
         {
             case Answer.DeviceAttributes:
                 // VT220 with ANSI colour. What programs check for before they use 256 colours.
-                Literal("[?62;22c");
+                Literal("\u001b[?62;22c");
                 break;
 
             case Answer.SecondaryDeviceAttributes:
-                Literal("[>1;0;0c");
+                Literal("\u001b[>1;0;0c");
                 break;
 
             case Answer.Ok:
-                Literal("[0n");
+                Literal("\u001b[0n");
                 break;
 
             case Answer.CursorPosition:
-                Literal("[");
+                Literal("\u001b[");
                 Number(first);
                 Literal(";");
                 Number(second);
@@ -102,7 +102,7 @@ public sealed partial class Emulator
                 break;
 
             case Answer.ExtendedCursorPosition:
-                Literal("[?");
+                Literal("\u001b[?");
                 Number(first);
                 Literal(";");
                 Number(second);
@@ -110,7 +110,7 @@ public sealed partial class Emulator
                 break;
 
             case Answer.ScreenSize:
-                Literal("[8;");
+                Literal("\u001b[8;");
                 Number(first);
                 Literal(";");
                 Number(second);

@@ -22,14 +22,19 @@ public sealed class SourceHygieneTests
     /// Nothing showed the difference between the file that had them and the file that did not, and
     /// whether they survive at all is a property of whatever wrote the file rather than of the test.
     /// So the byte is banned outright and the escape is the only spelling.</para>
+    ///
+    /// <para>QS100 widened it from tests to <c>src</c> as well, having watched six raw <c>ESC</c>
+    /// bytes go into a shipped source file with every check green. None of the reasoning above was
+    /// ever about tests; that was only where the first instance happened. A raw <c>ESC</c> in
+    /// <c>src</c> is in fact the quieter of the two, because a test that loses its escapes fails
+    /// loudly and a source file that gains one compiles and works.</para>
     /// </summary>
     [Fact]
-    public void NoTestSourceCarriesARawControlByte()
+    public void NoSourceCarriesARawControlByte()
     {
-        string tests = Path.Combine(RepositoryRoot(), "tests");
         List<string> offenders = [];
 
-        foreach (string file in Directory.EnumerateFiles(tests, "*.cs", SearchOption.AllDirectories))
+        foreach (string file in Sources())
         {
             if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
@@ -57,9 +62,27 @@ public sealed class SourceHygieneTests
         }
 
         Assert.True(offenders.Count == 0,
-            "these test sources carry raw control bytes, which are invisible in a diff and survive " +
+            "these sources carry raw control bytes, which are invisible in a diff and survive " +
             "or vanish depending on what wrote the file. Spell them as escapes instead - " +
             $"\\u001b for ESC: {string.Join(", ", offenders)}");
+    }
+
+    /// <summary>
+    /// Every C# file this repository is written in, both halves of it. Build output is skipped
+    /// because it is generated and a control byte in it says nothing about the source.
+    /// </summary>
+    private static IEnumerable<string> Sources()
+    {
+        string root = RepositoryRoot();
+
+        foreach (string folder in (string[])["src", "tests"])
+        {
+            foreach (string file in Directory.EnumerateFiles(
+                Path.Combine(root, folder), "*.cs", SearchOption.AllDirectories))
+            {
+                yield return file;
+            }
+        }
     }
 
     private static string RepositoryRoot()

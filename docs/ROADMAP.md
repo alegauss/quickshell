@@ -20,7 +20,7 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS20** (deps: QS16 ✅) **A program asking the terminal what it is gets no answer and falls back to a dumber mode** — Every capability negotiation opens with a question, and a terminal that stays silent is treated as the least capable thing that could have been there. → §QS20
+- 🛠 **QS20** (deps: QS16 ✅) **A program asking the terminal what it is gets no answer and falls back to a dumber mode** — Every capability negotiation opens with a question, and a terminal that stays silent is treated as the least capable thing that could have been there. → §QS20
 - 📋 **QS21** (deps: QS16 ✅) **A click inside a remote editor or pager does nothing, because no mouse event reaches the host** — Mouse support is a set of modes and two encodings rather than one feature, and the older encoding silently caps usable width at 223 columns. → §QS21
 - 📋 **QS22** (deps: QS16 ✅) **Nothing records which rows changed, so any redraw is a whole-screen redraw** — The renderer has to know what changed before it can decide not to draw at all, and that decision is where the idle-cost figure is actually won. → §QS22
 - 📋 **QS23** (deps: QS17 ✅) **Narrowing the window turns wrapped output into ragged fragments that never recover** — This is the single behaviour terminal emulators most reliably get wrong, so it is isolated behind a pure function that can be tested without a window. → §QS23

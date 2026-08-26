@@ -48,3 +48,4 @@
 
 - ✅ **QS88** **dotnet test reports zero tests and exits non-zero on a tree whose suite passes when the assembly is run directly** — The suite's verdict is run-tests.cmd's exit code, and every configuration builds into exactly one tree under bin.
 - ✅ **QS95** **The render suite takes the screen with topmost windows, and anything the operator does corrupts it** — A guest run is a second environment and not a second opinion: where it disagrees, that is a finding rather than a harness fault.
+- ✅ **QS100** **The ban on raw control bytes covers tests and not src, so the same byte went into shipped source unseen** — A raw control byte is banned in every C# file this repository has, not only in the half where the first one was noticed.
