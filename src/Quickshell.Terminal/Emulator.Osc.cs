@@ -107,10 +107,7 @@ public sealed partial class Emulator
                 break;
 
             case 52:
-                // Deliberately not answered here. It writes the local clipboard from the remote
-                // side, which is a security decision rather than an emulation one, and it has its
-                // own line.
-                Unhandled++;
+                SetClipboard(argument);
                 break;
 
             default:

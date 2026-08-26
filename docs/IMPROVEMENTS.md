@@ -266,30 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS19 The two sequences that reach back out of the terminal
-
-Most escape sequences change what is on screen. Two of them change something outside it,
-and those two are an attack surface rather than a feature to finish.
-
-**OSC 52** lets the remote side write the local clipboard. It is genuinely useful — it
-is how copying out of a remote `tmux` works at all — and it is equally how a compromised
-host silently replaces what the user is about to paste into a local shell. So it is off
-by default, enabled per session, and when enabled it is write-only: the read direction,
-which lets a host exfiltrate whatever the user last copied, is not implemented and is
-not offered as a setting.
-
-**Title report.** A host may set the window title and, on terminals that answer, ask for
-it back. Together those two are a channel that turns the title into a command line: the
-host plants text, asks for it, and the terminal types it at the shell. The answer here
-is that this client sets titles and never reports them.
-
-Generalised: no reply this client sends may contain a byte the host supplied. That rule
-is what makes the device-attribute and cursor-position replies safe, since each answers
-with a constant or a number, and it is the rule the next such sequence gets judged
-against.
-
-Falsified when any reply the terminal sends back contains host-chosen text.
-
 ### §QS20 Answering the questions programs actually ask
 
 A program discovers what it is talking to by asking, so silence here is not neutral. It

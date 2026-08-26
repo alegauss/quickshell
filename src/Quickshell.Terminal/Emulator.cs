@@ -465,9 +465,32 @@ public sealed partial class Emulator : IAnsiHandler
         // instruction set entirely - `CSI ?7h` is not `CSI 7h`.
         if (intermediates.Length > 0 && intermediates[0] == (byte)'?')
         {
-            if (final is (byte)'h' or (byte)'l')
+            switch (final)
             {
-                PrivateMode(parameters, final == (byte)'h');
+                case (byte)'h':
+                case (byte)'l':
+                    PrivateMode(parameters, final == (byte)'h');
+                    break;
+
+                case (byte)'n':
+                    DeviceStatus(parameters.Value(0, 0), priv: true);
+                    break;
+
+                default:
+                    Unhandled++;
+                    break;
+            }
+
+            return;
+        }
+
+        // DA2 arrives under its own intermediate, and it is a different question from DA1 rather
+        // than a variant of it.
+        if (intermediates.Length > 0 && intermediates[0] == (byte)'>')
+        {
+            if (final == (byte)'c')
+            {
+                Send(Answer.SecondaryDeviceAttributes);
             }
             else
             {
@@ -612,6 +635,28 @@ public sealed partial class Emulator : IAnsiHandler
 
             case (byte)'u':
                 RestoreCursor();
+                break;
+
+            case (byte)'c':
+                // A parameter here is only ever zero, and a host that sent one meant the same
+                // question.
+                if (parameters.Value(0, 0) == 0)
+                {
+                    Send(Answer.DeviceAttributes);
+                }
+                else
+                {
+                    Unhandled++;
+                }
+
+                break;
+
+            case (byte)'n':
+                DeviceStatus(parameters.Value(0, 0), priv: false);
+                break;
+
+            case (byte)'t':
+                WindowOperation(parameters.Value(0, 0));
                 break;
 
             default:
