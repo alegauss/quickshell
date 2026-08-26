@@ -25,7 +25,16 @@ tool list rather than typing it: the whole write path and the reads a task needs
 refusals, with the fields arriving as a schema instead of flag names typed from memory.
 `init`, `adopt` and `install` run *before* a project is governed, or on its wiring, and want
 the CLI — `declare` above is the one write on a configured tree, which is why it is served
-and they are not. The last of them
+and they are not. **It takes two vocabularies**: a *role* writes that file and the `[files]`
+key governing it, and one of the two *opt-in tables* — `criteria`, `non_goals` — opens the
+list a verb refuses over, empty, which is what opting in means; `govern` is what tunes the
+numbers in it afterwards. Reach for it when a write refuses over an undeclared role or
+table, which is the refusal that now names this command rather than a hand edit. **And it is
+what the tool list is composed from**: a verb that is one role's whole grammar — `defer` and
+`resume` for the store, `supersede` for the decisions file — is published only where that role
+is declared, so a vocabulary grows for the projects that opted into it and costs the rest
+nothing. Absent is not missing: the name still resolves and the call is refused naming the
+`declare` that opens it, and the list changes under a session that runs one. The last of them
 wires this file, the tools and the guard into a project running the tool from a checkout,
 and `install --check` is what holds its copy of this file in step — though you will rarely
 type it, because **the gate now asks**: a vendored launcher, hook or skill behind the
@@ -467,8 +476,9 @@ Markers are `[markers]` in `roadkeep.toml`: the open set is the roadmap's, and t
 and retired ones are the ledger's alone — neither is legal in a roadmap. Limits are
 `[limits]`: `roadkeep lint` names the file, line and column of anything over, and `--fix`
 repairs only what is **derived** (annotation, pointer, dep order, marker codepoint,
-whitespace, and the queue entry whose task shipped or was retired, named in the report and
-never dropped in silence). On a project that arrived with drift, an absolute count answers
+whitespace, the queue entry whose task shipped or was retired, and a criteria heading
+addressed to nothing and holding nothing — each named in the report and never dropped in
+silence). On a project that arrived with drift, an absolute count answers
 nothing: `--baseline <rev>` (`HEAD` after a write) reports **what you added** and forgives
 the standing debt by name.
 
@@ -519,7 +529,11 @@ against what is there rather than against a remembered version of it — and it 
 **subtree**, so on a section with children `section show <a> --own` is the half that write
 replaces. Hand the subtree back and it is refused as the wrong extent (`body.subtree`)
 naming that flag, rather than counted as prose somebody wrote too long: a subsection is
-amended by its own anchor. **If a body is refused anyway, do not count by hand**:
+amended by its own anchor. **Where you know the sentence and not the anchor, do not guess
+it**: `section find "<text>"` names the anchors whose own prose carries that string, with a
+count each — one is what `--replace` accepts and more is the ambiguity it refuses — and the
+failing `--replace` names them too, so the loop of show, read, guess again is one call.
+**If a body is refused anyway, do not count by hand**:
 `body.too-long` names what each paragraph costs and which is the longest, so the second
 draft is composed once — and a `0` there is a table or a fence, which is prose no cut can
 reach. **And do not count by hand before one is refused either**: every prose argument here
@@ -539,19 +553,25 @@ limits are the list's own and not the task line's. **`budget --file <p>` is the 
 subject**, and the one that is not about prose at all: what an every-turn file `[budgets]`
 declares costs in lines and bytes and what is left — bare, every declared budget. Read it
 *before* editing one, never `wc` and a subtraction; `lint` is still what refuses.
-**`budget --tools` is the fifth**, and the only one about this surface rather than about
-prose: what the tool list costs a session that connects the server, in characters and by
-tool, largest first; **named — `budget --tools ship` — what each of that one tool's fields
-spent**, and the module its `help=` strings are written in, which is the question you have
-the moment `lint` says a tool is over and the ranking cannot answer. Where the description
+**The other tense is `cost`, and it is its own verb**: `budget` says what a write *may*
+spend before a word of it exists, and `cost` what this project's surface *does* spend
+already. Three subjects, one per cadence. **`cost --tools`** is what the tool list costs a
+session that connects the server, in characters and by tool, largest first; **named — `cost
+--tools ship` — what each of that one tool's fields spent**, and the module its `help=`
+strings are written in, which is the question you have the moment `lint` says a tool is over
+and the ranking cannot answer. Where the description
 is the largest row, it is split by where each clause is written: a tool that always passes a
 flag carries that flag's own `help`, edited somewhere else. Nothing refuses it —
 the number is stated so that adding a tool or a
 sentence to a description stops looking free, which is the argument `[budgets]` makes about
-a file that loads every turn. **`budget --brief [<id>]` is the sixth**, and the only one about
+a file that loads every turn. **`cost --brief [<id>]`** is the one about
 a *read*: what the answer that replaces reading the file costs a tool result, per open line and
 widest first, against `[reads] brief`. Declared, that ceiling is the gate's — `read.over` names
-the task whose brief does not fit. **And `config` is the read about `roadkeep.toml` itself**:
+the task whose brief does not fit. **`cost --session`** is both halves against their cadences —
+the served schema once at connect and every `[budgets]` file each turn — which is what a
+session pays before it calls anything, and the one figure neither of the other two can give.
+A bare `cost` is refused naming the three: they are three cadences, and privileging one would
+make the other two read as narrowings of it. **And `config` is the read about `roadkeep.toml` itself**:
 every table, key, TOML type and default this build accepts, with the sentence its
 source already carries and whether *this* project declared it — `--table <name>` for one,
 `--table ""` for the top level. Reach for it before writing a key rather than after the
@@ -662,8 +682,9 @@ left of a line needs something *present* — a controller on the desk, two conso
 measure against each other — the file has a slot for it, and until it is written the same
 line comes back every call, because every tier is a function of the file. `add --requires
 <word>` states it, `amend <id> --requires …` adds it to a line already there, and the word
-is one `[requirements] declared` names — `declare` writes neither, so a project opting in
-declares the vocabulary once. Then `pick` sets those lines aside for a caller that did not
+is one `[requirements] declared` names — the one table `declare` does *not* open, because a
+vocabulary is a list of words and an empty one governs nothing, so a project opting in
+declares its own words once. Then `pick` sets those lines aside for a caller that did not
 say it has them, **names** each with what it is missing, and still counts them ready: what
 narrows is the offer, never the truth. A caller that does have the thing passes `--have
 <word>`, repeatable, on `pick` and `brief` alike — which is the whole difference from
