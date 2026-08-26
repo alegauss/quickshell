@@ -1846,3 +1846,24 @@ CI is the closest thing that exists and is not the same: the runner image carrie
 Windows SDK and a warm tool cache, and has never been asked what it used.
 
 Falsified when the clean clone needs a step this task did not name.
+
+### §QS99 QS
+
+The suite is run by invoking the test assembly directly, because `dotnet test` prints
+nothing (QS89). That works, and it has one failure mode that has now cost two debugging
+cycles: when the build ahead of it fails, the assembly from the last successful build is
+still sitting there, and running it prints a full green summary for code that was never
+compiled.
+
+Both times the green summary was believed for a moment. The first time an analyser error
+(CA1823, an unused field left by a deliberate probe) failed the build; the second time a
+shell short-circuit meant the patch step never ran at all. In each case the output was a
+confident `total: 201, failed: 0` describing a binary from several minutes earlier.
+
+The fix is that nothing should be able to report a pass for a stale binary. The runner
+compares the assembly's write time against the newest source file feeding it and refuses
+to run when the source is newer, saying so rather than testing. That is a cheaper check
+than reading build output carefully every time, and unlike careful reading it cannot be
+skipped when the run looks routine.
+
+Falsified when a build that fails is followed by a run that reports a pass.
