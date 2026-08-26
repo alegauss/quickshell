@@ -1,0 +1,129 @@
+using System.Runtime.InteropServices;
+
+namespace Quickshell.Terminal;
+
+/// <summary>
+/// One cell of the buffer: sixteen bytes, and a value rather than an object.
+///
+/// <para><b>Sixteen bytes is a budget, not an outcome.</b> A row is <c>Columns</c> of these laid
+/// out contiguously, so clearing a row is a fill and scrolling touches one row's worth of memory
+/// however deep the scrollback is. An object per cell would make both of those a pointer chase and
+/// a screenful of allocations.</para>
+///
+/// <para><b>The text is a codepoint when it fits and an index when it does not.</b> Almost every
+/// cell holds one codepoint. A decomposed accent or an emoji ZWJ sequence does not fit in four
+/// bytes, so it lives in the buffer's cluster table and the cell holds its index. Which of the two
+/// it is, is the sign: negative means the table.</para>
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+public readonly struct Cell : IEquatable<Cell>
+{
+    private const int WidthShift = 9;
+    private const int UnderlineShift = 6;
+
+    private readonly int _text;
+    private readonly uint _foreground;
+    private readonly uint _background;
+    private readonly uint _attributes;
+
+    private Cell(int text, uint foreground, uint background, uint attributes)
+    {
+        _text = text;
+        _foreground = foreground;
+        _background = background;
+        _attributes = attributes;
+    }
+
+    /// <summary>The size the design bounds this at, asserted against the struct itself in a test.</summary>
+    public const int Size = 16;
+
+    /// <summary>An empty cell in the default colours: what a cleared row is filled with.</summary>
+    public static Cell Blank => new(' ', 0, 0, 1u << WidthShift);
+
+    /// <summary>Whether the text is an index into the cluster table rather than a codepoint.</summary>
+    public bool IsCluster => _text < 0;
+
+    /// <summary>The codepoint, where this cell holds one. Undefined when <see cref="IsCluster"/>.</summary>
+    public int Codepoint => _text < 0 ? 0xFFFD : _text;
+
+    /// <summary>The index into the buffer's cluster table, where this cell holds one.</summary>
+    public int ClusterIndex => _text < 0 ? ~_text : -1;
+
+    /// <summary>The foreground, as the model resolved it.</summary>
+    public Rgb Foreground => Unpack(_foreground);
+
+    /// <summary>The background, as the model resolved it.</summary>
+    public Rgb Background => Unpack(_background);
+
+    /// <summary>Bold, slant, inverse, overline, strike and selection.</summary>
+    public CellFlags Flags => (CellFlags)(_attributes & 0x3F);
+
+    /// <summary>Which underline this cell carries, if any.</summary>
+    public UnderlineStyle Underline => (UnderlineStyle)((_attributes >> UnderlineShift) & 0x7);
+
+    /// <summary>
+    /// How many cells this one occupies: two for a wide character, one for an ordinary one, and
+    /// <b>zero for the trailing half of a wide pair</b> — which is a real cell holding no text of
+    /// its own, and the only thing that keeps the column count honest.
+    /// </summary>
+    public int Width => (int)((_attributes >> WidthShift) & 0x3);
+
+    /// <summary>Whether anything was ever written here, as against a cell that is still blank.</summary>
+    public bool IsBlank => _text == ' ' && _foreground == 0 && _background == 0;
+
+    /// <summary>Builds a cell holding one codepoint.</summary>
+    public static Cell For(int codepoint, Rgb foreground, Rgb background,
+                           CellFlags flags = CellFlags.None,
+                           UnderlineStyle underline = UnderlineStyle.None,
+                           int width = 1)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(codepoint);
+
+        return new Cell(codepoint, Pack(foreground), Pack(background), Attributes(flags, underline, width));
+    }
+
+    /// <summary>Builds a cell pointing at a cluster the buffer's table holds.</summary>
+    public static Cell ForCluster(int clusterIndex, Rgb foreground, Rgb background,
+                                  CellFlags flags = CellFlags.None,
+                                  UnderlineStyle underline = UnderlineStyle.None,
+                                  int width = 1)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(clusterIndex);
+
+        return new Cell(~clusterIndex, Pack(foreground), Pack(background), Attributes(flags, underline, width));
+    }
+
+    /// <summary>The same cell in different colours, which is what an attribute change rewrites.</summary>
+    public Cell With(Rgb foreground, Rgb background) =>
+        new(_text, Pack(foreground), Pack(background), _attributes);
+
+    /// <inheritdoc/>
+    public bool Equals(Cell other) =>
+        _text == other._text && _foreground == other._foreground
+        && _background == other._background && _attributes == other._attributes;
+
+    /// <inheritdoc/>
+    public override bool Equals(object? obj) => obj is Cell other && Equals(other);
+
+    /// <inheritdoc/>
+    public override int GetHashCode() => HashCode.Combine(_text, _foreground, _background, _attributes);
+
+    /// <summary>Whether two cells are the same in every field.</summary>
+    public static bool operator ==(Cell left, Cell right) => left.Equals(right);
+
+    /// <summary>Whether two cells differ in any field.</summary>
+    public static bool operator !=(Cell left, Cell right) => !left.Equals(right);
+
+    private static uint Attributes(CellFlags flags, UnderlineStyle underline, int width)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(width);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(width, 2);
+
+        return (uint)flags | ((uint)underline << UnderlineShift) | ((uint)width << WidthShift);
+    }
+
+    private static uint Pack(Rgb colour) => 0x01000000u | colour.Packed;
+
+    private static Rgb Unpack(uint packed) =>
+        new((byte)(packed >> 16), (byte)(packed >> 8), (byte)packed);
+}

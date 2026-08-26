@@ -18,6 +18,7 @@
 - ✅ **QS12** **Nothing catches a renderer that draws correctly on one vendor's driver and wrongly on another's** — Seven scenes rendered offscreen and compared against committed references, on this machine's adapter and on WARP.
 - ✅ **QS13** **A multi-byte character split across two network reads decodes as two broken ones** — A stateful decoder, UAX #29 clusters that survive any split, and a width table generated from Unicode 17.0.0 (design §QS13 recorded in `tools/generate-width-table.py`).
 - ✅ **QS14** **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — Williams' table over fourteen states and all 256 bytes, emitting events and allocating nothing per parse (design §QS14 superseded: a UTF-8 stream cannot honour single-byte C1).
+- ✅ **QS15** **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — A ring with a moving origin: one scroll writes one row, whether the scrollback is ten lines or a hundred thousand.
 
 ## Block D — The tree a user organises work in
 

@@ -18,6 +18,7 @@
 - ✅ **QS12** **Nothing catches a renderer that draws correctly on one vendor's driver and wrongly on another's** — A reference image changes only by a deliberate run with QUICKSHELL_GOLDEN=write, and never by a test that failed against it.
 - ✅ **QS13** **A multi-byte character split across two network reads decodes as two broken ones** — The width table is generated from the Unicode Character Database and records its version, so a release is a rebuild and a diff.
 - ✅ **QS14** **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — The parser holds no terminal state and the table answers for every byte in every state, checked where it is built.
+- ✅ **QS15** **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — Scrolling the screen moves an origin and fills one row; only a scrolling region inside the screen moves rows at all.
 
 ## Block D — The tree a user organises work in
 

@@ -266,32 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS15 A ring, not an array, and two screens
-
-Scrolling by one line is the most frequent structural operation a terminal performs. As
-an array of rows it is a move of the entire screen; as a ring with a moving origin it is
-an increment. The ring is therefore not an optimisation, it is the data structure, and
-every index into the buffer goes through that origin.
-
-Scrollback is the same ring extended. The visible screen is a window onto it, and a line
-leaving the top is only a line the window no longer covers. Capacity is in lines and
-configurable; eviction is by overwrite, never by copy.
-
-A row is a span of cells plus a wrapped flag, and that flag is not cosmetic. It is the
-only record that a line the host wrote as one logical line occupies two rows, which is
-exactly what reflow, selection and copy each need later and cannot reconstruct.
-
-A cell is a struct of at most sixteen bytes: the cluster, or an index into a side table
-when it does not fit inline, plus foreground, background and attributes. Cells are
-values, so a row is contiguous and clearing one is a fill.
-
-The alternate screen is a second ring with no scrollback, entered by DECSET 1049, which
-also saves and restores the cursor. `vim` exiting and leaving the shell's output
-untouched behind it is that mode working.
-
-Falsified when scrolling a full buffer by one line copies more than a bounded amount of
-memory.
-
 ### §QS16 The sequences a shell prompt already needs
 
 Two families, filed as one line because neither is testable without the other: a shell
