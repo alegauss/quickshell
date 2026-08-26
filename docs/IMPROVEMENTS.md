@@ -885,31 +885,6 @@ Falsified when the render arm's allocation per megabyte stops being dominated by
 and the remaining figure is the atlas and the instance buffer, which is where it
 belongs.
 
-### §QS97 The bound that was measured on one display
-
-QS87 replaced a mean with a bound: every sample sits at one or two — a queued frame and
-the one on the glass — and never at three. Thirty runs on this desk said two was the
-deepest.
-
-QS95's guest reaches three. Measured 2026-08-26: the assertion fires, and nothing else
-in the render suite does except QS96's one pixel.
-
-There is no virtual vblank in a VMware guest the way there is on a panel. The display is
-synthesised, `Present` returns on a schedule the host decides, and `FrameStatistics`
-counts against that. So a queue one deeper is what the environment is, not what the
-renderer did — and the same will be true of RDP, which QS92 already names as the
-environment where a graphics assumption fails quietly rather than loudly.
-
-Three shapes. Read the bound off the swapchain rather than from a constant, since
-`MaximumFrameLatency` is what the queue is allowed to be and the extra frame is the one
-being scanned out. Or skip where the presentation path is synthesised, which needs a way
-to know — and inventing one to make a test pass is how a suite stops covering its own
-case. Or state the bound per environment, which is a table somebody has to keep true.
-
-The first needs no new fact, and it is where to start.
-
-Falsified when a bound read off the swapchain still reads three on real hardware.
-
 ## Block D — The tree a user organises work in
 
 ### §QS55 The file a user will still have in five years

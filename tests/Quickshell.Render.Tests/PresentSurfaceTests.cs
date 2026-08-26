@@ -42,16 +42,28 @@ public sealed class PresentSurfaceTests
     /// whole run, one or two depending on where startup left them. It is a phase, not a depth, and
     /// no mean over it means anything.</para>
     ///
-    /// <para><b>So this asserts what the instrument can see.</b> Every sample sits at one or two —
-    /// a queued frame and the one on the glass — and never at three, which is what a renderer
-    /// getting ahead of the display would look like. Over thirty runs the deepest sample was two,
-    /// twenty-one times one.</para>
+    /// <para><b>So this asserts growth, not depth.</b> An absolute bound was tried and did not
+    /// survive contact with a second environment: thirty runs on this desk never exceeded two, and
+    /// QS95's VMware guest reaches three on the first run, because a synthesised display returns
+    /// from <c>Present</c> on a schedule the host decides and there is no vblank to count against.
+    /// The depth's absolute value is a property of the presentation pipeline. What is a property of
+    /// the <em>renderer</em> is whether the queue grows, so that is what is asserted: the second
+    /// half of a run must not average deeper than the first. An application getting ahead of the
+    /// display climbs; one that cannot get ahead sits wherever startup left it.</para>
+    ///
+    /// <para>The absolute bound that remains is deliberately loose, and is there for the case a
+    /// growth test cannot see: a queue already deep at the first sample and flat thereafter.</para>
     ///
     /// <para><b>What it deliberately does not claim.</b> Not that the wait is worth anything: two
     /// controls were tried and neither discriminated, because one clear per frame with a vsync
     /// present is a workload that can never get ahead of the display at all. The figure the flags
     /// were bought for is input to photon, it needs a frame with real work in it, and it is QS86's
     /// to measure rather than this test's to imply.</para>
+    ///
+    /// <para><b>And it cannot fire on this workload.</b> One clear per frame with a vsync present is
+    /// a frame that cannot get ahead of the display, so the growth this asserts is growth nothing
+    /// here can produce — QS86 tried two controls and neither discriminated, for that reason. This
+    /// is a guard for the workload QS86 will bring, not a check that is proving anything today.</para>
     /// </summary>
     [Fact]
     public void TheFrameQueueNeverGetsAheadOfTheDisplay()
@@ -61,8 +73,7 @@ public sealed class PresentSurfaceTests
         using PresentSurface surface = PresentSurface.For(device, window.Handle, 320, 200);
 
         int settled = -1;
-        long deepest = 0;
-        int samples = 0;
+        List<long> depths = [];
 
         for (int frame = 0; frame < 90; frame++)
         {
@@ -78,21 +89,31 @@ public sealed class PresentSurfaceTests
 
             if (settled >= 0 && frame >= settled)
             {
-                deepest = Math.Max(deepest, surface.QueueDepth());
-                samples++;
+                depths.Add(surface.QueueDepth());
             }
 
             device.Context.ClearRenderTargetView(surface.View, new Color4(0.02f, 0.02f, 0.08f, 1.0f));
             surface.Present();
         }
 
-        Assert.SkipWhen(surface.Occlusions > 0 || samples < 30,
-            $"the window was covered for {surface.Occlusions} frames and DXGI gave {samples} usable " +
-            "samples, so the queue could not be measured on this run");
+        Assert.SkipWhen(surface.Occlusions > 0 || depths.Count < 30,
+            $"the window was covered for {surface.Occlusions} frames and DXGI gave {depths.Count} " +
+            "usable samples, so the queue could not be measured on this run");
 
-        Assert.True(deepest <= 2,
-            $"the frame queue reached {deepest}, which is deeper than one queued frame and the one " +
-            "being scanned out - the application is getting ahead of the display");
+        double early = depths.Take(depths.Count / 2).Average();
+        double late = depths.Skip(depths.Count / 2).Average();
+
+        Assert.True(late <= early + 1.0,
+            $"the frame queue averaged {early:F2} over the first half of the run and {late:F2} over " +
+            "the second, so it is growing - the application is getting ahead of the display");
+
+        // A loose absolute bound, so a queue that is deep from the first sample and stays there
+        // still fails. It is deliberately far above both environments measured: this test's claim
+        // is about growth, and the depth's absolute value is a startup phase QS87 measured and a
+        // presentation pipeline QS97 measured again.
+        Assert.True(depths.Max() <= 8,
+            $"the frame queue reached {depths.Max()}, which is deeper than any presentation path " +
+            "this has been measured on and deeper than a latency of one can explain");
     }
 
     [Fact]

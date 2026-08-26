@@ -20,6 +20,7 @@
 - ✅ **QS14** **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — The parser holds no terminal state and the table answers for every byte in every state, checked where it is built.
 - ✅ **QS15** **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — Scrolling the screen moves an origin and fills one row; only a scrolling region inside the screen moves rows at all.
 - ✅ **QS96** **A third rasteriser shifts one antialiased pixel by six levels, which is three times the measured tolerance** — A golden scene's tolerance belongs to the scene: glyph coverage is DirectWrite's and varies by machine, the shader's arithmetic does not.
+- ✅ **QS97** **The frame queue reaches three under a virtualised presentation path, where the bound was measured at two** — A frame queue's absolute depth belongs to the display pipeline; only its growth belongs to the renderer, so only growth is asserted.
 
 ## Block D — The tree a user organises work in
 

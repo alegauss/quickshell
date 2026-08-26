@@ -2,8 +2,6 @@
 
 ## Priority
 
-- QS97
-
 ## Block A — A session that stays up, or says why it did not
 
 - 📋 **QS36** (deps: QS5 ✅, QS25) **Protocol library types would reach the terminal and the UI, so replacing that library means rewriting the client** — The gap analysis may well end in a different library, and a seam decided afterwards is one negotiated against code that already exists. → §QS36
@@ -46,7 +44,6 @@
 - 📋 **QS92** (deps: —) **The golden suite has run on two rasterisers and none of the three vendor drivers its matrix names** — A driver bug is by definition the thing the machine that wrote the code cannot see, so a suite that has only ever run here is one nobody has tested yet. → §QS92
 - 📋 **QS93** (deps: QS25) **Every golden scene is text somebody typed into the test, so none of them is a screen a real program drew** — A scene an author invented exercises what that author thought of, which is never the combination that turns out to break on somebody's machine. → §QS93
 - 📋 **QS94** (deps: QS13 ✅) **Segmenting a printed run allocates a string per character, which is the whole of the render arm's cost** — The parser was built to allocate nothing and the layer directly above it allocates more than the bytes it was given, so the zero it achieved buys nothing. → §QS94
-- 📋 **QS97** (deps: QS87 ✅, QS95 ✅) **The frame queue reaches three under a virtualised presentation path, where the bound was measured at two** — A bound calibrated on one machine's display pipeline is a bound about that pipeline, and the guest is the first evidence there is more than one. → §QS97
 
 ## Block D — The tree a user organises work in
 

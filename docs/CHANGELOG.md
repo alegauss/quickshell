@@ -20,6 +20,7 @@
 - ✅ **QS14** **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — Williams' table over fourteen states and all 256 bytes, emitting events and allocating nothing per parse (design §QS14 superseded: a UTF-8 stream cannot honour single-byte C1).
 - ✅ **QS15** **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — A ring with a moving origin: one scroll writes one row, whether the scrollback is ten lines or a hundred thousand.
 - ✅ **QS96** **A third rasteriser shifts one antialiased pixel by six levels, which is three times the measured tolerance** — Text scenes allow the eight levels the rasteriser was measured to move; a glyph-free scene holds the shader to one (design superseded: the shader cannot move a pixel one level, let alone six).
+- ✅ **QS97** **The frame queue reaches three under a virtualised presentation path, where the bound was measured at two** — The test asserts the queue does not grow, since its depth is the presentation pipeline's and its growth is the renderer's (design superseded: reading the swapchain gives the two it had).
 
 ## Block D — The tree a user organises work in
 
