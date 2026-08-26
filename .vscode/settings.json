@@ -1,0 +1,15 @@
+{
+"window.title": "Quickshell ${separator} ${dirty}${activeEditorShort} ${separator} ${appName}",
+
+  // Status bar in white so this worktree is easy to spot
+  "workbench.colorCustomizations": {
+    "statusBar.background": "#ffffff",
+    "statusBar.foreground": "#1e1e1e",
+    "statusBar.border": "#d0d0d0",
+    "statusBar.noFolderBackground": "#ffffff",
+    "statusBar.debuggingBackground": "#ffffff",
+    "statusBarItem.hoverBackground": "#e0e0e0",
+    "statusBarItem.remoteBackground": "#e0e0e0",
+    "statusBarItem.remoteForeground": "#1e1e1e"
+  }
+}
