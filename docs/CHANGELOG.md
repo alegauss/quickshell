@@ -22,6 +22,7 @@
 - ✅ **QS96** **A third rasteriser shifts one antialiased pixel by six levels, which is three times the measured tolerance** — Text scenes allow the eight levels the rasteriser was measured to move; a glyph-free scene holds the shader to one (design superseded: the shader cannot move a pixel one level, let alone six).
 - ✅ **QS97** **The frame queue reaches three under a virtualised presentation path, where the bound was measured at two** — The test asserts the queue does not grow, since its depth is the presentation pipeline's and its growth is the renderer's (design superseded: reading the swapchain gives the two it had).
 - ✅ **QS16** **The cursor cannot be moved, a line cannot be erased and no character carries a colour** — Cursor movement, erasing and editing that clamp, plus SGR in both spellings, with default and indexed colours left unresolved.
+- ✅ **QS17** **A full-width line wraps a column early and a scrolled region redraws the wrong rows** — Writing the last column owes a wrap rather than taking one, and margins, origin mode and a real tab-stop set all hold.
 
 ## Block D — The tree a user organises work in
 

@@ -31,6 +31,8 @@ public sealed partial class Emulator : IAnsiHandler
     public Emulator(int columns, int rows, int scrollback = 1000)
     {
         Screens = new Screens(columns, rows, scrollback);
+        MarginBottom = rows - 1;
+        ResetTabStops();
     }
 
     /// <summary>The primary and alternate screens, and which is live.</summary>
@@ -47,6 +49,9 @@ public sealed partial class Emulator : IAnsiHandler
 
     /// <summary>Sequences the parser dispatched that nothing here answers for.</summary>
     public int Unhandled { get; private set; }
+
+    /// <summary>Whether the host has asked for the cursor to be shown. DECTCEM.</summary>
+    public bool CursorVisible { get; private set; } = true;
 
     /// <summary>
     /// Feeds bytes from the host, through the parser and into the buffer.
@@ -92,6 +97,13 @@ public sealed partial class Emulator : IAnsiHandler
         Screens.Resize(columns, rows);
         _savedRow = Math.Clamp(_savedRow, 0, rows - 1);
         _savedColumn = Math.Clamp(_savedColumn, 0, columns - 1);
+
+        // The region and the stops are both stated in the old geometry, and neither survives a
+        // resize meaningfully. A host that had set either is told the new size and sets them again.
+        MarginTop = 0;
+        MarginBottom = rows - 1;
+        PendingWrap = false;
+        ResetTabStops();
     }
 
     // ---- Text ----
@@ -117,12 +129,34 @@ public sealed partial class Emulator : IAnsiHandler
 
         TerminalBuffer buffer = Buffer;
 
+        // The wrap that was owed from the last character, taken now that a printable one has
+        // actually arrived. Everything between then and now had its chance to cancel it.
+        if (PendingWrap)
+        {
+            PendingWrap = false;
+
+            if (AutoWrap)
+            {
+                // The row the host wrote as one logical line continues into the next, and saying so
+                // is the only record reflow, selection and copy will have.
+                buffer.SetScreenWrapped(buffer.CursorRow, true);
+                NextLine();
+            }
+        }
+
         if (buffer.CursorColumn + width > buffer.Columns)
         {
-            // The row the host wrote as one logical line continues into the next, and saying so is
-            // the only record reflow, selection and copy will have.
-            buffer.SetScreenWrapped(buffer.CursorRow, true);
-            NextLine();
+            // A wide character with one column left. It cannot be split, so either the line wraps
+            // or - with wrapping off - it lands at the end and overwrites what is there.
+            if (AutoWrap)
+            {
+                buffer.SetScreenWrapped(buffer.CursorRow, true);
+                NextLine();
+            }
+            else
+            {
+                buffer.CursorColumn = buffer.Columns - width;
+            }
         }
 
         Cell cell = cluster.Length == 1 || char.IsSurrogatePair(cluster, 0)
@@ -140,7 +174,18 @@ public sealed partial class Emulator : IAnsiHandler
         }
 
         _lastPrinted = codepoint;
-        buffer.CursorColumn += width;
+
+        if (buffer.CursorColumn + width >= buffer.Columns)
+        {
+            // Stay on the cell just written and owe a wrap. Moving now is what puts a blank line
+            // after every line that happens to be exactly the width of the terminal.
+            buffer.CursorColumn = buffer.Columns - width;
+            PendingWrap = true;
+        }
+        else
+        {
+            buffer.CursorColumn += width;
+        }
     }
 
     /// <summary>
@@ -198,6 +243,10 @@ public sealed partial class Emulator : IAnsiHandler
 
         TerminalBuffer buffer = Buffer;
 
+        // Every control cancels an owed wrap. Only a printable character takes it, which is the
+        // whole of what makes a full-width line not grow a blank one after it.
+        PendingWrap = false;
+
         switch (control)
         {
             case 0x08:
@@ -205,7 +254,7 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case 0x09:
-                buffer.CursorColumn = Math.Min(buffer.Columns - 1, (buffer.CursorColumn + 8) & ~7);
+                buffer.CursorColumn = NextTabStop(buffer.CursorColumn);
                 break;
 
             case 0x0A:
@@ -228,14 +277,24 @@ public sealed partial class Emulator : IAnsiHandler
     {
         TerminalBuffer buffer = Buffer;
         buffer.CursorColumn = 0;
+        PendingWrap = false;
 
-        if (buffer.CursorRow + 1 < buffer.Rows)
+        if (buffer.CursorRow != MarginBottom)
         {
-            buffer.CursorRow++;
+            buffer.CursorRow = Math.Min(buffer.Rows - 1, buffer.CursorRow + 1);
             return;
         }
 
-        buffer.ScrollUp();
+        // At the bottom margin. Only a region that is the whole screen scrolls into the scrollback:
+        // a line leaving a region inside the screen has not left the screen, and putting it in the
+        // history would interleave a program's own scrolling with the shell's output behind it.
+        if (RegionIsWholeScreen)
+        {
+            buffer.ScrollUp();
+            return;
+        }
+
+        buffer.ScrollRegionUp(MarginTop, MarginBottom);
     }
 
     // ---- Escape sequences ----
@@ -273,6 +332,14 @@ public sealed partial class Emulator : IAnsiHandler
                 buffer.CursorColumn = 0;
                 break;
 
+            case (byte)'H':
+                if (Buffer.CursorColumn < Buffer.Columns)
+                {
+                    SetTabStop(Buffer.CursorColumn);
+                }
+
+                break;
+
             case (byte)'M':
                 ReverseIndex();
                 break;
@@ -294,14 +361,15 @@ public sealed partial class Emulator : IAnsiHandler
     private void ReverseIndex()
     {
         TerminalBuffer buffer = Buffer;
+        PendingWrap = false;
 
-        if (buffer.CursorRow > 0)
+        if (buffer.CursorRow != MarginTop)
         {
-            buffer.CursorRow--;
+            buffer.CursorRow = Math.Max(0, buffer.CursorRow - 1);
             return;
         }
 
-        buffer.ScrollRegionDown(0, buffer.Rows - 1);
+        buffer.ScrollRegionDown(MarginTop, MarginBottom);
     }
 
     private void SaveCursor()
@@ -324,6 +392,13 @@ public sealed partial class Emulator : IAnsiHandler
     private void Reset()
     {
         _pen = Pen.Default;
+        AutoWrap = true;
+        OriginMode = false;
+        PendingWrap = false;
+        CursorVisible = true;
+        MarginTop = 0;
+        MarginBottom = Buffer.Rows - 1;
+        ResetTabStops();
         _savedPen = Pen.Default;
         _savedRow = 0;
         _savedColumn = 0;
@@ -344,7 +419,24 @@ public sealed partial class Emulator : IAnsiHandler
     {
         FlushText();
 
+        // The private marker arrives as an intermediate, and what follows it is a different
+        // instruction set entirely - `CSI ?7h` is not `CSI 7h`.
+        if (intermediates.Length > 0 && intermediates[0] == (byte)'?')
+        {
+            if (final is (byte)'h' or (byte)'l')
+            {
+                PrivateMode(parameters, final == (byte)'h');
+            }
+            else
+            {
+                Unhandled++;
+            }
+
+            return;
+        }
+
         TerminalBuffer buffer = Buffer;
+        PendingWrap = false;
 
         // A parameter that is absent and a parameter that is zero are the same instruction. This is
         // the one line that makes that true for every movement below, and the falsification this
@@ -385,13 +477,37 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'d':
-                buffer.CursorRow = Math.Clamp(count - 1, 0, buffer.Rows - 1);
+                buffer.CursorRow = RowFor(count);
                 break;
 
             case (byte)'H':
             case (byte)'f':
-                buffer.CursorRow = Math.Clamp(Math.Max(1, parameters.Value(0, 1)) - 1, 0, buffer.Rows - 1);
+                buffer.CursorRow = RowFor(Math.Max(1, parameters.Value(0, 1)));
                 buffer.CursorColumn = Math.Clamp(Math.Max(1, parameters.Value(1, 1)) - 1, 0, buffer.Columns - 1);
+                break;
+
+            case (byte)'r':
+                SetMargins(parameters);
+                break;
+
+            case (byte)'g':
+                ClearTabStop(parameters.Value(0, 0));
+                break;
+
+            case (byte)'I':
+                for (int step = 0; step < count; step++)
+                {
+                    buffer.CursorColumn = NextTabStop(buffer.CursorColumn);
+                }
+
+                break;
+
+            case (byte)'Z':
+                for (int step = 0; step < count; step++)
+                {
+                    buffer.CursorColumn = PreviousTabStop(buffer.CursorColumn);
+                }
+
                 break;
 
             case (byte)'J':
@@ -403,11 +519,21 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'L':
-                buffer.ScrollRegionDown(buffer.CursorRow, buffer.Rows - 1, count);
+                // Inside the region and nowhere else: a host that inserts a line below the bottom
+                // margin is asking for nothing to happen, not for the margin to be ignored.
+                if (buffer.CursorRow >= MarginTop && buffer.CursorRow <= MarginBottom)
+                {
+                    buffer.ScrollRegionDown(buffer.CursorRow, MarginBottom, count);
+                }
+
                 break;
 
             case (byte)'M':
-                buffer.ScrollRegionUp(buffer.CursorRow, buffer.Rows - 1, count);
+                if (buffer.CursorRow >= MarginTop && buffer.CursorRow <= MarginBottom)
+                {
+                    buffer.ScrollRegionUp(buffer.CursorRow, MarginBottom, count);
+                }
+
                 break;
 
             case (byte)'@':
@@ -423,11 +549,11 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'S':
-                buffer.ScrollRegionUp(0, buffer.Rows - 1, count);
+                buffer.ScrollRegionUp(MarginTop, MarginBottom, count);
                 break;
 
             case (byte)'T':
-                buffer.ScrollRegionDown(0, buffer.Rows - 1, count);
+                buffer.ScrollRegionDown(MarginTop, MarginBottom, count);
                 break;
 
             case (byte)'b':
@@ -444,6 +570,46 @@ public sealed partial class Emulator : IAnsiHandler
 
             case (byte)'u':
                 RestoreCursor();
+                break;
+
+            default:
+                Unhandled++;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Which screen row a one-based row number means. Under DECOM it is relative to the top margin
+    /// and clamped inside the region, which is the whole reason the mode exists rather than being a
+    /// flag a movement could ignore.
+    /// </summary>
+    private int RowFor(int oneBased) => OriginMode
+        ? Math.Clamp(MarginTop + oneBased - 1, MarginTop, MarginBottom)
+        : Math.Clamp(oneBased - 1, 0, Buffer.Rows - 1);
+
+    private void SetTabStop(int column)
+    {
+        if (column >= 0 && column < _tabStops.Length)
+        {
+            _tabStops[column] = true;
+        }
+    }
+
+    /// <summary>TBC. Zero clears the stop under the cursor; three clears every one there is.</summary>
+    private void ClearTabStop(int mode)
+    {
+        switch (mode)
+        {
+            case 0:
+                if (Buffer.CursorColumn < _tabStops.Length)
+                {
+                    _tabStops[Buffer.CursorColumn] = false;
+                }
+
+                break;
+
+            case 3:
+                Array.Clear(_tabStops);
                 break;
 
             default:

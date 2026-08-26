@@ -22,6 +22,7 @@
 - ✅ **QS96** **A third rasteriser shifts one antialiased pixel by six levels, which is three times the measured tolerance** — A golden scene's tolerance belongs to the scene: glyph coverage is DirectWrite's and varies by machine, the shader's arithmetic does not.
 - ✅ **QS97** **The frame queue reaches three under a virtualised presentation path, where the bound was measured at two** — A frame queue's absolute depth belongs to the display pipeline; only its growth belongs to the renderer, so only growth is asserted.
 - ✅ **QS16** **The cursor cannot be moved, a line cannot be erased and no character carries a colour** — A cell stores the colour the host named, default or index, and a frame resolves it - so a theme change repaints the scrollback too.
+- ✅ **QS17** **A full-width line wraps a column early and a scrolled region redraws the wrong rows** — Only a printable character takes an owed wrap; every control cancels it, which is what keeps a full-width line from growing a blank one.
 
 ## Block D — The tree a user organises work in
 

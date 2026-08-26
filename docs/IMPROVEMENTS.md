@@ -266,31 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS17 Pending wrap, the margin, and the tab stop
-
-DECSTBM sets a top and a bottom margin, and inside it scrolling, IL, DL, SU and SD all
-operate on the region instead of the screen. `less` and `tmux` both depend on this, so
-it is not an optional refinement.
-
-DECOM decides whether row one means the screen or the region, which changes what CUP
-means — and is why it is a mode rather than a flag anything may ignore.
-
-The pending-wrap state is the subtle one, and the one most implementations skip. Writing
-to the last column does *not* move the cursor to the next row: it leaves the cursor on
-that column with a pending flag, and only the next printable character wraps. Anything
-else — a cursor movement, an erase, a carriage return — clears the flag. Get this wrong
-and a line exactly the width of the terminal is followed by a blank line the host never
-sent, which the user sees at once and blames on the remote program.
-
-DECAWM turns wrapping off entirely, and then the last column simply overwrites itself.
-
-Tab stops are a real column set and never a modulo-eight assumption: HTS sets one, TBC
-clears one or all, CHT and CBT move forward and back. A program that sets its own stops
-and then tabs is testing whether that set exists.
-
-Falsified when a line of exactly terminal width is followed by a blank line nothing
-sent.
-
 ### §QS18 The character sets and the operating system commands
 
 Two groups of sequences, cheap individually and conspicuous when absent.
