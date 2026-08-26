@@ -18,8 +18,9 @@ namespace Quickshell.Terminal;
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct Cell : IEquatable<Cell>
 {
-    private const int WidthShift = 9;
-    private const int UnderlineShift = 6;
+    private const int WidthShift = 12;
+    private const int UnderlineShift = 9;
+    private const uint FlagMask = 0x1FF;
 
     private readonly int _text;
     private readonly uint _foreground;
@@ -37,7 +38,12 @@ public readonly struct Cell : IEquatable<Cell>
     /// <summary>The size the design bounds this at, asserted against the struct itself in a test.</summary>
     public const int Size = 16;
 
-    /// <summary>An empty cell in the default colours: what a cleared row is filled with.</summary>
+    /// <summary>
+    /// An empty cell in the default colours: what a cleared row is filled with.
+    ///
+    /// <para>Default, and not the theme's current colours: a cleared row repaints with the theme
+    /// the same way a written one does, which it would not if the clear had baked a colour in.</para>
+    /// </summary>
     public static Cell Blank => new(' ', 0, 0, 1u << WidthShift);
 
     /// <summary>Whether the text is an index into the cluster table rather than a codepoint.</summary>
@@ -49,14 +55,14 @@ public readonly struct Cell : IEquatable<Cell>
     /// <summary>The index into the buffer's cluster table, where this cell holds one.</summary>
     public int ClusterIndex => _text < 0 ? ~_text : -1;
 
-    /// <summary>The foreground, as the model resolved it.</summary>
-    public Rgb Foreground => Unpack(_foreground);
+    /// <summary>The foreground as the host expressed it, which may be "the theme's".</summary>
+    public Colour Foreground => Colour.FromPacked(_foreground);
 
-    /// <summary>The background, as the model resolved it.</summary>
-    public Rgb Background => Unpack(_background);
+    /// <summary>The background as the host expressed it, which may be "the theme's".</summary>
+    public Colour Background => Colour.FromPacked(_background);
 
     /// <summary>Bold, slant, inverse, overline, strike and selection.</summary>
-    public CellFlags Flags => (CellFlags)(_attributes & 0x3F);
+    public CellFlags Flags => (CellFlags)(_attributes & FlagMask);
 
     /// <summary>Which underline this cell carries, if any.</summary>
     public UnderlineStyle Underline => (UnderlineStyle)((_attributes >> UnderlineShift) & 0x7);
@@ -69,33 +75,33 @@ public readonly struct Cell : IEquatable<Cell>
     public int Width => (int)((_attributes >> WidthShift) & 0x3);
 
     /// <summary>Whether anything was ever written here, as against a cell that is still blank.</summary>
-    public bool IsBlank => _text == ' ' && _foreground == 0 && _background == 0;
+    public bool IsBlank => _text == ' ' && _foreground == 0 && _background == 0 && Flags == CellFlags.None;
 
     /// <summary>Builds a cell holding one codepoint.</summary>
-    public static Cell For(int codepoint, Rgb foreground, Rgb background,
+    public static Cell For(int codepoint, Colour foreground, Colour background,
                            CellFlags flags = CellFlags.None,
                            UnderlineStyle underline = UnderlineStyle.None,
                            int width = 1)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(codepoint);
 
-        return new Cell(codepoint, Pack(foreground), Pack(background), Attributes(flags, underline, width));
+        return new Cell(codepoint, foreground.Packed, background.Packed, Attributes(flags, underline, width));
     }
 
     /// <summary>Builds a cell pointing at a cluster the buffer's table holds.</summary>
-    public static Cell ForCluster(int clusterIndex, Rgb foreground, Rgb background,
+    public static Cell ForCluster(int clusterIndex, Colour foreground, Colour background,
                                   CellFlags flags = CellFlags.None,
                                   UnderlineStyle underline = UnderlineStyle.None,
                                   int width = 1)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(clusterIndex);
 
-        return new Cell(~clusterIndex, Pack(foreground), Pack(background), Attributes(flags, underline, width));
+        return new Cell(~clusterIndex, foreground.Packed, background.Packed, Attributes(flags, underline, width));
     }
 
     /// <summary>The same cell in different colours, which is what an attribute change rewrites.</summary>
-    public Cell With(Rgb foreground, Rgb background) =>
-        new(_text, Pack(foreground), Pack(background), _attributes);
+    public Cell With(Colour foreground, Colour background) =>
+        new(_text, foreground.Packed, background.Packed, _attributes);
 
     /// <inheritdoc/>
     public bool Equals(Cell other) =>
@@ -122,8 +128,4 @@ public readonly struct Cell : IEquatable<Cell>
         return (uint)flags | ((uint)underline << UnderlineShift) | ((uint)width << WidthShift);
     }
 
-    private static uint Pack(Rgb colour) => 0x01000000u | colour.Packed;
-
-    private static Rgb Unpack(uint packed) =>
-        new((byte)(packed >> 16), (byte)(packed >> 8), (byte)packed);
 }

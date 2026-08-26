@@ -266,30 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS16 The sequences a shell prompt already needs
-
-Two families, filed as one line because neither is testable without the other: a shell
-prompt uses both before the user has typed anything.
-
-**Cursor and editing.** CUU, CUD, CUF, CUB, CUP and HVP, CHA and VPA, ED and EL in all
-three forms, IL and DL, ICH and DCH, ECH, SU and SD, and REP. Each is defined against
-the buffer, and the two rules that get them wrong everywhere are clamping and defaults:
-a missing parameter is one, a zero parameter is one, and a movement clamps at the margin
-rather than wrapping. DECSC and DECRC save and restore the whole cursor state, including
-attributes and the designated charset, not merely the position.
-
-**SGR.** The base sixteen, the 256-colour cube through `38;5` and `48;5`, and 24-bit
-colour through `38;2` and `48;2` in both the semicolon and the colon spellings, because
-real programs emit both. Bold, faint, italic, underline, slow and rapid blink, inverse,
-conceal and strike, each with its own reset code rather than a blanket reset, since
-programs turn one attribute off and expect the others to survive.
-
-Default foreground and background are a distinct state from any concrete colour, so that
-a theme change repaints them. Storing the theme's resolved colour instead is the bug
-that makes old scrollback stop matching a new theme.
-
-Falsified when a parameter of zero and an absent parameter are treated differently.
-
 ### §QS17 Pending wrap, the margin, and the tab stop
 
 DECSTBM sets a top and a bottom margin, and inside it scrolling, IL, DL, SU and SD all

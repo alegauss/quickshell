@@ -55,6 +55,10 @@ public readonly record struct CellInstance(uint Foreground, uint Background,
     /// <para><paramref name="underline"/> and <paramref name="cursor"/> are the two attributes that
     /// are states rather than switches. Neither costs a draw: both are read in the pixel shader and
     /// turned into arithmetic on the cell's own coordinates.</para>
+    ///
+    /// <para><paramref name="flags"/> is masked to <see cref="CellFlags.Drawn"/>. The model carries
+    /// more than the renderer can show — conceal, faint, blink — and letting one of those through
+    /// would not draw it, it would overflow into the span bits beside it.</para>
     /// </summary>
     public static CellInstance For(GlyphPlacement glyph, Rgb foreground, Rgb background,
                                    CellFlags flags = CellFlags.None, int span = 1,
@@ -70,7 +74,7 @@ public readonly record struct CellInstance(uint Foreground, uint Background,
             | ((uint)cursor << 6);
 
         return new CellInstance(
-            foreground.Packed | ((uint)flags << 24) | ((uint)span << 30),
+            foreground.Packed | ((uint)(flags & CellFlags.Drawn) << 24) | ((uint)span << 30),
             background.Packed | (attributes << 24),
             Pair(glyph.X, glyph.Y),
             Pair(glyph.Width, glyph.Height),

@@ -153,22 +153,75 @@ public sealed class TerminalBuffer
     /// or delete line need. Unlike <see cref="ScrollUp"/> this really does move rows, because a
     /// region inside the screen is not what the origin describes.
     /// </summary>
-    public void ScrollRegionUp(int top, int bottom)
+    public void ScrollRegionUp(int top, int bottom, int count = 1)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(top);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(bottom, Rows);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(top, bottom);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
-        for (int row = top; row < bottom; row++)
+        int height = bottom - top + 1;
+        int shift = Math.Min(count, height);
+
+        for (int row = top; row + shift <= bottom; row++)
         {
-            Screen(row + 1).CopyTo(Screen(row));
-            SetScreenWrapped(row, IsScreenWrapped(row + 1));
+            Screen(row + shift).CopyTo(Screen(row));
+            SetScreenWrapped(row, IsScreenWrapped(row + shift));
             CellsWrittenByScrolling += Columns;
         }
 
-        Screen(bottom).Fill(Cell.Blank);
-        SetScreenWrapped(bottom, false);
-        CellsWrittenByScrolling += Columns;
+        for (int row = bottom - shift + 1; row <= bottom; row++)
+        {
+            Screen(row).Fill(Cell.Blank);
+            SetScreenWrapped(row, false);
+            CellsWrittenByScrolling += Columns;
+        }
+    }
+
+    /// <summary>
+    /// Scrolls a region down, which is what a reverse index at the top margin and an insert-line
+    /// both are. The rows really move, for the same reason they do going up: a region inside the
+    /// screen is not what the ring's origin describes.
+    /// </summary>
+    public void ScrollRegionDown(int top, int bottom, int count = 1)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(top);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(bottom, Rows);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(top, bottom);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+
+        int height = bottom - top + 1;
+        int shift = Math.Min(count, height);
+
+        for (int row = bottom; row - shift >= top; row--)
+        {
+            Screen(row - shift).CopyTo(Screen(row));
+            SetScreenWrapped(row, IsScreenWrapped(row - shift));
+            CellsWrittenByScrolling += Columns;
+        }
+
+        for (int row = top; row < top + shift; row++)
+        {
+            Screen(row).Fill(Cell.Blank);
+            SetScreenWrapped(row, false);
+            CellsWrittenByScrolling += Columns;
+        }
+    }
+
+    /// <summary>
+    /// Throws away everything above the visible screen, which is what <c>CSI 3 J</c> asks for. The
+    /// screen itself is untouched: a host clearing its scrollback has not asked to lose what is in
+    /// front of the user.
+    /// </summary>
+    public void DropScrollback()
+    {
+        if (ScrollbackLines == 0)
+        {
+            return;
+        }
+
+        _origin = RingRow(ScrollbackLines);
+        LineCount = Rows;
     }
 
     /// <summary>Writes one cell of the visible screen.</summary>

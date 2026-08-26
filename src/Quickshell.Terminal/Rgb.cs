@@ -30,8 +30,14 @@ public readonly record struct Rgb(byte Red, byte Green, byte Blue)
 /// does: both are resolved when the glyph is cached, by picking a different face. They ride along
 /// so a cell round-trips through the renderer without losing what the host said.</para>
 /// </summary>
+/// <remarks>
+/// Wider than the six the renderer draws, on purpose. The model holds what the host said; the
+/// instance the shader reads carries only what it has a way to show, and masks the rest off. A flag
+/// the model dropped because the renderer could not draw it would be a fact about the session lost
+/// to a limitation of the picture.
+/// </remarks>
 [Flags]
-public enum CellFlags : byte
+public enum CellFlags : ushort
 {
     /// <summary>Ordinary text.</summary>
     None = 0,
@@ -53,6 +59,18 @@ public enum CellFlags : byte
 
     /// <summary>The cell is inside the selection.</summary>
     Selected = 32,
+
+    /// <summary>Dimmed. Its own bit, because SGR 22 ends it and bold together and nothing else does.</summary>
+    Faint = 64,
+
+    /// <summary>Blinking, at whichever of the two rates the host asked for.</summary>
+    Blink = 128,
+
+    /// <summary>Hidden: the cell holds its character and shows the background instead.</summary>
+    Conceal = 256,
+
+    /// <summary>The six the renderer has a way to draw. Everything else is the model's alone.</summary>
+    Drawn = Bold | Slant | Inverse | Overline | Strike | Selected,
 }
 
 /// <summary>

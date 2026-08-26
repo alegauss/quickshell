@@ -21,6 +21,7 @@
 - ✅ **QS15** **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — Scrolling the screen moves an origin and fills one row; only a scrolling region inside the screen moves rows at all.
 - ✅ **QS96** **A third rasteriser shifts one antialiased pixel by six levels, which is three times the measured tolerance** — A golden scene's tolerance belongs to the scene: glyph coverage is DirectWrite's and varies by machine, the shader's arithmetic does not.
 - ✅ **QS97** **The frame queue reaches three under a virtualised presentation path, where the bound was measured at two** — A frame queue's absolute depth belongs to the display pipeline; only its growth belongs to the renderer, so only growth is asserted.
+- ✅ **QS16** **The cursor cannot be moved, a line cannot be erased and no character carries a colour** — A cell stores the colour the host named, default or index, and a frame resolves it - so a theme change repaints the scrollback too.
 
 ## Block D — The tree a user organises work in
 
