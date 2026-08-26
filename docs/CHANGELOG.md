@@ -46,3 +46,4 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 - ✅ **QS88** **dotnet test reports zero tests and exits non-zero on a tree whose suite passes when the assembly is run directly** — `.\run-tests.cmd` runs every test assembly, and its exit code is the verdict (design §QS88 superseded: it falsified only on dotnet test) (design §QS88 recorded in `run-tests.cmd`).
+- ✅ **QS95** **The render suite takes the screen with topmost windows, and anything the operator does corrupts it** — One command runs the suite on a VMware guest, and the host's screen stops being part of the measurement (design superseded: the guest is a third rasteriser, not this desk).

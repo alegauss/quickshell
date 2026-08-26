@@ -232,6 +232,14 @@ exits 5 while all of it passes, so a green from that command is not evidence of 
 script, with `Release` as its one argument. Output lands in `bin\<Configuration>\` and nowhere else,
 so there is no second tree holding an older binary to run by accident.
 
+**`.\run-tests-vm.cmd` is the same suite on a desk that is not yours.** The render tests put real
+topmost windows on screen for twenty-five seconds — and a window dragged across one makes DXGI
+answer `DXGI_STATUS_OCCLUDED`, which corrupts the frame-queue measurement. Reach for it when the
+machine is in use, and when a result should not depend on nobody touching the mouse. It carries the
+working tree, not just HEAD. Note that the guest is a **different environment**, not a quieter copy
+of this one: it has VMware's virtual GPU, so a golden scene may legitimately differ there — that is
+QS12's matrix widening, and it is a finding to file rather than a tolerance to raise.
+
 A terminal client is judged on behaviour under a real connection, so its own tasks are held to that:
 
 - **A claim is proven by a run, against a real endpoint** — a live sshd, a container, a jump host,
