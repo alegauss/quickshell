@@ -19,6 +19,7 @@
 - ✅ **QS13** **A multi-byte character split across two network reads decodes as two broken ones** — A stateful decoder, UAX #29 clusters that survive any split, and a width table generated from Unicode 17.0.0 (design §QS13 recorded in `tools/generate-width-table.py`).
 - ✅ **QS14** **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — Williams' table over fourteen states and all 256 bytes, emitting events and allocating nothing per parse (design §QS14 superseded: a UTF-8 stream cannot honour single-byte C1).
 - ✅ **QS15** **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — A ring with a moving origin: one scroll writes one row, whether the scrollback is ten lines or a hundred thousand.
+- ✅ **QS96** **A third rasteriser shifts one antialiased pixel by six levels, which is three times the measured tolerance** — Text scenes allow the eight levels the rasteriser was measured to move; a glyph-free scene holds the shader to one (design superseded: the shader cannot move a pixel one level, let alone six).
 
 ## Block D — The tree a user organises work in
 

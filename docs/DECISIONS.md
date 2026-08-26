@@ -19,6 +19,7 @@
 - ✅ **QS13** **A multi-byte character split across two network reads decodes as two broken ones** — The width table is generated from the Unicode Character Database and records its version, so a release is a rebuild and a diff.
 - ✅ **QS14** **A byte carrying an escape sequence is indistinguishable from text, so a host cannot move the cursor** — The parser holds no terminal state and the table answers for every byte in every state, checked where it is built.
 - ✅ **QS15** **Nothing holds what the remote host has printed, so a line that scrolls off the top is gone** — Scrolling the screen moves an origin and fills one row; only a scrolling region inside the screen moves rows at all.
+- ✅ **QS96** **A third rasteriser shifts one antialiased pixel by six levels, which is three times the measured tolerance** — A golden scene's tolerance belongs to the scene: glyph coverage is DirectWrite's and varies by machine, the shader's arithmetic does not.
 
 ## Block D — The tree a user organises work in
 

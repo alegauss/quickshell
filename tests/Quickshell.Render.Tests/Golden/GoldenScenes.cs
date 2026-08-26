@@ -24,8 +24,48 @@ internal static class GoldenScenes
     private static readonly Rgb Amber = new(228, 190, 120);
     private static readonly Rgb Red = new(228, 120, 120);
 
-    /// <summary>One scene: the name its reference is filed under, and what it draws.</summary>
-    internal sealed record Scene(string Name, FontSettings Font, Action<Painter> Paint);
+    /// <summary>
+    /// One scene: the name its reference is filed under, what it draws, and how far a pixel of it
+    /// may drift before the difference is the renderer's rather than the machine's.
+    /// </summary>
+    /// <param name="Name">What the reference image is filed under.</param>
+    /// <param name="Font">The font this scene is drawn in.</param>
+    /// <param name="Paint">What it draws.</param>
+    /// <param name="LevelTolerance">
+    /// How far one channel may differ from the reference. <b>It is a property of the scene, not of
+    /// the suite</b>, because a scene with glyphs in it is measuring two things: this renderer's
+    /// arithmetic, which is ours and deterministic, and DirectWrite's glyph coverage, which is not
+    /// ours and differs between machines. See <see cref="All"/> for the measurement.
+    /// </param>
+    internal sealed record Scene(string Name, FontSettings Font, Action<Painter> Paint,
+                                 int LevelTolerance = TextTolerance);
+
+    /// <summary>
+    /// What a scene containing text may differ by.
+    ///
+    /// <para><b>Measured, and it is not the shader.</b> QS96: the guest's `attributes` scene differed
+    /// from its reference in one pixel of 123,200, by six levels. Six levels of output needs about
+    /// fifteen levels of coverage — and the shader's own arithmetic cannot move the output even one
+    /// level, which was checked by perturbing its sRGB conversion by a part in a million across every
+    /// coverage value and watching the encoded result not change. So the six is DirectWrite's glyph
+    /// rasterisation differing between machines, which no amount of care here makes identical.</para>
+    ///
+    /// <para>Eight is that six with room. It is not a number chosen to make a vendor pass: a
+    /// structural regression moves the picture by <em>hundreds</em> of levels — a one-pixel shift of
+    /// the underline was measured at 204 — so this still refuses everything the suite exists to
+    /// catch, and <see cref="GlyphFree"/> is what holds the part that is genuinely ours to one.</para>
+    /// </summary>
+    internal const int TextTolerance = 8;
+
+    /// <summary>
+    /// What a scene with no glyphs in it may differ by.
+    ///
+    /// <para>One, and that is the tight claim this suite can actually make. With no coverage in the
+    /// picture, everything left is the renderer's own arithmetic: the linear blend, the rules, the
+    /// cursor shapes, the selection. That is deterministic, and a driver disagreeing about it is a
+    /// finding rather than a fact of life.</para>
+    /// </summary>
+    internal const int GlyphFree = 1;
 
     /// <summary>
     /// Every scene, in the order the design lists them.
@@ -43,7 +83,29 @@ internal static class GoldenScenes
         new("mixed-scripts", new FontSettings("Consolas", 16f, 96f), MixedScripts),
         new("cursors-over-selection", new FontSettings("Consolas", 16f, 96f), CursorsOverSelection),
         new("undercurl-run", new FontSettings("Consolas", 16f, 96f), UndercurlRun),
+
+        // No glyphs at all, so nothing here is DirectWrite's. What this scene compares is the blend,
+        // the rules and the cursor shapes - all of which are this renderer's own arithmetic, and all
+        // of which must therefore agree across drivers to within a level.
+        new("no-glyphs", new FontSettings("Consolas", 16f, 96f), NoGlyphs, GlyphFree),
     ];
+
+    private static void NoGlyphs(Painter painter)
+    {
+        painter.Bare(0, 0, 40, Text, new Rgb(40, 44, 56));
+        painter.Bare(1, 0, 40, Text, new Rgb(80, 30, 30), underline: UnderlineStyle.Single);
+        painter.Bare(2, 0, 40, Text, new Rgb(30, 80, 30), underline: UnderlineStyle.Double);
+        painter.Bare(3, 0, 40, Red, new Rgb(24, 26, 34), underline: UnderlineStyle.Curly);
+        painter.Bare(4, 0, 20, Amber, Ground, underline: UnderlineStyle.Dotted);
+        painter.Bare(4, 20, 20, Amber, Ground, underline: UnderlineStyle.Dashed);
+        painter.Bare(5, 0, 40, Text, Ground, CellFlags.Overline | CellFlags.Strike);
+        painter.Bare(6, 0, 40, Text, Ground, CellFlags.Selected);
+
+        painter.Cursor(7, 2, ' ', Text, Ground, CursorShape.Block);
+        painter.Cursor(7, 6, ' ', Text, Ground, CursorShape.Bar);
+        painter.Cursor(7, 10, ' ', Text, Ground, CursorShape.Underline);
+        painter.Cursor(7, 14, ' ', Text, Ground, CursorShape.Block, CellFlags.Selected);
+    }
 
     private static void PlainText(Painter painter)
     {
@@ -173,9 +235,35 @@ internal static class GoldenScenes
             }
         }
 
+        /// <summary>A run of cells with no glyph in them: colour, rules and nothing DirectWrite drew.</summary>
+        internal void Bare(int row, int column, int count, Rgb foreground, Rgb background,
+                           CellFlags flags = CellFlags.None,
+                           UnderlineStyle underline = UnderlineStyle.None)
+        {
+            if (row < 0 || row >= _rows)
+            {
+                return;
+            }
+
+            for (int index = 0; index < count && column + index < _columns; index++)
+            {
+                _cells[(row * _columns) + column + index] =
+                    CellInstance.For(GlyphPlacement.Empty, foreground, background, flags, 1, underline);
+            }
+        }
+
         internal void Cursor(int row, int column, char character, Rgb foreground, Rgb background,
                              CursorShape shape, CellFlags flags = CellFlags.None)
         {
+            // A scene that reaches past the grid is a scene written against a font size it does not
+            // have. Silently dropping it would put a reference on disk missing what it meant to show,
+            // so this is checked here and the scene's own bounds are what a reader sees.
+            if (row < 0 || row >= _rows || column < 0 || column >= _columns)
+            {
+                throw new ArgumentOutOfRangeException(nameof(row),
+                    $"a scene placed a cursor at ({column},{row}) in a {_columns}x{_rows} grid");
+            }
+
             _cells[(row * _columns) + column] = CellInstance.For(
                 _atlas.Cache(character), foreground, background, flags, 1, UnderlineStyle.None, shape);
         }

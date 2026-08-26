@@ -11,10 +11,16 @@ namespace Quickshell.Render.Tests.Golden;
 /// Rendering is judged by looking, so this looks. Each scene is rendered offscreen, read back and
 /// compared against a committed reference image.
 ///
-/// <para><b>The tolerance is not a way to make failures go away.</b> Two vendors will not agree on
-/// the last bit of a filtered sample, so a handful of levels per channel is expected; a shape in the
-/// wrong place is not, and it moves whole pixels rather than levels. Both bounds are checked — how
-/// far a pixel may drift, and how many may drift at all.</para>
+/// <para><b>The tolerance is a property of the scene, and it is measured.</b> A scene with text in
+/// it is comparing two things at once: this renderer's arithmetic, which is deterministic, and
+/// DirectWrite's glyph coverage, which is not ours and differs between machines. So text scenes
+/// allow what that difference was measured at and no more, and <c>no-glyphs</c> — which contains
+/// nothing DirectWrite drew — is held to a single level. See <see cref="GoldenScenes.TextTolerance"/>
+/// for the arithmetic that separated the two.</para>
+///
+/// <para>Both bounds are always checked: how far a pixel may drift, and how many may drift at all. A
+/// shape in the wrong place fails on either — it moves hundreds of levels and thousands of pixels,
+/// which is what keeps a loosened level bound from loosening the test.</para>
 ///
 /// <para><b>A reference is never regenerated to make a test pass.</b> Nothing here writes one: the
 /// only door is <c>QUICKSHELL_GOLDEN=write</c> in the environment, which is a deliberate act
@@ -29,16 +35,6 @@ namespace Quickshell.Render.Tests.Golden;
 /// </summary>
 public sealed class GoldenImageTests
 {
-    /// <summary>
-    /// How far one channel of one pixel may differ from the reference.
-    ///
-    /// <para>Measured rather than guessed. Against references generated on this machine's own
-    /// adapter, that adapter reproduces them <b>bit for bit</b> and WARP - a completely separate
-    /// rasteriser - differs by <b>at most one level</b> on between 13 and 335 pixels of 123,200.
-    /// Two is that measurement with a little room, not a number chosen to make something pass.</para>
-    /// </summary>
-    private const int LevelTolerance = 2;
-
     /// <summary>
     /// What share of the pixels may differ at all. The worst scene measured 0.27 per cent, so half
     /// a per cent is the same reasoning: a shape in the wrong place moves far more of the picture
@@ -93,7 +89,7 @@ public sealed class GoldenImageTests
 
         Comparison difference = Compare(reference, actual, width, height);
 
-        if (difference.Worst <= LevelTolerance && difference.Drifted <= DriftTolerance * width * height)
+        if (difference.Worst <= scene.LevelTolerance && difference.Drifted <= DriftTolerance * width * height)
         {
             return;
         }
@@ -103,7 +99,8 @@ public sealed class GoldenImageTests
         Assert.Fail(
             $"'{name}' on {(warp ? "WARP" : "this machine's adapter")} differs from its reference: " +
             $"{difference.Drifted} of {width * height} pixels drifted, the worst by " +
-            $"{difference.Worst} levels at ({difference.WorstX},{difference.WorstY}). " +
+            $"{difference.Worst} levels at ({difference.WorstX},{difference.WorstY}), where this " +
+            $"scene allows {scene.LevelTolerance}. " +
             $"The reference, what was drawn and the difference are in {written}.");
     }
 

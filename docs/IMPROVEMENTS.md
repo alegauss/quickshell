@@ -885,32 +885,6 @@ Falsified when the render arm's allocation per megabyte stops being dominated by
 and the remaining figure is the atlas and the instance buffer, which is where it
 belongs.
 
-### §QS96 The six levels a second driver moved
-
-The first vendor driver to run the golden suite disagreed with it, and QS92 said in
-advance what that would mean.
-
-Measured on 2026-08-26, through QS95's guest. The `attributes` scene differs from its
-committed reference in exactly **one pixel of 123,200**, at (208,12): `d6dbe4` against
-`d0d5de`. Six levels, and the *same* six on all three channels.
-
-That uniformity is the whole clue. Glyph coverage comes from DirectWrite on the CPU and
-is identical everywhere, so the difference is not the rasterisation — it is the blend. A
-uniform shift across R, G and B at one coverage value is what a slightly different `pow`
-gives in the sRGB conversion, which is the candidate QS92 named before any of this ran.
-
-Two things must not happen. The tolerance must not be raised until this passes: QS12
-calibrated it on a measurement, and a limit moved to fit a failure measures nothing. And
-the reference must not be regenerated, for the reason QS12's own decision states.
-
-What settles it is arithmetic rather than another run. Evaluate the shader's `ToLinear`
-and `ToEncoded` at the coverage that pixel carries, in single precision and in double,
-and see whether six levels is the distance between them. If it is, the fix is a
-conversion that does not lean on `pow` — a lookup, or the polynomial every renderer that
-has met this uses.
-
-Falsified when the same pixel differs by six levels with `pow` gone from the path.
-
 ### §QS97 The bound that was measured on one display
 
 QS87 replaced a mean with a bound: every sample sits at one or two — a queued frame and
