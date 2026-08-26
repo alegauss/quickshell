@@ -51,3 +51,4 @@
 
 - ✅ **QS88** **dotnet test reports zero tests and exits non-zero on a tree whose suite passes when the assembly is run directly** — `.\run-tests.cmd` runs every test assembly, and its exit code is the verdict (design §QS88 superseded: it falsified only on dotnet test) (design §QS88 recorded in `run-tests.cmd`).
 - ✅ **QS95** **The render suite takes the screen with topmost windows, and anything the operator does corrupts it** — One command runs the suite on a VMware guest, and the host's screen stops being part of the measurement (design superseded: the guest is a third rasteriser, not this desk).
+- ✅ **QS98** **A test can carry a raw escape byte, and a file where it went missing fails as though the code were wrong** — A test asserts no source under tests carries a control byte, and the ninety-six already there are escapes now.

@@ -35,9 +35,9 @@ public sealed class EmulatorTests
     [InlineData("T")]   // scroll down
     public void AnAbsentParameterAndAZeroParameterAreTheSameInstruction(string final)
     {
-        (int Row, int Column) absent = After($"[{final}");
-        (int Row, int Column) zero = After($"[0{final}");
-        (int Row, int Column) one = After($"[1{final}");
+        (int Row, int Column) absent = After($"\u001b[{final}");
+        (int Row, int Column) zero = After($"\u001b[0{final}");
+        (int Row, int Column) one = After($"\u001b[1{final}");
 
         Assert.Equal(one, absent);
         Assert.Equal(one, zero);
@@ -49,11 +49,11 @@ public sealed class EmulatorTests
     [InlineData("f")]
     public void ACursorPositionTreatsBlankAndZeroAsOne(string final)
     {
-        Assert.Equal((0, 0), After($"[{final}"));
-        Assert.Equal((0, 0), After($"[0;0{final}"));
-        Assert.Equal((0, 0), After($"[1;1{final}"));
-        Assert.Equal((0, 4), After($"[;5{final}"));
-        Assert.Equal((4, 0), After($"[5;{final}"));
+        Assert.Equal((0, 0), After($"\u001b[{final}"));
+        Assert.Equal((0, 0), After($"\u001b[0;0{final}"));
+        Assert.Equal((0, 0), After($"\u001b[1;1{final}"));
+        Assert.Equal((0, 4), After($"\u001b[;5{final}"));
+        Assert.Equal((4, 0), After($"\u001b[5;{final}"));
     }
 
     private static (int Row, int Column) After(string sequence)
@@ -61,7 +61,7 @@ public sealed class EmulatorTests
         Emulator emulator = new(20, 10, scrollback: 0);
 
         // Somewhere in the middle, so a movement in any direction has room to be wrong in.
-        emulator.Feed(Encoding.UTF8.GetBytes("[5;10H"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[5;10H"));
         emulator.Feed(Encoding.UTF8.GetBytes(sequence));
 
         return (emulator.Buffer.CursorRow, emulator.Buffer.CursorColumn);
@@ -74,16 +74,16 @@ public sealed class EmulatorTests
     {
         Emulator emulator = new(20, 10, scrollback: 0);
 
-        emulator.Feed(Encoding.UTF8.GetBytes("[2;3H[10A"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[2;3H\u001b[10A"));
         Assert.Equal(0, emulator.Buffer.CursorRow);
 
-        emulator.Feed(Encoding.UTF8.GetBytes("[99B"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[99B"));
         Assert.Equal(9, emulator.Buffer.CursorRow);
 
-        emulator.Feed(Encoding.UTF8.GetBytes("[99C"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[99C"));
         Assert.Equal(19, emulator.Buffer.CursorColumn);
 
-        emulator.Feed(Encoding.UTF8.GetBytes("[99D"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[99D"));
         Assert.Equal(0, emulator.Buffer.CursorColumn);
     }
 
@@ -91,7 +91,7 @@ public sealed class EmulatorTests
     public void APositionBeyondTheScreenLandsOnItsEdge()
     {
         Emulator emulator = new(20, 10, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("[999;999H"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[999;999H"));
 
         Assert.Equal(9, emulator.Buffer.CursorRow);
         Assert.Equal(19, emulator.Buffer.CursorColumn);
@@ -145,14 +145,14 @@ public sealed class EmulatorTests
     // ---- Erasing ----
 
     [Theory]
-    [InlineData("[K", "ab   ")]
-    [InlineData("[0K", "ab   ")]
-    [InlineData("[1K", "   de")]
-    [InlineData("[2K", "     ")]
+    [InlineData("\u001b[K", "ab   ")]
+    [InlineData("\u001b[0K", "ab   ")]
+    [InlineData("\u001b[1K", "   de")]
+    [InlineData("\u001b[2K", "     ")]
     public void EraseLineTakesTheThreeFormsItIsDefinedWith(string sequence, string expected)
     {
         Emulator emulator = new(5, 3, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("abcde[1;3H" + sequence));
+        emulator.Feed(Encoding.UTF8.GetBytes("abcde\u001b[1;3H" + sequence));
 
         Assert.Equal(expected, Row(emulator, 0));
     }
@@ -161,7 +161,7 @@ public sealed class EmulatorTests
     public void EraseDisplayBelowLeavesWhatIsAboveTheCursor()
     {
         Emulator emulator = new(4, 3, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc[2;3H[J"));
+        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc\u001b[2;3H\u001b[J"));
 
         Assert.Equal("aaaa", Row(emulator, 0));
         Assert.Equal("bb  ", Row(emulator, 1));
@@ -172,7 +172,7 @@ public sealed class EmulatorTests
     public void EraseDisplayAboveLeavesWhatIsBelowTheCursor()
     {
         Emulator emulator = new(4, 3, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc[2;3H[1J"));
+        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc\u001b[2;3H\u001b[1J"));
 
         Assert.Equal("    ", Row(emulator, 0));
         Assert.Equal("   b", Row(emulator, 1));
@@ -187,7 +187,7 @@ public sealed class EmulatorTests
 
         Assert.True(emulator.Buffer.ScrollbackLines > 0);
 
-        emulator.Feed(Encoding.UTF8.GetBytes("[3J"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[3J"));
 
         Assert.Equal(0, emulator.Buffer.ScrollbackLines);
         Assert.Equal(2, emulator.Buffer.LineCount);
@@ -199,7 +199,7 @@ public sealed class EmulatorTests
     public void InsertingCharactersPushesTheRestOfTheRowRight()
     {
         Emulator emulator = new(6, 2, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("abcdef[1;3H[2@"));
+        emulator.Feed(Encoding.UTF8.GetBytes("abcdef\u001b[1;3H\u001b[2@"));
 
         Assert.Equal("ab  cd", Row(emulator, 0));
     }
@@ -208,7 +208,7 @@ public sealed class EmulatorTests
     public void DeletingCharactersPullsTheRestOfTheRowLeft()
     {
         Emulator emulator = new(6, 2, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("abcdef[1;3H[2P"));
+        emulator.Feed(Encoding.UTF8.GetBytes("abcdef\u001b[1;3H\u001b[2P"));
 
         Assert.Equal("abef  ", Row(emulator, 0));
     }
@@ -217,7 +217,7 @@ public sealed class EmulatorTests
     public void ErasingCharactersBlanksInPlaceWithoutMovingAnything()
     {
         Emulator emulator = new(6, 2, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("abcdef[1;3H[2X"));
+        emulator.Feed(Encoding.UTF8.GetBytes("abcdef\u001b[1;3H\u001b[2X"));
 
         Assert.Equal("ab  ef", Row(emulator, 0));
     }
@@ -226,20 +226,20 @@ public sealed class EmulatorTests
     public void InsertingAndDeletingLinesMoveTheRowsBelowTheCursor()
     {
         Emulator emulator = new(4, 4, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc\ndddd[2;1H[L"));
+        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc\ndddd\u001b[2;1H\u001b[L"));
 
         Assert.Equal("aaaa", Row(emulator, 0));
         Assert.Equal("    ", Row(emulator, 1));
         Assert.Equal("bbbb", Row(emulator, 2));
 
-        emulator.Feed(Encoding.UTF8.GetBytes("[M"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[M"));
         Assert.Equal("bbbb", Row(emulator, 1));
     }
 
     [Fact]
     public void RepeatWritesTheLastCharacterAgain()
     {
-        Emulator emulator = Fed("-[4b");
+        Emulator emulator = Fed("-\u001b[4b");
 
         Assert.Equal("-----", Row(emulator, 0)[..5]);
     }
@@ -248,7 +248,7 @@ public sealed class EmulatorTests
     public void AReverseIndexAtTheTopScrollsTheScreenDown()
     {
         Emulator emulator = new(4, 3, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb[1;1HM"));
+        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\u001b[1;1H\u001bM"));
 
         Assert.Equal("    ", Row(emulator, 0));
         Assert.Equal("aaaa", Row(emulator, 1));
@@ -265,12 +265,12 @@ public sealed class EmulatorTests
     {
         Emulator emulator = new(20, 10, scrollback: 0);
 
-        emulator.Feed(Encoding.UTF8.GetBytes("[3;7H[1;31m7"));
-        emulator.Feed(Encoding.UTF8.GetBytes("[9;19H[0m[32m"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[3;7H\u001b[1;31m\u001b7"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[9;19H\u001b[0m\u001b[32m"));
 
         Assert.Equal(Colour.Indexed(2), emulator.Pen.Foreground);
 
-        emulator.Feed(Encoding.UTF8.GetBytes("8"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b8"));
 
         Assert.Equal(2, emulator.Buffer.CursorRow);
         Assert.Equal(6, emulator.Buffer.CursorColumn);
@@ -283,13 +283,13 @@ public sealed class EmulatorTests
     [Fact]
     public void TheBaseSixteenAreIndicesRatherThanColours()
     {
-        Emulator emulator = Fed("[31m");
+        Emulator emulator = Fed("\u001b[31m");
         Assert.Equal(Colour.Indexed(1), emulator.Pen.Foreground);
 
-        emulator = Fed("[91m");
+        emulator = Fed("\u001b[91m");
         Assert.Equal(Colour.Indexed(9), emulator.Pen.Foreground);
 
-        emulator = Fed("[44m");
+        emulator = Fed("\u001b[44m");
         Assert.Equal(Colour.Indexed(4), emulator.Pen.Background);
     }
 
@@ -316,7 +316,7 @@ public sealed class EmulatorTests
     [Fact]
     public void APaletteIndexAlsoFollowsTheThemeRatherThanBeingResolvedOnWrite()
     {
-        Emulator emulator = Fed("[31mred");
+        Emulator emulator = Fed("\u001b[31mred");
         Cell cell = emulator.Buffer.Screen(0)[0];
 
         Assert.Equal(ColourKind.Indexed, cell.Foreground.Kind);
@@ -327,9 +327,9 @@ public sealed class EmulatorTests
 
     /// <summary>Both spellings are real, and a modern host emits the second.</summary>
     [Theory]
-    [InlineData("[38;2;255;0;0m")]
-    [InlineData("[38:2:255:0:0m")]
-    [InlineData("[38:2::255:0:0m")]
+    [InlineData("\u001b[38;2;255;0;0m")]
+    [InlineData("\u001b[38:2:255:0:0m")]
+    [InlineData("\u001b[38:2::255:0:0m")]
     public void TwentyFourBitColourArrivesInEitherSpelling(string sequence)
     {
         Emulator emulator = Fed(sequence);
@@ -339,8 +339,8 @@ public sealed class EmulatorTests
     }
 
     [Theory]
-    [InlineData("[38;5;196m")]
-    [InlineData("[38:5:196m")]
+    [InlineData("\u001b[38;5;196m")]
+    [InlineData("\u001b[38:5:196m")]
     public void TheColourCubeArrivesInEitherSpelling(string sequence)
     {
         Emulator emulator = Fed(sequence);
@@ -351,8 +351,8 @@ public sealed class EmulatorTests
     [Fact]
     public void ABackgroundInEitherSpellingLandsInTheBackground()
     {
-        Assert.Equal(Colour.Direct(1, 2, 3), Fed("[48;2;1;2;3m").Pen.Background);
-        Assert.Equal(Colour.Indexed(200), Fed("[48:5:200m").Pen.Background);
+        Assert.Equal(Colour.Direct(1, 2, 3), Fed("\u001b[48;2;1;2;3m").Pen.Background);
+        Assert.Equal(Colour.Indexed(200), Fed("\u001b[48:5:200m").Pen.Background);
     }
 
     /// <summary>
@@ -361,7 +361,7 @@ public sealed class EmulatorTests
     [Fact]
     public void TurningOneAttributeOffLeavesTheOthersAlone()
     {
-        Emulator emulator = Fed("[1;3;4;7;9m");
+        Emulator emulator = Fed("\u001b[1;3;4;7;9m");
 
         Assert.True(emulator.Pen.Flags.HasFlag(CellFlags.Bold));
         Assert.True(emulator.Pen.Flags.HasFlag(CellFlags.Slant));
@@ -369,7 +369,7 @@ public sealed class EmulatorTests
         Assert.True(emulator.Pen.Flags.HasFlag(CellFlags.Strike));
         Assert.Equal(UnderlineStyle.Single, emulator.Pen.Underline);
 
-        emulator.Feed(Encoding.UTF8.GetBytes("[24m"));
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[24m"));
 
         Assert.Equal(UnderlineStyle.None, emulator.Pen.Underline);
         Assert.True(emulator.Pen.Flags.HasFlag(CellFlags.Bold));
@@ -381,7 +381,7 @@ public sealed class EmulatorTests
     [Fact]
     public void EndingBoldAlsoEndsFaintBecauseOneCodeEndsBoth()
     {
-        Emulator emulator = Fed("[1;2;4m[22m");
+        Emulator emulator = Fed("\u001b[1;2;4m\u001b[22m");
 
         Assert.False(emulator.Pen.Flags.HasFlag(CellFlags.Bold));
         Assert.False(emulator.Pen.Flags.HasFlag(CellFlags.Faint));
@@ -391,7 +391,7 @@ public sealed class EmulatorTests
     [Fact]
     public void ResetPutsEverythingBackAtOnce()
     {
-        Emulator emulator = Fed("[1;4;31;44m[m");
+        Emulator emulator = Fed("\u001b[1;4;31;44m\u001b[m");
 
         Assert.Equal(Pen.Default, emulator.Pen);
     }
@@ -399,7 +399,7 @@ public sealed class EmulatorTests
     [Fact]
     public void SeveralAttributesInOneSequenceAllApply()
     {
-        Emulator emulator = Fed("[1;38;5;42;48;2;7;8;9;4m");
+        Emulator emulator = Fed("\u001b[1;38;5;42;48;2;7;8;9;4m");
 
         Assert.True(emulator.Pen.Flags.HasFlag(CellFlags.Bold));
         Assert.Equal(Colour.Indexed(42), emulator.Pen.Foreground);
@@ -410,7 +410,7 @@ public sealed class EmulatorTests
     [Fact]
     public void WhatIsWrittenCarriesThePenThatWasSet()
     {
-        Emulator emulator = Fed("[1;4;38;2;10;20;30max");
+        Emulator emulator = Fed("\u001b[1;4;38;2;10;20;30max");
         Cell cell = emulator.Buffer.Screen(0)[0];
 
         Assert.Equal(Colour.Direct(10, 20, 30), cell.Foreground);
@@ -425,7 +425,7 @@ public sealed class EmulatorTests
     [Fact]
     public void TheModelKeepsAttributesTheRendererCannotDraw()
     {
-        Emulator emulator = Fed("[2;5;8mx");
+        Emulator emulator = Fed("\u001b[2;5;8mx");
         Cell cell = emulator.Buffer.Screen(0)[0];
 
         Assert.True(cell.Flags.HasFlag(CellFlags.Faint));
@@ -438,7 +438,7 @@ public sealed class EmulatorTests
     [Fact]
     public void AnUnknownSequenceIsCountedRatherThanThrown()
     {
-        Emulator emulator = Fed("[99999;99999`[?2004hZa");
+        Emulator emulator = Fed("\u001b[99999;99999`\u001b[?2004h\u001bZa");
 
         Assert.True(emulator.Unhandled > 0);
         Assert.Contains("a", Row(emulator, 0), StringComparison.Ordinal);

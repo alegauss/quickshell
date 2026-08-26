@@ -92,7 +92,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void ACursorPositionArrivesWithItsTwoParameters()
     {
-        Recorder recorder = Feed("[12;40H");
+        Recorder recorder = Feed("\u001b[12;40H");
 
         Assert.Equal(["csi:H params=[12][40]"], recorder.Events);
     }
@@ -102,7 +102,7 @@ public sealed class AnsiParserTests
     {
         // CSI ;5H is row default, column five. Reading the blank as zero moves the cursor somewhere
         // the host did not ask for.
-        Recorder recorder = Feed("[;5H");
+        Recorder recorder = Feed("\u001b[;5H");
 
         Assert.Equal(["csi:H params=[-1][5]"], recorder.Events);
     }
@@ -110,7 +110,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void ATrailingSeparatorStillLeavesTheParameterItMeant()
     {
-        Recorder recorder = Feed("[1;H");
+        Recorder recorder = Feed("\u001b[1;H");
 
         Assert.Equal(["csi:H params=[1][-1]"], recorder.Events);
     }
@@ -118,7 +118,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void ASequenceWithNoParametersHasNone()
     {
-        Recorder recorder = Feed("[H");
+        Recorder recorder = Feed("\u001b[H");
 
         Assert.Equal(["csi:H params="], recorder.Events);
     }
@@ -130,7 +130,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void TrueColourArrivesAsOneGroupOfSubParameters()
     {
-        Recorder recorder = Feed("[38:2::255:0:0m");
+        Recorder recorder = Feed("\u001b[38:2::255:0:0m");
 
         Assert.Equal(["csi:m params=[38:2:-1:255:0:0]"], recorder.Events);
     }
@@ -138,7 +138,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void AStyledUnderlineIsAGroupOfTwoAndNotTwoParameters()
     {
-        Recorder recorder = Feed("[4:3m");
+        Recorder recorder = Feed("\u001b[4:3m");
 
         Assert.Equal(["csi:m params=[4:3]"], recorder.Events);
     }
@@ -146,7 +146,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void ColonsAndSemicolonsInOneSequenceKeepTheirOwnMeanings()
     {
-        Recorder recorder = Feed("[4:3;38;5;1m");
+        Recorder recorder = Feed("\u001b[4:3;38;5;1m");
 
         Assert.Equal(["csi:m params=[4:3][38][5][1]"], recorder.Events);
     }
@@ -154,17 +154,17 @@ public sealed class AnsiParserTests
     [Fact]
     public void APrivateMarkerAndAnIntermediateBothReachTheDispatch()
     {
-        Recorder recorder = Feed("[?25h");
+        Recorder recorder = Feed("\u001b[?25h");
         Assert.Equal(["csi:h inter=? params=[25]"], recorder.Events);
 
-        recorder = Feed("[0 q");
+        recorder = Feed("\u001b[0 q");
         Assert.Equal(["csi:q inter=  params=[0]"], recorder.Events);
     }
 
     [Fact]
     public void AnEscapeSequenceWithAnIntermediateDispatchesWithIt()
     {
-        Recorder recorder = Feed("(B");
+        Recorder recorder = Feed("\u001b(B");
 
         Assert.Equal(["esc:B inter=("], recorder.Events);
     }
@@ -174,7 +174,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void AnOscRunsFromItsStartToItsTerminator()
     {
-        Recorder recorder = Feed("]0;a title");
+        Recorder recorder = Feed("\u001b]0;a title\a");
 
         Assert.Equal(["osc-start", "osc:0;a title", "osc-end"], recorder.Events);
     }
@@ -187,14 +187,14 @@ public sealed class AnsiParserTests
     [Fact]
     public void AnOscEndsOnEitherTerminator()
     {
-        Assert.Equal(["osc-start", "osc:2;x", "osc-end"], Feed("]2;x").Events);
-        Assert.Equal(["osc-start", "osc:2;x", "osc-end", "esc:\\"], Feed("]2;x\\").Events);
+        Assert.Equal(["osc-start", "osc:2;x", "osc-end"], Feed("\u001b]2;x\a").Events);
+        Assert.Equal(["osc-start", "osc:2;x", "osc-end", "esc:\\"], Feed("\u001b]2;x\u001b\\").Events);
     }
 
     [Fact]
     public void ADeviceControlStringHooksItsParametersAndPassesItsPayload()
     {
-        Recorder recorder = Feed("P1;2q payload\\");
+        Recorder recorder = Feed("\u001bP1;2q payload\u001b\\");
 
         Assert.Equal(["dcs-hook:q params=[1][2]", "dcs: payload", "dcs-unhook", "esc:\\"], recorder.Events);
     }
@@ -202,7 +202,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void AnApcStringIsSwallowedWhole()
     {
-        Recorder recorder = Feed("before_anything at all\\after");
+        Recorder recorder = Feed("before\u001b_anything at all\u001b\\after");
 
         Assert.Equal(["print:before", "esc:\\", "print:after"], recorder.Events);
     }
@@ -212,7 +212,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void CancelAbandonsAHalfSentSequence()
     {
-        Recorder recorder = Feed("[12;3ok");
+        Recorder recorder = Feed("\u001b[12;3\u0018ok");
 
         Assert.Equal(["execute:18", "print:ok"], recorder.Events);
     }
@@ -220,7 +220,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void AnEscapeInsideASequenceStartsANewOne()
     {
-        Recorder recorder = Feed("[12;[3A");
+        Recorder recorder = Feed("\u001b[12;\u001b[3A");
 
         Assert.Equal(["csi:A params=[3]"], recorder.Events);
     }
@@ -228,7 +228,7 @@ public sealed class AnsiParserTests
     [Fact]
     public void MoreParametersThanTheBufferHoldsIsReportedRatherThanGrown()
     {
-        string many = "[" + string.Join(";", Enumerable.Repeat("1", 40)) + "m";
+        string many = "\u001b[" + string.Join(";", Enumerable.Repeat("1", 40)) + "m";
         Recorder recorder = Feed(many);
 
         Assert.Single(recorder.Events);
@@ -240,10 +240,10 @@ public sealed class AnsiParserTests
     /// chose, and a sequence straddling two of them is the ordinary case rather than the odd one.
     /// </summary>
     [Theory]
-    [InlineData("[38:2::255:0:0mtext[0m")]
-    [InlineData("]0;titlebody")]
-    [InlineData("a[1;2Hb[?25lc")]
-    [InlineData("P1;2q payload\\rest")]
+    [InlineData("\u001b[38:2::255:0:0mtext\u001b[0m")]
+    [InlineData("\u001b]0;title\abody")]
+    [InlineData("a\u001b[1;2Hb\u001b[?25lc")]
+    [InlineData("\u001bP1;2q payload\u001b\\rest")]
     public void OneByteAtATimeIsTheSameAsAllAtOnce(string stream)
     {
         byte[] bytes = Encoding.UTF8.GetBytes(stream);
