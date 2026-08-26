@@ -266,32 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS18 The character sets and the operating system commands
-
-Two groups of sequences, cheap individually and conspicuous when absent.
-
-**Character sets.** SCS designates G0 and G1, shift-in and shift-out select between
-them, and the one that matters in practice is DEC Special Graphics: a program drawing a
-box sends `ESC ( 0` and then ASCII letters, so a terminal that ignores the designation
-draws `lqqqk` where the user expects a corner. The mapping is a fixed table and nothing
-more.
-
-**Operating system commands.** OSC 0 and 2 set the window title, which is how a user
-tells one tab from another and therefore feeds straight into the tab strip. OSC 4 sets a
-palette entry, and 10, 11 and 12 set the default foreground, background and cursor
-colours — all of which repaint correctly only because the model stores colour roles
-rather than resolved values. OSC 7 reports the working directory, which is the whole
-mechanism behind opening a new tab in the same place. OSC 8 carries a hyperlink across a
-run of cells, so the cell gains a link identifier and the renderer needs no change at
-all.
-
-Both a terminating BEL and a terminating ST are accepted, because both are in the wild.
-
-OSC 52 is deliberately not in this line. It writes the local clipboard from the remote
-side, which is a security decision rather than an emulation one.
-
-Falsified when `ESC ( 0` followed by `lqqqk` does not draw a box corner.
-
 ### §QS19 The two sequences that reach back out of the terminal
 
 Most escape sequences change what is on screen. Two of them change something outside it,

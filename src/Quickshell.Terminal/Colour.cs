@@ -115,6 +115,9 @@ public sealed class Palette
     /// <summary>The theme's background.</summary>
     public Rgb Background { get; set; } = new(16, 18, 24);
 
+    /// <summary>The cursor's colour, which OSC 12 sets and a block cursor inverts against.</summary>
+    public Rgb Cursor { get; set; } = new(220, 220, 220);
+
     /// <summary>One palette entry, readable and settable, which is what OSC 4 will write.</summary>
     public Rgb this[byte index]
     {

@@ -23,6 +23,7 @@
 - ✅ **QS97** **The frame queue reaches three under a virtualised presentation path, where the bound was measured at two** — The test asserts the queue does not grow, since its depth is the presentation pipeline's and its growth is the renderer's (design superseded: reading the swapchain gives the two it had).
 - ✅ **QS16** **The cursor cannot be moved, a line cannot be erased and no character carries a colour** — Cursor movement, erasing and editing that clamp, plus SGR in both spellings, with default and indexed colours left unresolved.
 - ✅ **QS17** **A full-width line wraps a column early and a scrolled region redraws the wrong rows** — Writing the last column owes a wrap rather than taking one, and margins, origin mode and a real tab-stop set all hold.
+- ✅ **QS18** **Box drawing renders as letters, and the title, palette and working directory a host sends are ignored** — ESC ( 0 now draws a box corner where lqqqk used to be letters, and the title, palette, default colours, working directory and hyperlinks a host sends all land, OSC 52 still refused.
 
 ## Block D — The tree a user organises work in
 

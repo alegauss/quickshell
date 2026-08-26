@@ -26,6 +26,8 @@ public sealed partial class Emulator : IAnsiHandler
     private int _savedRow;
     private int _savedColumn;
     private int _lastPrinted = ' ';
+    private readonly CharacterSet[] _designated = [CharacterSet.Ascii, CharacterSet.Ascii];
+    private int _activeSet;
 
     /// <summary>Opens a terminal of a given size, with scrollback behind the primary screen.</summary>
     public Emulator(int columns, int rows, int scrollback = 1000)
@@ -52,6 +54,9 @@ public sealed partial class Emulator : IAnsiHandler
 
     /// <summary>Whether the host has asked for the cursor to be shown. DECTCEM.</summary>
     public bool CursorVisible { get; private set; } = true;
+
+    /// <summary>Which of the two designated sets shift-in and shift-out have selected.</summary>
+    public CharacterSet ActiveCharacterSet => _designated[_activeSet];
 
     /// <summary>
     /// Feeds bytes from the host, through the parser and into the buffer.
@@ -119,6 +124,20 @@ public sealed partial class Emulator : IAnsiHandler
     private void PrintCluster(string cluster)
     {
         int codepoint = char.ConvertToUtf32(cluster, 0);
+
+        // The designated set is a remapping of what arrived, and it happens here because it changes
+        // which character this is - a box corner rather than the letter l.
+        if (cluster.Length == 1 && _designated[_activeSet] != CharacterSet.Ascii)
+        {
+            int mapped = CharacterSets.Map(_designated[_activeSet], codepoint);
+
+            if (mapped != codepoint)
+            {
+                codepoint = mapped;
+                cluster = char.ConvertFromUtf32(mapped);
+            }
+        }
+
         int width = CharacterWidth.OfCluster(cluster);
 
         if (width == 0)
@@ -160,7 +179,7 @@ public sealed partial class Emulator : IAnsiHandler
         }
 
         Cell cell = cluster.Length == 1 || char.IsSurrogatePair(cluster, 0)
-            ? Cell.For(codepoint, _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, width)
+            ? Cell.For(codepoint, _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, width, _pen.Link)
             : ClusterCell(buffer, cluster, codepoint, width);
 
         buffer.Write(buffer.CursorRow, buffer.CursorColumn, cell);
@@ -170,7 +189,7 @@ public sealed partial class Emulator : IAnsiHandler
             // The trailing half is a real cell holding nothing, which is what keeps the column
             // count honest for everything that reads the row afterwards.
             buffer.Write(buffer.CursorRow, buffer.CursorColumn + 1,
-                         Cell.For(' ', _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, 0));
+                         Cell.For(' ', _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, 0, _pen.Link));
         }
 
         _lastPrinted = codepoint;
@@ -231,8 +250,8 @@ public sealed partial class Emulator : IAnsiHandler
         // A table that has stopped growing gives -1, and the base codepoint is what is left. The
         // accent is lost rather than the session, which is the trade the ceiling exists to make.
         return index < 0
-            ? Cell.For(codepoint, _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, width)
-            : Cell.ForCluster(index, _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, width);
+            ? Cell.For(codepoint, _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, width, _pen.Link)
+            : Cell.ForCluster(index, _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, width, _pen.Link);
     }
 
     // ---- Controls ----
@@ -265,6 +284,14 @@ public sealed partial class Emulator : IAnsiHandler
 
             case 0x0D:
                 buffer.CursorColumn = 0;
+                break;
+
+            case 0x0E:
+                _activeSet = 1;
+                break;
+
+            case 0x0F:
+                _activeSet = 0;
                 break;
 
             default:
@@ -305,9 +332,20 @@ public sealed partial class Emulator : IAnsiHandler
 
         if (!intermediates.IsEmpty)
         {
-            // Charset designation and the rest. Counted rather than guessed at: a sequence answered
-            // wrongly is worse than one answered not at all.
-            Unhandled++;
+            // `ESC ( x` and `ESC ) x` designate the two slots. Everything else with an intermediate
+            // is counted rather than guessed at: a sequence answered wrongly is worse than one not
+            // answered at all.
+            int slot = intermediates[0] switch { (byte)'(' => 0, (byte)')' => 1, _ => -1 };
+
+            if (slot >= 0 && CharacterSets.Designated(final) is CharacterSet set)
+            {
+                _designated[slot] = set;
+            }
+            else
+            {
+                Unhandled++;
+            }
+
             return;
         }
 
@@ -399,6 +437,10 @@ public sealed partial class Emulator : IAnsiHandler
         MarginTop = 0;
         MarginBottom = Buffer.Rows - 1;
         ResetTabStops();
+        _designated[0] = CharacterSet.Ascii;
+        _designated[1] = CharacterSet.Ascii;
+        _activeSet = 0;
+        Title = string.Empty;
         _savedPen = Pen.Default;
         _savedRow = 0;
         _savedColumn = 0;
@@ -715,16 +757,6 @@ public sealed partial class Emulator : IAnsiHandler
     }
 
     // ---- Strings, which this line does not answer for ----
-
-    void IAnsiHandler.OscStart() => FlushText();
-
-    void IAnsiHandler.OscPut(ReadOnlySpan<byte> bytes)
-    {
-    }
-
-    void IAnsiHandler.OscEnd()
-    {
-    }
 
     void IAnsiHandler.DcsHook(in CsiParameters parameters, ReadOnlySpan<byte> intermediates, byte final) =>
         FlushText();

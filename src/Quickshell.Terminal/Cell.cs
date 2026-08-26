@@ -20,7 +20,17 @@ public readonly struct Cell : IEquatable<Cell>
 {
     private const int WidthShift = 12;
     private const int UnderlineShift = 9;
+    private const int LinkShift = 14;
     private const uint FlagMask = 0x1FF;
+
+    /// <summary>
+    /// How many distinct hyperlinks a screen's worth of cells can point at.
+    ///
+    /// <para>The attribute word had eighteen bits spare above the width, so a link costs nothing:
+    /// the cell is the same sixteen bytes it was, and the renderer needs no change at all because a
+    /// link is a fact about a cell rather than a thing drawn differently.</para>
+    /// </summary>
+    public const int MaximumLinks = (1 << 18) - 1;
 
     private readonly int _text;
     private readonly uint _foreground;
@@ -74,6 +84,12 @@ public readonly struct Cell : IEquatable<Cell>
     /// </summary>
     public int Width => (int)((_attributes >> WidthShift) & 0x3);
 
+    /// <summary>
+    /// Which hyperlink this cell is part of, or zero for none. An index into the buffer's own table,
+    /// because the URI is shared by every cell of the run and storing it per cell would not fit.
+    /// </summary>
+    public int Link => (int)(_attributes >> LinkShift);
+
     /// <summary>Whether anything was ever written here, as against a cell that is still blank.</summary>
     public bool IsBlank => _text == ' ' && _foreground == 0 && _background == 0 && Flags == CellFlags.None;
 
@@ -81,22 +97,24 @@ public readonly struct Cell : IEquatable<Cell>
     public static Cell For(int codepoint, Colour foreground, Colour background,
                            CellFlags flags = CellFlags.None,
                            UnderlineStyle underline = UnderlineStyle.None,
-                           int width = 1)
+                           int width = 1, int link = 0)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(codepoint);
 
-        return new Cell(codepoint, foreground.Packed, background.Packed, Attributes(flags, underline, width));
+        return new Cell(codepoint, foreground.Packed, background.Packed,
+                        Attributes(flags, underline, width, link));
     }
 
     /// <summary>Builds a cell pointing at a cluster the buffer's table holds.</summary>
     public static Cell ForCluster(int clusterIndex, Colour foreground, Colour background,
                                   CellFlags flags = CellFlags.None,
                                   UnderlineStyle underline = UnderlineStyle.None,
-                                  int width = 1)
+                                  int width = 1, int link = 0)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(clusterIndex);
 
-        return new Cell(~clusterIndex, foreground.Packed, background.Packed, Attributes(flags, underline, width));
+        return new Cell(~clusterIndex, foreground.Packed, background.Packed,
+                        Attributes(flags, underline, width, link));
     }
 
     /// <summary>The same cell in different colours, which is what an attribute change rewrites.</summary>
@@ -120,12 +138,15 @@ public readonly struct Cell : IEquatable<Cell>
     /// <summary>Whether two cells differ in any field.</summary>
     public static bool operator !=(Cell left, Cell right) => !left.Equals(right);
 
-    private static uint Attributes(CellFlags flags, UnderlineStyle underline, int width)
+    private static uint Attributes(CellFlags flags, UnderlineStyle underline, int width, int link)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(width);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(width, 2);
+        ArgumentOutOfRangeException.ThrowIfNegative(link);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(link, MaximumLinks);
 
-        return (uint)flags | ((uint)underline << UnderlineShift) | ((uint)width << WidthShift);
+        return (uint)flags | ((uint)underline << UnderlineShift) | ((uint)width << WidthShift)
+               | ((uint)link << LinkShift);
     }
 
 }

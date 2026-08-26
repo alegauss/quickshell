@@ -24,6 +24,8 @@ public sealed class TerminalBuffer
 
     private readonly Dictionary<string, int> _clusterIndex = new(StringComparer.Ordinal);
     private readonly List<string> _clusters = [];
+    private readonly Dictionary<string, int> _linkIndex = new(StringComparer.Ordinal);
+    private readonly List<string> _links = [];
 
     private Cell[] _cells;
     private bool[] _wrapped;
@@ -280,6 +282,39 @@ public sealed class TerminalBuffer
 
         return _clusters.Count - 1;
     }
+
+    /// <summary>
+    /// Interns a hyperlink and answers the identifier a cell can hold. Identical URIs share one, so
+    /// a run of a hundred linked cells costs one entry.
+    ///
+    /// <para>Index zero is reserved for "no link", which is why the first real one is one.</para>
+    /// </summary>
+    public int InternLink(string uri)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+
+        if (_linkIndex.TryGetValue(uri, out int existing))
+        {
+            return existing;
+        }
+
+        if (_links.Count >= Cell.MaximumLinks)
+        {
+            return 0;
+        }
+
+        _links.Add(uri);
+        _linkIndex[uri] = _links.Count;
+
+        return _links.Count;
+    }
+
+    /// <summary>The URI a cell points at, or empty where it points at none.</summary>
+    public string LinkOf(Cell cell) =>
+        cell.Link > 0 && cell.Link <= _links.Count ? _links[cell.Link - 1] : string.Empty;
+
+    /// <summary>How many distinct hyperlinks this buffer has been told about.</summary>
+    public int LinkCount => _links.Count;
 
     /// <summary>The text a cell holds: its cluster, or the single codepoint it carries inline.</summary>
     public string TextOf(Cell cell) =>

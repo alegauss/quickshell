@@ -12,11 +12,13 @@ namespace Quickshell.Terminal;
 /// <param name="Background">The background, which may be the theme's.</param>
 /// <param name="Flags">Bold, slant, inverse, overline, strike.</param>
 /// <param name="Underline">Which underline, if any.</param>
+/// <param name="Link">Which hyperlink the run belongs to, or zero for none.</param>
 public readonly record struct Pen(
     Colour Foreground,
     Colour Background,
     CellFlags Flags = CellFlags.None,
-    UnderlineStyle Underline = UnderlineStyle.None)
+    UnderlineStyle Underline = UnderlineStyle.None,
+    int Link = 0)
 {
     /// <summary>What a terminal starts with and what <c>SGR 0</c> puts it back to.</summary>
     public static Pen Default => new(Colour.Default, Colour.Default);
