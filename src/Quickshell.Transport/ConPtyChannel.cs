@@ -158,8 +158,11 @@ public sealed class ConPtyChannel : IPtyChannel
 
         try
         {
+            // The write, and nothing after it. There is no flush because a pipe stream holds nothing
+            // back to flush — its Flush checks the handle and returns — and there is no batching,
+            // because coalescing keystrokes to save a syscall trades away the one thing every other
+            // decision here is spending something to protect.
             await _toChild.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
-            await _toChild.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {

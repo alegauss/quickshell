@@ -32,6 +32,7 @@
 - ✅ **QS24** **A malformed escape sequence from a hostile host has never been shown not to crash or allocate** — Mutated and pathological input is answered rather than thrown at, and replaying a real stream allocates zero bytes where it used to allocate fifty-five kilobytes per megabyte.
 - ✅ **QS25** **The emulator has no real producer of bytes, so every test of it is a fixture its own author wrote** — A real shell runs behind the same four members an SSH channel will be behind, its output reaches the emulator as VT bytes, and closing it leaves no process and no handle behind.
 - ✅ **QS26** **Under heavy output the delay before a typed character appears grows without bound** — The parser drains its whole queue before the renderer hears anything, so thirty-two times the bytes cost one and a half times the worst wait and no byte is dropped getting there.
+- ✅ **QS27** **A keystroke queues behind a screenful of pending output before it is written to the host** — A keystroke leaves in twenty microseconds while forty-eight megabytes stream in, sharing no queue with the output and allocating nothing of its own.
 
 ## Block D — The tree a user organises work in
 

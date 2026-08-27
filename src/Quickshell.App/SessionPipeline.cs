@@ -13,13 +13,20 @@ namespace Quickshell.App;
 /// <param name="Coalesced">Reads that were absorbed into somebody else's signal.</param>
 /// <param name="LargestBatch">The most reads ever taken in one drain, before one signal.</param>
 /// <param name="LongestWait">The longest a read waited between arriving and being parsed.</param>
+/// <param name="Keystrokes">Writes the user's side made.</param>
+/// <param name="LongestKeystroke">
+/// The longest one of those took to reach the host. This is the number the whole arrangement is for:
+/// it has to stay put whatever the host is printing.
+/// </param>
 public readonly record struct PipelineWork(
     long Bytes,
     long Chunks,
     long Signals,
     long Coalesced,
     int LargestBatch,
-    TimeSpan LongestWait);
+    TimeSpan LongestWait,
+    long Keystrokes,
+    TimeSpan LongestKeystroke);
 
 /// <summary>
 /// Three stages and one barrier: the arrangement the rest of the architecture is built around.
@@ -65,6 +72,8 @@ public sealed class SessionPipeline : IAsyncDisposable
     private readonly IPtyChannel _channel;
     private readonly Emulator _emulator;
     private readonly Channel<Chunk> _queue;
+    private readonly Channel<byte[]> _replies = Channel.CreateUnbounded<byte[]>(
+        new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
     private readonly CancellationTokenSource _stopping = new();
     private readonly Stopwatch _clock = Stopwatch.StartNew();
 
@@ -73,6 +82,8 @@ public sealed class SessionPipeline : IAsyncDisposable
     private long _coalesced;
     private int _largestBatch;
     private long _longestWaitTicks;
+    private long _keystrokes;
+    private long _longestKeystrokeTicks;
     private bool _disposed;
 
     private SessionPipeline(IPtyChannel channel, Emulator emulator, int capacity)
@@ -102,7 +113,9 @@ public sealed class SessionPipeline : IAsyncDisposable
         Damage.Sets,
         Interlocked.Read(ref _coalesced),
         Volatile.Read(ref _largestBatch),
-        TimeSpan.FromTicks(Interlocked.Read(ref _longestWaitTicks)));
+        TimeSpan.FromTicks(Interlocked.Read(ref _longestWaitTicks)),
+        Interlocked.Read(ref _keystrokes),
+        TimeSpan.FromTicks(Interlocked.Read(ref _longestKeystrokeTicks)));
 
     /// <summary>Starts the reader and the parser over a channel and a model of the same size.</summary>
     public static SessionPipeline Start(
@@ -120,15 +133,50 @@ public sealed class SessionPipeline : IAsyncDisposable
         // each would be a thread each spent waiting.
         Task reading = Task.Run(pipeline.ReadLoop);
         Task parsing = Task.Run(pipeline.ParseLoop);
+        Task replying = Task.Run(pipeline.ReplyLoop);
 
-        pipeline.Completed = Task.WhenAll(reading, parsing);
+        pipeline.Completed = Task.WhenAll(reading, parsing, replying);
 
         return pipeline;
     }
 
-    /// <summary>Sends what the user typed. Never waits on the parser.</summary>
-    public ValueTask TypeAsync(ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken = default) =>
-        _channel.WriteAsync(bytes, cancellationToken);
+    /// <summary>
+    /// Sends what the user typed, by the shortest route in this codebase.
+    ///
+    /// <para><b>It shares nothing with the output path.</b> It does not enter the queue the reader
+    /// fills, does not wait for the parser, does not touch the model, does not wait for a frame and
+    /// does not allocate. Output volume is the host's choice; the delay before a keystroke leaves is
+    /// what a user attributes to the client — and during a <c>find /</c> the client is at its busiest
+    /// and the user is most likely to be reaching for control-C, which is exactly when a shared queue
+    /// would deliver that keypress last.</para>
+    ///
+    /// <para>Timed on the way through, because a design argument is not evidence:
+    /// <see cref="PipelineWork.LongestKeystroke"/> is the number.</para>
+    /// </summary>
+    public async ValueTask TypeAsync(
+        ReadOnlyMemory<byte> bytes,
+        CancellationToken cancellationToken = default)
+    {
+        if (bytes.IsEmpty)
+        {
+            // A key that encodes to nothing is not a keystroke. Sending it would be a syscall for a
+            // modifier the user pressed on its own.
+            return;
+        }
+
+        long started = _clock.Elapsed.Ticks;
+
+        await _channel.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+
+        long took = _clock.Elapsed.Ticks - started;
+
+        Interlocked.Increment(ref _keystrokes);
+
+        if (took > Interlocked.Read(ref _longestKeystrokeTicks))
+        {
+            Interlocked.Exchange(ref _longestKeystrokeTicks, took);
+        }
+    }
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
@@ -142,6 +190,7 @@ public sealed class SessionPipeline : IAsyncDisposable
 
         await _stopping.CancelAsync().ConfigureAwait(false);
         _queue.Writer.TryComplete();
+        _replies.Writer.TryComplete();
 
         try
         {
@@ -245,6 +294,11 @@ public sealed class SessionPipeline : IAsyncDisposable
         finally
         {
             Drain();
+
+            // Nothing more will be posted, so the courier may go home. Without this the pipeline
+            // never reports itself finished after the host closes, because one of its three loops is
+            // still waiting for a reply that cannot arrive.
+            _replies.Writer.TryComplete();
         }
     }
 
@@ -268,11 +322,17 @@ public sealed class SessionPipeline : IAsyncDisposable
     }
 
     /// <summary>
-    /// What the terminal owes the host, sent back as soon as it is owed.
+    /// What the terminal owes the host, taken off the parser and handed to a courier.
     ///
-    /// <para>On the parser stage because that is the only thread that may read the model, and
-    /// without awaiting because a reply is a handful of bytes and the alternative is a parser that
-    /// pauses to talk.</para>
+    /// <para>Read here because the parser stage is the only one that may look at the model, and
+    /// posted rather than written because a parser that stopped to talk to the host would be a
+    /// parser waiting on I/O — which is the whole thing the barrier above exists to avoid.</para>
+    ///
+    /// <para><b>Posted and not fire-and-forget.</b> Writing here and discarding the result was the
+    /// first draft: it leaves an unobserved failure where the host has gone, and a discarded
+    /// <c>ValueTask</c> is a value whose backing may already have been recycled by the time anything
+    /// looks at it. A queue costs one allocation per reply, which is per question a host asks and
+    /// not per byte it sends.</para>
     /// </summary>
     private void Answer()
     {
@@ -284,7 +344,35 @@ public sealed class SessionPipeline : IAsyncDisposable
         byte[] reply = _emulator.Reply.ToArray();
         _emulator.ClearReply();
 
-        _ = _channel.WriteAsync(reply, _stopping.Token);
+        _replies.Writer.TryWrite(reply);
+    }
+
+    /// <summary>
+    /// The courier: everything the terminal owes the host, written in order and awaited properly.
+    ///
+    /// <para>Not a fourth stage. It carries no state and makes no decision — it exists so that the
+    /// parser can put a reply down and keep going.</para>
+    /// </summary>
+    private async Task ReplyLoop()
+    {
+        try
+        {
+            while (await _replies.Reader.WaitToReadAsync(_stopping.Token).ConfigureAwait(false))
+            {
+                while (_replies.Reader.TryRead(out byte[]? reply))
+                {
+                    await _channel.WriteAsync(reply, _stopping.Token).ConfigureAwait(false);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Closing.
+        }
+        catch (IOException)
+        {
+            // The host has gone and no longer wants an answer, which is not a failure of ours.
+        }
     }
 
     private void Note(int drained)

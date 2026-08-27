@@ -20,8 +20,7 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS27** (deps: QS26 ✅) **A keystroke queues behind a screenful of pending output before it is written to the host** — Output volume is the host's choice while echo latency is what the user feels and blames the client for, so the two paths must not share a queue. → §QS27
-- 📋 **QS28** (deps: QS27) **Arrow keys, function keys and modified keys send nothing a remote program recognises** — What a key sends depends on modes the host has set, so this is a function of terminal state rather than a static lookup table. → §QS28
+- 📋 **QS28** (deps: QS27 ✅) **Arrow keys, function keys and modified keys send nothing a remote program recognises** — What a key sends depends on modes the host has set, so this is a function of terminal state rather than a static lookup table. → §QS28
 - 📋 **QS29** (deps: QS28) **Typing Japanese or Chinese shows no composition and commits nothing** — Composition is drawn by the input method into a window it expects the client to place, and a client that ignores it leaves the candidate list in the wrong corner. → §QS29
 - 📋 **QS30** (deps: QS26 ✅, QS21 ✅) **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — Copying is the second most common thing a user does in a terminal, and pasting is where a terminal most easily runs something the user did not intend. → §QS30
 - 📋 **QS31** (deps: QS15 ✅, QS26 ✅) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The ring already holds the history, so what is missing is a viewport over it and a search across it, and users reach for both within a minute. → §QS31

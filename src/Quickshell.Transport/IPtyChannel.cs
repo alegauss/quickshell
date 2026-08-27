@@ -59,7 +59,20 @@ public interface IPtyChannel : IAsyncDisposable, IDisposable
     /// <returns>How many bytes landed in the buffer, or zero at end of stream.</returns>
     ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default);
 
-    /// <summary>Writes what the user typed, or what the terminal owes the host as a reply.</summary>
+    /// <summary>
+    /// Writes what the user typed, or what the terminal owes the host as a reply.
+    ///
+    /// <para><b>An implementation may not batch or delay this, and that is a requirement rather than
+    /// a preference.</b> Coalescing keystrokes to save a syscall trades away the one resource every
+    /// other decision in this client is spending something to protect. A single-byte write goes out
+    /// as a single-byte write.</para>
+    ///
+    /// <para><b>For an implementation with a socket under it, that means <c>TCP_NODELAY</c>, set and
+    /// verified rather than assumed.</b> A forty-millisecond Nagle delay on a one-byte write is
+    /// invisible in code review and unmistakable to a person typing. The pseudo-console has no socket
+    /// and so cannot be where that is checked — it is written here so that whoever implements the
+    /// remote channel reads it at the seam they are implementing.</para>
+    /// </summary>
     ValueTask WriteAsync(ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken = default);
 
     /// <summary>

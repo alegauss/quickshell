@@ -266,32 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS27 The path a keystroke takes, and everything it does not touch
-
-A keystroke's route to the host is deliberately the shortest thing in this codebase: the
-window's input handler encodes it and writes it to the channel. It does not enter the
-render pipeline, does not take the model's lock, does not wait for a frame, and does not
-allocate.
-
-That matters because output volume is chosen by the remote host while echo latency is
-what the user attributes to the client. During a `find /` the client is at its busiest
-and the user is most likely to reach for control-C — which is exactly the moment a
-shared queue would make that keypress arrive last.
-
-`TCP_NODELAY` is set on the underlying socket and verified rather than assumed. A
-forty-millisecond Nagle delay on a single-byte write is invisible in code review and
-unmistakable to a person typing.
-
-Writes are not batched. Coalescing keystrokes to save syscalls trades away the one
-resource everything else here is being spent to protect.
-
-The measurement is the point of the line, not a check afterwards: input to photon on a
-local pseudo-console, under load and at rest, against the figure the budget already
-fixed. A design argument is not evidence — the number is, taken with a high-speed
-capture or an equivalent instrumented path.
-
-Falsified when echo latency under load differs measurably from echo latency at rest.
-
 ### §QS28 A key is not a byte, and the host changed the rules
 
 What a key sends is a function of the key, its modifiers, and terminal state the host

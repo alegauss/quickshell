@@ -25,6 +25,17 @@ internal sealed class PtyStub : IPtyChannel
     /// <summary>Everything written back towards the far end, in order.</summary>
     public List<byte[]> Written { get; } = [];
 
+    /// <summary>How many writes arrived, whether or not their bytes were kept.</summary>
+    public long Writes { get; private set; }
+
+    /// <summary>
+    /// Whether to keep the bytes of each write.
+    ///
+    /// <para>Off for the allocation measurement, where copying every write into a list would be the
+    /// stub allocating and the test reporting it as the path's.</para>
+    /// </summary>
+    public bool Recording { get; set; } = true;
+
     /// <inheritdoc/>
     public (int Columns, int Rows) Size { get; private set; } = (80, 24);
 
@@ -66,7 +77,12 @@ internal sealed class PtyStub : IPtyChannel
     {
         lock (Written)
         {
-            Written.Add(bytes.ToArray());
+            Writes++;
+
+            if (Recording)
+            {
+                Written.Add(bytes.ToArray());
+            }
         }
 
         return ValueTask.CompletedTask;
