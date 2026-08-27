@@ -16,6 +16,11 @@ namespace Quickshell.Terminal;
 /// <para><b>The wrapped flag is not cosmetic.</b> It is the only record that a line the host wrote
 /// as one logical line occupies two rows — which reflow, selection and copy each need, and none of
 /// them can reconstruct once it is gone.</para>
+///
+/// <para><b>Every mutation is recorded, and the record cannot be bypassed.</b> That is why
+/// <see cref="Screen"/> hands out a read-only span: a caller that could write through it would be a
+/// change <see cref="Generation"/> never saw, and a renderer comparing generations would then decide
+/// there was nothing to draw. Whatever a mutation is, it is a method on this class.</para>
 /// </summary>
 public sealed class TerminalBuffer
 {
@@ -29,7 +34,12 @@ public sealed class TerminalBuffer
 
     private Cell[] _cells;
     private bool[] _wrapped;
+    private long[] _stamps;
+    private bool[] _dirty;
     private int _origin;
+    private long _generation;
+    private long _firstLine;
+    private int _dirtyRows;
 
     /// <summary>Opens a buffer of a given screen size, with room for that much scrollback behind it.</summary>
     /// <param name="columns">Cells across.</param>
@@ -47,6 +57,8 @@ public sealed class TerminalBuffer
 
         _cells = new Cell[Capacity * columns];
         _wrapped = new bool[Capacity];
+        _stamps = new long[Capacity];
+        _dirty = new bool[rows];
         LineCount = rows;
 
         Array.Fill(_cells, Cell.Blank);
@@ -92,8 +104,110 @@ public sealed class TerminalBuffer
     /// <summary>Whether the side table is full and further new clusters lose everything but their base.</summary>
     public bool ClustersExhausted => _clusters.Count >= MaximumClusters;
 
-    /// <summary>One row of the retained lines, oldest first. Row <see cref="ScrollbackLines"/> is the screen's top.</summary>
-    public Span<Cell> Line(int line)
+    // ---- What changed ----
+
+    /// <summary>
+    /// A count that goes up on every mutation and never comes down.
+    ///
+    /// <para><b>This is the whole cross-thread mechanism, and it is deliberately not the changed
+    /// content.</b> The parser mutates and the renderer reads, on different threads; the cheapest
+    /// correct thing to pass between them is the fact that something changed. A renderer that
+    /// remembers the number it last drew and finds it unchanged has established that there is nothing
+    /// to do, and goes back to waiting — which is what an idle window costing nothing actually
+    /// is.</para>
+    ///
+    /// <para>Read through a fence, because the reader is not the writer. The fence is why a renderer
+    /// that sees a new number is also guaranteed to see the cells behind it.</para>
+    /// </summary>
+    public long Generation => Volatile.Read(ref _generation);
+
+    /// <summary>
+    /// Which line of this buffer's whole life is at the top of the visible screen.
+    ///
+    /// <para><b>This is the structural half, and skipping it is the trap.</b> A scroll changes every
+    /// row's <em>position</em> without changing any row's content, so a scheme that only asked "did
+    /// row three change" would report the whole screen dirty on the one operation a terminal performs
+    /// most. Here a pure scroll moves this number by one and marks a single row dirty, and a consumer
+    /// that compares it recognises the scroll for what it is.</para>
+    /// </summary>
+    public long TopLine => _firstLine + ScrollbackLines;
+
+    /// <summary>Which line of this buffer's whole life a visible row is showing.</summary>
+    public long AbsoluteLine(int row) => TopLine + row;
+
+    /// <summary>
+    /// The generation at which a retained line was last written. Compared against a remembered one,
+    /// it says whether that particular line's content is the same content.
+    /// </summary>
+    public long GenerationOf(int line)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(line);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(line, LineCount);
+
+        return _stamps[RingRow(line)];
+    }
+
+    /// <summary>The same, for a visible row.</summary>
+    public long ScreenGenerationOf(int row)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(row);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(row, Rows);
+
+        return GenerationOf(ScrollbackLines + row);
+    }
+
+    /// <summary>
+    /// Whether new content has landed at this screen position since <see cref="ClearDamage"/>.
+    ///
+    /// <para><b>This is the optimisation, and it is labelled as one.</b> Correctness needs only
+    /// <see cref="Generation"/>: a consumer that rebuilt every row whenever that changed would be
+    /// slower and never wrong. The bitset is what lets a screen where one row changed rebuild one
+    /// row's worth of instances instead of all of them.</para>
+    ///
+    /// <para>It is about a <em>position</em>, not about a line. A scroll leaves the rows it moved
+    /// unmarked, because their content did not change — <see cref="TopLine"/> is what says they are
+    /// somewhere else now, and a consumer that reads this without reading that will draw a stale
+    /// screen.</para>
+    /// </summary>
+    public bool IsScreenDirty(int row)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(row);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(row, Rows);
+
+        return _dirty[row];
+    }
+
+    /// <summary>How many screen rows carry new content, which is what makes "nothing" cheap to ask.</summary>
+    public int DirtyRows => _dirtyRows;
+
+    /// <summary>
+    /// Forgets which rows were dirty, called by whoever has just drawn them.
+    ///
+    /// <para><see cref="Generation"/> is deliberately untouched: it is a count of this buffer's life
+    /// and not a flag, so two consumers can each remember their own last-drawn number without one
+    /// clearing the other's evidence.</para>
+    /// </summary>
+    public void ClearDamage()
+    {
+        if (_dirtyRows == 0)
+        {
+            return;
+        }
+
+        Array.Clear(_dirty);
+        _dirtyRows = 0;
+    }
+
+    // ---- Reading ----
+
+    /// <summary>
+    /// One row of the retained lines, oldest first. Row <see cref="ScrollbackLines"/> is the screen's
+    /// top.
+    ///
+    /// <para>Read-only, and that is the damage record's whole enforcement: a caller writing through a
+    /// span would be a change <see cref="Generation"/> never saw.</para>
+    /// </summary>
+    public ReadOnlySpan<Cell> Line(int line)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(line);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(line, LineCount);
@@ -102,7 +216,7 @@ public sealed class TerminalBuffer
     }
 
     /// <summary>One row of the visible screen.</summary>
-    public Span<Cell> Screen(int row)
+    public ReadOnlySpan<Cell> Screen(int row)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(row);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(row, Rows);
@@ -114,7 +228,16 @@ public sealed class TerminalBuffer
     public bool IsWrapped(int line) => _wrapped[RingRow(line)];
 
     /// <summary>Records that a line continues into the next, which is what a soft wrap is.</summary>
-    public void SetWrapped(int line, bool wrapped) => _wrapped[RingRow(line)] = wrapped;
+    public void SetWrapped(int line, bool wrapped)
+    {
+        if (_wrapped[RingRow(line)] == wrapped)
+        {
+            return;
+        }
+
+        _wrapped[RingRow(line)] = wrapped;
+        Touch(line);
+    }
 
     /// <summary>Whether a visible row continues into the one below it.</summary>
     public bool IsScreenWrapped(int row) => IsWrapped(ScrollbackLines + row);
@@ -140,14 +263,26 @@ public sealed class TerminalBuffer
             // The ring is full, so the oldest line is the one the new bottom row overwrites. This is
             // the eviction, and it costs an addition.
             _origin = Next(_origin);
+            _firstLine++;
         }
 
-        Span<Cell> bottom = Line(LineCount - 1);
+        Span<Cell> bottom = Mutable(LineCount - 1);
         bottom.Fill(Cell.Blank);
         _wrapped[RingRow(LineCount - 1)] = false;
 
         CellsWrittenByScrolling += bottom.Length;
         Scrolls++;
+
+        // One row dirty and not the screen: the rows above moved without changing, and TopLine is
+        // what says so. Marking them all here is the pessimism this whole task exists to avoid.
+        //
+        // The bits do move, though. A bit means "new content at this position", and every position
+        // has just come down by one — so a row written before this scroll and not yet drawn must
+        // still be findable, one row higher. Fifty bytes of memmove, against a redraw of the screen.
+        Bump();
+        _stamps[RingRow(LineCount - 1)] = _generation;
+        ShiftDirtyUp();
+        Soil(Rows - 1);
     }
 
     /// <summary>
@@ -167,17 +302,22 @@ public sealed class TerminalBuffer
 
         for (int row = top; row + shift <= bottom; row++)
         {
-            Screen(row + shift).CopyTo(Screen(row));
-            SetScreenWrapped(row, IsScreenWrapped(row + shift));
+            MutableScreen(row + shift).CopyTo(MutableScreen(row));
+            _wrapped[RingRow(ScrollbackLines + row)] = IsScreenWrapped(row + shift);
             CellsWrittenByScrolling += Columns;
         }
 
         for (int row = bottom - shift + 1; row <= bottom; row++)
         {
-            Screen(row).Fill(Cell.Blank);
-            SetScreenWrapped(row, false);
+            MutableScreen(row).Fill(Cell.Blank);
+            _wrapped[RingRow(ScrollbackLines + row)] = false;
             CellsWrittenByScrolling += Columns;
         }
+
+        // Every position in the region really did get different content, unlike a whole-screen
+        // scroll, which is why this one is honestly the whole region.
+        Bump();
+        Region(top, bottom);
     }
 
     /// <summary>
@@ -197,17 +337,20 @@ public sealed class TerminalBuffer
 
         for (int row = bottom; row - shift >= top; row--)
         {
-            Screen(row - shift).CopyTo(Screen(row));
-            SetScreenWrapped(row, IsScreenWrapped(row - shift));
+            MutableScreen(row - shift).CopyTo(MutableScreen(row));
+            _wrapped[RingRow(ScrollbackLines + row)] = IsScreenWrapped(row - shift);
             CellsWrittenByScrolling += Columns;
         }
 
         for (int row = top; row < top + shift; row++)
         {
-            Screen(row).Fill(Cell.Blank);
-            SetScreenWrapped(row, false);
+            MutableScreen(row).Fill(Cell.Blank);
+            _wrapped[RingRow(ScrollbackLines + row)] = false;
             CellsWrittenByScrolling += Columns;
         }
+
+        Bump();
+        Region(top, bottom);
     }
 
     /// <summary>
@@ -222,8 +365,12 @@ public sealed class TerminalBuffer
             return;
         }
 
+        // The screen itself does not move, so no position's content changed and nothing is dirtied:
+        // the anchor moves by exactly what the line count loses, which leaves TopLine where it was.
+        _firstLine += ScrollbackLines;
         _origin = RingRow(ScrollbackLines);
         LineCount = Rows;
+        Bump();
     }
 
     /// <summary>Writes one cell of the visible screen.</summary>
@@ -232,7 +379,8 @@ public sealed class TerminalBuffer
         ArgumentOutOfRangeException.ThrowIfNegative(column);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(column, Columns);
 
-        Screen(row)[column] = cell;
+        MutableScreen(row)[column] = cell;
+        TouchScreen(row);
     }
 
     /// <summary>Clears a run of a visible row, which is what every erase sequence reduces to.</summary>
@@ -241,8 +389,9 @@ public sealed class TerminalBuffer
         ArgumentOutOfRangeException.ThrowIfNegative(from);
         ArgumentOutOfRangeException.ThrowIfNegative(count);
 
-        Span<Cell> line = Screen(row);
-        Screen(row).Slice(from, Math.Min(count, line.Length - from)).Fill(Cell.Blank);
+        Span<Cell> line = MutableScreen(row);
+        line.Slice(from, Math.Min(count, line.Length - from)).Fill(Cell.Blank);
+        TouchScreen(row);
     }
 
     /// <summary>Clears the whole visible screen without touching what is behind it.</summary>
@@ -250,9 +399,57 @@ public sealed class TerminalBuffer
     {
         for (int row = 0; row < Rows; row++)
         {
-            Screen(row).Fill(Cell.Blank);
-            SetScreenWrapped(row, false);
+            MutableScreen(row).Fill(Cell.Blank);
+            _wrapped[RingRow(ScrollbackLines + row)] = false;
         }
+
+        Bump();
+        Region(0, Rows - 1);
+    }
+
+    /// <summary>
+    /// Shifts a row's cells right and blanks what the shift opened, which is what <c>CSI @</c> is.
+    ///
+    /// <para>Here rather than in the emulator because a mutation the buffer did not perform is a
+    /// mutation <see cref="Generation"/> did not see.</para>
+    /// </summary>
+    public void InsertCells(int row, int from, int count)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(from);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+
+        Span<Cell> line = MutableScreen(row);
+
+        if (from >= line.Length || count == 0)
+        {
+            return;
+        }
+
+        int shift = Math.Min(count, line.Length - from);
+
+        line[from..(line.Length - shift)].CopyTo(line[(from + shift)..]);
+        line.Slice(from, shift).Fill(Cell.Blank);
+        TouchScreen(row);
+    }
+
+    /// <summary>Shifts a row's cells left and blanks the tail, which is what <c>CSI P</c> is.</summary>
+    public void DeleteCells(int row, int from, int count)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(from);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+
+        Span<Cell> line = MutableScreen(row);
+
+        if (from >= line.Length || count == 0)
+        {
+            return;
+        }
+
+        int shift = Math.Min(count, line.Length - from);
+
+        line[(from + shift)..].CopyTo(line[from..]);
+        line[(line.Length - shift)..].Fill(Cell.Blank);
+        TouchScreen(row);
     }
 
     /// <summary>
@@ -342,6 +539,7 @@ public sealed class TerminalBuffer
         int capacity = rows + scrollback;
         Cell[] cells = new Cell[capacity * columns];
         bool[] wrapped = new bool[capacity];
+        long[] stamps = new long[capacity];
         Array.Fill(cells, Cell.Blank);
 
         // Keep the newest lines: what a user is looking at survives a resize and the oldest
@@ -354,10 +552,18 @@ public sealed class TerminalBuffer
             int source = LineCount - kept + line;
             Line(source)[..width].CopyTo(cells.AsSpan(line * columns, columns));
             wrapped[line] = IsWrapped(source);
+            stamps[line] = GenerationOf(source);
         }
 
         _cells = cells;
         _wrapped = wrapped;
+        _stamps = stamps;
+        _dirty = new bool[rows];
+        _dirtyRows = 0;
+
+        // The anchor follows the lines that fell off the front, so a line's absolute number is the
+        // same number after a resize as before it — which is what makes it an identity at all.
+        _firstLine += LineCount - kept;
         _origin = 0;
         Columns = columns;
         Rows = rows;
@@ -365,6 +571,88 @@ public sealed class TerminalBuffer
         LineCount = Math.Max(rows, kept);
         CursorRow = Math.Clamp(CursorRow, 0, rows - 1);
         CursorColumn = Math.Clamp(CursorColumn, 0, columns - 1);
+
+        // Every row is new at its position: the geometry changed underneath all of them.
+        Bump();
+        Region(0, Rows - 1);
+    }
+
+    // ---- The record ----
+
+    /// <summary>
+    /// One more mutation, published through a fence.
+    ///
+    /// <para>Read-modify-write and not an interlocked increment, because there is exactly one writer:
+    /// the thread that owns the parser. Readers are many and they only ever read. An interlocked
+    /// increment here would buy nothing and cost a locked instruction on the hot path.</para>
+    /// </summary>
+    private void Bump() => Volatile.Write(ref _generation, _generation + 1);
+
+    /// <summary>Stamps one retained line and dirties its screen position, if it has one.</summary>
+    private void Touch(int line)
+    {
+        Bump();
+        _stamps[RingRow(line)] = _generation;
+
+        int row = line - ScrollbackLines;
+
+        if (row >= 0 && row < Rows)
+        {
+            Soil(row);
+        }
+    }
+
+    private void TouchScreen(int row)
+    {
+        Bump();
+        _stamps[RingRow(ScrollbackLines + row)] = _generation;
+        Soil(row);
+    }
+
+    /// <summary>Stamps a run of screen rows against the generation already bumped by the caller.</summary>
+    private void Region(int top, int bottom)
+    {
+        for (int row = top; row <= bottom; row++)
+        {
+            _stamps[RingRow(ScrollbackLines + row)] = _generation;
+            Soil(row);
+        }
+    }
+
+    private void Soil(int row)
+    {
+        if (!_dirty[row])
+        {
+            _dirty[row] = true;
+            _dirtyRows++;
+        }
+    }
+
+    /// <summary>Moves every dirty bit up one row, because every position just came down one.</summary>
+    private void ShiftDirtyUp()
+    {
+        if (_dirtyRows == 0)
+        {
+            return;
+        }
+
+        if (_dirty[0])
+        {
+            _dirtyRows--;
+        }
+
+        Array.Copy(_dirty, 1, _dirty, 0, Rows - 1);
+        _dirty[Rows - 1] = false;
+    }
+
+    private Span<Cell> Mutable(int line) => _cells.AsSpan(RingRow(line) * Columns, Columns);
+
+    private Span<Cell> MutableScreen(int row)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(row);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(row, Rows);
+
+        return Mutable(ScrollbackLines + row);
     }
 
     private int RingRow(int line) => (_origin + line) % Capacity;

@@ -266,32 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS22 What changed, and the generation counter that says so
-
-The model is mutated by the parser and read by the renderer, and those are different
-threads. The cheapest correct thing to pass between them is not the changed content but
-the fact that something changed.
-
-Each row carries a generation stamp, incremented when the row is written. The buffer
-carries a monotonic generation of its own, incremented on any mutation. The renderer
-remembers the generation it last drew: equal means there is nothing to do and the thread
-goes back to waiting, which is the entire mechanism behind an idle window costing
-nothing.
-
-A dirty-row bitset accompanies it, so a screen where one row changed rebuilds one row of
-instances instead of all of them. That part is an optimisation and is labelled as one —
-correctness needs only the generation.
-
-Structural change is the trap. A scroll changes every row's *position* without changing
-any row's content, so a naive per-row scheme reports the whole screen dirty on the
-single operation a terminal performs most. The ring's origin is therefore part of what
-the renderer compares, and a pure scroll is recognised as one.
-
-The cursor is its own damage source, because a blink changes what is on screen while the
-buffer is untouched.
-
-Falsified when a window nobody is typing into issues a draw call.
-
 ### §QS23 Reflow, and the honest fallback if it does not converge
 
 Resizing is where terminals lose their reputation. The wrapped flag on each row records

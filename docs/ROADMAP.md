@@ -20,11 +20,10 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS22** (deps: QS16 ✅) **Nothing records which rows changed, so any redraw is a whole-screen redraw** — The renderer has to know what changed before it can decide not to draw at all, and that decision is where the idle-cost figure is actually won. → §QS22
 - 📋 **QS23** (deps: QS17 ✅) **Narrowing the window turns wrapped output into ragged fragments that never recover** — This is the single behaviour terminal emulators most reliably get wrong, so it is isolated behind a pure function that can be tested without a window. → §QS23
 - 📋 **QS24** (deps: QS14 ✅) **A malformed escape sequence from a hostile host has never been shown not to crash or allocate** — The parser is the one component whose input is chosen entirely by a remote machine, so its failure modes belong to somebody else until they are tested. → §QS24
 - 📋 **QS25** (deps: QS15 ✅) **The emulator has no real producer of bytes, so every test of it is a fixture its own author wrote** — A pseudo-console gives the terminal a genuine adversary locally, which tells a terminal defect apart from a network defect before the network exists. → §QS25
-- 📋 **QS26** (deps: QS25, QS22, QS9 ✅) **Under heavy output the delay before a typed character appears grows without bound** — The parser and the renderer run at rates differing by orders of magnitude, and any design that couples them makes the faster one wait for the slower. → §QS26
+- 📋 **QS26** (deps: QS25, QS22 ✅, QS9 ✅) **Under heavy output the delay before a typed character appears grows without bound** — The parser and the renderer run at rates differing by orders of magnitude, and any design that couples them makes the faster one wait for the slower. → §QS26
 - 📋 **QS27** (deps: QS26) **A keystroke queues behind a screenful of pending output before it is written to the host** — Output volume is the host's choice while echo latency is what the user feels and blames the client for, so the two paths must not share a queue. → §QS27
 - 📋 **QS28** (deps: QS27) **Arrow keys, function keys and modified keys send nothing a remote program recognises** — What a key sends depends on modes the host has set, so this is a function of terminal state rather than a static lookup table. → §QS28
 - 📋 **QS29** (deps: QS28) **Typing Japanese or Chinese shows no composition and commits nothing** — Composition is drawn by the input method into a window it expects the client to place, and a client that ignores it leaves the candidate list in the wrong corner. → §QS29

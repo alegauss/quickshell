@@ -59,6 +59,22 @@ public sealed partial class Emulator : IAnsiHandler
     public CharacterSet ActiveCharacterSet => _designated[_activeSet];
 
     /// <summary>
+    /// What a consumer compares to know whether the screen it drew is still the screen.
+    ///
+    /// <para>Read in one go, and compared against the last one. See <see cref="Terminal.Damage"/>
+    /// for why each field is in it.</para>
+    /// </summary>
+    public Damage Damage => new(
+        Buffer.Generation,
+        Buffer.TopLine,
+        Buffer.Columns,
+        Buffer.Rows,
+        Buffer.CursorRow,
+        Buffer.CursorColumn,
+        CursorVisible,
+        Screens.IsAlternate);
+
+    /// <summary>
     /// Feeds bytes from the host, through the parser and into the buffer.
     ///
     /// <para><b>The segmenter is flushed at the end of every read</b>, which is a deliberate
@@ -780,27 +796,13 @@ public sealed partial class Emulator : IAnsiHandler
         }
     }
 
-    private void InsertCharacters(int count)
-    {
-        TerminalBuffer buffer = Buffer;
-        Span<Cell> row = buffer.Screen(buffer.CursorRow);
-        int from = buffer.CursorColumn;
-        int shift = Math.Min(count, row.Length - from);
+    // Both are the buffer's own operations, because a mutation performed out here through a span
+    // would be one its damage record never saw - QS22.
+    private void InsertCharacters(int count) =>
+        Buffer.InsertCells(Buffer.CursorRow, Buffer.CursorColumn, count);
 
-        row[from..(row.Length - shift)].CopyTo(row[(from + shift)..]);
-        row.Slice(from, shift).Fill(Cell.Blank);
-    }
-
-    private void DeleteCharacters(int count)
-    {
-        TerminalBuffer buffer = Buffer;
-        Span<Cell> row = buffer.Screen(buffer.CursorRow);
-        int from = buffer.CursorColumn;
-        int shift = Math.Min(count, row.Length - from);
-
-        row[(from + shift)..].CopyTo(row[from..]);
-        row[(row.Length - shift)..].Fill(Cell.Blank);
-    }
+    private void DeleteCharacters(int count) =>
+        Buffer.DeleteCells(Buffer.CursorRow, Buffer.CursorColumn, count);
 
     // Device control strings are answered in Emulator.Dcs.cs, which is where DECRQSS lives.
 }
