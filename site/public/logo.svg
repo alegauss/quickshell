@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Quickshell">
+  <!--
+    The mark is a prompt: a chevron and the block cursor that follows it. No rounded tile
+    behind it, so the silhouette is the logo and the page can size it by height alone.
+
+    The ghost chevron is the motion: one repeat of the same shape, set back and faded, which
+    reads as a caret that has already moved rather than as two carets.
+  -->
+  <defs>
+    <linearGradient id="qs-iris" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="0.55" stop-color="#7c5cf5"/>
+      <stop offset="1" stop-color="#4c35b8"/>
+    </linearGradient>
+  </defs>
+
+  <g fill="none" stroke="url(#qs-iris)" stroke-width="19" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 40 L36 64 L14 88" opacity="0.28"/>
+    <path d="M46 26 L84 64 L46 102"/>
+  </g>
+  <rect x="82" y="88" width="32" height="14" rx="7" fill="url(#qs-iris)"/>
+</svg>

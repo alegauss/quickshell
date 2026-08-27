@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Quickshell — SSH on Windows, without the suite around it">
+  <defs>
+    <linearGradient id="qs-iris" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="0.55" stop-color="#7c5cf5"/>
+      <stop offset="1" stop-color="#4c35b8"/>
+    </linearGradient>
+    <linearGradient id="qs-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0c0a1a"/>
+      <stop offset="1" stop-color="#110e24"/>
+    </linearGradient>
+    <radialGradient id="qs-glow" cx="0.82" cy="0.05" r="0.7">
+      <stop offset="0" stop-color="#7C5CF5" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#7C5CF5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#qs-bg)"/>
+  <rect width="1200" height="630" fill="url(#qs-glow)"/>
+  <rect x="0" y="0" width="1200" height="8" fill="#7C5CF5"/>
+
+  <!-- the mark, at 128px -->
+  <g transform="translate(90,118)">
+    <g fill="none" stroke="url(#qs-iris)" stroke-width="19" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 40 L36 64 L14 88" opacity="0.28"/>
+      <path d="M46 26 L84 64 L46 102"/>
+    </g>
+    <rect x="82" y="88" width="32" height="14" rx="7" fill="url(#qs-iris)"/>
+  </g>
+
+  <text x="238" y="180" font-family="DejaVu Sans, sans-serif" font-size="52" font-weight="bold" fill="#ece9fb">Quickshell</text>
+  <text x="240" y="216" font-family="DejaVu Sans Mono, monospace" font-size="20" fill="#8a82b3">part of alegauss</text>
+
+  <text x="90" y="360" font-family="DejaVu Sans, sans-serif" font-size="66" font-weight="bold" fill="#ece9fb">SSH on Windows,</text>
+  <text x="90" y="436" font-family="DejaVu Sans, sans-serif" font-size="66" font-weight="bold" fill="#A78BFA">without the suite around it.</text>
+
+  <!-- one line, set to stay inside the 1020px between the gutters -->
+  <text x="92" y="502" font-family="DejaVu Sans, sans-serif" font-size="26" fill="#a9a2cc">The terminal grid on the GPU, and no draw call at all while you are reading.</text>
+
+  <rect x="90" y="540" width="430" height="46" rx="23" fill="#171331" stroke="#2f2857"/>
+  <circle cx="118" cy="563" r="6" fill="#A78BFA"/>
+  <text x="136" y="571" font-family="DejaVu Sans, sans-serif" font-size="20" fill="#a9a2cc">Windows 10 / 11 · x64 · Per-user install</text>
+
+  <text x="1110" y="571" text-anchor="end" font-family="DejaVu Sans Mono, monospace" font-size="20" fill="#8a82b3">alegauss.github.io/quickshell</text>
+</svg>

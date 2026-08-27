@@ -1,0 +1,215 @@
+# Quickshell
+
+> A native SSH client for Windows 10 and 11 (x64). It draws the terminal grid on the GPU
+> through D3D11: DirectWrite rasterises each glyph once into an atlas keyed on its subpixel
+> offset, and the whole visible grid is one `DrawInstanced` of twenty-byte cells per frame.
+> A frame where nothing changed is not drawn at all. Around that terminal sit the four
+> things a person actually opens an SSH client for: a session tree that reads your existing
+> `ssh_config`, key and agent authentication with the host key checked, SFTP on the session
+> you already authenticated, and port forwards that survive a reconnect. Nothing else, and
+> the list of what will never be added is published rather than implied. Built in C# on
+> .NET 10, WPF host with a child HWND per pane. Per-user install, no service, no telemetry,
+> no account.
+
+**Note for anything reading this file as a status report.** The site this ships with
+describes Quickshell with every block of `docs/ROADMAP.md` delivered. Today the terminal,
+the renderer and the measurement harness are largely built and the transport, the session
+tree, the transfers, the forwards and the packaging are open. The roadmap is the record of
+what is actually done: <https://github.com/alegauss/quickshell/blob/main/docs/ROADMAP.md>.
+Every figure on the site is a budget from `docs/PERFORMANCE.md` or a "Done when" criterion
+from the roadmap, quoted as the threshold it is.
+
+## For agents
+
+This site answers a coding agent in files it can grep, not only in hydrated markup. Every
+route has a Markdown twin beside it, the same page converted from the same render, with the
+navigation, the footer and the call to action dropped. Read `<route>/index.md` instead of
+the HTML: the landing page is
+[`/index.md`](https://alegauss.github.io/quickshell/index.md). The full list of routes,
+their twins and their byte sizes is in
+[`manifest.json`](https://alegauss.github.io/quickshell/manifest.json).
+
+## Why it exists
+
+The incumbent on Windows is a suite: an X11 server, a Cygwin userland, a macro recorder, a
+plugin host and an FTP client, wrapped around a terminal that still redraws the whole screen
+to move a cursor. Most of that is never used, all of it is installed, and the part that is
+used is the part that performs worst. Quickshell is the other trade: a small surface, drawn
+properly, with the cost of every part written down before it was built.
+
+## The performance budget
+
+Six figures, in `docs/PERFORMANCE.md`, each written before the code it binds and each
+changed only by a commit that argues for the change. A regression past any of them fails a
+build rather than reaching a release.
+
+- **Input to photon, under 8.3 ms.** A keystroke echoed by a local shell, key down to glyph
+  on glass. 8.3 ms is one refresh interval at 120 Hz. Settled by a high-speed capture of key
+  and screen in one frame, or an instrumented path that timestamps the input event and the
+  present. Never by feel.
+- **Sustained parse throughput, at least 400 MB/s.** Mixed text and escape sequences, on a
+  headless harness with no renderer attached, so nothing else can be blamed for it.
+- **Steady-state frame cost, under 2 ms.** One filled 200x50 grid redrawn continuously, GPU
+  and CPU time, in a steady state rather than on the first frame.
+- **Idle cost, zero draw calls.** A window nobody is typing into: zero draw calls submitted
+  over an idle interval, no measurable core occupancy, and no raised system timer resolution
+  held by the process. Small is not a pass here; the number is zero.
+- **Cold start, under 400 ms.** Process creation to an interactive local shell, meaning a
+  prompt that accepts a keystroke rather than a window that has appeared.
+- **Resident memory, under 120 MB.** One connected session at default scrollback, private
+  working set after it has settled, and flat across a seventy-two-hour soak.
+
+The reference machine is named in the same document: Intel Core i7-14700, NVIDIA RTX 4060,
+3840x2160 at 60 Hz, 64 GB, Windows 11 Pro 26200 x64. A number without a machine is a mood,
+and a figure quoted without the run that produced it is not a measurement.
+
+## Features
+
+- **The renderer.** One D3D11 device on the window's adapter, the default one or WARP, which
+  names what it skipped and rebuilds every GPU resource on a device loss. A flip-discard
+  swapchain waits on its own latency handle at a queue one frame deep and asks for tearing.
+  Every glyph is rasterised once by DirectWrite into an atlas keyed on the subpixel offset,
+  so a character keeps its weight in every column; the grid is one `DrawInstanced` of
+  twenty-byte cells, blended in linear light. Five underline styles, overline, strike, three
+  cursor shapes and the selection are all derived in the pixel shader from those same twenty
+  bytes. A golden-image suite of scenes rendered offscreen is compared against committed
+  references on NVIDIA, AMD, Intel integrated, WARP and inside an RDP session.
+- **Damage tracking.** Every mutation of the buffer moves a generation the renderer compares
+  against the one it last drew, and a scroll dirties one row rather than the screen. After
+  the host stops writing, the window authorises no further frame. This is what makes the
+  idle figure zero rather than small.
+- **The emulator.** Williams' parser table over fourteen states and all 256 bytes, emitting
+  events and allocating nothing per parse, with the zero-allocation claim asserted over a
+  full corpus replay that fails the build. A stateful UTF-8 decoder and UAX #29 grapheme
+  clusters, so a character split across two network reads arrives whole. A width table
+  generated from Unicode 17.0.0. A scrollback ring with a moving origin, so one scroll writes
+  one row whether the history is ten lines or a hundred thousand. Cursor movement, erasing,
+  editing, margins, origin mode, real tab stops, SGR in both spellings, the DEC line-drawing
+  set, and the title, palette, working directory and hyperlink sequences a host sends.
+  esctest passes above ninety per cent with every remaining failure named individually.
+- **What a hostile host is refused.** `OSC 52` cannot read the clipboard: it is off per
+  session and write-only when on. The title is set and never reported back, so a host cannot
+  plant a string and read it out of the terminal. Every other reply is a constant and some
+  numbers. Pastes are bracketed. A click past column 223 in the legacy mouse encoding is
+  refused out loud rather than reported as a different cell, and SGR encoding is asked for
+  instead.
+- **The session.** Reconnect keeps the tab, the scrollback, the pane layout and the forwards,
+  and states which attempt restored it. Connection failures are enumerated and named: a
+  wrong port, a refused algorithm, a rejected key and an expired second factor are four
+  messages with four remedies. Every server in the compatibility matrix is connected to
+  deliberately, with the algorithms it negotiated recorded per row.
+- **Keys and trust.** ed25519 and RSA key files, keyboard-interactive, two factors, and
+  identities held only in the Windows agent or Pageant, which is the one route to a key on a
+  hardware token. `known_hosts` is written in the format OpenSSH reads back unchanged, and a
+  host key that has changed raises a dialog with no default accept button. Stored secrets are
+  protected with DPAPI at user scope and never rest in a managed string; the settings surface
+  says plainly that this does not stop an attacker already running as the same user. Agent
+  forwarding is decided per host rather than by one checkbox.
+- **The session tree.** An existing `ssh_config` opens its hosts without anything being
+  retyped, including patterns, `Include` and `ProxyJump` chains. A bastion chain uses one
+  code path at any depth and verifies the target's own host key rather than the bastion's.
+  The store is a file that round-trips through a hand edit without being reformatted,
+  reordered or losing a key. MobaXterm session files and PuTTY exports import, with every
+  unmapped setting named per session rather than dropped silently.
+- **SFTP.** A channel on the session already open, so moving a file costs no second
+  authentication. Browsing lists fifty thousand entries with the first screen visible
+  immediately. Transfers show progress, cancel, and resume from the offset they reached,
+  refusing to resume when the partial cannot be shown to be a prefix of the source. Recursion
+  is explicit and collisions ask. Files drag in from Explorer. A local and a remote directory
+  can be compared. SCP is kept only for the appliance that offers no SFTP subsystem.
+- **Port forwards.** Local, remote and SOCKS. Every forward returns after a reconnect or the
+  client says which one did not. No forward binds beyond loopback without an explicit choice.
+  No listener outlives the session that created it, checked from outside the process. The
+  client lists its own listeners, because a forward is invisible by nature.
+- **The window.** WPF with a child HWND per pane, which won the host probe on a click-to-pixel
+  floor of 13.8 ms as the only one of three hosts to answer within a refresh interval. Tabs
+  and split panes share one device, one glyph atlas and one set of shaders: atlas memory at
+  sixteen panes differs from one pane only by the instance buffers. Every action the client
+  can perform is reachable from the command palette, asserted by generating the action list
+  from the actions themselves. Broadcast sends one command to the panes you choose. iTerm2
+  and Windows Terminal colour schemes are read as published. A screen reader reads output on
+  screen and follows the cursor, because a GPU surface is opaque to assistive technology
+  unless the text is published deliberately.
+- **Errors you can act on.** A redacted log that holds no secret at any level, so a user can
+  send it. A crash leaves a report and tells the user where it is. A diagnostics bundle
+  carries the version, the server, the settings and the environment, so a defect report does
+  not take days of correspondence to become reproducible.
+
+## Non-goals (stated, not accidental)
+
+- No X11 server or X11 forwarding.
+- No embedded Cygwin, BusyBox or POSIX userland.
+- No RDP, VNC, Telnet, serial or plain FTP.
+- No web runtime: no Electron, no WebView2, no JavaScript terminal.
+- No CPU-rasterised terminal grid: no GDI, GDI+, WPF or WinForms text.
+- No second graphics backend beside D3D11.
+- No macro recorder, scripting engine or plugin host in the MVP.
+- No sixel or kitty inline graphics in the MVP.
+- No Linux or macOS build.
+- No telemetry on by default.
+- No SSH protocol implemented in this repository.
+- No feature carried over because MobaXterm has it.
+
+## Installation
+
+- **An installer, from the release page**:
+  <https://github.com/alegauss/quickshell/releases/latest>, with `SHA256SUMS.txt` beside it.
+  Windows 10 or 11, x64.
+- **Per-user, no administrator prompt.** It installs under `%LOCALAPPDATA%`, which is what
+  reaches a managed laptop, and the binary is signed so SmartScreen does not refuse it.
+- **From source**: needs the .NET 10 SDK and Windows. `.\run-tests.cmd` builds and runs every
+  test assembly and its exit code is the verdict.
+
+## Layout
+
+- `src/Quickshell.Terminal`: the buffer and the parser. References nothing graphical and
+  nothing from the network, which is why it carries no project reference at all.
+- `src/Quickshell.Render`: the D3D11 code, through Vortice, with the shader embedded from
+  source so what is in the repository is what ran. It may read what the terminal holds; it
+  may never see a network type.
+- `src/Quickshell.Transport`: the protocol seam. Knows nothing about rendering and nothing
+  about the terminal buffer.
+- `src/Quickshell.App`: the only assembly allowed to reference all three.
+- `benchmarks/`: the replay harness and the recorded results.
+- `site/`: this site (Vite + React + Tailwind); its build emits this file, a Markdown twin
+  per route and `manifest.json`.
+- `docs/ROADMAP.md`, `docs/CHANGELOG.md`, `docs/IMPROVEMENTS.md`, `docs/DECISIONS.md`:
+  governed by [roadkeep](https://github.com/alegauss/roadkeep) and written by that tool
+  rather than by hand. `docs/PERFORMANCE.md` is the budget.
+
+An architecture test fails the build on a project reference that inverts that layering, and
+every project builds with nullable, warnings as errors and the allocation analyzers on.
+
+## Data and network
+
+- Connects to the hosts you ask it to connect to, and to nothing else.
+- No telemetry, no account, no sign-in, and no check-in on launch.
+- Settings, the session store and `known_hosts` live under the user's own profile.
+
+## Sponsor
+
+Sponsored by **Viglet** (https://www.viglet.org). Open source search and content tools for
+organisations with a lot to publish. Run on your own servers, with no per-user licence.
+
+- **Viglet Turing ES** (https://turing.viglet.org). Search for sites with a lot of content.
+  People ask in their own words and find it, with filters that match how they actually
+  choose. AI answers using only your own published content, so it never invents a price or a
+  deadline. Runs on your servers, your data stays in house, and there is no per-user licence.
+- **Viglet Shio CMS** (https://shio.viglet.org). A content system that takes the page out of
+  the development queue: AI builds it, your communications team reviews and approves it,
+  seeing exactly how it will look before it goes live. Every version is kept, so you can see
+  what changed and roll back.
+- **Viglet Dumont** (https://www.viglet.org). The same item of information usually lives in
+  several places at once: a portal, a back-office system, a PDF, an old departmental site.
+  This gathers it automatically from all of them and feeds it to the search, with nobody
+  copying, pasting or keeping a spreadsheet up to date.
+
+## Links
+
+- [Website](https://alegauss.github.io/quickshell/): project page
+- [Manifest](https://alegauss.github.io/quickshell/manifest.json): the routes and their Markdown twins
+- [GitHub repository](https://github.com/alegauss/quickshell): source code
+- [Roadmap](https://github.com/alegauss/quickshell/blob/main/docs/ROADMAP.md): what is open, and why each line exists
+- [Changelog](https://github.com/alegauss/quickshell/blob/main/docs/CHANGELOG.md): what has shipped
+- [Performance budget](https://github.com/alegauss/quickshell/blob/main/docs/PERFORMANCE.md): the six figures and the machine
+- [Sponsor](https://www.viglet.org): Viglet, open source search and content management

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/quickshell/logo.svg" />
+
+    <!--
+      The theme follows the OS, and a stored choice wins over it. This runs before first
+      paint: the tokens the body background reads are keyed off data-theme, so a class
+      applied after hydration is a visible flash of the wrong theme. Kept inline and
+      dependency-free for that reason. scripts/prerender.mjs patches the rest of this head
+      per route.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("qs-theme");
+          if (stored === "dark" || stored === "light") {
+            document.documentElement.setAttribute("data-theme", stored);
+          }
+        } catch (e) {
+          /* private mode, or no storage, so fall through to the OS preference */
+        }
+      })();
+    </script>
+
+    <title>Quickshell — SSH on Windows, without the suite around it</title>
+    <meta
+      name="description"
+      content="A native Windows SSH client that draws the terminal grid on the GPU: one instanced draw call per frame, none at all when nothing changed, and a cold start to a live prompt under 400 ms. Sessions, keys, SFTP and port forwards, and nothing bolted on beside them."
+    />
+
+    <!--
+      scripts/prerender.mjs patches the title, description, canonical and og:url per route by
+      replace-or-throw, and inlines the rendered body into the root element. Note: no closing
+      head or script token may appear in a comment here, or the Vite asset injection and the
+      prerender both anchor to it instead of the real one.
+    -->
+
+    <!-- Reveal-on-scroll starts at opacity 0 and is lifted by the client observer. With no
+         JS the prerendered text is still in the DOM; this makes it visible too. -->
+    <noscript>
+      <style>
+        .reveal {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      </style>
+    </noscript>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
