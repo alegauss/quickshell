@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The channel's own tests. They start real processes and read real bytes, and they reference
+       nothing above the transport layer: a shell that will not close is a transport defect, and
+       this project is where it has to be reported. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.Transport.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Quickshell.Transport\Quickshell.Transport.csproj" />
+  </ItemGroup>
+
+</Project>

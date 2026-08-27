@@ -5,6 +5,11 @@
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Quickshell.Transport</RootNamespace>
+
+    <!-- The source-generated interop LibraryImport emits is unsafe by construction: it pins and
+         takes addresses rather than going through the marshalling layer at run time. Scoped to this
+         project, and to PtyNative.cs inside it, rather than turned on for the tree. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
 </Project>

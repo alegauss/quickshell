@@ -30,6 +30,7 @@
 - ✅ **QS22** **Nothing records which rows changed, so any redraw is a whole-screen redraw** — Every mutation moves a generation the renderer compares, a scroll dirties one row rather than the screen, and after the host stops a window authorises no further frame.
 - ✅ **QS23** **Narrowing the window turns wrapped output into ragged fragments that never recover** — Narrowing and widening again comes back to the same rows, the cursor stays on the character it was on, and the alternate screen is replaced rather than re-wrapped.
 - ✅ **QS24** **A malformed escape sequence from a hostile host has never been shown not to crash or allocate** — Mutated and pathological input is answered rather than thrown at, and replaying a real stream allocates zero bytes where it used to allocate fifty-five kilobytes per megabyte.
+- ✅ **QS25** **The emulator has no real producer of bytes, so every test of it is a fixture its own author wrote** — A real shell runs behind the same four members an SSH channel will be behind, its output reaches the emulator as VT bytes, and closing it leaves no process and no handle behind.
 
 ## Block D — The tree a user organises work in
 

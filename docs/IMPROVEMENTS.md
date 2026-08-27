@@ -266,33 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS25 A local pseudo-console, and why it comes before SSH
-
-`IPtyChannel` is four members: read bytes, write bytes, resize, and a closed signal
-carrying an exit code or a reason. Everything above it — parser, buffer, renderer, input
-map — knows only this interface, and that is precisely what makes the SSH channel a
-later *implementation* rather than a later rewrite.
-
-The first implementation is ConPTY. `CreatePseudoConsole` with a pair of pipes, a
-process created with `PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE`, and careful handle lifetime:
-the classic defect here is retaining the write end of the input pipe after handing it to
-the child, so the child never sees end-of-file and the session hangs on exit instead of
-closing.
-
-Doing this before SSH is a deliberate ordering. It gives the emulator a real producer of
-VT bytes with no network latency and no authentication, which makes a rendering fault, a
-parsing fault and a transport fault three distinguishable things from the first day
-rather than one confusing thing three months in. Every conformance suite and every
-benchmark runs against it.
-
-It is also a feature. A local shell in a terminal this fast is the cheapest thing this
-client will ever ship, and users of the incumbent already expect one to be there.
-
-Reading is asynchronous and never spins; the read thread's only job is moving bytes
-onward.
-
-Falsified when a shell exiting leaves a process or a handle behind.
-
 ### §QS26 Three stages, one barrier, and why frames are dropped on purpose
 
 This is the line the whole architecture is arranged around, so the design is stated in
