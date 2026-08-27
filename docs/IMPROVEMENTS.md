@@ -266,30 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS23 Reflow, and the honest fallback if it does not converge
-
-Resizing is where terminals lose their reputation. The wrapped flag on each row records
-which physical rows belong to one logical line, so reflow is definable at all: recover
-the logical lines, re-wrap them at the new width, put the result back.
-
-The hard parts are not the wrapping. They are the cursor, which must end on the same
-*character* rather than the same coordinates; the scrollback, where re-wrapping the
-visible screen but not the history leaves a discontinuity exactly at the boundary the
-user is looking at; a selection that was live across the resize; wide characters that no
-longer fit against the new right margin; and the alternate screen, which is not reflowed
-at all, because a full-screen program is about to redraw it at the new size anyway.
-
-Because the rules are this fiddly and the inputs this enumerable, it is written as a
-pure function over a buffer and a width and tested with property-based cases: widening
-and then narrowing back must restore the original rows, and the character under the
-cursor must be invariant across any sequence of resizes.
-
-If it does not converge to correct, shipping *without* reflow is an acceptable answer
-and shipping reflow that loses text is not. That fallback is recorded here so the
-decision is available rather than improvised under pressure.
-
-Falsified when narrowing and widening again does not restore the original line breaks.
-
 ### §QS24 The two properties that hold for every input
 
 The parser's input is chosen by a remote machine. That makes two properties worth

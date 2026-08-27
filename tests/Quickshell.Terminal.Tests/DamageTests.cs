@@ -319,17 +319,35 @@ public sealed class DamageTests
         Assert.Equal(lines, [.. Enumerable.Range(0, 24).Select(emulator.Buffer.AbsoluteLine)]);
     }
 
-    /// <summary>A line keeps its number across a resize, which is what makes the number an identity
-    /// rather than an index.</summary>
+    /// <summary>A line keeps its number across a height change, which is what makes the number an
+    /// identity rather than an index.</summary>
     [Fact]
-    public void ALineKeepsItsNumberAcrossAResize()
+    public void ALineKeepsItsNumberAcrossAHeightChange()
     {
         Emulator emulator = Fed(Rows(40));
         long top = emulator.Buffer.TopLine;
 
-        emulator.Resize(100, 24);
+        emulator.Resize(80, 30);
 
-        Assert.Equal(top, emulator.Buffer.TopLine);
+        // The screen grew by six rows, so its top is six lines further back and every one of those
+        // lines is the line it was.
+        Assert.Equal(top - 6, emulator.Buffer.TopLine);
+    }
+
+    /// <summary>
+    /// A width change cannot keep them, and does not pretend to: re-wrapping re-cuts the lines, so
+    /// the line that was number a hundred may now be two and neither of them is it. The anchor jumps
+    /// past every number ever issued rather than let a stale one match — QS23.
+    /// </summary>
+    [Fact]
+    public void AWidthChangeIssuesFreshLineNumbers()
+    {
+        Emulator emulator = Fed(Rows(40));
+        long top = emulator.Buffer.TopLine;
+
+        emulator.Resize(40, 24);
+
+        Assert.True(emulator.Buffer.TopLine > top);
     }
 
     [Fact]

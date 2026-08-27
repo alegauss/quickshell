@@ -20,7 +20,6 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS23** (deps: QS17 ✅) **Narrowing the window turns wrapped output into ragged fragments that never recover** — This is the single behaviour terminal emulators most reliably get wrong, so it is isolated behind a pure function that can be tested without a window. → §QS23
 - 📋 **QS24** (deps: QS14 ✅) **A malformed escape sequence from a hostile host has never been shown not to crash or allocate** — The parser is the one component whose input is chosen entirely by a remote machine, so its failure modes belong to somebody else until they are tested. → §QS24
 - 📋 **QS25** (deps: QS15 ✅) **The emulator has no real producer of bytes, so every test of it is a fixture its own author wrote** — A pseudo-console gives the terminal a genuine adversary locally, which tells a terminal defect apart from a network defect before the network exists. → §QS25
 - 📋 **QS26** (deps: QS25, QS22 ✅, QS9 ✅) **Under heavy output the delay before a typed character appears grows without bound** — The parser and the renderer run at rates differing by orders of magnitude, and any design that couples them makes the faster one wait for the slower. → §QS26
@@ -29,7 +28,7 @@
 - 📋 **QS29** (deps: QS28) **Typing Japanese or Chinese shows no composition and commits nothing** — Composition is drawn by the input method into a window it expects the client to place, and a client that ignores it leaves the candidate list in the wrong corner. → §QS29
 - 📋 **QS30** (deps: QS26, QS21 ✅) **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — Copying is the second most common thing a user does in a terminal, and pasting is where a terminal most easily runs something the user did not intend. → §QS30
 - 📋 **QS31** (deps: QS15 ✅, QS26) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The ring already holds the history, so what is missing is a viewport over it and a search across it, and users reach for both within a minute. → §QS31
-- 📋 **QS32** (deps: QS25, QS23) **Resizing the window leaves the remote program drawing to the geometry it had before** — Three parties hold a copy of the size and only the client knows it changed, so telling the other two is an obligation rather than a convenience. → §QS32
+- 📋 **QS32** (deps: QS25, QS23 ✅) **Resizing the window leaves the remote program drawing to the geometry it had before** — Three parties hold a copy of the size and only the client knows it changed, so telling the other two is an obligation rather than a convenience. → §QS32
 - 📋 **QS33** (deps: QS17 ✅, QS18 ✅, QS20 ✅, QS21 ✅, QS25) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — A test written by whoever wrote the parser tests that person's understanding of the specification, which is the thing most likely to be wrong. → §QS33
 - 📋 **QS34** (deps: QS10 ✅) **A programming font's ligatures do not form, so text set in it looks unlike the same text elsewhere** — Shaping a run across cell boundaries contradicts the grid the renderer is built on, so it is a deliberate later decision and not a font setting. → §QS34
 - 📋 **QS35** (deps: QS8 ✅, QS9 ✅) **Text is rasterised in grayscale, so it looks thinner here than in every other Windows application** — Subpixel coverage is three channels of alpha where the blend and the atlas were both built assuming one. → §QS35
@@ -231,16 +230,6 @@
 - **Every figure in the comparison document reproduces from a documented run** Settled
   by re-running each measurement it cites, from its own stated method, on its own stated
   machine.
-
-## Done when — QS23
-
-- **Narrow then widen restores the original rows exactly** Settled by property-based
-  tests over random buffers and width sequences, never by a manual drag of the window.
-- **The character under the cursor is invariant across any resize sequence** Settled by
-  the same property tests, asserting the cursor's character rather than its coordinates.
-- **If reflow is not shipped, that omission is a filed non-goal** Settled by reading the
-  non-goal list, since shipping without reflow silently is what turns a decision into a
-  stream of defect reports.
 
 ## Done when — QS26
 

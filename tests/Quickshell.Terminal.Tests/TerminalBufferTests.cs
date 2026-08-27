@@ -248,6 +248,11 @@ public sealed class TerminalBufferTests
 
     // ---- Resize ----
 
+    /// <summary>
+    /// The cursor sat at column nine of a line with nothing on it, and there is no column nine at
+    /// width four. Reflow puts it after the content instead of at whichever column a clamp produced,
+    /// and the content on an empty line ends at its start — QS23.
+    /// </summary>
     [Fact]
     public void ResizingKeepsTheNewestLinesAndTheCursorInsideTheScreen()
     {
@@ -266,7 +271,7 @@ public sealed class TerminalBufferTests
         Assert.Equal(4, buffer.Columns);
         Assert.Equal(2, buffer.Rows);
         Assert.Equal(1, buffer.CursorRow);
-        Assert.Equal(3, buffer.CursorColumn);
+        Assert.Equal(0, buffer.CursorColumn);
         Assert.Equal('7', buffer.Line(buffer.LineCount - 2)[0].Codepoint);
     }
 

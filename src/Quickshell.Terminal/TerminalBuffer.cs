@@ -520,10 +520,16 @@ public sealed class TerminalBuffer
             : char.ConvertFromUtf32(cell.Codepoint);
 
     /// <summary>
-    /// Resizes the screen. The contents are kept where they still fit and the scrollback is
-    /// preserved; <b>reflowing wrapped lines to the new width is deliberately not done here</b> and
-    /// is its own line, because it is the behaviour terminals most reliably get wrong and it wants
-    /// a pure function nobody has to open a window to test.
+    /// Resizes the screen, re-wrapping what the host wrote as one line so it stays one line.
+    ///
+    /// <para><b>A height-only change keeps every line's identity and a width change cannot.</b>
+    /// Re-wrapping re-cuts the lines, so the line that was number a hundred may now be two lines and
+    /// neither of them is it. Rather than let a stale number match a line it is no longer about, the
+    /// anchor jumps past every number ever issued, and the whole screen is dirty — which it is
+    /// anyway.</para>
+    ///
+    /// <para>The rules are in <see cref="Reflow"/>, which is a function so that they can be read and
+    /// tested without a window.</para>
     /// </summary>
     public void Resize(int columns, int rows)
     {
@@ -542,17 +548,13 @@ public sealed class TerminalBuffer
         long[] stamps = new long[capacity];
         Array.Fill(cells, Cell.Blank);
 
-        // Keep the newest lines: what a user is looking at survives a resize and the oldest
-        // scrollback is what falls off, which is the same direction time runs in.
-        int kept = Math.Min(LineCount, capacity);
-        int width = Math.Min(columns, Columns);
-
-        for (int line = 0; line < kept; line++)
+        if (columns == Columns)
         {
-            int source = LineCount - kept + line;
-            Line(source)[..width].CopyTo(cells.AsSpan(line * columns, columns));
-            wrapped[line] = IsWrapped(source);
-            stamps[line] = GenerationOf(source);
+            ResizeHeight(cells, wrapped, stamps, capacity);
+        }
+        else
+        {
+            ReflowInto(cells, wrapped, columns, rows, capacity);
         }
 
         _cells = cells;
@@ -560,21 +562,67 @@ public sealed class TerminalBuffer
         _stamps = stamps;
         _dirty = new bool[rows];
         _dirtyRows = 0;
-
-        // The anchor follows the lines that fell off the front, so a line's absolute number is the
-        // same number after a resize as before it — which is what makes it an identity at all.
-        _firstLine += LineCount - kept;
         _origin = 0;
         Columns = columns;
         Rows = rows;
         Capacity = capacity;
-        LineCount = Math.Max(rows, kept);
+        LineCount = Math.Max(rows, LineCount);
         CursorRow = Math.Clamp(CursorRow, 0, rows - 1);
         CursorColumn = Math.Clamp(CursorColumn, 0, columns - 1);
 
         // Every row is new at its position: the geometry changed underneath all of them.
         Bump();
         Region(0, Rows - 1);
+    }
+
+    /// <summary>
+    /// The width has not changed, so nothing needs re-wrapping: the newest lines are kept as they
+    /// are, which means every line's number, and its content, survives.
+    /// </summary>
+    private void ResizeHeight(Cell[] cells, bool[] wrapped, long[] stamps, int capacity)
+    {
+        // Keep the newest lines: what a user is looking at survives a resize and the oldest
+        // scrollback is what falls off, which is the same direction time runs in.
+        int kept = Math.Min(LineCount, capacity);
+
+        for (int line = 0; line < kept; line++)
+        {
+            int source = LineCount - kept + line;
+            Line(source).CopyTo(cells.AsSpan(line * Columns, Columns));
+            wrapped[line] = IsWrapped(source);
+            stamps[line] = GenerationOf(source);
+        }
+
+        // The anchor follows the lines that fell off the front, so a line's number is the same number
+        // after the resize as before it.
+        _firstLine += LineCount - kept;
+        LineCount = kept;
+    }
+
+    /// <summary>
+    /// The width changed, so the logical lines are recovered and re-wrapped. The cursor comes back
+    /// from <see cref="Reflow"/> on the character it was on, which is the part that matters and the
+    /// part terminals get wrong.
+    /// </summary>
+    private void ReflowInto(Cell[] cells, bool[] wrapped, int columns, int rows, int capacity)
+    {
+        ReflowOutcome outcome = Reflow.Run(
+            this,
+            ScrollbackLines + CursorRow,
+            CursorColumn,
+            cells,
+            wrapped,
+            columns);
+
+        // Past every number this buffer has ever issued, so a consumer holding an old one cannot
+        // match a line that is no longer the line it remembers.
+        _firstLine += LineCount;
+        LineCount = Math.Max(rows, Math.Min(outcome.LineCount, capacity));
+
+        // The cursor is placed against the new line count, which reflow may have changed: its row on
+        // screen is wherever its line now sits behind the bottom.
+        CursorRow = Math.Clamp(outcome.CursorLine - (LineCount - rows), 0, rows - 1);
+        CursorColumn = Math.Clamp(outcome.CursorColumn, 0, columns - 1);
     }
 
     // ---- The record ----
