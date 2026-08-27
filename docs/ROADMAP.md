@@ -5,7 +5,7 @@
 ## Block A — A session that stays up, or says why it did not
 
 - 📋 **QS36** (deps: QS5 ✅, QS25 ✅) **Protocol library types would reach the terminal and the UI, so replacing that library means rewriting the client** — The gap analysis may well end in a different library, and a seam decided afterwards is one negotiated against code that already exists. → §QS36
-- 📋 **QS37** (deps: QS36, QS26) **No remote host's output has ever reached the emulator** — This is where the terminal stops being a local demonstration and becomes the product, and everything above it was already written to accept it. → §QS37
+- 📋 **QS37** (deps: QS36, QS26 ✅) **No remote host's output has ever reached the emulator** — This is where the terminal stops being a local demonstration and becomes the product, and everything above it was already written to accept it. → §QS37
 - 📋 **QS38** (deps: QS37) **A link that drops for ten seconds costs the whole session and its scrollback** — Mobile and VPN links drop routinely, so a client treating every drop as final makes the user pay for the network's ordinary behaviour. → §QS38
 - 📋 **QS39** (deps: QS37) **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — The error message is the documentation a user reads at the moment something fails, which is far more often than they read anything else. → §QS39
 - 📋 **QS40** (deps: QS38, QS39) **This client has met one server, so an appliance that negotiates differently is an unknown** — Interoperability failures are found by connecting to unusual servers and by no other method, so the unusual servers are enumerated and connected to deliberately. → §QS40
@@ -20,12 +20,11 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS26** (deps: QS25 ✅, QS22 ✅, QS9 ✅) **Under heavy output the delay before a typed character appears grows without bound** — The parser and the renderer run at rates differing by orders of magnitude, and any design that couples them makes the faster one wait for the slower. → §QS26
-- 📋 **QS27** (deps: QS26) **A keystroke queues behind a screenful of pending output before it is written to the host** — Output volume is the host's choice while echo latency is what the user feels and blames the client for, so the two paths must not share a queue. → §QS27
+- 📋 **QS27** (deps: QS26 ✅) **A keystroke queues behind a screenful of pending output before it is written to the host** — Output volume is the host's choice while echo latency is what the user feels and blames the client for, so the two paths must not share a queue. → §QS27
 - 📋 **QS28** (deps: QS27) **Arrow keys, function keys and modified keys send nothing a remote program recognises** — What a key sends depends on modes the host has set, so this is a function of terminal state rather than a static lookup table. → §QS28
 - 📋 **QS29** (deps: QS28) **Typing Japanese or Chinese shows no composition and commits nothing** — Composition is drawn by the input method into a window it expects the client to place, and a client that ignores it leaves the candidate list in the wrong corner. → §QS29
-- 📋 **QS30** (deps: QS26, QS21 ✅) **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — Copying is the second most common thing a user does in a terminal, and pasting is where a terminal most easily runs something the user did not intend. → §QS30
-- 📋 **QS31** (deps: QS15 ✅, QS26) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The ring already holds the history, so what is missing is a viewport over it and a search across it, and users reach for both within a minute. → §QS31
+- 📋 **QS30** (deps: QS26 ✅, QS21 ✅) **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — Copying is the second most common thing a user does in a terminal, and pasting is where a terminal most easily runs something the user did not intend. → §QS30
+- 📋 **QS31** (deps: QS15 ✅, QS26 ✅) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The ring already holds the history, so what is missing is a viewport over it and a search across it, and users reach for both within a minute. → §QS31
 - 📋 **QS32** (deps: QS25 ✅, QS23 ✅) **Resizing the window leaves the remote program drawing to the geometry it had before** — Three parties hold a copy of the size and only the client knows it changed, so telling the other two is an obligation rather than a convenience. → §QS32
 - 📋 **QS33** (deps: QS17 ✅, QS18 ✅, QS20 ✅, QS21 ✅, QS25 ✅) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — A test written by whoever wrote the parser tests that person's understanding of the specification, which is the thing most likely to be wrong. → §QS33
 - 📋 **QS34** (deps: QS10 ✅) **A programming font's ligatures do not form, so text set in it looks unlike the same text elsewhere** — Shaping a run across cell boundaries contradicts the grid the renderer is built on, so it is a deliberate later decision and not a font setting. → §QS34
@@ -64,7 +63,7 @@
 ## Block G — The clean interface, defended
 
 - 📋 **QS46** (deps: QS4 ✅, QS9 ✅) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The shell is where the clean interface is either defended or lost, and its defaults decide what a user sees before they have configured anything. → §QS46
-- 📋 **QS47** (deps: QS46, QS26) **Every session needs its own window, so working across four hosts means four windows to arrange** — A tab is what makes several sessions one workspace, and it is the surface the window title, the session tree and the layout all attach to. → §QS47
+- 📋 **QS47** (deps: QS46, QS26 ✅) **Every session needs its own window, so working across four hosts means four windows to arrange** — A tab is what makes several sessions one workspace, and it is the surface the window title, the session tree and the layout all attach to. → §QS47
 - 📋 **QS48** (deps: QS47) **Two sessions cannot be seen at once, so comparing output means alternating between tabs** — Watching a log while typing on another host is the ordinary case for this audience, and a tab-only client makes it impossible rather than merely awkward. → §QS48
 - 📋 **QS49** (deps: QS48, QS6 ✅) **Each pane would open its own graphics device, so four panes cost four times the driver's attention** — The device, the atlas and the shaders are process-wide resources panes should share, and sharing them is a decision about ownership rather than an optimisation. → §QS49
 - 📋 **QS50** (deps: QS46) **Nothing can be configured, so the font, the colours and the keybindings are whatever the code says** — A settings surface is where a lean client most easily becomes a bloated one, so what is offered and what is simply decided are both chosen here. → §QS50
@@ -78,7 +77,7 @@
 
 - 📋 **QS74** (deps: QS1 ✅) **Settings have no file, so nothing survives a restart and nothing can be moved to another machine** — The config format is a compatibility contract from the first release, and a schema with no version is one that cannot change without breaking somebody. → §QS74
 - 📋 **QS75** (deps: QS2 ✅, QS46) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
-- 📋 **QS76** (deps: QS26, QS2 ✅) **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Idle cost is what a laptop user experiences as battery life, and it is the figure the incumbent loses on most clearly. → §QS76
+- 📋 **QS76** (deps: QS26 ✅, QS2 ✅) **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Idle cost is what a laptop user experiences as battery life, and it is the figure the incumbent loses on most clearly. → §QS76
 - 📋 **QS77** (deps: QS75) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
 - 📋 **QS78** (deps: QS37, QS66) **Nothing has run for longer than a working session, so a slow leak would reach users first** — Leaks in a long-lived client appear after days rather than minutes, which is exactly the interval no test covers and every user reaches. → §QS78
 - 📋 **QS79** (deps: QS3 ✅, QS75) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
@@ -230,18 +229,6 @@
 - **Every figure in the comparison document reproduces from a documented run** Settled
   by re-running each measurement it cites, from its own stated method, on its own stated
   machine.
-
-## Done when — QS26
-
-- **Echo latency under a hundred-megabyte cat matches echo latency at rest** Settled by
-  a high-speed capture taken in both conditions on the reference machine, reported as
-  two numbers rather than one verdict.
-- **No byte of host output is ever dropped, only frames** Settled by replaying a corpus
-  stream through the whole pipeline and comparing the final buffer against the headless
-  result byte for byte.
-- **The parser drains its queue fully before signalling damage** Settled by
-  instrumenting queue depth at the moment of signalling, under load, which must be zero
-  every time.
 
 ## Done when — QS42
 

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The composing layer's tests. This is the only test project that may see all three layers at
+       once, because the pipeline it tests is the one thing that joins them. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.App.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Quickshell.App\Quickshell.App.csproj" />
+  </ItemGroup>
+
+</Project>

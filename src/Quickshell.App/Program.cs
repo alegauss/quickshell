@@ -7,5 +7,5 @@ string version = Assembly.GetExecutingAssembly()
     ?? "0.0.0";
 
 Console.WriteLine($"quickshell {version}");
-Console.WriteLine("No session support yet: this build is the skeleton the roadmap measures against.");
+Console.WriteLine("No window yet: a session's three stages are here, and nothing draws them.");
 return 0;

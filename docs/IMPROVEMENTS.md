@@ -266,33 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS26 Three stages, one barrier, and why frames are dropped on purpose
-
-This is the line the whole architecture is arranged around, so the design is stated in
-full.
-
-Three threads. **Transport** does nothing but read into pooled buffers and hand them to
-a bounded channel; it takes no lock and knows no terminal concept. **Parser** drains
-that channel, mutates the model, and raises the generation counter. **Render** waits on
-the swapchain's latency handle, and where the generation has not moved, waits on a
-damage event instead and issues nothing at all.
-
-The decisive property is that the parser drains the *entire* pending queue before it
-signals. A terminal is a state machine, so intermediate states are not frames anyone is
-owed: `cat` of a 100 MB file scrolls a million lines, and the user is owed the last
-screen, not a million screens. Parsing runs near a gigabyte per second and presenting
-runs at 120 Hz — coalescing is not an optimisation, it is the only way those two numbers
-coexist.
-
-Backpressure goes into the bounded channel and from there into the transport's own flow
-control, which is where it belongs. Bytes are never dropped, because dropping bytes
-corrupts a state machine. Only frames are dropped, and only ones nobody would have seen.
-
-Hand-off is by generation plus double-buffered instance data, so the render thread
-copies and never blocks the parser.
-
-Falsified when echo latency degrades measurably while a large file is printing.
-
 ### §QS27 The path a keystroke takes, and everything it does not touch
 
 A keystroke's route to the host is deliberately the shortest thing in this codebase: the
