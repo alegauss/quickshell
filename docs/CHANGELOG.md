@@ -29,6 +29,7 @@
 - ✅ **QS21** **A click inside a remote editor or pager does nothing, because no mouse event reaches the host** — A click, drag or wheel reaches the host in whichever of the four modes it asked for, in SGR where offered, and past column 223 the legacy encoding refuses out loud rather than naming another cell.
 - ✅ **QS22** **Nothing records which rows changed, so any redraw is a whole-screen redraw** — Every mutation moves a generation the renderer compares, a scroll dirties one row rather than the screen, and after the host stops a window authorises no further frame.
 - ✅ **QS23** **Narrowing the window turns wrapped output into ragged fragments that never recover** — Narrowing and widening again comes back to the same rows, the cursor stays on the character it was on, and the alternate screen is replaced rather than re-wrapped.
+- ✅ **QS24** **A malformed escape sequence from a hostile host has never been shown not to crash or allocate** — Mutated and pathological input is answered rather than thrown at, and replaying a real stream allocates zero bytes where it used to allocate fifty-five kilobytes per megabyte.
 
 ## Block D — The tree a user organises work in
 

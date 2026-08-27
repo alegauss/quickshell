@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Quickshell.Terminal;
 
 /// <summary>
@@ -101,12 +103,7 @@ public sealed partial class Emulator : IAnsiHandler
     /// </summary>
     private void FlushText()
     {
-        if (_segmenter.Pending == 0)
-        {
-            return;
-        }
-
-        foreach (string cluster in _segmenter.Flush())
+        while (_segmenter.TryFlush(out ReadOnlySpan<char> cluster))
         {
             PrintCluster(cluster);
         }
@@ -131,26 +128,38 @@ public sealed partial class Emulator : IAnsiHandler
 
     void IAnsiHandler.Print(ReadOnlySpan<byte> text)
     {
-        foreach (string cluster in _segmenter.Feed(_decoder.Decode(text)))
+        _segmenter.Append(_decoder.Decode(text));
+
+        while (_segmenter.TryNext(out ReadOnlySpan<char> cluster))
         {
             PrintCluster(cluster);
         }
     }
 
-    private void PrintCluster(string cluster)
+    private void PrintCluster(ReadOnlySpan<char> incoming)
     {
-        int codepoint = char.ConvertToUtf32(cluster, 0);
+        // Scoped, so the remapped character below may live on the stack: without it the compiler has
+        // to assume this span outlives the method and refuses a stackalloc into it.
+        scoped ReadOnlySpan<char> cluster = incoming;
+
+        int codepoint = Codepoint(cluster);
 
         // The designated set is a remapping of what arrived, and it happens here because it changes
         // which character this is - a box corner rather than the letter l.
+        //
+        // The remapped character is built on the stack: this runs for every printed byte while a set
+        // is designated, and a string here would be one allocation per character.
+        Span<char> remapped = stackalloc char[2];
+
         if (cluster.Length == 1 && _designated[_activeSet] != CharacterSet.Ascii)
         {
             int mapped = CharacterSets.Map(_designated[_activeSet], codepoint);
 
-            if (mapped != codepoint)
+            if (mapped != codepoint && Rune.TryCreate(mapped, out Rune rune))
             {
+                int written = rune.EncodeToUtf16(remapped);
                 codepoint = mapped;
-                cluster = char.ConvertFromUtf32(mapped);
+                cluster = remapped[..written];
             }
         }
 
@@ -194,7 +203,7 @@ public sealed partial class Emulator : IAnsiHandler
             }
         }
 
-        Cell cell = cluster.Length == 1 || char.IsSurrogatePair(cluster, 0)
+        Cell cell = cluster.Length == 1 || (cluster.Length == 2 && char.IsSurrogatePair(cluster[0], cluster[1]))
             ? Cell.For(codepoint, _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, width, _pen.Link)
             : ClusterCell(buffer, cluster, codepoint, width);
 
@@ -223,12 +232,23 @@ public sealed partial class Emulator : IAnsiHandler
         }
     }
 
+    /// <summary>The first codepoint of a cluster, which is the character the cluster is about.</summary>
+    private static int Codepoint(ReadOnlySpan<char> cluster) =>
+        cluster.Length >= 2 && char.IsSurrogatePair(cluster[0], cluster[1])
+            ? char.ConvertToUtf32(cluster[0], cluster[1])
+            : cluster[0];
+
     /// <summary>
     /// A mark that arrived after its base had already been written, because the read ended between
     /// them. It belongs to the cell before the cursor, so it is added to that cell's text rather
     /// than dropped — dropping it is how an accent typed as two codepoints disappears.
+    ///
+    /// <para><b>The joined text is built on the stack and bounded there.</b> A host can send a base
+    /// and then marks for ever; the string version grew the cluster by one mark at a time and
+    /// interned each intermediate, which is quadratic in what the host chose to send. Past the cap
+    /// the mark is counted and dropped, and the cell keeps the text it has.</para>
     /// </summary>
-    private void AttachToPrevious(string mark)
+    private void AttachToPrevious(ReadOnlySpan<char> mark)
     {
         TerminalBuffer buffer = Buffer;
         int row = buffer.CursorRow;
@@ -248,7 +268,18 @@ public sealed partial class Emulator : IAnsiHandler
         }
 
         Cell before = buffer.Screen(row)[column];
-        int index = buffer.InternCluster(buffer.TextOf(before) + mark);
+        Span<char> joined = stackalloc char[GraphemeSegmenter.MaximumCluster];
+        int written = buffer.TextOf(before, joined);
+
+        if (written < 0 || written + mark.Length > joined.Length)
+        {
+            Unhandled++;
+            return;
+        }
+
+        mark.CopyTo(joined[written..]);
+
+        int index = buffer.InternCluster(joined[..(written + mark.Length)]);
 
         if (index < 0)
         {
@@ -259,7 +290,7 @@ public sealed partial class Emulator : IAnsiHandler
             index, before.Foreground, before.Background, before.Flags, before.Underline, before.Width));
     }
 
-    private Cell ClusterCell(TerminalBuffer buffer, string cluster, int codepoint, int width)
+    private Cell ClusterCell(TerminalBuffer buffer, ReadOnlySpan<char> cluster, int codepoint, int width)
     {
         int index = buffer.InternCluster(cluster);
 

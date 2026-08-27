@@ -266,31 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS24 The two properties that hold for every input
-
-The parser's input is chosen by a remote machine. That makes two properties worth
-proving rather than assuming.
-
-**It does not fail.** `SharpFuzz` drives the decoder and the state machine with mutated
-input seeded from the captured corpus. No input may throw, hang, or read outside a
-buffer. Truncated sequences, an OSC string with no terminator, parameter counts far past
-the array, a DCS that never ends, deeply nested introducers — these are seeds, not
-discoveries. A crash here is a remote host ending the user's session; a hang is worse,
-because it looks like the network and gets diagnosed as one.
-
-**It does not allocate.** In steady state, on any input, the parse path allocates zero
-bytes. This is asserted by a test measuring the allocated-bytes counter across a corpus
-replay, not by inspection, and it fails the build. The reason is specific rather than
-aesthetic: a collection pause of thirty milliseconds is four dropped frames at 120 Hz,
-and it will land during somebody's `vim` session, which is exactly when it is least
-forgivable.
-
-Bounded state is part of the same claim. An unterminated OSC string must not grow a
-buffer without limit, so string collection has a cap and a sequence exceeding it is
-discarded rather than accumulated.
-
-Falsified by any input that throws, or by one allocated byte in the steady-state path.
-
 ### §QS25 A local pseudo-console, and why it comes before SSH
 
 `IPtyChannel` is four members: read bytes, write bytes, resize, and a closed signal
@@ -680,6 +655,31 @@ one the hot path reaches for.
 Falsified when the render arm's allocation per megabyte stops being dominated by this
 and the remaining figure is the atlas and the instance buffer, which is where it
 belongs.
+
+### §QS101 The ninety-six bytes QS24 could not name
+
+QS24 took the parse path from fifty-five kilobytes of allocation per megabyte of stream
+to zero on all five captured streams. On the twenty pathological shapes it reaches
+ninety-six bytes and stops there, and the gate is a ceiling of two hundred and fifty-six
+rather than the zero the design asked for.
+
+What is known: three shapes account for it — lone surrogates as UTF-8, truncated
+multi-byte characters, and one enormous line with no newline — at thirty-two bytes each,
+every pass. Each measures exactly zero fed on its own with a warm-up, and zero fed
+alternately with any single other shape. So the cost appears only when the full sequence
+runs, which says something oscillates between two states as the shapes change and pays
+thirty-two bytes on one of the transitions.
+
+Thirty-two bytes is a small object: a string of four characters, a boxed value, a short
+array. Ruled out by measurement already are the segmenter's buffer, the decoder's
+buffer, the tab stops, the cluster and link tables, the reply and command lists, and the
+clipboard buffers.
+
+It is a fixed cost of the sequence and not a cost per byte — seven hundred kilobytes of
+hostile input and seven megabytes both pay it once — so it cannot grow with a session.
+That is why it is a ceiling rather than a bug on the hot path.
+
+Falsified when the sequence allocates zero and the ceiling can be lowered to it.
 
 ## Block D — The tree a user organises work in
 
@@ -1762,3 +1762,26 @@ than reading build output carefully every time, and unlike careful reading it ca
 skipped when the run looks routine.
 
 Falsified when a build that fails is followed by a run that reports a pass.
+
+### §QS102 Continuous fuzzing, and why the suite's mutator is not it
+
+QS24 ships a deterministic mutator inside the test suite: three thousand mutations
+seeded from the captured streams and from twenty named pathological shapes, at a fixed
+seed so a failure is reproducible from its iteration number. That is the right thing to
+run on every build — bounded, fast, and it fails the build.
+
+It is not fuzzing. A bounded run at a fixed seed explores the same three thousand inputs
+for ever, and finds only what those inputs find. What the design asked for was SharpFuzz
+over libFuzzer, which instruments the assembly and steers mutation by coverage — the
+difference between checking a list and searching a space.
+
+Why it was not shipped with QS24: libFuzzer on Windows needs a prebuilt driver binary
+that is not on NuGet, the run is unbounded so it cannot live in the one test command,
+and a corpus that grows across runs needs somewhere to live. Each of those is a decision
+about the harness rather than about the parser, which is why this is Block K.
+
+What it owes: the instrumented build, the driver, a seed corpus taken from the captured
+streams, a place for findings to land as new seeds, and a way to run it that is not a
+developer remembering to. A crash it finds becomes a case in the suite's own list.
+
+Falsified when a crash found here is not reproducible from the suite afterwards.

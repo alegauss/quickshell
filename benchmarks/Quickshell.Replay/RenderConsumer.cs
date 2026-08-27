@@ -162,15 +162,19 @@ public sealed class RenderConsumer : IStreamConsumer, IDisposable
         {
             // The whole path a printed run takes: decode across read boundaries, segment into what
             // a cell holds, then one atlas lookup per cluster.
-            foreach (string cluster in _segmenter.Feed(_decoder.Decode(text)))
+            _segmenter.Append(_decoder.Decode(text));
+
+            while (_segmenter.TryNext(out ReadOnlySpan<char> cluster))
             {
                 Place(cluster);
             }
         }
 
-        private void Place(string cluster)
+        private void Place(ReadOnlySpan<char> cluster)
         {
-            int codepoint = char.ConvertToUtf32(cluster, 0);
+            int codepoint = cluster.Length >= 2 && char.IsSurrogatePair(cluster[0], cluster[1])
+                ? char.ConvertToUtf32(cluster[0], cluster[1])
+                : cluster[0];
             int span = CharacterWidth.OfCluster(cluster);
 
             if (span == 0)

@@ -44,7 +44,18 @@ public sealed partial class Emulator
     /// </summary>
     private void ResetTabStops()
     {
-        _tabStops = new bool[Buffer.Columns];
+        // Reused where the width has not changed, which is nearly always. This runs on every screen
+        // switch, and a shell that starts and leaves full-screen programs switches often - a fresh
+        // array each time was the last two hundred bytes of allocation on the printing path, and the
+        // one QS24's measurement found after every plausible candidate had been inspected.
+        if (_tabStops.Length != Buffer.Columns)
+        {
+            _tabStops = new bool[Buffer.Columns];
+        }
+        else
+        {
+            Array.Clear(_tabStops);
+        }
 
         for (int column = 8; column < _tabStops.Length; column += 8)
         {

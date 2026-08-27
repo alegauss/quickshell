@@ -20,7 +20,6 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS24** (deps: QS14 ✅) **A malformed escape sequence from a hostile host has never been shown not to crash or allocate** — The parser is the one component whose input is chosen entirely by a remote machine, so its failure modes belong to somebody else until they are tested. → §QS24
 - 📋 **QS25** (deps: QS15 ✅) **The emulator has no real producer of bytes, so every test of it is a fixture its own author wrote** — A pseudo-console gives the terminal a genuine adversary locally, which tells a terminal defect apart from a network defect before the network exists. → §QS25
 - 📋 **QS26** (deps: QS25, QS22 ✅, QS9 ✅) **Under heavy output the delay before a typed character appears grows without bound** — The parser and the renderer run at rates differing by orders of magnitude, and any design that couples them makes the faster one wait for the slower. → §QS26
 - 📋 **QS27** (deps: QS26) **A keystroke queues behind a screenful of pending output before it is written to the host** — Output volume is the host's choice while echo latency is what the user feels and blames the client for, so the two paths must not share a queue. → §QS27
@@ -36,6 +35,7 @@
 - 📋 **QS92** (deps: —) **The golden suite has run on two rasterisers and none of the three vendor drivers its matrix names** — A driver bug is by definition the thing the machine that wrote the code cannot see, so a suite that has only ever run here is one nobody has tested yet. → §QS92
 - 📋 **QS93** (deps: QS25) **Every golden scene is text somebody typed into the test, so none of them is a screen a real program drew** — A scene an author invented exercises what that author thought of, which is never the combination that turns out to break on somebody's machine. → §QS93
 - 📋 **QS94** (deps: QS13 ✅) **Segmenting a printed run allocates a string per character, which is the whole of the render arm's cost** — The parser was built to allocate nothing and the layer directly above it allocates more than the bytes it was given, so the zero it achieved buys nothing. → §QS94
+- 📋 **QS101** (deps: —) **Ninety-six bytes of the parse path's allocation is measured but unattributed** — Three hostile shapes cost thirty-two bytes each per pass, only when the whole sequence runs, so something oscillates between two states and the zero-allocation claim carries a ceiling instead. → §QS101
 
 ## Block D — The tree a user organises work in
 
@@ -101,6 +101,7 @@
 - 📋 **QS89** (deps: —) **dotnet test reports zero tests and exits 5 while run-tests.cmd runs the same assemblies and passes** — Every .NET tool and CI template reaches for that command first, so a repository where it lies looks broken to everyone who has not read the script. → §QS89
 - 📋 **QS90** (deps: —) **Nobody has built this repository from a clean clone, so the steps it needs beyond the SDK are unknown** — Every build so far has run on the machine that wrote the code, which is the one machine whose caches and installed components prove nothing about the next. → §QS90
 - 📋 **QS99** (deps: —) **A failed build leaves the old test binary in place and running it reports a green suite that proves nothing** — Twice this session a compile error was swallowed and the previous assembly ran, reporting the old pass count as if it were the new one. → §QS99
+- 📋 **QS102** (deps: QS24 ✅) **The parser is fuzzed only by the suite's own mutator, which stops when the build does** — A bounded run at a fixed seed explores the same inputs for ever, so coverage-guided fuzzing needs a harness that runs for hours outside the suite. → §QS102
 
 ## Done when — Block A
 

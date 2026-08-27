@@ -62,6 +62,9 @@ public sealed partial class Emulator
 
     private readonly List<byte> _reply = [];
 
+    private byte[]? _clipboardBytes;
+    private char[]? _clipboardText;
+
     /// <summary>
     /// What the terminal owes the host: bytes for whoever owns the pty to write back.
     ///
@@ -285,31 +288,37 @@ public sealed partial class Emulator
     /// is not offered as a setting, because there is no session in which a remote machine needs to be
     /// told what is on a local clipboard.</para>
     /// </summary>
-    private void SetClipboard(string argument)
+    private void SetClipboard(ReadOnlySpan<char> argument)
     {
-        int separator = argument.IndexOf(';', StringComparison.Ordinal);
-        string data = separator < 0 ? argument : argument[(separator + 1)..];
+        int separator = argument.IndexOf(';');
+        ReadOnlySpan<char> data = separator < 0 ? argument : argument[(separator + 1)..];
 
-        if (!ClipboardWriteEnabled || data is "?" || !TryDecode(data, out string text))
+        // Every rejection happens before a byte is allocated. A host that cannot write the clipboard
+        // — which is the default — can send this as fast as it likes and pay nothing for it, and one
+        // that sends malformed base64 pays nothing either.
+        if (!ClipboardWriteEnabled || data.SequenceEqual("?") || data.IsEmpty)
         {
             Unhandled++;
             return;
         }
 
-        ClipboardWrite = text;
-    }
+        // Two buffers for the life of the session, and only for a session that ever writes the
+        // clipboard at all. The payload is bounded by the operating-system command's own ceiling.
+        _clipboardBytes ??= new byte[MaximumOscLength];
+        _clipboardText ??= new char[MaximumOscLength];
 
-    private static bool TryDecode(string base64, out string text)
-    {
-        byte[] decoded = new byte[(base64.Length / 4 * 3) + 3];
-
-        if (Convert.TryFromBase64String(base64, decoded, out int written))
+        if (!Convert.TryFromBase64Chars(data, _clipboardBytes, out int written))
         {
-            text = System.Text.Encoding.UTF8.GetString(decoded, 0, written);
-            return true;
+            Unhandled++;
+            return;
         }
 
-        text = string.Empty;
-        return false;
+        int length = System.Text.Encoding.UTF8.GetChars(
+            _clipboardBytes.AsSpan(0, written), _clipboardText);
+
+        if (!_clipboardText.AsSpan(0, length).SequenceEqual(ClipboardWrite))
+        {
+            ClipboardWrite = new string(_clipboardText, 0, length);
+        }
     }
 }

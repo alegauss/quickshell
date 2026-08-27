@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Quickshell.Terminal;
@@ -9,6 +10,15 @@ public sealed partial class Emulator
     public const int MaximumOscLength = 4096;
 
     private readonly List<byte> _osc = [];
+
+    /// <summary>
+    /// Where a recognised payload is decoded, once, and reused for the next one.
+    ///
+    /// <para>The ceiling above is in bytes and this is in characters, and UTF-8 never produces more
+    /// characters than it took bytes — so this is big enough for anything that got past the cap.</para>
+    /// </summary>
+    private readonly char[] _oscText = new char[MaximumOscLength];
+
     private bool _oscTruncated;
 
     /// <summary>
@@ -46,6 +56,15 @@ public sealed partial class Emulator
         _osc.AddRange(bytes);
     }
 
+    /// <summary>
+    /// The command ended, and this is where the payload is finally looked at.
+    ///
+    /// <para><b>Nothing is decoded until a command this client acts on has been recognised.</b> The
+    /// number is read from the raw bytes; a payload only becomes a string in the branches that keep
+    /// one. A stream that is not a terminal stream at all — a <c>cat</c> of a binary file — is full
+    /// of accidental introducers, and decoding each of them cost two megabytes of garbage per thirty
+    /// megabytes of that stream before this was measured.</para>
+    /// </summary>
     void IAnsiHandler.OscEnd()
     {
         if (_oscTruncated || _osc.Count == 0)
@@ -55,31 +74,69 @@ public sealed partial class Emulator
             return;
         }
 
-        // Decoded here and not as it arrived: a title is text, and the encoding it is in is the
-        // session's, which is the same thing the printed path is told.
-        string payload = Encoding.UTF8.GetString([.. _osc]);
-        _osc.Clear();
+        ReadOnlySpan<byte> payload = CollectionsMarshal.AsSpan(_osc);
+        int separator = payload.IndexOf((byte)';');
+        ReadOnlySpan<byte> number = separator < 0 ? payload : payload[..separator];
 
-        int separator = payload.IndexOf(';', StringComparison.Ordinal);
-        string number = separator < 0 ? payload : payload[..separator];
-        string argument = separator < 0 ? string.Empty : payload[(separator + 1)..];
-
-        if (!int.TryParse(number, NumberStyles.None, CultureInfo.InvariantCulture, out int command))
+        if (TryCommand(number, out int command))
+        {
+            Dispatch(command, separator < 0 ? default : payload[(separator + 1)..]);
+        }
+        else
         {
             Unhandled++;
-            return;
         }
 
-        Dispatch(command, argument);
+        _osc.Clear();
     }
 
-    private void Dispatch(int command, string argument)
+    /// <summary>
+    /// The leading number, read as digits rather than through a decode and a parse.
+    ///
+    /// <para>Five digits is the ceiling because the largest command anyone has defined is two, and a
+    /// number longer than that is not one this client will recognise anyway.</para>
+    /// </summary>
+    private static bool TryCommand(ReadOnlySpan<byte> digits, out int command)
     {
+        command = 0;
+
+        if (digits.IsEmpty || digits.Length > 5)
+        {
+            return false;
+        }
+
+        foreach (byte digit in digits)
+        {
+            if (digit is < (byte)'0' or > (byte)'9')
+            {
+                return false;
+            }
+
+            command = (command * 10) + (digit - '0');
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Acts on one recognised command.
+    ///
+    /// <para><b>Every handler takes text and none of them takes a string.</b> Each of these is a piece
+    /// of session state a host can set, and each is something a host can set ten thousand times a
+    /// second. A string is built only where the state actually keeps one, and only where the new value
+    /// differs from the one already there — a shell that re-sets the same title on every prompt is the
+    /// ordinary case, not an unusual one.</para>
+    /// </summary>
+    private void Dispatch(int command, ReadOnlySpan<byte> payload)
+    {
+        int written = Encoding.UTF8.GetChars(payload, _oscText);
+        ReadOnlySpan<char> argument = _oscText.AsSpan(0, written);
+
         switch (command)
         {
             case 0:
             case 2:
-                Title = argument;
+                Title = Same(Title, argument) ? Title : new string(argument);
                 break;
 
             case 4:
@@ -87,19 +144,19 @@ public sealed partial class Emulator
                 break;
 
             case 10:
-                ReadColour(argument, colour => Palette.Foreground = colour);
+                Palette.Foreground = ReadColour(argument) ?? Palette.Foreground;
                 break;
 
             case 11:
-                ReadColour(argument, colour => Palette.Background = colour);
+                Palette.Background = ReadColour(argument) ?? Palette.Background;
                 break;
 
             case 12:
-                ReadColour(argument, colour => Palette.Cursor = colour);
+                Palette.Cursor = ReadColour(argument) ?? Palette.Cursor;
                 break;
 
             case 7:
-                WorkingDirectory = argument;
+                WorkingDirectory = Same(WorkingDirectory, argument) ? WorkingDirectory : new string(argument);
                 break;
 
             case 8:
@@ -116,25 +173,59 @@ public sealed partial class Emulator
         }
     }
 
+    /// <summary>Whether a piece of state is already the value a host has just asked for.</summary>
+    private static bool Same(string held, ReadOnlySpan<char> incoming) => incoming.SequenceEqual(held);
+
     /// <summary>
     /// OSC 4: pairs of index and colour. Several pairs in one command is ordinary, which is how a
     /// theme arrives in a single write rather than two hundred.
     /// </summary>
-    private void SetPaletteEntries(string argument)
+    private void SetPaletteEntries(ReadOnlySpan<char> argument)
     {
-        string[] parts = argument.Split(';');
-
-        for (int pair = 0; pair + 1 < parts.Length; pair += 2)
+        while (!argument.IsEmpty)
         {
-            if (!int.TryParse(parts[pair], NumberStyles.None, CultureInfo.InvariantCulture, out int index)
-                || index is < 0 or > 255)
+            if (!TryField(ref argument, out ReadOnlySpan<char> number)
+                || !TryField(ref argument, out ReadOnlySpan<char> colour))
+            {
+                Unhandled++;
+                return;
+            }
+
+            if (!int.TryParse(number, NumberStyles.None, CultureInfo.InvariantCulture, out int index)
+                || index is < 0 or > 255
+                || ReadColour(colour) is not Rgb value)
             {
                 Unhandled++;
                 continue;
             }
 
-            ReadColour(parts[pair + 1], colour => Palette[(byte)index] = colour);
+            Palette[(byte)index] = value;
         }
+    }
+
+    /// <summary>Takes the next semicolon-separated field, leaving the rest.</summary>
+    private static bool TryField(ref ReadOnlySpan<char> text, out ReadOnlySpan<char> field)
+    {
+        if (text.IsEmpty)
+        {
+            field = default;
+            return false;
+        }
+
+        int separator = text.IndexOf(';');
+
+        if (separator < 0)
+        {
+            field = text;
+            text = default;
+        }
+        else
+        {
+            field = text[..separator];
+            text = text[(separator + 1)..];
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -142,41 +233,40 @@ public sealed partial class Emulator
     /// per channel, and <c>#RRGGBB</c>. Anything else is counted rather than approximated — a colour
     /// guessed wrongly is a theme that looks broken, which is worse than one that did not change.
     /// </summary>
-    private void ReadColour(string text, Action<Rgb> apply)
+    private Rgb? ReadColour(ReadOnlySpan<char> text)
     {
         if (Parse(text) is Rgb colour)
         {
-            apply(colour);
-            return;
+            return colour;
         }
 
         Unhandled++;
+        return null;
     }
 
-    private static Rgb? Parse(string text)
+    private static Rgb? Parse(ReadOnlySpan<char> text)
     {
         if (text.StartsWith("rgb:", StringComparison.Ordinal))
         {
-            string[] channels = text[4..].Split('/');
-
-            if (channels.Length != 3)
-            {
-                return null;
-            }
-
-            byte[] values = new byte[3];
+            ReadOnlySpan<char> channels = text[4..];
+            Span<byte> values = stackalloc byte[3];
 
             for (int channel = 0; channel < 3; channel++)
             {
-                if (Scale(channels[channel]) is not byte value)
+                int separator = channels.IndexOf('/');
+                ReadOnlySpan<char> digits = separator < 0 ? channels : channels[..separator];
+
+                if (Scale(digits) is not byte value || (separator < 0 && channel < 2))
                 {
                     return null;
                 }
 
                 values[channel] = value;
+                channels = separator < 0 ? default : channels[(separator + 1)..];
             }
 
-            return new Rgb(values[0], values[1], values[2]);
+            // A fourth channel means the host sent something this is not: rgb: takes three.
+            return channels.IsEmpty ? new Rgb(values[0], values[1], values[2]) : null;
         }
 
         if (text.StartsWith('#') && text.Length == 7)
@@ -196,7 +286,7 @@ public sealed partial class Emulator
     /// <para>X allows one to four, and they are scaled rather than truncated: <c>rgb:f/f/f</c> is
     /// white, not <c>0f0f0f</c>. Truncating is how a one-digit spelling comes out almost black.</para>
     /// </summary>
-    private static byte? Scale(string digits)
+    private static byte? Scale(ReadOnlySpan<char> digits)
     {
         if (digits.Length is < 1 or > 4
             || !int.TryParse(digits, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int value))
@@ -214,11 +304,11 @@ public sealed partial class Emulator
     /// <para>The cell carries an identifier into a table the buffer holds, so the renderer needs no
     /// change at all: a link is a fact about a cell, not a thing drawn differently.</para>
     /// </summary>
-    private void SetHyperlink(string argument)
+    private void SetHyperlink(ReadOnlySpan<char> argument)
     {
-        int separator = argument.IndexOf(';', StringComparison.Ordinal);
-        string uri = separator < 0 ? string.Empty : argument[(separator + 1)..];
+        int separator = argument.IndexOf(';');
+        ReadOnlySpan<char> uri = separator < 0 ? default : argument[(separator + 1)..];
 
-        _pen = _pen with { Link = uri.Length == 0 ? 0 : Buffer.InternLink(uri) };
+        _pen = _pen with { Link = uri.IsEmpty ? 0 : Buffer.InternLink(uri) };
     }
 }

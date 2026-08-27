@@ -51,7 +51,12 @@ public sealed class StreamDecoder
 
         if (_buffer.Length < maximum)
         {
-            _buffer = new char[maximum];
+            // Doubled rather than fitted exactly, and the difference is not academic. A run of
+            // printable bytes is as long as the host's longest line, and a file of gradually longer
+            // lines grew this by a few hundred characters at a time — one new buffer per line, which
+            // measured out at two megabytes of garbage over a thirty-two megabyte `cat`. Doubling
+            // makes the total twice the largest line and then nothing at all.
+            _buffer = new char[Math.Max(_buffer.Length * 2, maximum)];
         }
 
         _decoder.Convert(bytes, _buffer, false, out _, out int written, out bool complete);

@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Quickshell.Terminal;
 
 /// <summary>
@@ -29,6 +31,11 @@ public sealed class TerminalBuffer
 
     private readonly Dictionary<string, int> _clusterIndex = new(StringComparer.Ordinal);
     private readonly List<string> _clusters = [];
+
+    /// <summary>The same tables, asked by span. What makes interning a known entry allocation-free.</summary>
+    private readonly Dictionary<string, int>.AlternateLookup<ReadOnlySpan<char>> _clusterLookup;
+    private readonly Dictionary<string, int>.AlternateLookup<ReadOnlySpan<char>> _linkLookup;
+
     private readonly Dictionary<string, int> _linkIndex = new(StringComparer.Ordinal);
     private readonly List<string> _links = [];
 
@@ -50,6 +57,9 @@ public sealed class TerminalBuffer
         ArgumentOutOfRangeException.ThrowIfLessThan(columns, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(rows, 1);
         ArgumentOutOfRangeException.ThrowIfNegative(scrollback);
+
+        _clusterLookup = _clusterIndex.GetAlternateLookup<ReadOnlySpan<char>>();
+        _linkLookup = _linkIndex.GetAlternateLookup<ReadOnlySpan<char>>();
 
         Columns = columns;
         Rows = rows;
@@ -459,12 +469,15 @@ public sealed class TerminalBuffer
     /// handful. Beyond <see cref="MaximumClusters"/> distinct ones the table stops growing and
     /// answers -1: a stream that reaches that is generating clusters rather than writing text, and
     /// the cell falls back to its base codepoint rather than letting a host exhaust memory.</para>
+    ///
+    /// <para><b>A cluster already in the table costs no allocation to find</b>, which is what makes
+    /// the printing path free of them: the lookup is by span, and a string is only built for a
+    /// cluster nobody has printed before. That is bounded by the ceiling above, so the total is
+    /// finite however long a session runs.</para>
     /// </summary>
-    public int InternCluster(string cluster)
+    public int InternCluster(ReadOnlySpan<char> cluster)
     {
-        ArgumentNullException.ThrowIfNull(cluster);
-
-        if (_clusterIndex.TryGetValue(cluster, out int existing))
+        if (_clusterLookup.TryGetValue(cluster, out int existing))
         {
             return existing;
         }
@@ -474,8 +487,9 @@ public sealed class TerminalBuffer
             return -1;
         }
 
-        _clusters.Add(cluster);
-        _clusterIndex[cluster] = _clusters.Count - 1;
+        string text = new(cluster);
+        _clusters.Add(text);
+        _clusterIndex[text] = _clusters.Count - 1;
 
         return _clusters.Count - 1;
     }
@@ -486,11 +500,9 @@ public sealed class TerminalBuffer
     ///
     /// <para>Index zero is reserved for "no link", which is why the first real one is one.</para>
     /// </summary>
-    public int InternLink(string uri)
+    public int InternLink(ReadOnlySpan<char> uri)
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        if (_linkIndex.TryGetValue(uri, out int existing))
+        if (_linkLookup.TryGetValue(uri, out int existing))
         {
             return existing;
         }
@@ -500,8 +512,9 @@ public sealed class TerminalBuffer
             return 0;
         }
 
-        _links.Add(uri);
-        _linkIndex[uri] = _links.Count;
+        string text = new(uri);
+        _links.Add(text);
+        _linkIndex[text] = _links.Count;
 
         return _links.Count;
     }
@@ -518,6 +531,29 @@ public sealed class TerminalBuffer
         cell.IsCluster && cell.ClusterIndex < _clusters.Count
             ? _clusters[cell.ClusterIndex]
             : char.ConvertFromUtf32(cell.Codepoint);
+
+    /// <summary>
+    /// The same, written into the caller's buffer instead of into a new string.
+    ///
+    /// <para>For the printing path, where a mark arriving after its base has to be joined to what is
+    /// already in the cell. The string version there allocated once per mark, and a host can send
+    /// nothing but marks.</para>
+    /// </summary>
+    /// <returns>How many characters were written, or -1 where the destination is too small.</returns>
+    public int TextOf(Cell cell, Span<char> destination)
+    {
+        if (cell.IsCluster && cell.ClusterIndex < _clusters.Count)
+        {
+            string cluster = _clusters[cell.ClusterIndex];
+
+            return cluster.TryCopyTo(destination) ? cluster.Length : -1;
+        }
+
+        return Rune.TryCreate(cell.Codepoint, out Rune rune)
+               && rune.TryEncodeToUtf16(destination, out int written)
+            ? written
+            : -1;
+    }
 
     /// <summary>
     /// Resizes the screen, re-wrapping what the host wrote as one line so it stays one line.

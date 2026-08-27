@@ -64,9 +64,15 @@ public sealed class DecodingTests
         for (int split = 0; split <= original.Length; split++)
         {
             GraphemeSegmenter segmenter = new();
-            List<string> clusters = [.. segmenter.Feed(original.AsSpan(0, split))];
-            clusters.AddRange(segmenter.Feed(original.AsSpan(split)));
-            clusters.AddRange(segmenter.Flush());
+            List<string> clusters = [];
+
+            Drain(segmenter, original.AsSpan(0, split), clusters);
+            Drain(segmenter, original.AsSpan(split), clusters);
+
+            while (segmenter.TryFlush(out ReadOnlySpan<char> last))
+            {
+                clusters.Add(new string(last));
+            }
 
             Assert.True(expected == clusters.Count,
                 $"split at {split} of {original.Length} gave {clusters.Count} clusters " +
@@ -166,17 +172,65 @@ public sealed class DecodingTests
     public void TheSegmenterHoldsBackTheLastClusterUntilItKnowsWhatFollows()
     {
         GraphemeSegmenter segmenter = new();
+        List<string> clusters = [];
 
         // 'e' alone might still be the base of a cluster, so nothing is emitted yet.
-        Assert.Empty(segmenter.Feed("e"));
+        Drain(segmenter, "e", clusters);
+
+        Assert.Empty(clusters);
         Assert.Equal(1, segmenter.Pending);
 
         // The acute proves it was, and still nothing is emitted: another mark could follow.
-        Assert.Empty(segmenter.Feed("́"));
+        Drain(segmenter, "́", clusters);
+
+        Assert.Empty(clusters);
 
         // 'x' starts a new cluster, which is what finishes the one before it.
-        Assert.Equal(["é"], segmenter.Feed("x"));
-        Assert.Equal(["x"], segmenter.Flush());
+        Drain(segmenter, "x", clusters);
+
+        Assert.Equal(["é"], clusters);
+
+        Assert.True(segmenter.TryFlush(out ReadOnlySpan<char> last));
+        Assert.Equal("x", new string(last));
+        Assert.False(segmenter.TryFlush(out _));
+    }
+
+    /// <summary>
+    /// A base and then combining marks for ever, which is a stream a host can send. The buffer is
+    /// bounded, so the boundary rules are overruled and a cluster comes out anyway - and nothing is
+    /// lost doing it. QS24.
+    /// </summary>
+    [Fact]
+    public void AStreamWithNoClusterBoundaryInItIsBoundedRatherThanAccumulated()
+    {
+        string flood = "a" + new string('́', 10_000);
+        GraphemeSegmenter segmenter = new();
+        List<string> clusters = [];
+
+        Drain(segmenter, flood, clusters);
+
+        Assert.True(segmenter.Forced > 0);
+        Assert.True(segmenter.Pending <= GraphemeSegmenter.MaximumCluster);
+        Assert.All(clusters, cluster => Assert.True(cluster.Length <= GraphemeSegmenter.MaximumCluster));
+
+        while (segmenter.TryFlush(out ReadOnlySpan<char> tail))
+        {
+            clusters.Add(new string(tail));
+        }
+
+        Assert.Equal(flood, string.Concat(clusters));
+    }
+
+    /// <summary>Clusters come back as spans into a buffer the segmenter reuses, so the caller drives
+    /// the drain rather than being handed a list.</summary>
+    private static void Drain(GraphemeSegmenter segmenter, ReadOnlySpan<char> text, List<string> into)
+    {
+        segmenter.Append(text);
+
+        while (segmenter.TryNext(out ReadOnlySpan<char> cluster))
+        {
+            into.Add(new string(cluster));
+        }
     }
 
     [Theory]
