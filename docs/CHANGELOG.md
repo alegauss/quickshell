@@ -26,6 +26,7 @@
 - ✅ **QS18** **Box drawing renders as letters, and the title, palette and working directory a host sends are ignored** — ESC ( 0 now draws a box corner where lqqqk used to be letters, and the title, palette, default colours, working directory and hyperlinks a host sends all land, OSC 52 still refused.
 - ✅ **QS19** **A remote host can write the local clipboard and read back a string it planted in the title** — The clipboard is off per session and write-only when on, the title is set and never reported, and every other reply is a constant and some numbers.
 - ✅ **QS20** **A program asking the terminal what it is gets no answer and falls back to a dumber mode** — DA1, DA2 and the status reports answer, and DECRQSS reports SGR, the region and the level and refuses everything else instead of leaving the asker waiting.
+- ✅ **QS21** **A click inside a remote editor or pager does nothing, because no mouse event reaches the host** — A click, drag or wheel reaches the host in whichever of the four modes it asked for, in SGR where offered, and past column 223 the legacy encoding refuses out loud rather than naming another cell.
 
 ## Block D — The tree a user organises work in
 

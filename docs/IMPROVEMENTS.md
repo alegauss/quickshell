@@ -266,35 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS21 Four modes, two encodings, and the 223-column cliff
-
-Mouse reporting is not one switch. It is a reporting mode and an encoding, chosen
-independently by the program, and both have to be right or the program receives
-coordinates it misreads without knowing it.
-
-The modes: DECSET 9 reports presses only; 1000 reports press and release; 1002 adds
-motion while a button is held, which is what makes dragging a `tmux` pane divider work;
-1003 reports all motion, which a mouse-driven menu needs and which makes an otherwise
-idle terminal generate constant traffic — so it is honoured when asked for and never
-assumed.
-
-The encodings matter more than they appear to. The original scheme adds 32 to each
-coordinate and packs it into a byte, which stops working at column 223: a terminal
-offering only this misreports every click on the right-hand side of any modern window,
-silently. SGR encoding, DECSET 1006, has no such limit and distinguishes release, so it
-is what this client advertises and prefers whenever the program enables it. The legacy
-scheme is still implemented, because programs that never learned the newer one are still
-deployed.
-
-Buttons carry modifier bits for shift, meta and control, and the wheel arrives as
-buttons four and five.
-
-Shift held is reserved for local selection, so a user can always select text over a
-program that has taken the mouse. Without that escape hatch a full-screen program makes
-copying impossible.
-
-Falsified when a click past column 223 reports a column the host disagrees with.
-
 ### §QS22 What changed, and the generation counter that says so
 
 The model is mutated by the parser and read by the renderer, and those are different

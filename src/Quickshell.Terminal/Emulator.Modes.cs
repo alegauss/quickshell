@@ -123,7 +123,16 @@ public sealed partial class Emulator
     {
         for (int group = 0; group < parameters.Count; group++)
         {
-            switch (parameters.Value(group, -1))
+            int mode = parameters.Value(group, -1);
+
+            // The mouse modes are asked first because they are a set rather than a switch, and the
+            // one that decides which of them is live has to see all five.
+            if (MouseMode(mode, set))
+            {
+                continue;
+            }
+
+            switch (mode)
             {
                 case 6:
                     OriginMode = set;

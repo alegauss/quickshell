@@ -437,6 +437,7 @@ public sealed partial class Emulator : IAnsiHandler
         MarginTop = 0;
         MarginBottom = Buffer.Rows - 1;
         ResetTabStops();
+        ResetMouse();
         _designated[0] = CharacterSet.Ascii;
         _designated[1] = CharacterSet.Ascii;
         _activeSet = 0;

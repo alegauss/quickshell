@@ -28,6 +28,15 @@ internal enum Answer : byte
     /// refused outright. Which setting arrives as the first number.
     /// </summary>
     SettingReport,
+
+    /// <summary>A pointer event in the original encoding: three bytes, each its value plus 32.</summary>
+    MouseLegacy,
+
+    /// <summary>A pointer event in SGR encoding, DECSET 1006, that is not a release.</summary>
+    MouseSgrPress,
+
+    /// <summary>The same, released — which is a different final byte and nothing else.</summary>
+    MouseSgrRelease,
 }
 
 public sealed partial class Emulator
@@ -82,10 +91,10 @@ public sealed partial class Emulator
     /// <para><b>It takes no text, and that is the point.</b> The rule this file exists to keep is
     /// that no reply may contain a byte the host supplied — because a host that can plant text and
     /// then ask for it back has a way to type at the user's shell. A method that accepted a string
-    /// would put that one careless call site away; an enum and two integers cannot express it at
+    /// would put that one careless call site away; an enum and three integers cannot express it at
     /// all, so the next sequence someone adds here inherits the property for free.</para>
     /// </summary>
-    private void Send(Answer answer, int first = 0, int second = 0)
+    private void Send(Answer answer, int first = 0, int second = 0, int third = 0)
     {
         // Bounded, and counted rather than dropped silently: a host asking faster than the pty
         // drains is a fact worth being able to see.
@@ -147,6 +156,29 @@ public sealed partial class Emulator
                 SettingReport((Setting)first);
                 _reply.Add(Escape);
                 _reply.Add(Backslash);
+                break;
+
+            case Answer.MouseLegacy:
+                // Three bytes rather than three numbers, and the only place in this file where a
+                // reply byte is arithmetic instead of a digit. The caller has already checked that
+                // each sum fits, because a byte that overflowed here would name another cell.
+                Csi();
+                _reply.Add((byte)'M');
+                _reply.Add((byte)(first + 32));
+                _reply.Add((byte)(second + 32));
+                _reply.Add((byte)(third + 32));
+                break;
+
+            case Answer.MouseSgrPress:
+            case Answer.MouseSgrRelease:
+                Csi();
+                Literal("<");
+                Number(first);
+                Literal(";");
+                Number(second);
+                Literal(";");
+                Number(third);
+                Literal(answer == Answer.MouseSgrRelease ? "m" : "M");
                 break;
 
             default:
