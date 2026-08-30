@@ -53,3 +53,15 @@ services:
     volumes:
       - ./keys:/keys:ro
     command: ["nosftp"]
+
+  # A server that refuses forwarding outright, which is what a hardened estate looks like and the
+  # refusal QS67 must report with the reason rather than as a generic failure.
+  noforward:
+    build: .
+    container_name: qs-sshd-noforward
+    hostname: qs-sshd-noforward
+    ports:
+      - "127.0.0.1:2226:22"
+    volumes:
+      - ./keys:/keys:ro
+    command: ["noforward"]

@@ -49,6 +49,13 @@ if [ "$1" = "nosftp" ]; then
     sed -i '/^Subsystem sftp/d' /etc/ssh/sshd_config
 fi
 
+# "noforward" is the server that says no: AllowTcpForwarding off, which is the common answer in
+# a hardened estate and the case QS67 has to report with the server's own reason rather than a
+# generic failure.
+if [ "$1" = "noforward" ]; then
+    sed -i 's/^AllowTcpForwarding yes/AllowTcpForwarding no/' /etc/ssh/sshd_config
+fi
+
 if [ "$1" = "legacy" ]; then
     # Prepended, not appended: sshd_config ends in Match blocks and KexAlgorithms is refused
     # inside one, so appending it makes sshd exit rather than narrow.

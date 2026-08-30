@@ -785,34 +785,6 @@ from the result.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-### §QS67 The direction where the server holds the veto
-
-A remote forward asks the server to listen and to send each accepted connection back as
-a channel. Everything about it mirrors a local forward except the part that matters: the
-server decides whether it happens.
-
-`GatewayPorts` on the server governs whether that listener binds beyond the server's own
-loopback, and it is usually off. So a forward that appears to succeed and is unreachable
-from a third machine is almost always this setting — and the client says so, rather than
-leaving the user to go and read `sshd_config` to find out.
-
-Port zero here means the server allocates, and it reports the port in its reply. Reading
-that reply is what lets the client show the user the actual port instead of the zero
-they asked for.
-
-Incoming channels are handled as they arrive, each connected to the local target, with
-no assumption about how many arrive at once.
-
-The forward's life is the connection's life, and a server that fails to clean up a stale
-listener is a real situation rather than a hypothetical — so a reconnect explicitly
-re-requests, and a request refused because the port is still held says that, not
-something generic.
-
-Refusal is the common case here rather than the exception, and every refusal carries the
-server's own stated reason wherever it gave one.
-
-Falsified when a refused remote forward is reported without the server's reason.
-
 ### §QS68 One forward that covers a network
 
 Dynamic forwarding is a SOCKS proxy served by the client: the application says where it

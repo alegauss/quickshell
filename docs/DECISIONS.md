@@ -53,6 +53,7 @@
 ## Block F — A forward is a lifecycle, not a checkbox
 
 - ✅ **QS66** **A port on the remote network cannot be reached from a local tool** — A binding is an address the caller names, never a switch: the library's convenience constructor listens on a link-local address, so it is not used and loopback is what anything gets without asking.
+- ✅ **QS67** **A service running locally cannot be reached from the remote host** — Where the protocol carries no reason the client supplies the causes, and every remote forward states that the server's GatewayPorts decides who can reach it.
 
 ## Block G — The clean interface, defended
 
