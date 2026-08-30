@@ -73,6 +73,8 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
+- ✅ **QS66** **A port on the remote network cannot be reached from a local tool** — A port on the remote network is reached from a local tool, bound to loopback unless an address is named, and the operating system is asked where it is listening.
+
 ## Block G — The clean interface, defended
 
 - ✅ **QS4** **No decision records which window host can present a swapchain without adding frames of latency** — WPF with a child HWND per pane won on a click-to-pixel floor of 13.8 ms, the only host of three to answer within one refresh interval (design §QS4 recorded in `docs/measurements/host-probe.md`).

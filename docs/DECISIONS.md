@@ -52,6 +52,8 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
+- ✅ **QS66** **A port on the remote network cannot be reached from a local tool** — A binding is an address the caller names, never a switch: the library's convenience constructor listens on a link-local address, so it is not used and loopback is what anything gets without asking.
+
 ## Block G — The clean interface, defended
 
 - ✅ **QS4** **No decision records which window host can present a swapchain without adding frames of latency** — The window host is WPF with a child HWND per pane: measured over three passes it is the only one of the three whose click-to-pixel floor is a single refresh interval.

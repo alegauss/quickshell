@@ -49,11 +49,12 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-- 📋 **QS66** (deps: QS37 ✅) **A port on the remote network cannot be reached from a local tool** — A forward is what lets a database client or a debugger reach a machine the user has no route to, and it is the second reason this audience opens an SSH client. → §QS66
-- 📋 **QS67** (deps: QS66) **A service running locally cannot be reached from the remote host** — The direction is reversed, the server does the listening, and the server's own configuration decides whether the request succeeds at all. → §QS67
-- 📋 **QS68** (deps: QS66) **Reaching many hosts on the remote network needs one forward configured per host** — A SOCKS proxy is a single forward covering a whole network, which is what a browser or a cloud tool needs and what per-host forwards cannot provide. → §QS68
-- 📋 **QS69** (deps: QS66, QS67, QS68, QS38 ⏳) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
+- 📋 **QS67** (deps: QS66 ✅) **A service running locally cannot be reached from the remote host** — The direction is reversed, the server does the listening, and the server's own configuration decides whether the request succeeds at all. → §QS67
+- 📋 **QS68** (deps: QS66 ✅) **Reaching many hosts on the remote network needs one forward configured per host** — A SOCKS proxy is a single forward covering a whole network, which is what a browser or a cloud tool needs and what per-host forwards cannot provide. → §QS68
+- 📋 **QS69** (deps: QS66 ✅, QS67, QS68, QS38 ⏳) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
 - 📋 **QS70** (deps: QS69) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — A forward is invisible by nature, and a client that will not show its own listeners makes the user consult netstat to understand the client. → §QS70
+- 📋 **QS124** (deps: QS66 ✅) **A forward drops the whole connection when one direction half-closes, so protocols that shut and wait hang** — Many protocols send, shut their sending half, and wait for the answer; against this forward they get a closed socket instead of a reply. → §QS124
+- 📋 **QS125** (deps: QS66 ✅) **A forward cannot tell a refused target from a normal close, and cannot be bound to every interface** — The design asks for three failures told apart and only one is, so a user with a wrong port and a user with a wrong name are shown the same nothing. → §QS125
 
 ## Block G — The clean interface, defended
 
@@ -67,6 +68,7 @@
 - 📋 **QS53** (deps: QS48) **The same command on eight hosts has to be typed eight times** — Fleet work is a large part of why this audience uses a tabbed client at all, and mistyping the eighth is how that pattern fails today. → §QS53
 - 📋 **QS83** (deps: QS82 ✅, QS46 ⏳) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83
 - 📋 **QS116** (deps: QS9 ✅) **The window's terminal is an empty rectangle, because nothing presents a swapchain into the pane's handle** — The renderer, the pipeline and the pane all exist and have never been joined, so the client can open a window and can open a session and cannot do both. → §QS116
+- 📋 **QS126** (deps: QS121) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126
 
 ## Block H — The reason to leave the incumbent
 
@@ -74,7 +76,7 @@
 - 📋 **QS75** (deps: QS2 ✅, QS46 ⏳) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
 - 📋 **QS76** (deps: QS26 ✅, QS2 ✅) **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Idle cost is what a laptop user experiences as battery life, and it is the figure the incumbent loses on most clearly. → §QS76
 - 📋 **QS77** (deps: QS75) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
-- 📋 **QS78** (deps: QS37 ✅, QS66) **Nothing has run for longer than a working session, so a slow leak would reach users first** — Leaks in a long-lived client appear after days rather than minutes, which is exactly the interval no test covers and every user reaches. → §QS78
+- 📋 **QS78** (deps: QS37 ✅, QS66 ✅) **Nothing has run for longer than a working session, so a slow leak would reach users first** — Leaks in a long-lived client appear after days rather than minutes, which is exactly the interval no test covers and every user reaches. → §QS78
 - 📋 **QS79** (deps: QS3 ✅, QS75) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
 - 📋 **QS86** (deps: QS7 ✅, QS9 ✅) **Input to photon is the first figure in the budget and the only one nothing has ever measured** — The present path was built to bound it and the one workload that exists cannot run ahead of the display, so the flags remain an argument rather than a number. → §QS86
 

@@ -785,32 +785,6 @@ from the result.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-### §QS66 Listen here, connect there, and the parts that go wrong
-
-A local forward listens on a local address and, for each accepted connection, opens a
-direct-tcpip channel to a host and port resolved by the *server*. That the resolution
-happens on the far side is the whole point, and the thing users most often
-misunderstand: the target name is resolved in the remote network's DNS, never in the
-local one.
-
-Binding is a decision with a security consequence. The default is loopback only, because
-binding to all interfaces turns the user's laptop into an open route into the remote
-network for anybody on the same cafe wifi. Binding wider is possible, and it warns.
-
-Port zero means the operating system chooses, and the chosen port is reported back —
-which is what lets several forwards to the same service coexist without the user
-allocating ports by hand.
-
-Each accepted connection is its own channel, so a forward carrying twenty connections is
-twenty channels and one closing disturbs none of the others. Half-close propagates in
-both directions, since a protocol that shuts one direction down and waits — and many do
-— hangs otherwise.
-
-Three errors must be told apart: the local port is already in use, the server refused to
-open the channel, or the target refused the connection. Three remedies, one symptom.
-
-Falsified when a forward binds beyond loopback without the user asking for it.
-
 ### §QS67 The direction where the server holds the veto
 
 A remote forward asks the server to listen and to send each accepted connection back as
@@ -921,6 +895,56 @@ This is a surface that survives the leanness argument, because the alternative t
 `netstat`.
 
 Falsified when a running forward does not appear in this view.
+
+### §QS124 Half of a close is not a close
+
+Measured on 2026-08-30 against the fixture: a socket through the forward that calls
+`Shutdown(Send)` finds the whole connection gone — `Connected` false, the next read
+returning zero — instead of the far end's answer. SSH.NET's `ForwardedPortLocal` treats
+either direction ending as the end of both.
+
+That breaks a real class of protocol. HTTP/1.0 without keep-alive, several database wire
+protocols, and anything shaped like `cat | remote-tool` send their request, shut the
+sending half to signal the end of input, and wait. Against this forward they get a
+closed socket and either hang until a timeout or report a network error, and the user
+has no way to tell that from a server that went away.
+
+The library offers no way to fix it from outside: the listener, the accept loop and the
+channel all live inside `ForwardedPortLocal`, and nothing on its surface carries an end
+of stream in one direction.
+
+What would answer it is our own listener over a direct-tcpip channel, which is what
+OpenSSH does. `ISession.CreateChannelDirectTcpip` exists and is internal, so this costs
+the same kind of reach into the library that sharing an SFTP session did — and buys,
+besides half-close, per-connection error reporting and a channel that fits the seam's
+own `IForwardedChannel`.
+
+Falsified when a connection that shuts its sending half still receives what the far end
+sent afterwards.
+
+### §QS125 Three failures, one of them legible
+
+Measured on 2026-08-30. A forward to a port with nothing listening on the far side
+closes the connection with no bytes and raises nothing at all: no exception, no event.
+It is indistinguishable from a server that hung up normally. Only the local port clash
+is reported cleanly, and that one is caught before any traffic flows.
+
+So of the three remedies the design wanted to offer, two cannot be reached: a wrong
+target port and a server that closed look identical, and the user is shown an empty read
+either way.
+
+Binding has the same shape of gap. `ForwardedPortLocal` resolves its bound host as a
+name and refuses the unspecified address outright, and its constructor without a bound
+host binds to whatever empty-name resolution returns first — measured here, a link-local
+address other machines can reach. So there is no way to say "every interface", and the
+one convenience constructor that looks like it says that says something worse.
+
+Both fall out of the same cause: the accept loop and the channel belong to the library.
+A listener of our own over a direct-tcpip channel sees the channel-open failure and the
+socket that never connected as separate events, and binds where it is told. QS124 wants
+the same thing for its own reason, so the two are one piece of work.
+
+Falsified when a wrong target port and a closed connection produce the same message.
 
 ## Block G — The clean interface, defended
 
@@ -1173,6 +1197,28 @@ the piece living in a test file rather than in the client, and every other piece
 already exercised somewhere.
 
 Falsified when a window is drawing at a steady rate while nothing on screen is changing.
+
+### §QS126 Machinery with no way in
+
+Counted on 2026-08-30 across `src/Quickshell.App/*.cs`. Not one file names `SshChain`,
+`SftpChannel`, `ScpChannel`, `IFileCopy`, `TransferQueue`, `TransferPlan`, `SyncPlan`,
+`LocalForward`, `SshAgent`, `KnownHosts` or `TrustOnFirstUse`. `SecretStore` appears
+once, in a doc comment. The application layer uses three transport types in total.
+
+So jump hosts, host-key trust, agents, saved credentials, the whole of file transfer and
+now port forwarding are shipped, tested against real servers, and reachable from nothing
+a user can run. QS121 said this about the session store and the dialog; the audit says
+it about four blocks.
+
+This is not a missing feature. It is a missing question: every line opened so far asked
+what a component must do and none asked who would open it. A component and its way in
+are two pieces of work, and only one of them has been on the roadmap.
+
+What closes it is not one task. It is a rule — a line that makes a component reachable
+is opened beside the line that builds it — plus the connecting work already outstanding.
+This line exists to hold the count and the rule until those are opened.
+
+Falsified when a component ships with no line naming what will reach it.
 
 ## Block H — The reason to leave the incumbent
 
