@@ -2,32 +2,6 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-### §QS37 The second implementation of an interface that already works
-
-Everything above `IPtyChannel` was built and proven against a local pseudo-console, so
-this is genuinely an implementation rather than an integration: open a session channel,
-request a pseudo-terminal with the right terminal type and geometry, request a shell,
-hand the channel's streams to the same pipeline that already runs.
-
-The terminal type this client claims is a decision with consequences. Claiming
-`xterm-256color` is a promise about behaviours the emulator then has to actually have,
-which is why the conformance work comes before this line and not after it. Claiming
-something smaller is safer and immediately visible to the user as a worse terminal.
-
-Terminal modes go out at pty-request time, and the one that matters is that the client
-does not want the server doing anything the terminal already does for itself.
-
-The buffering behaviour of the library's shell stream is a named risk from the gap
-analysis, so this line measures instead of assuming: throughput under `cat` of a large
-file, and allocations per megabyte, both against the same figures taken locally. A gap
-between them belongs to the library, and it is either closed here or it is the trigger
-for the second implementation the seam exists to permit.
-
-Channel close, a server-side exit and a dropped connection are three different endings,
-and the user is told which one happened.
-
-Falsified when local and remote throughput differ by more than the network explains.
-
 ### §QS38 What survives a drop, and what honestly cannot
 
 Three distinct failures wearing one appearance: the server closed the session; the
@@ -107,6 +81,33 @@ Each entry records what was connected to, which algorithms were negotiated, and 
 not work. An entry saying only that it worked has not been tested; it has been visited.
 
 Falsified when the matrix records a pass with no negotiated algorithm list beside it.
+
+### §QS110 The other half of the comparison
+
+QS37's design asks for throughput and allocations "both against the same figures taken
+locally". The remote half landed and is asserted on: 32 MB of `cat` through the fixture
+at **124.8 MB/s and 233 KB allocated per MB**, against QS5's 81–103 MB/s and 112–126 KB.
+The local half did not, and what stopped it is worth writing down rather than retrying
+blindly.
+
+Two things, both found by measurement. A line typed at `cmd.exe` behind a pseudo-console
+needs a carriage return; a line feed is accepted by a Unix pty in canonical mode and
+silently ignored here, so the command was never submitted and the reader waited out its
+whole deadline looking like a dead channel. And draining the login banner by cancelling
+a read after a few hundred milliseconds **aborts the pipe**: `ConPtyChannel.ReadAsync`
+hands the token to a Windows pipe read, and a cancelled one does not resume. After that
+the channel is open and permanently silent.
+
+The second is the interesting one, because it is a property of the shipped local channel
+and not of the test. Whether a cancelled read is recoverable is not stated anywhere and
+the session loop is entitled to assume either answer.
+
+What this needs: a local figure taken without cancelling anything, the two printed side
+by side, and `ConPtyChannel` either surviving a cancelled read or saying in its own
+words that it does not.
+
+Falsified when a local figure is quoted without saying which machine and which day
+produced it.
 
 ## Block B — Keys, agents, and the host you think you reached
 

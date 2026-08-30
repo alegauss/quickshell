@@ -4,10 +4,10 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-- 📋 **QS37** (deps: QS36 ✅, QS26 ✅) **No remote host's output has ever reached the emulator** — This is where the terminal stops being a local demonstration and becomes the product, and everything above it was already written to accept it. → §QS37
-- 📋 **QS38** (deps: QS37) **A link that drops for ten seconds costs the whole session and its scrollback** — Mobile and VPN links drop routinely, so a client treating every drop as final makes the user pay for the network's ordinary behaviour. → §QS38
-- 📋 **QS39** (deps: QS37) **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — The error message is the documentation a user reads at the moment something fails, which is far more often than they read anything else. → §QS39
+- 📋 **QS38** (deps: QS37 ✅) **A link that drops for ten seconds costs the whole session and its scrollback** — Mobile and VPN links drop routinely, so a client treating every drop as final makes the user pay for the network's ordinary behaviour. → §QS38
+- 📋 **QS39** (deps: QS37 ✅) **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — The error message is the documentation a user reads at the moment something fails, which is far more often than they read anything else. → §QS39
 - 📋 **QS40** (deps: QS38, QS39) **This client has met one server, so an appliance that negotiates differently is an unknown** — Interoperability failures are found by connecting to unusual servers and by no other method, so the unusual servers are enumerated and connected to deliberately. → §QS40
+- 📋 **QS110** (deps: QS37 ✅) **Remote throughput has no local figure taken beside it, so a slow link and a slow client look alike** — Cancelling a pending read aborts a Windows pipe and takes the pseudo-console with it, so the local half of the comparison read nothing at all. → §QS110
 
 ## Block B — Keys, agents, and the host you think you reached
 
@@ -37,14 +37,14 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS55** (deps: QS37) **Every connection is retyped, so a host used daily costs the same as one used once** — The session tree is the artefact a user builds over years and the one that makes leaving a client expensive, so its format is a decision and not a serialisation. → §QS55
+- 📋 **QS55** (deps: QS37 ✅) **Every connection is retyped, so a host used daily costs the same as one used once** — The session tree is the artefact a user builds over years and the one that makes leaving a client expensive, so its format is a decision and not a serialisation. → §QS55
 - 📋 **QS56** (deps: QS55) **Hosts already defined for OpenSSH have to be defined a second time here** — A user with a working config has already made every one of these decisions, and asking them to make each of them again is the real cost of switching client. → §QS56
 - 📋 **QS57** (deps: QS56, QS36 ✅) **A host reachable only through a bastion cannot be reached at all** — Nearly every production environment this client targets sits behind one, so a client with no jump path cannot open the hosts that actually matter. → §QS57
 - 📋 **QS58** (deps: QS55) **A session cannot be created or edited, so the store can only be built by editing its file** — The dialog is where most users meet every decision this client has made about connecting, so what it asks for and what it assumes are both design. → §QS58
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-- 📋 **QS59** (deps: QS37) **Moving a file means a second authentication and a second connection to a host already open** — A file transfer is a channel on the session that already exists, and treating it as a new connection costs the user another second factor for no reason. → §QS59
+- 📋 **QS59** (deps: QS37 ✅) **Moving a file means a second authentication and a second connection to a host already open** — A file transfer is a channel on the session that already exists, and treating it as a new connection costs the user another second factor for no reason. → §QS59
 - 📋 **QS60** (deps: QS59, QS46) **There is no way to see what is on the remote host without running a command** — Browsing is what turns a transfer tool into something a person operates, and it is where the incumbent's users spend a large share of their time. → §QS60
 - 📋 **QS61** (deps: QS59) **A transfer has no progress, cannot be cancelled, and starts again from zero if it fails** — Transfers are long and links are unreliable, so a queue that cannot resume turns one dropped connection into an hour of repeated work. → §QS61
 - 📋 **QS62** (deps: QS61) **A folder cannot be copied, and a name that already exists on the far side is resolved by guessing** — Recursion and collision handling are where a transfer tool quietly destroys data, and both are policy decisions rather than implementation details. → §QS62
@@ -54,7 +54,7 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-- 📋 **QS66** (deps: QS37) **A port on the remote network cannot be reached from a local tool** — A forward is what lets a database client or a debugger reach a machine the user has no route to, and it is the second reason this audience opens an SSH client. → §QS66
+- 📋 **QS66** (deps: QS37 ✅) **A port on the remote network cannot be reached from a local tool** — A forward is what lets a database client or a debugger reach a machine the user has no route to, and it is the second reason this audience opens an SSH client. → §QS66
 - 📋 **QS67** (deps: QS66) **A service running locally cannot be reached from the remote host** — The direction is reversed, the server does the listening, and the server's own configuration decides whether the request succeeds at all. → §QS67
 - 📋 **QS68** (deps: QS66) **Reaching many hosts on the remote network needs one forward configured per host** — A SOCKS proxy is a single forward covering a whole network, which is what a browser or a cloud tool needs and what per-host forwards cannot provide. → §QS68
 - 📋 **QS69** (deps: QS66, QS67, QS68, QS38) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
@@ -79,7 +79,7 @@
 - 📋 **QS75** (deps: QS2 ✅, QS46) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
 - 📋 **QS76** (deps: QS26 ✅, QS2 ✅) **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Idle cost is what a laptop user experiences as battery life, and it is the figure the incumbent loses on most clearly. → §QS76
 - 📋 **QS77** (deps: QS75) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
-- 📋 **QS78** (deps: QS37, QS66) **Nothing has run for longer than a working session, so a slow leak would reach users first** — Leaks in a long-lived client appear after days rather than minutes, which is exactly the interval no test covers and every user reaches. → §QS78
+- 📋 **QS78** (deps: QS37 ✅, QS66) **Nothing has run for longer than a working session, so a slow leak would reach users first** — Leaks in a long-lived client appear after days rather than minutes, which is exactly the interval no test covers and every user reaches. → §QS78
 - 📋 **QS79** (deps: QS3 ✅, QS75) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
 - 📋 **QS86** (deps: QS7 ✅, QS9 ✅) **Input to photon is the first figure in the budget and the only one nothing has ever measured** — The present path was built to bound it and the one workload that exists cannot run ahead of the display, so the flags remain an argument rather than a number. → §QS86
 

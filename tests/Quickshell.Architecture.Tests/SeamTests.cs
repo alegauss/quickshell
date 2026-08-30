@@ -91,10 +91,16 @@ public sealed class SeamTests
     /// Enforced by project references rather than by review: the package is referenced by the
     /// transport and by nothing else, and it does not flow onwards to whatever references that.
     ///
-    /// <para><c>PrivateAssets="all"</c> is the mechanism and it is not decoration. Without it a
-    /// project reference carries the package's compile-time assets to every consumer, so
+    /// <para><c>PrivateAssets</c> is the mechanism and it is not decoration. Without it a project
+    /// reference carries the package's compile-time assets to every consumer, so
     /// <c>Quickshell.App</c> could name the library's types without ever asking for it — which is
     /// exactly the accident this line is about, arriving through a file nobody edited.</para>
+    ///
+    /// <para><b>It must withhold <c>compile</c> and it must not withhold everything.</b>
+    /// <c>PrivateAssets="all"</c> is the spelling that comes to mind and it is wrong: it withholds
+    /// the runtime asset too, so the library is never copied beside the executable. That builds with
+    /// no warning and throws <c>FileNotFoundException</c> on the first connection. So the rule names
+    /// what has to be private rather than accepting anything that looks careful.</para>
     /// </summary>
     [Fact]
     public void TheProtocolLibraryIsReferencedByTheTransportAloneAndDoesNotFlowOnwards()
@@ -119,14 +125,18 @@ public sealed class SeamTests
     [Fact]
     public void TheRuleRefusesAReferenceThatFlowsOnwards()
     {
-        // The transport, correctly: referenced, and not passed on.
-        Assert.Empty(Offences(TransportProject, Project(@"<PackageReference Include=""SSH.NET"" Version=""2026.0.0"" PrivateAssets=""all"" />")));
+        // The transport, correctly: the types are withheld and the DLL still travels.
+        Assert.Empty(Offences(TransportProject, Project(@"<PackageReference Include=""SSH.NET"" Version=""2026.0.0"" PrivateAssets=""compile"" />")));
 
         // The transport, carelessly: the package flows to everything that references the transport.
         Assert.Single(Offences(TransportProject, Project(@"<PackageReference Include=""SSH.NET"" Version=""2026.0.0"" />")));
 
+        // The transport, over-carefully: nothing flows, including the library itself, so the client
+        // builds and then cannot connect. This is the one that was actually written first.
+        Assert.Single(Offences(TransportProject, Project(@"<PackageReference Include=""SSH.NET"" Version=""2026.0.0"" PrivateAssets=""all"" />")));
+
         // Somebody else, at all: even sealed off, it is in the wrong assembly.
-        Assert.Single(Offences("Quickshell.App", Project(@"<PackageReference Include=""SSH.NET"" Version=""2026.0.0"" PrivateAssets=""all"" />")));
+        Assert.Single(Offences("Quickshell.App", Project(@"<PackageReference Include=""SSH.NET"" Version=""2026.0.0"" PrivateAssets=""compile"" />")));
 
         // And a package that is nothing to do with SSH is nothing to do with this rule.
         Assert.Empty(Offences("Quickshell.Render", Project(@"<PackageReference Include=""Vortice.Direct3D11"" Version=""3.8.3"" />")));
@@ -224,10 +234,19 @@ public sealed class SeamTests
                 ?? reference.Element("PrivateAssets")?.Value
                 ?? string.Empty;
 
-            if (!string.Equals(sealedOff, "all", StringComparison.OrdinalIgnoreCase))
+            string[] withheld = sealedOff.Split(';', StringSplitOptions.RemoveEmptyEntries
+                                                     | StringSplitOptions.TrimEntries);
+
+            if (!withheld.Contains("compile", StringComparer.OrdinalIgnoreCase))
             {
-                offences.Add($"{project} references {package} without PrivateAssets=all, "
-                             + "so it flows to everything above");
+                offences.Add($"{project} references {package} without PrivateAssets=compile, "
+                             + "so its types flow to everything above");
+            }
+            else if (withheld.Contains("all", StringComparer.OrdinalIgnoreCase)
+                     || withheld.Contains("runtime", StringComparer.OrdinalIgnoreCase))
+            {
+                offences.Add($"{project} withholds {package}'s runtime asset, so nothing above it "
+                             + "will find the library at run time");
             }
         }
 

@@ -12,4 +12,17 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- The protocol library, and the one place in the client it may be named. PrivateAssets is
+         what stops it flowing to whatever references this project: without it, Quickshell.App could
+         name Renci.SshNet types without ever asking for them, which is exactly the accident QS36
+         exists to prevent - arriving through a file nobody edited.
+
+         "compile" and not "all", and the difference is not cosmetic: "all" withholds the runtime
+         asset as well, so the library is not copied beside anything that references this project.
+         That builds perfectly and then throws FileNotFoundException on the first connection, which
+         is how it was found here. Hiding the types is the goal; withholding the DLL is a bug. -->
+    <PackageReference Include="SSH.NET" Version="2026.0.0" PrivateAssets="compile" />
+  </ItemGroup>
+
 </Project>
