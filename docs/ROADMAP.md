@@ -37,7 +37,7 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS57** (deps: QS56 ✅, QS36 ✅) **A host reachable only through a bastion cannot be reached at all** — Nearly every production environment this client targets sits behind one, so a client with no jump path cannot open the hosts that actually matter. → §QS57
+- ⏳ **QS57** (deps: QS56 ✅, QS36 ✅) **A host reachable only through a bastion cannot be reached at all** — ProxyCommand is the other route the design names, and QS118 carries it. → §QS57
 - 📋 **QS58** (deps: QS55 ✅) **A session cannot be created or edited, so the store can only be built by editing its file** — The dialog is where most users meet every decision this client has made about connecting, so what it asks for and what it assumes are both design. → §QS58
 - 📋 **QS117** (deps: QS55 ✅) **Comments a user wrote in the session store are gone the next time the client writes it** — Reading the file is lossless and writing it is not, so a store edited by hand and then edited through the client loses the half a person put there for themselves. → §QS117
 - 📋 **QS118** (deps: QS56 ✅, QS36 ✅) **A host reached through a ProxyCommand is read from the config, reported, and cannot be connected to** — The transport opens sockets, and a proxy command is a process whose standard streams are the connection — a second kind of transport, not an option on the first. → §QS118

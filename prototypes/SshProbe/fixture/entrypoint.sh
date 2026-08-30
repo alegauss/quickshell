@@ -34,6 +34,10 @@ if [ ! -f /srv/big.txt ]; then
     chmod 644 /srv/big.txt
 fi
 
+# Its own host key, per container, per start. The image's openssh-server package generates one at
+# build time, so without this every container from that image is the same machine as far as a client
+# can tell — and a two-hop chain would verify the bastion's key twice and call it the target's.
+rm -f /etc/ssh/ssh_host_*
 ssh-keygen -A >/dev/null 2>&1 || true
 
 # "legacy" narrows the key exchange to one modern clients refuse as insecure, which is the whole

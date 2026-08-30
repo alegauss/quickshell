@@ -5,6 +5,10 @@ services:
   target:
     build: .
     container_name: qs-sshd-target
+    # Its own name where a shell can see it: without this a container answers `hostname`
+    # with a hex id, and a test asking the far end which machine it is gets nothing it
+    # can check against.
+    hostname: qs-sshd-target
     ports:
       - "127.0.0.1:2222:22"
     volumes:
@@ -13,6 +17,10 @@ services:
   jump:
     build: .
     container_name: qs-sshd-jump
+    # Its own name where a shell can see it: without this a container answers `hostname`
+    # with a hex id, and a test asking the far end which machine it is gets nothing it
+    # can check against.
+    hostname: qs-sshd-jump
     ports:
       - "127.0.0.1:2223:22"
     volumes:
@@ -24,6 +32,10 @@ services:
   legacy:
     build: .
     container_name: qs-sshd-legacy
+    # Its own name where a shell can see it: without this a container answers `hostname`
+    # with a hex id, and a test asking the far end which machine it is gets nothing it
+    # can check against.
+    hostname: qs-sshd-legacy
     ports:
       - "127.0.0.1:2224:22"
     volumes:

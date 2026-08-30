@@ -57,6 +57,7 @@
 
 - ✅ **QS55** **Every connection is retyped, so a host used daily costs the same as one used once** — A tree of folders whose settings a session inherits and may override, each value naming the node that set it, in a file that holds no secret and survives a hand edit.
 - ✅ **QS56** **Hosts already defined for OpenSSH have to be defined a second time here** — The user's own ssh_config is read with OpenSSH's first-value-wins rule and its negations, never written, and every directive not acted on names its file and line.
+- ✅ **QS57 (the built-in jump path)** **A host reachable only through a bastion cannot be reached at all** — A host reachable only on the container network is reached through a bastion, one loop for any depth, and every failure names which hop of how many it was.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

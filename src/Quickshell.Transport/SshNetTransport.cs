@@ -61,6 +61,16 @@ public sealed class SshNetTransport : ISshTransport
     /// <inheritdoc/>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    /// The live client, for <see cref="SshChain"/> to open a channel on.
+    ///
+    /// <para><b>Internal, and it is the one crack in QS36's wall.</b> A jump host is a connection
+    /// carried inside another, and carrying one needs the thing that has the connection. It is
+    /// visible only inside this assembly, which is where the library is allowed to have a name at
+    /// all — no caller above the seam can reach it, and <c>SeamTests</c> still holds.</para>
+    /// </summary>
+    internal SshClient? Client => _client;
+
     /// <inheritdoc/>
     public async ValueTask ConnectAsync(SshEndpoint endpoint, IReadOnlyList<SshCredential> credentials,
                                         SshHostKeyCheck? hostKey = null,
