@@ -237,10 +237,9 @@ public sealed class SshNetTransport : ISshTransport
             return SshHostKeyVerdict.Refuse;
         }
 
-        // Already base64 and already SHA-256; the trailing padding is dropped because OpenSSH prints
-        // it without, and a fingerprint a user cannot compare against what ssh showed them is a
-        // fingerprint that does not do its job.
-        SshHostKey key = new(presented.HostKeyName, presented.FingerPrintSHA256.TrimEnd('='));
+        // The blob rather than the library's fingerprint string: known_hosts stores whole keys, and
+        // this client computes its own digests from the same bytes the store holds.
+        SshHostKey key = new(presented.HostKeyName, presented.HostKey);
 
         return check(endpoint, key, cancellationToken).AsTask().GetAwaiter().GetResult();
     }

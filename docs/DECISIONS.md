@@ -8,6 +8,8 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
+- ✅ **QS42** **Nothing checks the host key, so a machine in the middle is indistinguishable from the server** — A changed host key is never a dialog: the decision delegate is not consulted, so no caller can accept one however it answers.
+
 ## Block C — Emulation that does not lie about the remote
 
 - ✅ **QS6** **Nothing opens a graphics device, so no pixel this client draws has ever reached a screen** — Adapter selection walks output-window, then default hardware, then WARP, recording each skip; a device loss rebuilds GPU resources and cannot touch terminal state.

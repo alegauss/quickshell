@@ -40,9 +40,13 @@ public sealed class ReplayTransport : ISshTransport
         _key = key;
     }
 
-    /// <summary>The key this pretends the server presented, unless a caller says otherwise.</summary>
+    /// <summary>
+    /// The key this pretends the server presented, unless a caller says otherwise. A blob that is
+    /// not a real key, deliberately: a synthetic transport handing out something that would verify
+    /// against a real host would be a fixture nobody could tell from a connection.
+    /// </summary>
     public static SshHostKey DefaultKey { get; } =
-        new("ssh-ed25519", "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU");
+        new("ssh-ed25519", "quickshell-replay-host-key"u8.ToArray());
 
     /// <summary>A transport that connects and then replays these bytes as the shell's output.</summary>
     /// <param name="recording">What the far end said, in order.</param>

@@ -140,32 +140,6 @@ Falsified when the two are reported apart without a run showing they can be.
 
 ## Block B — Keys, agents, and the host you think you reached
 
-### §QS42 Fail closed, and the dialog with no default button
-
-An encrypted connection to an unverified host is an encrypted connection to whoever
-answered. So this fails closed: an unknown or mismatched key stops the connection, and
-no setting turns the check off globally.
-
-The store is OpenSSH `known_hosts` format, read from and written to the standard
-location, because the user already has one and a client with a private store of its own
-makes them maintain two. Hashed entries are read. Certificate authority lines are
-honoured where the library can, and the gap analysis has already said whether it can.
-
-Three outcomes. A known and matching key connects with no interaction at all. An unknown
-key raises trust-on-first-use: the fingerprint in SHA-256 and the legacy form, the
-algorithm, the host and port, and an explicit accept — with **no default button**,
-because a dialog whose default is Yes is a check that does not exist.
-
-A *changed* key is not that dialog and must not resemble it. It is a warning, it names
-what changed, it says plainly that this is what an interception looks like as well as
-what a rebuilt server looks like, and continuing requires removing the old entry
-deliberately rather than clicking through.
-
-Several keys of different algorithms for one host coexist, which is normal and not a
-mismatch.
-
-Falsified when any code path connects without consulting the store.
-
 ### §QS43 Two agents, one protocol, and the key that never leaves
 
 An agent holds the private key and performs signatures on request, so the client never

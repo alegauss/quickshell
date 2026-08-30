@@ -34,17 +34,41 @@ public readonly record struct SshEndpoint(string Host, int Port, string User)
 }
 
 /// <summary>
-/// The key a server presented, in the two parts a user is ever shown.
+/// The key a server presented.
 ///
-/// <para>A fingerprint and an algorithm name, and deliberately not the key. Everything a client does
-/// with a host key — compare it against what was seen before, print it for a person to check, refuse
-/// on a mismatch — needs exactly these two, and a key object would be a live thing belonging to a
-/// library that this client would then have to keep alive.</para>
+/// <para><b>Bytes, not an object.</b> QS36 kept a key object out of this on the grounds that it
+/// would be a live thing belonging to a library — that still holds, and a blob is not one. QS42
+/// needed the blob: <c>known_hosts</c> stores whole keys and a client that held only a fingerprint
+/// could compare against its own store and never against the user's.</para>
+///
+/// <para>The fingerprints are computed here rather than taken from the library, so the digest a user
+/// compares against what <c>ssh</c> printed is this client's own arithmetic over the same bytes.</para>
 /// </summary>
 /// <param name="Algorithm">What the key is, as a person reads it: <c>ssh-ed25519</c> and the like.</param>
-/// <param name="Fingerprint">The SHA-256 digest of the key, base64 as OpenSSH prints it, without the prefix.</param>
-public readonly record struct SshHostKey(string Algorithm, string Fingerprint)
+/// <param name="Key">The key blob, exactly as the wire carried it and as <c>known_hosts</c> stores it.</param>
+public readonly record struct SshHostKey(string Algorithm, ReadOnlyMemory<byte> Key)
 {
+    /// <summary>
+    /// The SHA-256 digest, base64 without padding — the form <c>ssh</c> prints after
+    /// <c>SHA256:</c> and so the only form a user can actually compare against.
+    /// </summary>
+    public string Fingerprint =>
+        Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(Key.Span)).TrimEnd('=');
+
+    /// <summary>
+    /// The MD5 digest in colon-separated hex, which is what older tools and a great many runbooks
+    /// still print. Offered beside the SHA-256 one because a user comparing against a wiki page
+    /// written in 2014 has only this to compare with.
+    /// </summary>
+    public string LegacyFingerprint =>
+        Convert.ToHexStringLower(System.Security.Cryptography.MD5.HashData(Key.Span))
+               .Chunk(2)
+               .Select(pair => new string(pair))
+               .Aggregate((left, right) => $"{left}:{right}");
+
+    /// <summary>How <c>known_hosts</c> spells the key itself: the algorithm and the blob in base64.</summary>
+    public string Stored => $"{Algorithm} {Convert.ToBase64String(Key.Span)}";
+
     /// <summary>The line OpenSSH would print, which is the form a user can compare against.</summary>
     public override string ToString() => $"{Algorithm} SHA256:{Fingerprint}";
 }

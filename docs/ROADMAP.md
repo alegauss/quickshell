@@ -12,7 +12,6 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- 📋 **QS42** (deps: QS36 ✅) **Nothing checks the host key, so a machine in the middle is indistinguishable from the server** — This is the one check that makes an encrypted session mean anything, and a client defaulting to accept is a client whose encryption is decoration. → §QS42
 - 📋 **QS43** (deps: QS41 ✅) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — An agent is where a passphrase is entered once a day instead of once a connection, and it is the only route to a key the client may never hold. → §QS43
 - 📋 **QS44** (deps: QS41 ✅) **A saved password would rest on disk where anything running as the user can read it** — A client that stores credentials badly is worse than one storing none, and the whole difference lies in choices made before the first password is saved. → §QS44
 - 📋 **QS45** (deps: QS43) **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — Forwarding hands a remote machine the ability to authenticate as the user everywhere, so it is decided per host rather than by a checkbox set once. → §QS45
@@ -229,15 +228,6 @@
 - **Every figure in the comparison document reproduces from a documented run** Settled
   by re-running each measurement it cites, from its own stated method, on its own stated
   machine.
-
-## Done when — QS42
-
-- **A changed host key cannot be accepted by clicking a default button** Settled by
-  triggering that case and confirming the dialog carries no default action and requires
-  the old entry to be removed deliberately.
-- **known_hosts written by this client is read by OpenSSH unchanged** Settled by
-  connecting with this client and then with ssh to the same host, confirming neither
-  rewrites or invalidates the other's entry.
 
 ## Done when — QS44
 
