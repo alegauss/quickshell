@@ -42,6 +42,8 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
+- ✅ **QS59** **Moving a file means a second authentication and a second connection to a host already open** — A file transfer is a channel of the session, never a connection of its own, and paths go to the server exactly as given: resolving one deletes the file a link points at.
+
 ## Block F — A forward is a lifecycle, not a checkbox
 
 ## Block G — The clean interface, defended

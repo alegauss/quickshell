@@ -34,6 +34,58 @@ public interface IFileTransferChannel : IAsyncDisposable
 
     /// <summary>Moves or renames, which on a remote filesystem is the same operation.</summary>
     ValueTask RenameAsync(string from, string to, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Which SFTP version the far end agreed to speak. Three is the floor nearly every server
+    /// offers; a later one carries better attribute and rename semantics and is used where offered.
+    /// </summary>
+    int ProtocolVersion { get; }
+
+    /// <summary>Where a path with no leading slash is taken from, which is the account's home.</summary>
+    string WorkingDirectory { get; }
+
+    /// <summary>
+    /// One entry by its path, without listing what it sits in.
+    ///
+    /// <para><b>This follows a symbolic link</b>, because it answers "what is at this path" — which
+    /// is what a caller about to open a file is asking. <see cref="ListAsync"/> does not: a listing
+    /// reports each entry as it is, so a link appears there as a link. The two differ on purpose and
+    /// a file pane needs both.</para>
+    /// </summary>
+    ValueTask<RemoteEntry> StatAsync(string path, CancellationToken cancellationToken = default);
+
+    /// <summary>Makes a directory.</summary>
+    ValueTask CreateDirectoryAsync(string path, CancellationToken cancellationToken = default);
+
+    /// <summary>Points a new name at an existing one.</summary>
+    ValueTask SymbolicLinkAsync(string target, string link,
+                                CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets the mode as a bitmask, which is what a mode is: <c>0b_110_100_100</c>, or 0o644 in the
+    /// notation the far side uses, or 420 in decimal — three spellings of one number.
+    /// </summary>
+    ValueTask ChangePermissionsAsync(string path, int mode,
+                                     CancellationToken cancellationToken = default);
+
+    /// <summary>Sets when a file last changed, which is what makes a copy look like its source.</summary>
+    ValueTask SetLastWriteTimeAsync(string path, DateTimeOffset when,
+                                    CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads a whole file into a stream with several requests in flight at once.
+    ///
+    /// <para>Separate from <see cref="OpenReadAsync"/> on purpose. A stream is read a block at a
+    /// time and each block costs a round trip; over a link with latency that runs at a fraction of
+    /// the available bandwidth, and it is universally misdiagnosed as a network problem. This is the
+    /// member to move a file with.</para>
+    /// </summary>
+    ValueTask DownloadAsync(string path, Stream into, IProgress<long>? progress = null,
+                            CancellationToken cancellationToken = default);
+
+    /// <summary>Writes a whole stream to a remote file, likewise without waiting for each block.</summary>
+    ValueTask UploadAsync(Stream from, string path, IProgress<long>? progress = null,
+                          CancellationToken cancellationToken = default);
 }
 
 /// <summary>

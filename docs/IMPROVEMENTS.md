@@ -731,33 +731,6 @@ that session without touching a file.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-### §QS59 A second channel, not a second connection
-
-SFTP is a subsystem channel on an existing SSH connection. That is the whole design
-decision, and it is worth stating because the alternative — opening a fresh connection
-for the file browser — is what most clients do, and it costs the user another password,
-another second factor, and another entry in the server's auth log.
-
-So the transport seam exposes a file-transfer channel alongside the shell channel, and
-the session owns both. Closing the session closes both.
-
-SFTP version 3 is the floor, since that is what nearly every server speaks; later
-versions are used where offered, because they carry better attribute and rename
-semantics.
-
-The operations needed are ordinary: list, stat, read, write, mkdir, remove, rename,
-symlink, chmod, set times. Reading and writing keep multiple requests in flight rather
-than looping request-and-wait, which is where SFTP throughput actually comes from — a
-naive implementation over a high-latency link runs at a fraction of the available
-bandwidth and is universally misdiagnosed as a network problem.
-
-Paths belong to the server, not to Windows. Case sensitivity, separators, permitted
-characters and length limits are all the far side's, and a client that normalises them
-corrupts names.
-
-Falsified when opening the file browser prompts for a credential the session already
-used.
-
 ### §QS60 Two panes, and the operations between them
 
 Local on one side, remote on the other, because that is the shape of the task and every
@@ -916,6 +889,31 @@ Filters exclude by pattern, using a syntax people already know rather than one i
 here.
 
 Falsified when a mirror deletes anything the user was not shown first.
+
+### §QS122 Six names holding up a security property
+
+Sharing one connection between the shell and the file browser is not offered by
+SSH.NET's public API, so `SharedSftpSession` reaches for four members by name:
+`BaseClient.Session`, `SftpSession`, `SftpResponseFactory` and
+`SftpClient._sftpSession`. Two more, the session's own remove and rename requests, are
+reached for the same way.
+
+It fails loudly rather than falling back, which is the safe direction: a fallback would
+open a second connection and cost a second authentication without saying so. But loudly
+means at runtime, against a server. Every test that would catch a break skips when the
+fixture is not up, so `dotnet build` after an SSH.NET upgrade is clean and the break
+waits for a user.
+
+Two things would close the gap, and they are cheap next to what they guard.
+
+A test with no server in it, asserting only that the six members resolve on the
+referenced assembly. It runs everywhere, including in CI without docker, and it fails on
+the upgrade rather than on the user.
+
+A pinned version. The reflection is written against 2026.0.0 and nothing records that; a
+floating reference would move underneath it silently.
+
+Falsified when an SSH.NET upgrade that breaks the sharing passes a run with no fixture.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

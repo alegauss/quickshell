@@ -176,12 +176,11 @@ public sealed class SshNetTransport : ISshTransport
     {
         Live();
 
-        // Named rather than half-built: QS41 is the line, and a file pane against a stub would show
-        // an empty home directory, which is a picture of a bug rather than of missing work.
-        throw new SshException(
-            SshFailureKind.ShellRefused,
-            "File transfer over this connection is not implemented yet.",
-            "quickshell has not built the channel, which is QS41.");
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // A channel of this session and never a connection of its own: see SharedSftpSession for
+        // why that takes doing, and SftpChannelTests for the server's own account of it.
+        return SftpChannel.OpenAsync(_client!, Timeout);
     }
 
     /// <inheritdoc/>

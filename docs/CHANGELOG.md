@@ -63,6 +63,8 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
+- ✅ **QS59** **Moving a file means a second authentication and a second connection to a host already open** — The file channel opens on the session the shell is already using, and the server's own log shows one authentication and the sftp subsystem on that same connection.
+
 ## Block F — A forward is a lifecycle, not a checkbox
 
 ## Block G — The clean interface, defended
