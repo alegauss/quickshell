@@ -3,6 +3,7 @@
 ## Block A — A session that stays up, or says why it did not
 
 - ✅ **QS5** **Nothing measures whether the chosen protocol library reaches a modern sshd, so the network layer is unpriced risk** — SSH.NET does certificates, jump hosts and two factors against OpenSSH 9.6; the agent and ssh_config are ours to write (design §QS5 recorded in `docs/measurements/ssh-net-probe.md`).
+- ✅ **QS36** **Protocol library types would reach the terminal and the UI, so replacing that library means rewriting the client** — The seam is four interfaces of this client's own words, with a second implementation behind it that needs no server and a test that fires when a library escapes.
 
 ## Block B — Keys, agents, and the host you think you reached
 

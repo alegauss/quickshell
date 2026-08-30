@@ -4,16 +4,15 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-- 📋 **QS36** (deps: QS5 ✅, QS25 ✅) **Protocol library types would reach the terminal and the UI, so replacing that library means rewriting the client** — The gap analysis may well end in a different library, and a seam decided afterwards is one negotiated against code that already exists. → §QS36
-- 📋 **QS37** (deps: QS36, QS26 ✅) **No remote host's output has ever reached the emulator** — This is where the terminal stops being a local demonstration and becomes the product, and everything above it was already written to accept it. → §QS37
+- 📋 **QS37** (deps: QS36 ✅, QS26 ✅) **No remote host's output has ever reached the emulator** — This is where the terminal stops being a local demonstration and becomes the product, and everything above it was already written to accept it. → §QS37
 - 📋 **QS38** (deps: QS37) **A link that drops for ten seconds costs the whole session and its scrollback** — Mobile and VPN links drop routinely, so a client treating every drop as final makes the user pay for the network's ordinary behaviour. → §QS38
 - 📋 **QS39** (deps: QS37) **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — The error message is the documentation a user reads at the moment something fails, which is far more often than they read anything else. → §QS39
 - 📋 **QS40** (deps: QS38, QS39) **This client has met one server, so an appliance that negotiates differently is an unknown** — Interoperability failures are found by connecting to unusual servers and by no other method, so the unusual servers are enumerated and connected to deliberately. → §QS40
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- 📋 **QS41** (deps: QS36) **Only one way in is proven, so a host needing a second factor or an ed25519 key is unreachable** — Authentication is where a client meets the widest variety of server policy, and each method it lacks is a whole population of hosts it cannot open. → §QS41
-- 📋 **QS42** (deps: QS36) **Nothing checks the host key, so a machine in the middle is indistinguishable from the server** — This is the one check that makes an encrypted session mean anything, and a client defaulting to accept is a client whose encryption is decoration. → §QS42
+- 📋 **QS41** (deps: QS36 ✅) **Only one way in is proven, so a host needing a second factor or an ed25519 key is unreachable** — Authentication is where a client meets the widest variety of server policy, and each method it lacks is a whole population of hosts it cannot open. → §QS41
+- 📋 **QS42** (deps: QS36 ✅) **Nothing checks the host key, so a machine in the middle is indistinguishable from the server** — This is the one check that makes an encrypted session mean anything, and a client defaulting to accept is a client whose encryption is decoration. → §QS42
 - 📋 **QS43** (deps: QS41) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — An agent is where a passphrase is entered once a day instead of once a connection, and it is the only route to a key the client may never hold. → §QS43
 - 📋 **QS44** (deps: QS41) **A saved password would rest on disk where anything running as the user can read it** — A client that stores credentials badly is worse than one storing none, and the whole difference lies in choices made before the first password is saved. → §QS44
 - 📋 **QS45** (deps: QS43) **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — Forwarding hands a remote machine the ability to authenticate as the user everywhere, so it is decided per host rather than by a checkbox set once. → §QS45
@@ -34,12 +33,13 @@
 - 📋 **QS106** (deps: QS26 ✅) **The latency test's bound is a maximum over more reads at sixteen megabytes than at four, so a scheduler hiccup fails it** — A test whose prose says one hiccup owns the number, and which then compares two numbers drawn from different sample sizes, reports growth that is sampling. → §QS106
 - 📋 **QS107** (deps: QS35 ✅) **ClearType coverage is drawn without the contrast enhancement Windows applies, so stems stay lighter than elsewhere** — The coverage DirectWrite hands back is raw, and the curve its renderers apply on top is not published, so matching it needs a reference rather than a formula. → §QS107
 - 📋 **QS108** (deps: QS26 ✅, QS27 ✅) **The suite builds the solution and then measures wall-clock latency against what that build left running** — Two latency tests fail only after a build, so the suite cannot tell a regression from a busy machine, and a red run teaches nobody anything. → §QS108
+- 📋 **QS109** (deps: QS12 ✅, QS96 ✅) **The golden suite's text tolerance does not hold on the CI runner, so every commit's build is red for the same pixels** — A check red on every commit for a reason no commit caused is one people stop reading, which is what this tree already argued against dotnet test. → §QS109
 
 ## Block D — The tree a user organises work in
 
 - 📋 **QS55** (deps: QS37) **Every connection is retyped, so a host used daily costs the same as one used once** — The session tree is the artefact a user builds over years and the one that makes leaving a client expensive, so its format is a decision and not a serialisation. → §QS55
 - 📋 **QS56** (deps: QS55) **Hosts already defined for OpenSSH have to be defined a second time here** — A user with a working config has already made every one of these decisions, and asking them to make each of them again is the real cost of switching client. → §QS56
-- 📋 **QS57** (deps: QS56, QS36) **A host reachable only through a bastion cannot be reached at all** — Nearly every production environment this client targets sits behind one, so a client with no jump path cannot open the hosts that actually matter. → §QS57
+- 📋 **QS57** (deps: QS56, QS36 ✅) **A host reachable only through a bastion cannot be reached at all** — Nearly every production environment this client targets sits behind one, so a client with no jump path cannot open the hosts that actually matter. → §QS57
 - 📋 **QS58** (deps: QS55) **A session cannot be created or edited, so the store can only be built by editing its file** — The dialog is where most users meet every decision this client has made about connecting, so what it asks for and what it assumes are both design. → §QS58
 
 ## Block E — SCP and SFTP as a thing a person operates

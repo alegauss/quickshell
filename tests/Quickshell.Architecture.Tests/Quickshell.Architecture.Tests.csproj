@@ -13,4 +13,10 @@
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- The seam is asserted about by reflection as well as by reading files, so the assembly
+         holding it is referenced here. This is a test project: it is above nothing. -->
+    <ProjectReference Include="..\..\src\Quickshell.Transport\Quickshell.Transport.csproj" />
+  </ItemGroup>
+
 </Project>
