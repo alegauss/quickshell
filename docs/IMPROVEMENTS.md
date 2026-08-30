@@ -340,31 +340,6 @@ instead of holding a lock across the whole scan.
 
 Falsified when a match spanning a wrapped line is not found.
 
-### §QS32 Three parties who must agree on one number
-
-Three things hold a copy of the terminal's size: the client's own grid, the
-pseudo-console or channel, and the remote program. Only the client knows when it
-changed, which makes telling the other two an obligation.
-
-The order is not arbitrary. The model resizes and reflows first, so the buffer is
-consistent before anything else observes it. Then the channel is told —
-`ResizePseudoConsole` for ConPTY, a window-change request for an SSH channel. The remote
-side then delivers SIGWINCH to the program, which redraws itself.
-
-Resizing is a drag, so it fires continuously. The notification is debounced, because a
-drag across a screen would otherwise issue hundreds of window-change requests over the
-network and a remote `vim` would redraw for every one. Debounced, never dropped: the
-final size always arrives, since a resize that ends with no notification leaves the
-program permanently wrong about its own width.
-
-A size of zero rows or columns is clamped rather than sent. Some programs divide by it.
-
-Restoring a maximised window, a DPI change and a move to another monitor each produce a
-resize, and each takes this same path.
-
-Falsified when a remote full-screen program is still drawing at the old width a second
-after the drag ended.
-
 ### §QS33 Judged by somebody else's tests
 
 Two external suites, run against the headless model with a pseudo-console driving them

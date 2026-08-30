@@ -88,8 +88,15 @@ internal sealed class PtyStub : IPtyChannel
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>How many times the far end was told a new size.</summary>
+    public long Resizes { get; private set; }
+
     /// <inheritdoc/>
-    public void Resize(int columns, int rows) => Size = (columns, rows);
+    public void Resize(int columns, int rows)
+    {
+        Size = (columns, rows);
+        Resizes++;
+    }
 
     /// <inheritdoc/>
     public void Dispose() => _output.Writer.TryComplete();

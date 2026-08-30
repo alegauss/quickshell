@@ -84,6 +84,10 @@ public sealed class SessionPipeline : IAsyncDisposable
     private long _longestWaitTicks;
     private long _keystrokes;
     private long _longestKeystrokeTicks;
+    private Task _resizing = Task.CompletedTask;
+    private int _pendingColumns;
+    private int _pendingRows;
+    private long _told;
     private bool _disposed;
 
     private SessionPipeline(IPtyChannel channel, Emulator emulator, int capacity)
@@ -102,6 +106,21 @@ public sealed class SessionPipeline : IAsyncDisposable
 
     /// <summary>What a render loop waits on.</summary>
     public DamageSignal Damage { get; } = new();
+
+    /// <summary>Set when the model has taken a new size and the far end has not been told yet.</summary>
+    private DamageSignal Resized { get; } = new();
+
+    /// <summary>
+    /// How long a size must hold still before the far end is told about it.
+    ///
+    /// <para>A resize is a drag and fires continuously. Undebounced, dragging a window across a
+    /// screen issues hundreds of window-change requests over the network and a remote editor redraws
+    /// for every one of them.</para>
+    /// </summary>
+    public static readonly TimeSpan ResizeQuiet = TimeSpan.FromMilliseconds(80);
+
+    /// <summary>How many times the far end has actually been told a new size.</summary>
+    public long Resizes => Interlocked.Read(ref _told);
 
     /// <summary>Completes when the host has closed and everything it sent has been parsed.</summary>
     public Task Completed { get; private set; } = Task.CompletedTask;
@@ -135,9 +154,42 @@ public sealed class SessionPipeline : IAsyncDisposable
         Task parsing = Task.Run(pipeline.ParseLoop);
         Task replying = Task.Run(pipeline.ReplyLoop);
 
+        // The resize courier is not one of the three and is deliberately not in Completed: it waits
+        // on the window rather than on the host, so it has no end of its own to reach. A session that
+        // waited for it would wait for a resize that is never coming.
+        pipeline._resizing = Task.Run(pipeline.ResizeLoop);
+
         pipeline.Completed = Task.WhenAll(reading, parsing, replying);
 
         return pipeline;
+    }
+
+    /// <summary>
+    /// The window changed size.
+    ///
+    /// <para><b>Three things hold a copy of it</b> — this client's grid, the channel, and the program
+    /// on the far end — <b>and only the window knows it changed</b>, which makes telling the other two
+    /// an obligation rather than a courtesy. The model takes it first, in order with the bytes around
+    /// it; the channel is told once the drag settles.</para>
+    ///
+    /// <para>A size of zero is clamped and never sent, because some programs divide by it. Restoring a
+    /// maximised window, a change of scaling and a move to another monitor each produce a resize, and
+    /// each arrives here.</para>
+    /// </summary>
+    public void Resize(int columns, int rows)
+    {
+        Chunk resize = new(null, 0, _clock.Elapsed.Ticks, Math.Max(1, columns), Math.Max(1, rows));
+
+        // Posted rather than applied: the model belongs to the parser stage, and a resize applied out
+        // of turn would reflow text the host had not finished sending.
+        if (_queue.Writer.TryWrite(resize))
+        {
+            return;
+        }
+
+        // A full queue means the parser is behind, and this is worth waiting for: the alternative is
+        // a program left permanently wrong about its own width.
+        _queue.Writer.WriteAsync(resize, _stopping.Token).AsTask().GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -195,6 +247,7 @@ public sealed class SessionPipeline : IAsyncDisposable
         try
         {
             await Completed.ConfigureAwait(false);
+            await _resizing.ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -236,7 +289,7 @@ public sealed class SessionPipeline : IAsyncDisposable
                 // Where the queue is full this waits, and the wait reaches the far end as flow
                 // control. It is the one place backpressure belongs.
                 await _queue.Writer
-                    .WriteAsync(new Chunk(buffer, read, _clock.Elapsed.Ticks), _stopping.Token)
+                    .WriteAsync(new Chunk(buffer, read, _clock.Elapsed.Ticks, 0, 0), _stopping.Token)
                     .ConfigureAwait(false);
             }
         }
@@ -271,7 +324,15 @@ public sealed class SessionPipeline : IAsyncDisposable
 
                 while (_queue.Reader.TryRead(out Chunk chunk))
                 {
-                    Parse(chunk);
+                    if (chunk.IsResize)
+                    {
+                        Reshape(chunk);
+                    }
+                    else
+                    {
+                        Parse(chunk);
+                    }
+
                     drained++;
                 }
 
@@ -302,6 +363,25 @@ public sealed class SessionPipeline : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Applies a size to the model, and only then lets the far end hear about it.
+    ///
+    /// <para>The order is the design's: the buffer reflows first, so it is consistent before anything
+    /// observes it, and the channel is told afterwards — because the moment the far end knows, the
+    /// program starts drawing at the new width, and a model still holding the old one would render
+    /// that as damage.</para>
+    /// </summary>
+    private void Reshape(Chunk chunk)
+    {
+        _emulator.Resize(chunk.Columns, chunk.Rows);
+
+        Volatile.Write(ref _pendingColumns, chunk.Columns);
+        Volatile.Write(ref _pendingRows, chunk.Rows);
+
+        Resized.Set();
+        Damage.Set();
+    }
+
     private void Parse(Chunk chunk)
     {
         long waited = _clock.Elapsed.Ticks - chunk.Stamp;
@@ -311,12 +391,12 @@ public sealed class SessionPipeline : IAsyncDisposable
             Interlocked.Exchange(ref _longestWaitTicks, waited);
         }
 
-        _emulator.Feed(chunk.Buffer.AsSpan(0, chunk.Length));
+        _emulator.Feed(chunk.Buffer!.AsSpan(0, chunk.Length));
 
         Interlocked.Add(ref _bytes, chunk.Length);
         Interlocked.Increment(ref _chunks);
 
-        ArrayPool<byte>.Shared.Return(chunk.Buffer);
+        ArrayPool<byte>.Shared.Return(chunk.Buffer!);
 
         Answer();
     }
@@ -345,6 +425,40 @@ public sealed class SessionPipeline : IAsyncDisposable
         _emulator.ClearReply();
 
         _replies.Writer.TryWrite(reply);
+    }
+
+    /// <summary>
+    /// Tells the far end the size, once the drag has stopped moving.
+    ///
+    /// <para><b>Debounced, never dropped.</b> The wait collapses a drag into a handful of requests;
+    /// the loop then reads whatever the latest size is rather than the one that woke it, so the size
+    /// the drag ended on always arrives. A resize that ended with no notification would leave the
+    /// program permanently wrong about its own width, which is worse than a hundred notifications.</para>
+    /// </summary>
+    private async Task ResizeLoop()
+    {
+        try
+        {
+            while (true)
+            {
+                await Resized.WaitAsync(_stopping.Token).ConfigureAwait(false);
+                await Task.Delay(ResizeQuiet, _stopping.Token).ConfigureAwait(false);
+
+                // The latest, not the one that woke this: everything that arrived during the wait is
+                // superseded by it, and it is the one the program has to end up with.
+                _channel.Resize(Volatile.Read(ref _pendingColumns), Volatile.Read(ref _pendingRows));
+
+                Interlocked.Increment(ref _told);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Closing.
+        }
+        catch (ObjectDisposedException)
+        {
+            // The channel went first, which is the ordinary way a session ends.
+        }
     }
 
     /// <summary>
@@ -388,10 +502,25 @@ public sealed class SessionPipeline : IAsyncDisposable
     {
         while (_queue.Reader.TryRead(out Chunk chunk))
         {
-            ArrayPool<byte>.Shared.Return(chunk.Buffer);
+            if (chunk.Buffer is not null)
+            {
+                ArrayPool<byte>.Shared.Return(chunk.Buffer);
+            }
         }
     }
 
-    /// <summary>One read's worth of host output, the pooled array holding it, and when it arrived.</summary>
-    private readonly record struct Chunk(byte[] Buffer, int Length, long Stamp);
+    /// <summary>
+    /// One item for the parser stage: a read's worth of host output, or a size the window changed to.
+    ///
+    /// <para><b>A resize goes down the same queue as the bytes, and that is not tidiness.</b> The
+    /// model is mutated by one stage and no other — which is what lets a renderer read it without a
+    /// lock — so a window thread cannot resize it directly. And the order matters on its own: a
+    /// resize applied out of turn would reflow text the host had not finished sending, and re-wrap
+    /// the wrong content.</para>
+    /// </summary>
+    private readonly record struct Chunk(byte[]? Buffer, int Length, long Stamp, int Columns, int Rows)
+    {
+        /// <summary>Whether this is a new size rather than output.</summary>
+        public bool IsResize => Buffer is null;
+    }
 }

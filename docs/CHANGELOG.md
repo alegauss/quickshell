@@ -38,6 +38,7 @@
 - ✅ **QS29 (the composition model)** **Typing Japanese or Chinese shows no composition and commits nothing** — Composition is display state that never touches the buffer, so cancelling leaves nothing behind, and a candidate list is placed by real cell width rather than by counting characters.
 - ✅ **QS30 (the selection and paste model)** **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — A wrapped line copies as one line with no break in it, a terminal's padding is not copied as text, and a paste is stripped of control bytes and bracketed or confirmed.
 - ✅ **QS31 (the viewport and the search)** **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — A search finds a match the wrap fell inside, and a viewport anchored to a line stays on the text a reader is reading while the host keeps printing.
+- ✅ **QS32** **Resizing the window leaves the remote program drawing to the geometry it had before** — The model reflows first and the far end is told once the drag settles, so a real shell reports the size the drag ended on, and a drag of two hundred sizes costs a handful of requests.
 
 ## Block D — The tree a user organises work in
 
