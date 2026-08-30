@@ -140,32 +140,6 @@ Falsified when the two are reported apart without a run showing they can be.
 
 ## Block B — Keys, agents, and the host you think you reached
 
-### §QS41 Every way in, and the order they are tried
-
-Four methods, and the order matters as much as the set.
-
-**Public key** first, since it is what most users have and costs nothing to attempt.
-Formats: OpenSSH's own, PEM, PKCS#8, and PuTTY's `.ppk`, because a MobaXterm user's keys
-are very often in that last one. Types: RSA with SHA-2 signatures, ECDSA, and ed25519. A
-passphrase is asked for once and the decrypted key is never written anywhere.
-
-**Keyboard-interactive** next, which is the shape a second factor actually arrives in:
-the server sends prompts and the client displays them *as the server worded them*.
-Rendering the server's own text rather than substituting the client's is the entire
-feature — a user reads "Duo push sent" or "Enter your token", and a client that says
-"Password:" has thrown away the only useful information in the exchange.
-
-**Password** last, and only where offered.
-
-Where several methods are available the server states an order, and the client follows
-it rather than imposing its own. A partial success — a key accepted with a second factor
-still required — is a normal state, not an error, and it is shown as progress.
-
-`none` is attempted first as the protocol intends, since that is what makes the server
-list its methods at all.
-
-Falsified when a server's own prompt text is replaced by wording of the client's.
-
 ### §QS42 Fail closed, and the dialog with no default button
 
 An encrypted connection to an unverified host is an encrypted connection to whoever
@@ -267,6 +241,34 @@ solves the user's actual problem it is the better answer, and the settings surfa
 so instead of staying neutral.
 
 Falsified when a session forwards an agent with no per-host consent recorded.
+
+### §QS113 Progress through an authentication that takes two steps
+
+QS41's design asks that a partial success — a key accepted with a second factor still
+required — be "shown as progress" rather than treated as an error. The state is reached
+and tested: the fixture's `twofactor` account is under `AuthenticationMethods
+publickey,keyboard-interactive`, and a connection there completes both. What is missing
+is anybody being told, in between.
+
+Three things happen during that connection and none of them reaches a caller. The server
+may send an authentication banner, which is its own words and is exactly the sort of
+thing worth showing. The first method succeeds. The second method's prompts arrive —
+those do reach the caller, through `SshCredential.Interactive`, which is why the
+falsification test can assert them.
+
+So the gap is narrow and specific: the two moments before the prompt. A user watching a
+connection that takes six seconds because somebody has to approve a push notification is
+watching nothing at all until the prompt appears, and a client that shows nothing there
+is one a user assumes has hung.
+
+This waits on the window, because progress is a thing that is shown. What belongs in the
+transport is the report: a callback or a state on `ISshTransport` carrying the banner
+when there is one, and the fact that a method completed with more still wanted.
+`SshNetTransport` already subscribes to nothing for either, and
+`ConnectionInfo.AuthenticationBanner` is the library's half of the first.
+
+Falsified when a two-step authentication shows the same thing at second five as at
+second one.
 
 ## Block C — Emulation that does not lie about the remote
 

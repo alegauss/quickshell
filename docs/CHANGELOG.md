@@ -10,6 +10,8 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
+- ✅ **QS41** **Only one way in is proven, so a host needing a second factor or an ed25519 key is unreachable** — Three key types in four formats, none offered first and a password last, and a second factor asked in the server's own words against an account that enforces both.
+
 ## Block C — Emulation that does not lie about the remote
 
 - ✅ **QS6** **Nothing opens a graphics device, so no pixel this client draws has ever reached a screen** — A D3D11 device opens on the window's adapter, the default one or WARP, names what it skipped, and rebuilds every GPU resource on a loss.

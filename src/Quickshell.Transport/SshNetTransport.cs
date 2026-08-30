@@ -80,7 +80,7 @@ public sealed class SshNetTransport : ISshTransport
 
         Endpoint = endpoint;
 
-        AuthenticationMethod[] methods = [.. credentials.Select(credential => Method(endpoint, credential))];
+        AuthenticationMethod[] methods = Offer(endpoint, credentials);
         ConnectionInfo connection = new(endpoint.Host, endpoint.Port, endpoint.User, methods)
         {
             Timeout = Timeout,
@@ -243,6 +243,35 @@ public sealed class SshNetTransport : ISshTransport
         SshHostKey key = new(presented.HostKeyName, presented.FingerPrintSHA256.TrimEnd('='));
 
         return check(endpoint, key, cancellationToken).AsTask().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// What to offer the server, in the order the design asks for.
+    ///
+    /// <para><b><c>none</c> goes first, as the protocol intends.</b> A server answers it with the
+    /// list of methods it will actually accept, and that list is the most useful thing there is to
+    /// tell a user who cannot get in — it is what turns "authentication failed" into "the server
+    /// accepts publickey, keyboard-interactive". A server that accepts <c>none</c> outright has
+    /// decided to let anyone in, which is its decision to have made.</para>
+    ///
+    /// <para><b>A password goes last.</b> Everything else is offered before it, so a key that would
+    /// have worked is tried before a user is asked to type a secret. The relative order of
+    /// everything else is the caller's, because past that point it is the server's policy that
+    /// decides — see the tests, which offer two methods the wrong way round and watch the server
+    /// run them its own way.</para>
+    /// </summary>
+    private static AuthenticationMethod[] Offer(SshEndpoint endpoint,
+                                                IReadOnlyList<SshCredential> credentials)
+    {
+        List<AuthenticationMethod> offered = [new NoneAuthenticationMethod(endpoint.User)];
+
+        offered.AddRange(credentials.Where(credential => credential is not SshCredential.Password)
+                                    .Select(credential => Method(endpoint, credential)));
+
+        offered.AddRange(credentials.OfType<SshCredential.Password>()
+                                    .Select(credential => Method(endpoint, credential)));
+
+        return [.. offered];
     }
 
     /// <summary>This client's credential, as the library's own authentication method.</summary>

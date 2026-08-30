@@ -12,11 +12,11 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- 📋 **QS41** (deps: QS36 ✅) **Only one way in is proven, so a host needing a second factor or an ed25519 key is unreachable** — Authentication is where a client meets the widest variety of server policy, and each method it lacks is a whole population of hosts it cannot open. → §QS41
 - 📋 **QS42** (deps: QS36 ✅) **Nothing checks the host key, so a machine in the middle is indistinguishable from the server** — This is the one check that makes an encrypted session mean anything, and a client defaulting to accept is a client whose encryption is decoration. → §QS42
-- 📋 **QS43** (deps: QS41) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — An agent is where a passphrase is entered once a day instead of once a connection, and it is the only route to a key the client may never hold. → §QS43
-- 📋 **QS44** (deps: QS41) **A saved password would rest on disk where anything running as the user can read it** — A client that stores credentials badly is worse than one storing none, and the whole difference lies in choices made before the first password is saved. → §QS44
+- 📋 **QS43** (deps: QS41 ✅) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — An agent is where a passphrase is entered once a day instead of once a connection, and it is the only route to a key the client may never hold. → §QS43
+- 📋 **QS44** (deps: QS41 ✅) **A saved password would rest on disk where anything running as the user can read it** — A client that stores credentials badly is worse than one storing none, and the whole difference lies in choices made before the first password is saved. → §QS44
 - 📋 **QS45** (deps: QS43) **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — Forwarding hands a remote machine the ability to authenticate as the user everywhere, so it is decided per host rather than by a checkbox set once. → §QS45
+- 📋 **QS113** (deps: QS41 ✅, QS46) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — Partial success is a normal state of the protocol and nothing in this client reports it, so the one moment a user most wants progress is the one with none. → §QS113
 
 ## Block C — Emulation that does not lie about the remote
 

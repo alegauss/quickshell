@@ -3,7 +3,7 @@
 FROM ubuntu:24.04
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openssh-server coreutils \
+ && apt-get install -y --no-install-recommends openssh-server coreutils putty-tools \
  && rm -rf /var/lib/apt/lists/*
 
 COPY sshd_config /etc/ssh/sshd_config

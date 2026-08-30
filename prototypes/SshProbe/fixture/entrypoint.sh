@@ -15,7 +15,13 @@ echo 'certonly:certonly-pw' | chpasswd
 # in for that account is a certificate the CA signed, which is what makes its answer evidence.
 for user in probe twofactor; do
     install -d -m 700 -o "$user" -g "$user" "/home/$user/.ssh"
-    cp /keys/probe_ed25519.pub "/home/$user/.ssh/authorized_keys"
+    cat /keys/probe_ed25519.pub > "/home/$user/.ssh/authorized_keys"
+
+    # QS41: every key type and format the client claims to open is authorised here, so a test that
+    # connects with one is evidence the client read it rather than evidence the server was lax.
+    for extra in probe_rsa probe_ecdsa probe_locked; do
+        [ -f "/keys/$extra.pub" ] && cat "/keys/$extra.pub" >> "/home/$user/.ssh/authorized_keys"
+    done
     chown "$user:$user" "/home/$user/.ssh/authorized_keys"
     chmod 600 "/home/$user/.ssh/authorized_keys"
 done
