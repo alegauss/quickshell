@@ -56,6 +56,7 @@
 ## Block D — The tree a user organises work in
 
 - ✅ **QS55** **Every connection is retyped, so a host used daily costs the same as one used once** — A tree of folders whose settings a session inherits and may override, each value naming the node that set it, in a file that holds no secret and survives a hand edit.
+- ✅ **QS56** **Hosts already defined for OpenSSH have to be defined a second time here** — The user's own ssh_config is read with OpenSSH's first-value-wins rule and its negations, never written, and every directive not acted on names its file and line.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

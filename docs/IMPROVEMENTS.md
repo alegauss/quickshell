@@ -627,29 +627,6 @@ runs.
 
 ## Block D — The tree a user organises work in
 
-### §QS56 Reading a file the user already maintains
-
-A developer arriving at this client very often has a `~/.ssh/config` that already works:
-hosts, users, ports, keys, jump chains, per-host options accumulated over years. Reading
-it is the difference between switching in an evening and not switching.
-
-The directives worth honouring are the ones people actually use: `Host` with its
-patterns and negation, `HostName`, `User`, `Port`, `IdentityFile`, `IdentitiesOnly`,
-`ProxyJump`, `ProxyCommand`, `ServerAliveInterval`, `StrictHostKeyChecking`, `Include`,
-and `Match host`. First-value-wins is the OpenSSH rule, and it has to be the rule here
-too, because a config written against it behaves differently under any other.
-
-Read-only, and that is the important decision. A user's `ssh_config` is shared with
-`ssh`, `scp`, `rsync` and `git`, so a client that reformats or reorders it is a client
-that quietly broke four other tools. quickshell's own additions live in quickshell's own
-store, which may reference a config host by name.
-
-Directives that are not honoured are reported rather than ignored. Silently dropping
-`ProxyCommand` produces a host that looks configured and simply never connects, which is
-the worst diagnostic outcome available.
-
-Falsified when this client writes to a file OpenSSH also reads.
-
 ### §QS57 A connection carried inside another connection
 
 A jump host is not a proxy setting. It is a connection nested inside another:
@@ -727,6 +704,32 @@ Until then the behaviour is written where somebody editing the file will meet it
 `SessionTree`'s own summary.
 
 Falsified when a file with comments is written by the client and still has them.
+
+### §QS118 A process where a socket is expected
+
+QS56 lists `ProxyCommand` among the directives worth honouring and ships it reported
+rather than honoured — which is the design's own prescribed alternative to silence, and
+still leaves a user whose config works under `ssh` unable to reach that host here.
+
+It is not a small option on the existing transport. `ProxyCommand` names a program to
+run whose standard input and output *are* the connection: `ssh` writes the protocol into
+the child's stdin and reads it from its stdout, and the child does whatever it likes in
+between — `corkscrew` through an HTTP proxy, `nc` through a socks server, a vendor's own
+binary for an appliance. So the socket is replaced, not configured.
+
+What makes it tractable is that QS36 already put the seam in the right place.
+`SshNetTransport` is one implementation of `ISshTransport`; this is a second that spawns
+the command and hands the library a stream instead of a socket — and whether the library
+will take one is the first question to answer, because `SshClient` builds its own
+connection and may not accept a stream at all. If it will not, the honest options are a
+`Stream`-backed socket shim or the second library QS36 exists to permit.
+
+The tokens matter too: `%h`, `%p`, `%r` are substituted before the command runs, and a
+client that passed them through literally would run a command against a host called
+`%h`.
+
+Falsified when a ProxyCommand host connects and the command's own diagnostics are not
+shown on failure.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

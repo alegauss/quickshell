@@ -35,6 +35,7 @@
 ## Block D — The tree a user organises work in
 
 - ✅ **QS55** **Every connection is retyped, so a host used daily costs the same as one used once** — The session store holds the name of a credential and never a credential, so the file is safe to commit, share and back up.
+- ✅ **QS56** **Hosts already defined for OpenSSH have to be defined a second time here** — A file OpenSSH also reads is never written by this client, guaranteed by there being no method that could rather than by nobody calling one.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
