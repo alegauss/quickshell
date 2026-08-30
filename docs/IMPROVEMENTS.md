@@ -266,34 +266,6 @@ Falsified when a session forwards an agent with no per-host consent recorded.
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS28 A key is not a byte, and the host changed the rules
-
-What a key sends is a function of the key, its modifiers, and terminal state the host
-has changed — which is why a static table is wrong before it is finished.
-
-Application cursor key mode, DECCKM, swaps the arrows between their CSI and SS3 forms. A
-shell in line-editing mode and the same shell running `vim` disagree about what Up
-sends, and the terminal is the thing that has to know which. Application keypad mode
-does the same for the numeric pad.
-
-Function keys follow the xterm convention, including the modified forms where the
-modifier arrives as a parameter: `CSI 1 ; 5 D` for control-Left is what a modern shell
-expects for word-wise movement, and its absence is why control-arrow silently does
-nothing on so many clients.
-
-Home, End, Insert, Delete, PageUp and PageDown each have a form and each has a competing
-legacy form. The choice follows `$TERM`, which this client sets and is therefore obliged
-to honour rather than to contradict.
-
-Alt is escape-prefix by default, because that is what shells expect, with the option to
-treat it as a meta bit for users who want it.
-
-The local keybinding layer sits above and takes priority: a chord bound locally never
-reaches the host. That reserved set stays small and documented, since every reserved
-chord is one stolen from the remote program.
-
-Falsified when the `$TERM` this client sets claims a form the key map does not send.
-
 ### §QS29 Composition over a surface the IME cannot see
 
 An input method needs two things from the client: somewhere to draw the candidate list,

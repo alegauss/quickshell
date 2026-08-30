@@ -23,6 +23,23 @@ public sealed partial class Emulator
     /// <summary>DECOM. With it on, row one means the top margin rather than the top of the screen.</summary>
     public bool OriginMode { get; private set; }
 
+    /// <summary>
+    /// DECCKM. With it on the arrows send their SS3 form instead of their CSI one.
+    ///
+    /// <para>This is why a key map cannot be a static table: a shell editing a line and the same
+    /// shell running <c>vim</c> disagree about what Up sends, and the terminal is the thing that
+    /// knows which — because it is the thing the host told.</para>
+    /// </summary>
+    public bool ApplicationCursorKeys { get; private set; }
+
+    /// <summary>
+    /// DECKPAM and DECKPNM, which the host sets with <c>ESC =</c> and clears with <c>ESC &gt;</c>.
+    ///
+    /// <para>With it on the numeric pad sends sequences of its own, which is how a program tells the
+    /// pad's keys from the digits above the letters.</para>
+    /// </summary>
+    public bool ApplicationKeypad { get; private set; }
+
     /// <summary>The top row of the scrolling region, zero-based and inclusive.</summary>
     public int MarginTop { get; private set; }
 
@@ -145,6 +162,10 @@ public sealed partial class Emulator
 
             switch (mode)
             {
+                case 1:
+                    ApplicationCursorKeys = set;
+                    break;
+
                 case 6:
                     OriginMode = set;
 

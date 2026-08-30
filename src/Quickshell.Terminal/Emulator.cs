@@ -76,6 +76,31 @@ public sealed partial class Emulator : IAnsiHandler
         CursorVisible,
         Screens.IsAlternate);
 
+    /// <summary>How this session sends alt. Escape-prefix, which is what a shell expects.</summary>
+    public AltSends AltSends { get; set; } = AltSends.Escape;
+
+    /// <summary>
+    /// What a key sends, given what the host has asked for.
+    ///
+    /// <para>Here rather than on <see cref="Keys"/> alone because the answer depends on two modes the
+    /// host changes, and this is the object that was told about them. A caller with a key and a
+    /// buffer needs to know nothing else.</para>
+    /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="modifiers">What was held with it.</param>
+    /// <param name="destination">At least <see cref="Keys.MaximumLength"/> bytes.</param>
+    /// <returns>How many bytes were written.</returns>
+    public int Encode(Key key, KeyModifiers modifiers, Span<byte> destination) =>
+        Keys.Encode(key, modifiers, ApplicationCursorKeys, ApplicationKeypad, destination);
+
+    /// <summary>The same for a character key, which only the alt setting changes.</summary>
+    /// <param name="text">The character the window resolved, already through the keyboard layout.</param>
+    /// <param name="modifiers">What was held with it.</param>
+    /// <param name="destination">At least <see cref="Keys.MaximumLength"/> bytes.</param>
+    /// <returns>How many bytes were written.</returns>
+    public int Encode(ReadOnlySpan<char> text, KeyModifiers modifiers, Span<byte> destination) =>
+        Keys.EncodeText(text, modifiers, AltSends, destination);
+
     /// <summary>
     /// Feeds bytes from the host, through the parser and into the buffer.
     ///
@@ -429,6 +454,14 @@ public sealed partial class Emulator : IAnsiHandler
                 ReverseIndex();
                 break;
 
+            case (byte)'=':
+                ApplicationKeypad = true;
+                break;
+
+            case (byte)'>':
+                ApplicationKeypad = false;
+                break;
+
             case (byte)'\\':
                 // ST. The string it terminated already ended when the escape left that state.
                 break;
@@ -479,6 +512,8 @@ public sealed partial class Emulator : IAnsiHandler
         _pen = Pen.Default;
         AutoWrap = true;
         OriginMode = false;
+        ApplicationCursorKeys = false;
+        ApplicationKeypad = false;
         PendingWrap = false;
         CursorVisible = true;
         MarginTop = 0;
