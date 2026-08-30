@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using Quickshell.Terminal;
 using Quickshell.Transport;
 using Xunit;
+using System.IO;
 
 namespace Quickshell.App.Tests;
 

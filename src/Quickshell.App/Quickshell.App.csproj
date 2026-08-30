@@ -6,11 +6,24 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Quickshell.App</RootNamespace>
     <AssemblyName>quickshell</AssemblyName>
+    <StartupObject>Quickshell.App.Entry</StartupObject>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <!-- Per-Monitor V2 DPI awareness. A glyph rasterised for one scale is wrong at another, and a
          process that lies about its awareness gets a bitmap-stretched window instead. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- WPF, which is what QS4 measured and chose: a child HWND per pane reaches a click-to-pixel
+         floor of one refresh interval where neither D3DImage nor a SwapChainPanel reaches a single
+         frame in any pass. -->
+    <UseWPF>true</UseWPF>
+    <!-- WPF0001: ThemeMode is still marked [Experimental] in the SDK and is the supported way to
+         follow the system theme while running. The sibling clients carry the same suppression. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+
+    <!-- The source-generated interop LibraryImport emits is unsafe by construction. Scoped to the
+         one file that registers a window class, as it is in the transport. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

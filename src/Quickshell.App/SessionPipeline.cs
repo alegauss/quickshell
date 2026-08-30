@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading.Channels;
 using Quickshell.Terminal;
 using Quickshell.Transport;
+using System.IO;
 
 namespace Quickshell.App;
 

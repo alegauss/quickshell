@@ -5,6 +5,13 @@
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Quickshell.App.Tests</RootNamespace>
+
+    <!-- QS46 put a window in the composing layer, and these tests build it. WPF is on so the window
+         can be constructed on an STA thread here rather than only looked at. -->
+    <UseWPF>true</UseWPF>
+    <!-- WPF0001: ThemeMode is still marked [Experimental] in the SDK and is the supported way to
+         follow the system theme while running, which is what these tests assert about. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
