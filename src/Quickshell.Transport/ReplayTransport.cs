@@ -65,6 +65,9 @@ public sealed class ReplayTransport : ISshTransport
     /// <inheritdoc/>
     public Task<SshException?> Disconnected => _disconnected.Task;
 
+    /// <inheritdoc/>
+    public TimeSpan KeepAlive { get; set; } = TimeSpan.Zero;
+
     /// <summary>Everything written to the shell channel, which is what a test asserts the client sent.</summary>
     public ReadOnlySpan<byte> Written => _written.ToArray();
 

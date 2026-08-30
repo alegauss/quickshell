@@ -94,6 +94,24 @@ public interface ISshTransport : IAsyncDisposable
     bool IsConnected { get; }
 
     /// <summary>
+    /// How often to ask the far end whether it is still there, or <see cref="TimeSpan.Zero"/> not to
+    /// ask at all.
+    ///
+    /// <para><b>This is what tells a dead link from an idle one.</b> A network that goes away does
+    /// not close the connection: the socket sits open and the operating system will wait a very long
+    /// time before it says otherwise — long enough that a user has given up and restarted the client.
+    /// A keepalive at the protocol's own level notices in seconds.</para>
+    ///
+    /// <para>It has a second job that is easy to miss and matters more in practice: traffic keeps a
+    /// NAT mapping alive, which is what stops an idle session quietly dying after twenty minutes on
+    /// a corporate link. That is not a failure anybody debugs successfully without knowing to look
+    /// for it.</para>
+    ///
+    /// <para>Set before <see cref="ConnectAsync"/>; changing it afterwards is not defined.</para>
+    /// </summary>
+    TimeSpan KeepAlive { get; set; }
+
+    /// <summary>
     /// Completes when the connection is gone, carrying why.
     ///
     /// <para>A task and not an event, for the reason <see cref="IPtyChannel.Closed"/> gives: a

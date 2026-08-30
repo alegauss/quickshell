@@ -5,6 +5,7 @@
 - ✅ **QS5** **Nothing measures whether the chosen protocol library reaches a modern sshd, so the network layer is unpriced risk** — SSH.NET does certificates, jump hosts and two factors against OpenSSH 9.6; the agent and ssh_config are ours to write (design §QS5 recorded in `docs/measurements/ssh-net-probe.md`).
 - ✅ **QS36** **Protocol library types would reach the terminal and the UI, so replacing that library means rewriting the client** — The seam is four interfaces of this client's own words, with a second implementation behind it that needs no server and a test that fires when a library escapes.
 - ✅ **QS37** **No remote host's output has ever reached the emulator** — A remote shell arrives through the same four members a local one does, carrying 124.8 MB/s at 233 KB allocated per megabyte against a real OpenSSH server.
+- ✅ **QS38 (the reconnect)** **A link that drops for ten seconds costs the whole session and its scrollback** — A dropped link costs a command rather than the scrollback: the model outlives the connection, backoff is bounded and visible, and an exit is not retried.
 
 ## Block B — Keys, agents, and the host you think you reached
 

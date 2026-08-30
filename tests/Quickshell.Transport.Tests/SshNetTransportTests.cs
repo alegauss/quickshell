@@ -298,6 +298,37 @@ public sealed class SshNetTransportTests
                     + "112-126 KB through the same library");
     }
 
+    // ---- Keepalive: telling a dead link from an idle one ----
+
+    /// <summary>
+    /// And a keepalive does not itself end a session that is merely quiet, which is the failure a
+    /// too-eager one would introduce: an idle prompt is not a dead peer.
+    /// </summary>
+    [Fact]
+    public async Task AnIdleSessionWithAKeepaliveStaysUp()
+    {
+        SkipWithoutFixture();
+
+        await using SshNetTransport transport = new() { KeepAlive = TimeSpan.FromMilliseconds(500) };
+
+        await transport.ConnectAsync(Target, [Key()], Trusting, Stop);
+
+        await using IPtyChannel channel = await transport.OpenShellAsync(80, 25, Stop);
+
+        await Type(channel, "echo one");
+        await Until(channel, "one");
+
+        // Several intervals of saying nothing at all.
+        await Task.Delay(TimeSpan.FromSeconds(3), Stop);
+
+        Assert.True(transport.IsConnected, "a keepalive ended a session that was only idle");
+        Assert.False(transport.Disconnected.IsCompleted);
+
+        await Type(channel, "echo two");
+
+        Assert.Contains("two", await Until(channel, "two"), StringComparison.Ordinal);
+    }
+
     // ---- plumbing ----
 
     private static async Task<ISshTransport> Connected()

@@ -56,6 +56,9 @@ public sealed class SshNetTransport : ISshTransport
     public Task<SshException?> Disconnected => _disconnected.Task;
 
     /// <inheritdoc/>
+    public TimeSpan KeepAlive { get; set; } = TimeSpan.Zero;
+
+    /// <inheritdoc/>
     public async ValueTask ConnectAsync(SshEndpoint endpoint, IReadOnlyList<SshCredential> credentials,
                                         SshHostKeyCheck? hostKey = null,
                                         CancellationToken cancellationToken = default)
@@ -74,6 +77,11 @@ public sealed class SshNetTransport : ISshTransport
         AuthenticationMethod[] methods = [.. credentials.Select(credential => Method(endpoint, credential))];
         ConnectionInfo connection = new(endpoint.Host, endpoint.Port, endpoint.User, methods);
         SshClient client = new(connection);
+
+        if (KeepAlive > TimeSpan.Zero)
+        {
+            client.KeepAliveInterval = KeepAlive;
+        }
 
         // The key is answered before anything is authenticated, because the library raises this
         // during the handshake. A caller who said nothing gets a refusal: a client that trusts an

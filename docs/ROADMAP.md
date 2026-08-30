@@ -4,10 +4,11 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-- 📋 **QS38** (deps: QS37 ✅) **A link that drops for ten seconds costs the whole session and its scrollback** — Mobile and VPN links drop routinely, so a client treating every drop as final makes the user pay for the network's ordinary behaviour. → §QS38
+- ⏳ **QS38** (deps: QS37 ✅, QS111) **A link that drops for ten seconds costs the whole session and its scrollback** — A peer that stopped answering on a socket that stayed open is still invisible, because the library's keepalive keeps a NAT mapping rather than detecting a death. → §QS38
 - 📋 **QS39** (deps: QS37 ✅) **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — The error message is the documentation a user reads at the moment something fails, which is far more often than they read anything else. → §QS39
-- 📋 **QS40** (deps: QS38, QS39) **This client has met one server, so an appliance that negotiates differently is an unknown** — Interoperability failures are found by connecting to unusual servers and by no other method, so the unusual servers are enumerated and connected to deliberately. → §QS40
+- 📋 **QS40** (deps: QS38 ⏳, QS39) **This client has met one server, so an appliance that negotiates differently is an unknown** — Interoperability failures are found by connecting to unusual servers and by no other method, so the unusual servers are enumerated and connected to deliberately. → §QS40
 - 📋 **QS110** (deps: QS37 ✅) **Remote throughput has no local figure taken beside it, so a slow link and a slow client look alike** — Cancelling a pending read aborts a Windows pipe and takes the pseudo-console with it, so the local half of the comparison read nothing at all. → §QS110
+- 📋 **QS111** (deps: QS37 ✅) **A peer that stopped answering on a socket that stayed open is not noticed, so the session looks live for minutes** — The library's keepalive sends without expecting an answer, so it keeps a NAT mapping alive and cannot tell a frozen host from a quiet one. → §QS111
 
 ## Block B — Keys, agents, and the host you think you reached
 
@@ -56,7 +57,7 @@
 - 📋 **QS66** (deps: QS37 ✅) **A port on the remote network cannot be reached from a local tool** — A forward is what lets a database client or a debugger reach a machine the user has no route to, and it is the second reason this audience opens an SSH client. → §QS66
 - 📋 **QS67** (deps: QS66) **A service running locally cannot be reached from the remote host** — The direction is reversed, the server does the listening, and the server's own configuration decides whether the request succeeds at all. → §QS67
 - 📋 **QS68** (deps: QS66) **Reaching many hosts on the remote network needs one forward configured per host** — A SOCKS proxy is a single forward covering a whole network, which is what a browser or a cloud tool needs and what per-host forwards cannot provide. → §QS68
-- 📋 **QS69** (deps: QS66, QS67, QS68, QS38) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
+- 📋 **QS69** (deps: QS66, QS67, QS68, QS38 ⏳) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
 - 📋 **QS70** (deps: QS69) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — A forward is invisible by nature, and a client that will not show its own listeners makes the user consult netstat to understand the client. → §QS70
 
 ## Block G — The clean interface, defended
