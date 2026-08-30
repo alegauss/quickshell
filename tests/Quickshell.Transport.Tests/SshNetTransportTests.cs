@@ -182,7 +182,7 @@ public sealed class SshNetTransportTests
         await using SshNetTransport transport = new();
 
         SshException refused = await Assert.ThrowsAsync<SshException>(async () =>
-            await transport.ConnectAsync(Target, [new SshCredential.Password("not the password")],
+            await transport.ConnectAsync(Target, [new SshCredential.Password(Secret.From("not the password"))],
                                          Trusting, Stop));
 
         Assert.Equal(SshFailureKind.NoMethodAccepted, refused.Kind);

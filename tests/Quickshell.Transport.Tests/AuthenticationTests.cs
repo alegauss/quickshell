@@ -221,7 +221,7 @@ public sealed class AuthenticationTests
 
         SshException failure = await Assert.ThrowsAsync<SshException>(async () =>
             await transport.ConnectAsync(Endpoint("probe"),
-                                         [new SshCredential.Password("not it")], Trusting, Stop));
+                                         [new SshCredential.Password(Secret.From("not it"))], Trusting, Stop));
 
         Assert.Equal(SshFailureKind.NoMethodAccepted, failure.Kind);
         Assert.Contains("publickey", failure.Means, StringComparison.Ordinal);
@@ -244,7 +244,7 @@ public sealed class AuthenticationTests
         await transport.ConnectAsync(
             Endpoint("probe"),
             [
-                new SshCredential.Password("not it"),
+                new SshCredential.Password(Secret.From("not it")),
                 new SshCredential.PrivateKey(Key("probe_ed25519")),
             ],
             Trusting, Stop);

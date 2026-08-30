@@ -19,7 +19,7 @@ public sealed class RemoteSessionTests
     private static readonly SshEndpoint Somewhere = SshEndpoint.For("host.example", "user");
 
     private static readonly IReadOnlyList<SshCredential> APassword =
-        [new SshCredential.Password("hunter2")];
+        [new SshCredential.Password(Secret.From("hunter2"))];
 
     /// <summary>Fast enough that a test does not wait out a real backoff, and still a real schedule.</summary>
     private static readonly ReconnectPolicy Quick = new()

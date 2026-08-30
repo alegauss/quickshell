@@ -26,7 +26,7 @@ public sealed class SshFailureTests
     /// so what is offered never matters — and a key file that does not exist would fail first, for
     /// a reason that has nothing to do with what is being tested.
     /// </summary>
-    private static readonly SshCredential.Password AnyCredential = new("never offered");
+    private static readonly SshCredential.Password AnyCredential = new(Secret.From("never offered"));
 
     private static CancellationToken Stop => TestContext.Current.CancellationToken;
 
@@ -133,7 +133,7 @@ public sealed class SshFailureTests
         await using SshNetTransport transport = new();
 
         SshException failure = await Assert.ThrowsAsync<SshException>(async () =>
-            await transport.ConnectAsync(Fixture, [new SshCredential.Password("anything")],
+            await transport.ConnectAsync(Fixture, [new SshCredential.Password(Secret.From("anything"))],
                                          Trusting, Stop));
 
         Assert.Equal(SshFailureKind.NoMethodAccepted, failure.Kind);

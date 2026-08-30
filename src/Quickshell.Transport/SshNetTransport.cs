@@ -283,8 +283,12 @@ public sealed class SshNetTransport : ISshTransport
     private static AuthenticationMethod Method(SshEndpoint endpoint, SshCredential credential) =>
         credential switch
         {
+            // ToUnprotectedArray, and the comment QS44 asks for beside every one of them: the
+            // library's only password constructor takes an array it keeps, so this is a copy in the
+            // ordinary heap that nothing here can erase. The alternative is the string overload,
+            // which is worse in every respect.
             SshCredential.Password password =>
-                new PasswordAuthenticationMethod(endpoint.User, password.Secret),
+                new PasswordAuthenticationMethod(endpoint.User, password.Secret.ToUnprotectedArray()),
 
             SshCredential.PrivateKey key =>
                 new PrivateKeyAuthenticationMethod(endpoint.User, KeyFile(key)),

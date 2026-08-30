@@ -16,7 +16,7 @@ public sealed class ReplayTransportTests
     private static readonly SshEndpoint Somewhere = SshEndpoint.For("host.example", "user");
 
     private static readonly IReadOnlyList<SshCredential> APassword =
-        [new SshCredential.Password("hunter2")];
+        [new SshCredential.Password(Secret.From("hunter2"))];
 
     /// <summary>The harness's own token, so a cancelled run stops these rather than waiting them out.</summary>
     private static CancellationToken Stop => TestContext.Current.CancellationToken;
@@ -245,7 +245,7 @@ public sealed class ReplayTransportTests
     {
         SshCredential[] all =
         [
-            new SshCredential.Password("secret"),
+            new SshCredential.Password(Secret.From("secret")),
             new SshCredential.PrivateKey("id_ed25519", "phrase", "id_ed25519-cert.pub"),
             new SshCredential.Agent(),
             new SshCredential.Interactive((_, _, _) => ValueTask.FromResult("42")),
@@ -255,9 +255,13 @@ public sealed class ReplayTransportTests
 
         // Values, so two built the same way are the same thing — which is what lets a profile be
         // compared, saved and read back without the library being involved at all.
-        Assert.Equal(new SshCredential.Password("secret"), all[0]);
         Assert.Equal(new SshCredential.PrivateKey("id_ed25519", "phrase", "id_ed25519-cert.pub"), all[1]);
         Assert.Equal(new SshCredential.Agent(), all[2]);
+
+        // A password is the exception and QS44 is why. It holds a buffer that gets erased, so two
+        // of them are not interchangeable however equal their bytes were a moment ago — and an
+        // equality that compared secret bytes would be a comparison nobody should be writing.
+        Assert.NotEqual(new SshCredential.Password(Secret.From("secret")), all[0]);
     }
 
     private static async Task<string> ReadAll(IPtyChannel channel, int expected)

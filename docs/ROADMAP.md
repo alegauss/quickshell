@@ -13,10 +13,10 @@
 ## Block B — Keys, agents, and the host you think you reached
 
 - ⏳ **QS43** (deps: QS41 ✅, QS114) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — Pageant older than 0.78 speaks over shared memory rather than a pipe, and that transport is the half of it this does not reach. → §QS43
-- 📋 **QS44** (deps: QS41 ✅) **A saved password would rest on disk where anything running as the user can read it** — A client that stores credentials badly is worse than one storing none, and the whole difference lies in choices made before the first password is saved. → §QS44
 - 📋 **QS45** (deps: QS43 ⏳) **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — Forwarding hands a remote machine the ability to authenticate as the user everywhere, so it is decided per host rather than by a checkbox set once. → §QS45
 - 📋 **QS113** (deps: QS41 ✅, QS46) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — Partial success is a normal state of the protocol and nothing in this client reports it, so the one moment a user most wants progress is the one with none. → §QS113
 - 📋 **QS114** (deps: QS41 ✅) **A PuTTY user on Pageant older than 0.78 has an agent this client cannot reach at all** — That version carries the same requests over shared memory and a window message, and this client speaks only the named pipe the newer one added. → §QS114
+- 📋 **QS115** (deps: QS44 ✅) **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — The framework ships no memory-hard derivation, so the choice was a third-party dependency where a mistake is unrecoverable, or the strongest thing it has. → §QS115
 
 ## Block C — Emulation that does not lie about the remote
 
@@ -229,14 +229,6 @@
 - **Every figure in the comparison document reproduces from a documented run** Settled
   by re-running each measurement it cites, from its own stated method, on its own stated
   machine.
-
-## Done when — QS44
-
-- **A password is never present in a managed string** Settled by inspecting the managed
-  heap after an authentication and searching it for the credential that was used.
-- **The settings surface states what DPAPI alone does not protect against** Settled by
-  reading the wording, which must name an attacker already running as the same user
-  rather than implying more than DPAPI gives.
 
 ## Done when — QS57
 

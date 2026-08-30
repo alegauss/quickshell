@@ -9,6 +9,7 @@
 ## Block B — Keys, agents, and the host you think you reached
 
 - ✅ **QS42** **Nothing checks the host key, so a machine in the middle is indistinguishable from the server** — A changed host key is never a dialog: the decision delegate is not consulted, so no caller can accept one however it answers.
+- ✅ **QS44** **A saved password would rest on disk where anything running as the user can read it** — A secret is never held in a string; where a dependency's signature leaves no choice, the copy is named ToUnprotectedArray and carries a comment saying which dependency.
 
 ## Block C — Emulation that does not lie about the remote
 

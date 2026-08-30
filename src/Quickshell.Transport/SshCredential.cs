@@ -29,9 +29,20 @@ public abstract record SshCredential
     {
     }
 
-    /// <summary>A password typed by a person.</summary>
-    /// <param name="Secret">The password. Held as a string because that is what the far end will be sent.</param>
-    public sealed record Password(string Secret) : SshCredential;
+    /// <summary>
+    /// A password typed by a person.
+    ///
+    /// <para><b>Not a string, and QS44 is why.</b> A string cannot be overwritten, is collected when
+    /// something else decides, and may be copied by a compaction to an address nothing will ever
+    /// erase. This credential owns the <see cref="Quickshell.Transport.Secret"/> it is given and
+    /// disposing it is what erases the password.</para>
+    /// </summary>
+    /// <param name="Secret">The password, in a buffer that can be zeroed.</param>
+    public sealed record Password(Secret Secret) : SshCredential, IDisposable
+    {
+        /// <summary>Erases the password.</summary>
+        public void Dispose() => Secret.Dispose();
+    }
 
     /// <summary>
     /// A private key on disk, optionally with a certificate signed by an authority the server trusts.
