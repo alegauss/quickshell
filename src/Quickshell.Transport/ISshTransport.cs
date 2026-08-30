@@ -29,6 +29,16 @@ public interface IFileTransferChannel : IAsyncDisposable
     /// <summary>Creates or truncates a remote file for writing. The caller owns and disposes the stream.</summary>
     ValueTask<Stream> OpenWriteAsync(string path, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Opens a remote file for writing from a byte offset, leaving everything before it alone.
+    ///
+    /// <para>This is what resuming an upload is. <see cref="OpenWriteAsync"/> truncates, which is
+    /// right for a fresh transfer and is exactly wrong for one that stopped half way — a resume that
+    /// truncated would destroy the very bytes it meant to keep.</para>
+    /// </summary>
+    ValueTask<Stream> OpenWriteAtAsync(string path, long at,
+                                       CancellationToken cancellationToken = default);
+
     /// <summary>Removes a file or an empty directory.</summary>
     ValueTask DeleteAsync(string path, CancellationToken cancellationToken = default);
 

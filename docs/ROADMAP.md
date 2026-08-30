@@ -45,8 +45,7 @@
 ## Block E — SCP and SFTP as a thing a person operates
 
 - 📋 **QS60** (deps: QS59 ✅, QS46 ⏳) **There is no way to see what is on the remote host without running a command** — Browsing is what turns a transfer tool into something a person operates, and it is where the incumbent's users spend a large share of their time. → §QS60
-- 📋 **QS61** (deps: QS59 ✅) **A transfer has no progress, cannot be cancelled, and starts again from zero if it fails** — Transfers are long and links are unreliable, so a queue that cannot resume turns one dropped connection into an hour of repeated work. → §QS61
-- 📋 **QS62** (deps: QS61) **A folder cannot be copied, and a name that already exists on the far side is resolved by guessing** — Recursion and collision handling are where a transfer tool quietly destroys data, and both are policy decisions rather than implementation details. → §QS62
+- 📋 **QS62** (deps: QS61 ✅) **A folder cannot be copied, and a name that already exists on the far side is resolved by guessing** — Recursion and collision handling are where a transfer tool quietly destroys data, and both are policy decisions rather than implementation details. → §QS62
 - 📋 **QS63** (deps: QS59 ✅) **A host too old to offer an SFTP subsystem cannot receive a file at all** — SCP is refused as the primary path in the non-goals, and the only reason to keep it is the appliance that offers nothing else. → §QS63
 - 📋 **QS64** (deps: QS60) **A file can only be transferred through the browser, so dragging one from Explorer does nothing** — Dragging a file onto a session is the shortest path a user has to moving it, and it is the interaction they try first without being told it exists. → §QS64
 - 📋 **QS65** (deps: QS62) **Keeping a local and a remote directory alike means comparing them by eye** — The deploy-and-check loop is a large part of what this audience does all day, and doing it by hand is where files quietly get missed. → §QS65
@@ -229,12 +228,6 @@
 - **Every figure in the comparison document reproduces from a documented run** Settled
   by re-running each measurement it cites, from its own stated method, on its own stated
   machine.
-
-## Done when — QS61
-
-- **Resume is refused when the partial cannot be shown to be a prefix** Settled by
-  resuming against a source modified since the interruption, which must restart from
-  zero and say why rather than continue.
 
 ## Done when — Block K
 

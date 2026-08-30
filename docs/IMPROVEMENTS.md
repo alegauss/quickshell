@@ -755,31 +755,6 @@ Deleting asks, and says how many entries and whether any of them is a directory.
 
 Falsified when listing fifty thousand entries blocks the pane until it completes.
 
-### §QS61 The queue, and what resume actually means
-
-Transfers are a queue that outlives the dialog which created them, so a user can queue
-work and go and do something else in the client. Each entry shows the file, its size,
-bytes done, rate and estimated time; the queue shows the aggregate.
-
-Concurrency is configurable and low by default. Several files at once helps over a
-high-latency link and hurts on a saturated one, and a default that saturates somebody's
-uplink is a default that gets this client blamed for the network.
-
-Cancel and pause work per entry and for the whole queue, and cancel genuinely stops
-rather than letting the current file run to completion first.
-
-Resume is why this line exists. SFTP reads and writes at an offset, so an interrupted
-transfer continues from where it stopped — but only when the client can establish that
-the partial file is genuinely a prefix of the source. Size alone does not establish
-that. So resume is offered where size and modification time agree, with a checksum
-comparison wherever the server can compute one, and where neither is available the
-honest answer is to restart and to say why.
-
-A failed entry stays in the queue carrying its reason and retryable, rather than
-vanishing.
-
-Falsified when a resumed transfer produces a file that differs from the source.
-
 ### §QS62 Recursion, and the four answers to a collision
 
 Copying a directory is a walk, and the walk has to answer questions the flat case never

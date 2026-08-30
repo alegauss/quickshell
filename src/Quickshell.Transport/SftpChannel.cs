@@ -120,6 +120,27 @@ internal sealed class SftpChannel : IFileTransferChannel
     }
 
     /// <inheritdoc/>
+    public async ValueTask<Stream> OpenWriteAtAsync(string path, long at,
+                                                    CancellationToken cancellationToken = default)
+    {
+        Live();
+
+        ArgumentOutOfRangeException.ThrowIfNegative(at);
+
+        return await Translated(async () =>
+        {
+            // OpenOrCreate and not Create: everything already written stays, which is the whole
+            // point of being asked for an offset.
+            Stream writing = await _client.OpenAsync(path, FileMode.OpenOrCreate, FileAccess.Write,
+                                                     cancellationToken).ConfigureAwait(false);
+
+            writing.Seek(at, SeekOrigin.Begin);
+
+            return writing;
+        }, path).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
     public async ValueTask DownloadAsync(string path, Stream into, IProgress<long>? progress = null,
                                          CancellationToken cancellationToken = default)
     {
