@@ -264,7 +264,13 @@ public sealed class SshNetTransport : ISshTransport
     {
         List<AuthenticationMethod> offered = [new NoneAuthenticationMethod(endpoint.User)];
 
-        offered.AddRange(credentials.Where(credential => credential is not SshCredential.Password)
+        // Agent keys before file keys. An agent key needs no prompt and a file key may, so trying
+        // the agent first is the difference between a user typing a passphrase and not.
+        offered.AddRange(credentials.OfType<SshCredential.Agent>()
+                                    .Select(credential => Method(endpoint, credential)));
+
+        offered.AddRange(credentials.Where(credential => credential is not SshCredential.Password
+                                                         and not SshCredential.Agent)
                                     .Select(credential => Method(endpoint, credential)));
 
         offered.AddRange(credentials.OfType<SshCredential.Password>()
@@ -285,20 +291,50 @@ public sealed class SshNetTransport : ISshTransport
 
             SshCredential.Interactive interactive => Prompted(endpoint, interactive),
 
-            // QS43 is the line that adds it, and QS5 established the seam for doing so is public.
-            // Until then this is refused by name rather than silently skipped, because a credential
-            // that is quietly dropped looks to a user like a server that rejected their key.
-            SshCredential.Agent => throw new SshException(
-                SshFailureKind.NoMethodAccepted,
-                "Keys held by an agent are not supported yet.",
-                "quickshell cannot ask an agent to sign, so this credential could not be offered.",
-                "Point at the key file directly until QS43 lands."),
+            SshCredential.Agent held => FromAgent(endpoint, held),
 
             _ => throw new SshException(
                 SshFailureKind.NoMethodAccepted,
                 $"{credential.GetType().Name} is not a credential this transport knows.",
                 "This is a gap in quickshell rather than something the server refused."),
         };
+
+    /// <summary>
+    /// The agent's identities, as something the library can offer.
+    ///
+    /// <para>An agent that is not running, or is running and holding nothing, is refused by name.
+    /// Silently offering nothing would reach the server as "this client had no credentials", and a
+    /// user whose agent had quietly stopped would be told their key was rejected.</para>
+    /// </summary>
+    private static PrivateKeyAuthenticationMethod FromAgent(SshEndpoint endpoint,
+                                                            SshCredential.Agent held)
+    {
+        SshAgent agent = new(held.Pipe);
+        IReadOnlyList<AgentIdentity> identities = agent.Identities();
+
+        if (held.Fingerprint is { Length: > 0 } wanted)
+        {
+            identities = [.. identities.Where(identity =>
+                string.Equals(identity.Fingerprint, wanted.Replace("SHA256:", string.Empty,
+                                                                   StringComparison.Ordinal),
+                              StringComparison.Ordinal))];
+        }
+
+        if (identities.Count == 0)
+        {
+            throw new SshException(
+                SshFailureKind.NoMethodAccepted,
+                held.Fingerprint is null
+                    ? "The agent is holding no keys."
+                    : $"The agent is not holding {held.Fingerprint}.",
+                $"Nothing on the {held.Pipe} pipe could be offered to {endpoint}.",
+                "Load the key with ssh-add, or point this client at a key file instead.");
+        }
+
+        return new PrivateKeyAuthenticationMethod(
+            endpoint.User,
+            [.. identities.Select(identity => new AgentKeySource(agent, identity))]);
+    }
 
     private static PrivateKeyFile KeyFile(SshCredential.PrivateKey key)
     {

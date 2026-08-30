@@ -244,6 +244,31 @@ when there is one, and the fact that a method completed with more still wanted.
 Falsified when a two-step authentication shows the same thing at second five as at
 second one.
 
+### §QS114 The other transport under the same protocol
+
+QS43's design names two agents to reach on Windows and says the useful thing about them:
+they speak the same requests, so only the transport differs. One of the two landed — the
+named pipe, which Windows' own OpenSSH agent uses and which Pageant added in 0.78.
+
+What is left is older Pageant, and it is the population this client was written for:
+PuTTY and MobaXterm users, many of whom are running whatever version their organisation
+packaged. Its transport is a file mapping plus a `WM_COPYDATA` sent to a hidden window
+whose class name is `Pageant`, with the request written into the mapping and the
+mapping's name passed in the message.
+
+None of that touches the protocol above it. `SshAgent` already separates the two —
+`Exchange` is the only method that knows there is a pipe — so this is an implementation
+of that one method against a different carrier, and everything that reads identities and
+asks for signatures is already written and already tested.
+
+Two things it needs that the pipe did not. A security descriptor on the mapping that
+Pageant will accept, since it checks the caller's SID. And a message pump, because
+`SendMessage` to another process's window blocks and the answer arrives by the mapping
+rather than by a return value.
+
+Falsified when a signature obtained through shared memory differs from one obtained
+through the pipe for the same key and the same data.
+
 ## Block C — Emulation that does not lie about the remote
 
 ### §QS29 Composition over a surface the IME cannot see

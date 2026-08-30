@@ -12,6 +12,7 @@
 
 - ✅ **QS41** **Only one way in is proven, so a host needing a second factor or an ed25519 key is unreachable** — Three key types in four formats, none offered first and a password last, and a second factor asked in the server's own words against an account that enforces both.
 - ✅ **QS42** **Nothing checks the host key, so a machine in the middle is indistinguishable from the server** — The user's own known_hosts decides, hashed entries and all, and a changed key is refused without ever being put to anybody as a question.
+- ✅ **QS43 (the OpenSSH agent)** **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — A key generated inside an agent, held nowhere else and readable by nothing, authenticates against a real OpenSSH server through a protocol written here.
 
 ## Block C — Emulation that does not lie about the remote
 

@@ -49,11 +49,22 @@ public abstract record SshCredential
     /// <summary>
     /// A key held by an agent, which signs without the key ever being read.
     ///
-    /// <para>QS5 established the library has no agent support and that the seam for adding it is
-    /// public, which is QS43. This case exists here so that landing it is an implementation and not a
-    /// change to what a credential is.</para>
+    /// <para>For a key on a smart card or a hardware token this is not a convenience — it is the
+    /// only route there is, because such a key cannot be extracted by anybody, including its
+    /// owner.</para>
     /// </summary>
-    public sealed record Agent : SshCredential;
+    /// <param name="Pipe">Which agent; Windows' own unless a caller names another.</param>
+    /// <param name="Fingerprint">
+    /// One identity of the agent's, by the fingerprint <c>ssh-add -l</c> prints, or null for all of
+    /// them.
+    ///
+    /// <para><b>Naming one matters more than it looks.</b> A server allows a small number of
+    /// authentication attempts — six by default — and a user with ten identities loaded will be cut
+    /// off before the right one is reached, having never been asked anything. So where a session
+    /// names its key, only that one is offered.</para>
+    /// </param>
+    public sealed record Agent(string Pipe = SshAgent.OpenSshPipe, string? Fingerprint = null)
+        : SshCredential;
 
     /// <summary>
     /// Whatever the server asks, answered as it asks it. The second factor, and anything else a
