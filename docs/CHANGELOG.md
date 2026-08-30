@@ -36,6 +36,7 @@
 - ✅ **QS94** **Segmenting a printed run allocates a string per character, which is the whole of the render arm's cost** — The render arm's allocation went from fifty-four megabytes per megabyte of stream and a hundred and two collections to the harness's own floor and none.
 - ✅ **QS28** **Arrow keys, function keys and modified keys send nothing a remote program recognises** — Arrows, function keys and modified keys send the forms this client's own terminal name promises, and change shape when the host asks for the application modes.
 - ✅ **QS29 (the composition model)** **Typing Japanese or Chinese shows no composition and commits nothing** — Composition is display state that never touches the buffer, so cancelling leaves nothing behind, and a candidate list is placed by real cell width rather than by counting characters.
+- ✅ **QS30 (the selection and paste model)** **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — A wrapped line copies as one line with no break in it, a terminal's padding is not copied as text, and a paste is stripped of control bytes and bracketed or confirmed.
 
 ## Block D — The tree a user organises work in
 

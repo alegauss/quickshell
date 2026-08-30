@@ -514,6 +514,7 @@ public sealed partial class Emulator : IAnsiHandler
         OriginMode = false;
         ApplicationCursorKeys = false;
         ApplicationKeypad = false;
+        BracketedPaste = false;
         PendingWrap = false;
         CursorVisible = true;
         MarginTop = 0;

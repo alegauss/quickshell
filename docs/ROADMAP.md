@@ -20,8 +20,8 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- ⏳ **QS29** (deps: QS28 ✅) **Typing Japanese or Chinese shows no composition and commits nothing** — The input method's own messages, and the call that places the candidate window, both of which need a window to arrive at. → §QS29
-- 📋 **QS30** (deps: QS26 ✅, QS21 ✅) **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — Copying is the second most common thing a user does in a terminal, and pasting is where a terminal most easily runs something the user did not intend. → §QS30
+- ⏳ **QS29** (deps: QS28 ✅, QS46) **Typing Japanese or Chinese shows no composition and commits nothing** — The input method's own messages, and the call that places the candidate window, both of which need a window to arrive at. → §QS29
+- ⏳ **QS30** (deps: QS26 ✅, QS21 ✅, QS46) **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — The gestures that drive it, the clipboard it copies to, and the dialogue a paste raises, all of which need a window. → §QS30
 - 📋 **QS31** (deps: QS15 ✅, QS26 ✅) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The ring already holds the history, so what is missing is a viewport over it and a search across it, and users reach for both within a minute. → §QS31
 - 📋 **QS32** (deps: QS25 ✅, QS23 ✅) **Resizing the window leaves the remote program drawing to the geometry it had before** — Three parties hold a copy of the size and only the client knows it changed, so telling the other two is an obligation rather than a convenience. → §QS32
 - 📋 **QS33** (deps: QS17 ✅, QS18 ✅, QS20 ✅, QS21 ✅, QS25 ✅) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — A test written by whoever wrote the parser tests that person's understanding of the specification, which is the thing most likely to be wrong. → §QS33

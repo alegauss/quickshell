@@ -33,6 +33,15 @@ public sealed partial class Emulator
     public bool ApplicationCursorKeys { get; private set; }
 
     /// <summary>
+    /// DECSET 2004. Whether the program wants to be told that a paste is a paste.
+    ///
+    /// <para>The one mode that is a security property rather than a display one: a program that has
+    /// turned this on can decline to run what was pasted, and one that has not leaves this client
+    /// asking the user instead.</para>
+    /// </summary>
+    public bool BracketedPaste { get; private set; }
+
+    /// <summary>
     /// DECKPAM and DECKPNM, which the host sets with <c>ESC =</c> and clears with <c>ESC &gt;</c>.
     ///
     /// <para>With it on the numeric pad sends sequences of its own, which is how a program tells the
@@ -181,6 +190,10 @@ public sealed partial class Emulator
 
                 case 25:
                     CursorVisible = set;
+                    break;
+
+                case 2004:
+                    BracketedPaste = set;
                     break;
 
                 case 47:
