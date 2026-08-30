@@ -35,6 +35,7 @@
 - ✅ **QS27** **A keystroke queues behind a screenful of pending output before it is written to the host** — A keystroke leaves in twenty microseconds while forty-eight megabytes stream in, sharing no queue with the output and allocating nothing of its own.
 - ✅ **QS94** **Segmenting a printed run allocates a string per character, which is the whole of the render arm's cost** — The render arm's allocation went from fifty-four megabytes per megabyte of stream and a hundred and two collections to the harness's own floor and none.
 - ✅ **QS28** **Arrow keys, function keys and modified keys send nothing a remote program recognises** — Arrows, function keys and modified keys send the forms this client's own terminal name promises, and change shape when the host asks for the application modes.
+- ✅ **QS29 (the composition model)** **Typing Japanese or Chinese shows no composition and commits nothing** — Composition is display state that never touches the buffer, so cancelling leaves nothing behind, and a candidate list is placed by real cell width rather than by counting characters.
 
 ## Block D — The tree a user organises work in
 
