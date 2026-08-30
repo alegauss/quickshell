@@ -545,31 +545,6 @@ since a cursor owing a wrap is not yet in the row it appears to be in.
 Falsified when backspacing over a wrap point puts the cursor somewhere the host does not
 also think it is.
 
-### §QS106 Two maxima over different numbers of reads
-
-Observed on 2026-08-30, on a full-suite run:
-`TheDelayBeforeAReadIsParsedDoesNotGrowWithTheFile` failed with "the worst wait went
-from 2.11 ms at 4 MB to 30.96 ms at 16 MB, and 20.00 ms was the bound". Three runs of
-that test alone passed immediately afterwards, and a second full suite passed.
-
-The test is right about what it wants to know and wrong about how it asks. It reads
-`LongestWait` twice, once after four megabytes and once after sixteen, and compares
-them. Both are maxima, but the second is a maximum over roughly four times as many
-reads. A distribution with a rare tail produces a larger maximum from a larger sample
-whether or not anything is growing, so the comparison confounds growth with sample size
-— and the doc comment already says the absolute number is a maximum over a hundred
-thousand reads that one scheduler hiccup owns.
-
-The floor of 20 ms is what makes it fire: at 2.11 ms early, twice the early wait is 4.22
-ms, so the floor is the live bound and a single 31 ms hiccup crosses it.
-
-What would answer the same question honestly is a statistic that does not grow with the
-count — a high percentile of the waits rather than their maximum, or the mean, either of
-which is stable under sampling and still climbs proportionally if the parser is coupled
-to the reader.
-
-Falsified when the test fails on a machine where the percentile did not move.
-
 ### §QS107 The half of the thinness that is not the coverage
 
 QS35 answered the stated cause — grayscale coverage — and left a second one standing

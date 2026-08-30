@@ -141,8 +141,12 @@ public sealed class SessionPipelineTests
     /// into one stream and again at sixteen, and four times the bytes must not mean four times the
     /// wait.</para>
     ///
-    /// <para>A growth factor and not an absolute bound, because the absolute number is a maximum over
-    /// a hundred thousand reads and one scheduler hiccup owns it. What is stable is whether it climbs.</para>
+    /// <para><b>A mean over each interval, not two maxima.</b> A maximum grows with the number of
+    /// reads it was drawn from whether or not anything is getting worse, and the second reading here
+    /// covers four times as many reads as the first — so comparing the two maxima confounds growth
+    /// with sample size, and one scheduler hiccup in the larger sample fails the test. The mean wait
+    /// over each interval is stable under sampling and still climbs in proportion if the parser is
+    /// coupled to the renderer, which is the thing being ruled out.</para>
     ///
     /// <para><b>Against a real shell printing a real file</b>, because the thing being claimed is about
     /// a producer that does not wait for us.</para>
@@ -175,21 +179,28 @@ public sealed class SessionPipelineTests
 
             Assert.True(late.Bytes > early.Bytes * 3, "the stream did not actually grow between readings");
 
-            // Four times the bytes. Twice the worst wait is generous for noise and nowhere near the
-            // proportional growth a coupled parser would show.
-            TimeSpan allowed = TimeSpan.FromTicks(
-                Math.Max(early.LongestWait.Ticks * 2, TimeSpan.FromMilliseconds(20).Ticks));
+            // The mean wait over each interval: the first four megabytes, and then the twelve after
+            // them. Both are averages over their own reads, so neither carries the other's tail.
+            double first = Mean(early, default);
+            double second = Mean(late, early);
+
+            // Four times the bytes. Four times the mean wait is far more than noise and far less
+            // than the proportional growth a parser waiting on its renderer would show.
+            double allowed = Math.Max(first * 4, 2.0);
 
             Assert.True(
-                late.LongestWait <= allowed,
-                $"the worst wait went from {early.LongestWait.TotalMilliseconds:F2} ms at "
-                + $"{early.Bytes / 1024 / 1024} MB to {late.LongestWait.TotalMilliseconds:F2} ms at "
-                + $"{late.Bytes / 1024 / 1024} MB, and {allowed.TotalMilliseconds:F2} ms was the bound");
+                second <= allowed,
+                $"the mean wait went from {first:F3} ms over the first "
+                + $"{early.Bytes / 1024 / 1024} MB to {second:F3} ms over the next "
+                + $"{(late.Bytes - early.Bytes) / 1024 / 1024} MB, and {allowed:F3} ms was the bound");
 
-            // And the queue stayed a queue rather than becoming a backlog.
+            // And the parser did not fall behind, measured in the unit that says so: bytes waiting
+            // when a drain began. A count of reads per drain would say only how the reader happened
+            // to be scheduled, and on a loaded machine it says "backlog" when there is none.
             Assert.True(
-                late.LargestBatch < 4096,
-                $"a single drain took {late.LargestBatch} reads, which is a backlog and not a batch");
+                late.LargestBacklog < 8 * 1024 * 1024,
+                $"{late.LargestBacklog} bytes were waiting when a drain began, which is a backlog "
+                + "and not a batch");
         }
         finally
         {
@@ -345,6 +356,21 @@ public sealed class SessionPipelineTests
         await pipeline.DisposeAsync();
 
         Assert.True(pipeline.Completed.IsCompleted);
+    }
+
+    /// <summary>
+    /// The mean wait over the interval between two readings, in milliseconds.
+    ///
+    /// <para>Both totals are cumulative, so subtracting one from the other gives the reads that
+    /// happened between them and nothing else — which is what makes the two numbers comparable.</para>
+    /// </summary>
+    private static double Mean(PipelineWork now, PipelineWork before)
+    {
+        long chunks = now.Chunks - before.Chunks;
+
+        return chunks <= 0
+            ? 0
+            : (now.TotalWait - before.TotalWait).TotalMilliseconds / chunks;
     }
 
     // ---- Helpers ----

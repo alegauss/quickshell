@@ -52,6 +52,7 @@
 - ✅ **QS34** **A programming font's ligatures do not form, so text set in it looks unlike the same text elsewhere** — A run's glyphs now come from the font's shaper, cached by the run's own text, and the cell under the cursor goes back to its character so no ligature can hide which one it is.
 - ✅ **QS35** **Text is rasterised in grayscale, so it looks thinner here than in every other Windows application** — Coverage is three numbers per pixel where the display has three stripes, refused on a panel that has none and reversed on one that runs the other way.
 - ✅ **QS109** **The golden suite's text tolerance does not hold on the CI runner, so every commit's build is red for the same pixels** — A text scene is judged by how far the whole picture moved rather than by its noisiest pixel, which separates a rasteriser from a regression by 251 times.
+- ✅ **QS106** **The latency test's bound is a maximum over more reads at sixteen megabytes than at four, so a scheduler hiccup fails it** — The latency claim is now checked with the mean wait over each interval, which does not climb merely because the later reading covers four times as many reads.
 
 ## Block D — The tree a user organises work in
 

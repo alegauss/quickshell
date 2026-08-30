@@ -31,10 +31,9 @@
 - 📋 **QS103** (deps: —) **Nothing answers a request for a rectangle's checksum, so an external suite cannot read the screen back** — It is how esctest checks a cell, so its absence fails two hundred and twenty-eight tests that are about something else entirely. → §QS103
 - 📋 **QS104** (deps: —) **A program asking whether a mode is set gets no answer, so it cannot tell off from unsupported** — DECRQM is how a program discovers what this terminal can do, and twenty-two esctest cases fail on the silence alone. → §QS104
 - 📋 **QS105** (deps: —) **Backspace at the left edge stops there instead of wrapping to the end of the line above** — A shell editing a command that wrapped moves the cursor back through the wrap, and a terminal that will not follow leaves the cursor and the shell disagreeing. → §QS105
-- 📋 **QS106** (deps: QS26 ✅) **The latency test's bound is a maximum over more reads at sixteen megabytes than at four, so a scheduler hiccup fails it** — A test whose prose says one hiccup owns the number, and which then compares two numbers drawn from different sample sizes, reports growth that is sampling. → §QS106
 - 📋 **QS107** (deps: QS35 ✅) **ClearType coverage is drawn without the contrast enhancement Windows applies, so stems stay lighter than elsewhere** — The coverage DirectWrite hands back is raw, and the curve its renderers apply on top is not published, so matching it needs a reference rather than a formula. → §QS107
 - 📋 **QS108** (deps: QS26 ✅, QS27 ✅) **The suite builds the solution and then measures wall-clock latency against what that build left running** — Two latency tests fail only after a build, so the suite cannot tell a regression from a busy machine, and a red run teaches nobody anything. → §QS108
-- 📋 **QS120** (deps: QS26 ✅, QS106) **The pipeline test's drain guard counts reads rather than bytes, so a loaded machine fails it** — A guard that fires when the producer is fast rather than when the consumer is behind fails on exactly the machine a CI run provides. → §QS120
+- 🛠 **QS120** (deps: QS26 ✅, QS106 ✅) **The pipeline test's drain guard counts reads rather than bytes, so a loaded machine fails it** — A guard that fires when the producer is fast rather than when the consumer is behind fails on exactly the machine a CI run provides. → §QS120
 
 ## Block D — The tree a user organises work in
 
@@ -46,7 +45,7 @@
 
 - 📋 **QS60** (deps: QS59 ✅, QS46 ⏳) **There is no way to see what is on the remote host without running a command** — Browsing is what turns a transfer tool into something a person operates, and it is where the incumbent's users spend a large share of their time. → §QS60
 - 📋 **QS64** (deps: QS60) **A file can only be transferred through the browser, so dragging one from Explorer does nothing** — Dragging a file onto a session is the shortest path a user has to moving it, and it is the interaction they try first without being told it exists. → §QS64
-- 📋 **QS65** (deps: QS62 ✅) **Keeping a local and a remote directory alike means comparing them by eye** — The deploy-and-check loop is a large part of what this audience does all day, and doing it by hand is where files quietly get missed. → §QS65
+- 🛠 **QS65** (deps: QS62 ✅) **Keeping a local and a remote directory alike means comparing them by eye** — The deploy-and-check loop is a large part of what this audience does all day, and doing it by hand is where files quietly get missed. → §QS65
 - 📋 **QS122** (deps: QS59 ✅) **The shared-session trick rests on six SSH.NET members reached by name, and only a live server proves it holds** — A library upgrade can break it, and the test that would notice needs a container running, so an upgrade on a machine without one looks clean. → §QS122
 - 📋 **QS123** (deps: QS62 ✅) **A symbolic link on the server cannot be copied, because nothing here can read where it points** — A tree copied down loses every link in it, which for a source checkout or a set of config files is a copy that does not work at the far end. → §QS123
 

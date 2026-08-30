@@ -13,7 +13,21 @@ namespace Quickshell.App;
 /// <param name="Signals">Times the renderer was told something changed.</param>
 /// <param name="Coalesced">Reads that were absorbed into somebody else's signal.</param>
 /// <param name="LargestBatch">The most reads ever taken in one drain, before one signal.</param>
-/// <param name="LongestWait">The longest a read waited between arriving and being parsed.</param>
+/// <param name="LongestWait">
+/// The longest a read waited between arriving and being parsed. A maximum, so it grows with the
+/// number of reads whether or not anything is getting worse — see <paramref name="TotalWait"/> for
+/// the number to compare two moments with.
+/// </param>
+/// <param name="TotalWait">
+/// Every wait added together. Two readings of this and of <paramref name="Chunks"/> give the mean
+/// wait over the interval between them, which is what says whether the parser is falling behind:
+/// unlike a maximum it does not climb merely because more reads were sampled.
+/// </param>
+/// <param name="LargestBacklog">
+/// The most bytes ever sitting unparsed when a drain began. This is how far behind the parser has
+/// actually fallen, in the unit that matters — where a count of reads per drain says only how the
+/// reader happened to be scheduled.
+/// </param>
 /// <param name="Keystrokes">Writes the user's side made.</param>
 /// <param name="LongestKeystroke">
 /// The longest one of those took to reach the host. This is the number the whole arrangement is for:
@@ -26,6 +40,8 @@ public readonly record struct PipelineWork(
     long Coalesced,
     int LargestBatch,
     TimeSpan LongestWait,
+    TimeSpan TotalWait,
+    long LargestBacklog,
     long Keystrokes,
     TimeSpan LongestKeystroke);
 
@@ -83,6 +99,9 @@ public sealed class SessionPipeline : IAsyncDisposable
     private long _coalesced;
     private int _largestBatch;
     private long _longestWaitTicks;
+    private long _totalWaitTicks;
+    private long _queuedBytes;
+    private long _largestBacklog;
     private long _keystrokes;
     private long _longestKeystrokeTicks;
     private Task _resizing = Task.CompletedTask;
@@ -134,6 +153,8 @@ public sealed class SessionPipeline : IAsyncDisposable
         Interlocked.Read(ref _coalesced),
         Volatile.Read(ref _largestBatch),
         TimeSpan.FromTicks(Interlocked.Read(ref _longestWaitTicks)),
+        TimeSpan.FromTicks(Interlocked.Read(ref _totalWaitTicks)),
+        Interlocked.Read(ref _largestBacklog),
         Interlocked.Read(ref _keystrokes),
         TimeSpan.FromTicks(Interlocked.Read(ref _longestKeystrokeTicks)));
 
@@ -287,6 +308,10 @@ public sealed class SessionPipeline : IAsyncDisposable
                     break;
                 }
 
+                // Counted before the write, so a drain that begins the instant after it lands sees
+                // the bytes it is about to take rather than a backlog one read short.
+                Interlocked.Add(ref _queuedBytes, read);
+
                 // Where the queue is full this waits, and the wait reaches the far end as flow
                 // control. It is the one place backpressure belongs.
                 await _queue.Writer
@@ -322,6 +347,16 @@ public sealed class SessionPipeline : IAsyncDisposable
             while (await _queue.Reader.WaitToReadAsync(_stopping.Token).ConfigureAwait(false))
             {
                 int drained = 0;
+
+                // How far behind the parser is, measured before it starts catching up. Bytes and
+                // not reads: a burst of small reads from a starved reader is one drain of many
+                // chunks and no backlog at all, and counting them would call that a failure.
+                long behind = Interlocked.Read(ref _queuedBytes);
+
+                if (behind > Interlocked.Read(ref _largestBacklog))
+                {
+                    Interlocked.Exchange(ref _largestBacklog, behind);
+                }
 
                 while (_queue.Reader.TryRead(out Chunk chunk))
                 {
@@ -391,6 +426,9 @@ public sealed class SessionPipeline : IAsyncDisposable
         {
             Interlocked.Exchange(ref _longestWaitTicks, waited);
         }
+
+        Interlocked.Add(ref _totalWaitTicks, waited);
+        Interlocked.Add(ref _queuedBytes, -chunk.Length);
 
         _emulator.Feed(chunk.Buffer!.AsSpan(0, chunk.Length));
 
