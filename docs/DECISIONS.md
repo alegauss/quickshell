@@ -26,6 +26,7 @@
 - ✅ **QS17** **A full-width line wraps a column early and a scrolled region redraws the wrong rows** — Only a printable character takes an owed wrap; every control cancels it, which is what keeps a full-width line from growing a blank one.
 - ✅ **QS19** **A remote host can write the local clipboard and read back a string it planted in the title** — No reply may contain a byte the host supplied: replies are composed from an enum and integers, and the method that sends them takes no text at all.
 - ✅ **QS35** **Text is rasterised in grayscale, so it looks thinner here than in every other Windows application** — The grid uses no output-merger blend: every cell paints its own opaque background and the pixel shader mixes the coverage itself.
+- ✅ **QS109** **The golden suite's text tolerance does not hold on the CI runner, so every commit's build is red for the same pixels** — A golden text scene is judged by mean difference; a maximum is a fact about one pixel on one machine and does not survive a change of machine.
 
 ## Block D — The tree a user organises work in
 

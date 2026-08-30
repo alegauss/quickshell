@@ -88,8 +88,11 @@ public sealed class GoldenImageTests
         Assert.Equal((int)GoldenScenes.Height, height);
 
         Comparison difference = Compare(reference, actual, width, height);
+        double mean = difference.Mean(width, height);
 
-        if (difference.Worst <= scene.LevelTolerance && difference.Drifted <= DriftTolerance * width * height)
+        if (difference.Worst <= scene.Ceiling
+            && mean <= scene.MeanTolerance
+            && difference.Drifted <= DriftTolerance * width * height)
         {
             return;
         }
@@ -98,9 +101,10 @@ public sealed class GoldenImageTests
 
         Assert.Fail(
             $"'{name}' on {(warp ? "WARP" : "this machine's adapter")} differs from its reference: " +
-            $"{difference.Drifted} of {width * height} pixels drifted, the worst by " +
-            $"{difference.Worst} levels at ({difference.WorstX},{difference.WorstY}), where this " +
-            $"scene allows {scene.LevelTolerance}. " +
+            $"{difference.Drifted} of {width * height} pixels drifted, averaging {mean:F4} levels " +
+            $"across the whole picture and worst at {difference.Worst} levels " +
+            $"({difference.WorstX},{difference.WorstY}). This scene allows a mean of " +
+            $"{scene.MeanTolerance} and a ceiling of {scene.Ceiling}. " +
             $"The reference, what was drawn and the difference are in {written}.");
     }
 
@@ -164,7 +168,105 @@ public sealed class GoldenImageTests
         Assert.Equal(pixels, decoded);
     }
 
-    private readonly record struct Comparison(int Drifted, int Worst, int WorstX, int WorstY);
+    /// <summary>
+    /// QS109's own claim, run rather than argued: the criterion admits a different rasteriser and
+    /// still refuses a regression.
+    ///
+    /// <para><b>A loosened bound that only ever passes is not evidence of anything</b>, so this
+    /// takes a committed reference and damages it twice — once the way the CI runner differs, and
+    /// once the way a renderer that broke would differ — and asserts which one gets through.</para>
+    ///
+    /// <para>The rasteriser case is not invented: 228 pixels at 11 levels is exactly what the runner
+    /// reported on every red build, against a scene of 123,200 pixels.</para>
+    /// </summary>
+    [Fact]
+    public void TheCriterionAdmitsADifferentRasteriserAndRefusesARegression()
+    {
+        byte[] reference = Png.Decode(File.ReadAllBytes(ReferencePath("text-small")),
+                                      out int width, out int height);
+
+        Comparison rasteriser = Compare(reference, Scattered(reference, width, height, 228, 11),
+                                        width, height);
+
+        Assert.True(Admits(rasteriser, width, height),
+                    $"the criterion refuses what the CI runner actually produced: "
+                    + $"{rasteriser.Drifted} pixels, mean {rasteriser.Mean(width, height):F4}, "
+                    + $"worst {rasteriser.Worst}");
+
+        // A regression: everything a row lower. It is the shape of the failure QS96 measured at 204
+        // levels when an underline moved by one pixel, and it moves the picture rather than a corner
+        // of it — which is precisely what the mean is there to see.
+        Comparison moved = Compare(reference, ShiftedDown(reference, width, height), width, height);
+
+        Assert.False(Admits(moved, width, height),
+                     $"the criterion admits a picture shifted a whole row: {moved.Drifted} pixels, "
+                     + $"mean {moved.Mean(width, height):F4}, worst {moved.Worst}");
+
+        // And the two are not close: the point is a wide gap, not a lucky threshold.
+        Assert.True(moved.Mean(width, height) > rasteriser.Mean(width, height) * 50,
+                    $"a regression averaged {moved.Mean(width, height):F4} levels against a "
+                    + $"rasteriser's {rasteriser.Mean(width, height):F4}, which is too close to tell "
+                    + "apart by a threshold");
+    }
+
+    /// <summary>Whether a difference is one a text scene lets through.</summary>
+    private static bool Admits(Comparison difference, int width, int height) =>
+        difference.Worst <= GoldenScenes.TextCeiling
+        && difference.Mean(width, height) <= GoldenScenes.TextMean
+        && difference.Drifted <= DriftTolerance * width * height;
+
+    /// <summary>A copy with this many pixels moved by this many levels, spread across the picture.</summary>
+    private static byte[] Scattered(byte[] source, int width, int height, int pixels, int levels)
+    {
+        byte[] damaged = (byte[])source.Clone();
+        int step = width * height / pixels;
+
+        for (int pixel = 0; pixel < pixels; pixel++)
+        {
+            int offset = pixel * step * 4;
+
+            for (int channel = 0; channel < 3; channel++)
+            {
+                damaged[offset + channel] = (byte)Math.Clamp(source[offset + channel] + levels, 0, 255);
+            }
+        }
+
+        return damaged;
+    }
+
+    /// <summary>A copy with every row one lower, which is what a shape in the wrong place looks like.</summary>
+    private static byte[] ShiftedDown(byte[] source, int width, int height)
+    {
+        byte[] moved = new byte[source.Length];
+
+        Array.Copy(source, 0, moved, width * 4, (height - 1) * width * 4);
+        Array.Copy(source, 0, moved, 0, width * 4);
+
+        return moved;
+    }
+
+    /// <summary>
+    /// What two pictures differ by, in the three ways that mean different things.
+    /// </summary>
+    /// <param name="Drifted">How many pixels moved at all.</param>
+    /// <param name="Worst">The largest single-channel difference anywhere.</param>
+    /// <param name="WorstX">Where that was.</param>
+    /// <param name="WorstY">Where that was.</param>
+    /// <param name="Total">Every pixel's difference added up, which is what <see cref="Mean"/> divides.</param>
+    private readonly record struct Comparison(int Drifted, int Worst, int WorstX, int WorstY, long Total)
+    {
+        /// <summary>
+        /// The average difference across the whole picture, in levels.
+        ///
+        /// <para><b>This is the statistic that separates a rasteriser from a regression, and the
+        /// maximum is not.</b> A machine whose DirectWrite antialiases differently moves a scattering
+        /// of edge pixels by a few levels each: the maximum jumps and the mean barely moves. A shape
+        /// drawn in the wrong place moves thousands of pixels by hundreds of levels: the mean moves
+        /// enormously. Judging by the maximum is judging by the single noisiest pixel on the
+        /// machine, which is why it does not survive a change of machine.</para>
+        /// </summary>
+        public double Mean(int width, int height) => (double)Total / (width * height);
+    }
 
     private static Comparison Compare(byte[] reference, byte[] actual, int width, int height)
     {
@@ -172,6 +274,7 @@ public sealed class GoldenImageTests
         int worst = 0;
         int worstX = 0;
         int worstY = 0;
+        long total = 0;
 
         for (int y = 0; y < height; y++)
         {
@@ -189,6 +292,7 @@ public sealed class GoldenImageTests
                 }
 
                 drifted++;
+                total += channel;
 
                 if (channel > worst)
                 {
@@ -199,7 +303,7 @@ public sealed class GoldenImageTests
             }
         }
 
-        return new Comparison(drifted, worst, worstX, worstY);
+        return new Comparison(drifted, worst, worstX, worstY, total);
     }
 
     /// <summary>

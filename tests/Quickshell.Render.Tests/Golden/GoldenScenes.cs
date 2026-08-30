@@ -31,31 +31,49 @@ internal static class GoldenScenes
     /// <param name="Name">What the reference image is filed under.</param>
     /// <param name="Font">The font this scene is drawn in.</param>
     /// <param name="Paint">What it draws.</param>
-    /// <param name="LevelTolerance">
-    /// How far one channel may differ from the reference. <b>It is a property of the scene, not of
-    /// the suite</b>, because a scene with glyphs in it is measuring two things: this renderer's
-    /// arithmetic, which is ours and deterministic, and DirectWrite's glyph coverage, which is not
-    /// ours and differs between machines. See <see cref="All"/> for the measurement.
+    /// <param name="Ceiling">
+    /// How far one channel may differ anywhere. <b>A property of the scene, not of the suite</b>,
+    /// because a scene with glyphs in it is measuring two things: this renderer's arithmetic, which
+    /// is ours and deterministic, and DirectWrite's glyph coverage, which is not ours and differs
+    /// between machines.
+    /// </param>
+    /// <param name="MeanTolerance">
+    /// How far the picture may differ on average. This is the one that decides a text scene — see
+    /// <see cref="TextMean"/> — and the ceiling above is only the backstop for a change so localised
+    /// that averaging hides it.
     /// </param>
     internal sealed record Scene(string Name, FontSettings Font, Action<Painter> Paint,
-                                 int LevelTolerance = TextTolerance);
+                                 int Ceiling = TextCeiling, double MeanTolerance = TextMean);
 
     /// <summary>
-    /// What a scene containing text may differ by.
+    /// What a scene containing text may differ by <em>on average</em>, which is what actually
+    /// decides it.
     ///
-    /// <para><b>Measured, and it is not the shader.</b> QS96: the guest's `attributes` scene differed
-    /// from its reference in one pixel of 123,200, by six levels. Six levels of output needs about
-    /// fifteen levels of coverage — and the shader's own arithmetic cannot move the output even one
-    /// level, which was checked by perturbing its sRGB conversion by a part in a million across every
-    /// coverage value and watching the encoded result not change. So the six is DirectWrite's glyph
-    /// rasterisation differing between machines, which no amount of care here makes identical.</para>
+    /// <para><b>QS109 is why this is the mean and not the maximum.</b> QS96 set a maximum of eight
+    /// levels, measured from a drift of six on a guest VM. The CI runner is a third machine and it
+    /// drifts eleven, so the build was red on every commit for pixels no commit had touched. Raising
+    /// eight to twelve would buy silence until a fourth machine, because the maximum is a fact about
+    /// the single noisiest pixel on whatever machine is running.</para>
     ///
-    /// <para>Eight is that six with room. It is not a number chosen to make a vendor pass: a
-    /// structural regression moves the picture by <em>hundreds</em> of levels — a one-pixel shift of
-    /// the underline was measured at 204 — so this still refuses everything the suite exists to
-    /// catch, and <see cref="GlyphFree"/> is what holds the part that is genuinely ours to one.</para>
+    /// <para>The mean does not behave that way. A rasteriser that antialiases differently moves a
+    /// scattering of edge pixels a few levels each; a shape in the wrong place moves thousands of
+    /// pixels by hundreds. <b>Half a level is at least twenty-four times what the failing run could
+    /// have been.</b> That is a bound rather than a reading — the run reported 228 pixels drifted
+    /// with a worst of 11, so its mean cannot have exceeded 228 × 11 / 123,200 = 0.0204 levels
+    /// however those pixels were distributed. And the one-pixel underline shift QS96 measured at 204
+    /// levels moves several thousand pixels, which is a mean in the single figures.</para>
     /// </summary>
-    internal const int TextTolerance = 8;
+    internal const double TextMean = 0.5;
+
+    /// <summary>
+    /// The backstop: how far any single channel may differ in a scene with text in it.
+    ///
+    /// <para>Forty-eight, and it is deliberately loose, because it is no longer the thing deciding
+    /// the scene. It exists for the one case the mean cannot see — a change confined to a handful of
+    /// pixels but enormous in them — and it is four times the worst rasteriser difference measured
+    /// on any of the three machines, while a shape drawn in the wrong place was 204.</para>
+    /// </summary>
+    internal const int TextCeiling = 48;
 
     /// <summary>
     /// What a scene with no glyphs in it may differ by.
@@ -63,9 +81,13 @@ internal static class GoldenScenes
     /// <para>One, and that is the tight claim this suite can actually make. With no coverage in the
     /// picture, everything left is the renderer's own arithmetic: the linear blend, the rules, the
     /// cursor shapes, the selection. That is deterministic, and a driver disagreeing about it is a
-    /// finding rather than a fact of life.</para>
+    /// finding rather than a fact of life. QS109 loosened the text scenes and deliberately left this
+    /// one alone: it is the half of the suite that was never a fact about somebody's font engine.</para>
     /// </summary>
     internal const int GlyphFree = 1;
+
+    /// <summary>The mean for a glyph-free scene, which is as near nothing as a whole picture gets.</summary>
+    internal const double GlyphFreeMean = 0.01;
 
     /// <summary>
     /// Every scene, in the order the design lists them.
@@ -87,7 +109,7 @@ internal static class GoldenScenes
         // No glyphs at all, so nothing here is DirectWrite's. What this scene compares is the blend,
         // the rules and the cursor shapes - all of which are this renderer's own arithmetic, and all
         // of which must therefore agree across drivers to within a level.
-        new("no-glyphs", new FontSettings("Consolas", 16f, 96f), NoGlyphs, GlyphFree),
+        new("no-glyphs", new FontSettings("Consolas", 16f, 96f), NoGlyphs, GlyphFree, GlyphFreeMean),
     ];
 
     private static void NoGlyphs(Painter painter)

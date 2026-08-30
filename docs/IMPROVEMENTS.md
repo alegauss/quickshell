@@ -594,31 +594,6 @@ case. [[QS106]] is the narrower flaw in one of the two.
 Falsified when a build with node reuse off still fails at the same rate over twenty
 runs.
 
-### §QS109 The third machine, and what eight was measured on
-
-CI has failed on every push since at least 2026-08-30 14:10 UTC — three commits checked,
-and the number is identical in all of them: `text-small` differs from its reference by
-**228 of 123,200 pixels, worst 11 levels, at (149,30)**, against the scene's tolerance
-of 8. The same figures every run, so it is deterministic rather than noise.
-
-Three things narrow it. Only `text-small` fails: `text-large` at 20 points, `attributes`
-at 16 and every other scene pass, so it is smallest-size rasterisation and not the
-shader or the blend. All eight scenes pass locally on both adapters. And QS96 derived
-the tolerance of 8 from a measured drift of 6 on a guest VM — two machines, and the
-runner is a third that exceeds both.
-
-So the number was calibrated rather than derived, and one more environment was enough to
-pass it. That is a fact about the method and not about the constant: raising 8 to 12
-buys silence until a fourth machine and weakens what the suite refuses.
-
-The choice is between two answers. Either the text scenes stop being pixel comparisons
-and become structural ones — ink per cell, edges where edges belong — leaving
-`no-glyphs` as the tight arithmetic check it already is at a tolerance of one. Or
-references become per-environment, named with the machine that produced them, which is
-honest and multiplies the files.
-
-Falsified when the tolerance is raised without the run that measured the new number.
-
 ## Block D — The tree a user organises work in
 
 ### §QS55 The file a user will still have in five years

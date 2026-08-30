@@ -33,7 +33,6 @@
 - 📋 **QS106** (deps: QS26 ✅) **The latency test's bound is a maximum over more reads at sixteen megabytes than at four, so a scheduler hiccup fails it** — A test whose prose says one hiccup owns the number, and which then compares two numbers drawn from different sample sizes, reports growth that is sampling. → §QS106
 - 📋 **QS107** (deps: QS35 ✅) **ClearType coverage is drawn without the contrast enhancement Windows applies, so stems stay lighter than elsewhere** — The coverage DirectWrite hands back is raw, and the curve its renderers apply on top is not published, so matching it needs a reference rather than a formula. → §QS107
 - 📋 **QS108** (deps: QS26 ✅, QS27 ✅) **The suite builds the solution and then measures wall-clock latency against what that build left running** — Two latency tests fail only after a build, so the suite cannot tell a regression from a busy machine, and a red run teaches nobody anything. → §QS108
-- 📋 **QS109** (deps: QS12 ✅, QS96 ✅) **The golden suite's text tolerance does not hold on the CI runner, so every commit's build is red for the same pixels** — A check red on every commit for a reason no commit caused is one people stop reading, which is what this tree already argued against dotnet test. → §QS109
 
 ## Block D — The tree a user organises work in
 
