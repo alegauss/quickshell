@@ -4,6 +4,7 @@
 
 - ✅ **QS5** **Nothing measures whether the chosen protocol library reaches a modern sshd, so the network layer is unpriced risk** — SSH.NET stays: it answers certificates, jump hosts and two factors against OpenSSH 9.6, and the two it does not answer are additive work on a public seam.
 - ✅ **QS36** **Protocol library types would reach the terminal and the UI, so replacing that library means rewriting the client** — A protocol library may be named only inside Quickshell.Transport, and its package must carry PrivateAssets=all so it reaches nothing above.
+- ✅ **QS39** **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — A failure's classification rule is written against a run that produced it, never against documentation, and the run is named in the comment beside it.
 
 ## Block B — Keys, agents, and the host you think you reached
 

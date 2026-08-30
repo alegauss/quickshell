@@ -169,7 +169,7 @@ public sealed class ReplayTransportTests
     {
         InvalidOperationException library = new("the library's own words");
 
-        SshException crossed = SshException.From(SshFailureKind.Protocol, "the server hung up", library);
+        SshException crossed = SshException.From(SshFailureKind.Dropped, "the server hung up", library);
 
         Assert.Null(crossed.InnerException);
         Assert.Equal("the server hung up", crossed.Message);
@@ -186,7 +186,7 @@ public sealed class ReplayTransportTests
         SshException refused = await Assert.ThrowsAsync<SshException>(async () =>
             await transport.ConnectAsync(Somewhere, [], null, Stop));
 
-        Assert.Equal(SshFailureKind.Authentication, refused.Kind);
+        Assert.Equal(SshFailureKind.NoMethodAccepted, refused.Kind);
     }
 
     [Fact]

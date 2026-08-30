@@ -17,3 +17,15 @@ services:
       - "127.0.0.1:2223:22"
     volumes:
       - ./keys:/keys:ro
+
+  # An old appliance, in the one respect that matters: it offers a key exchange modern clients
+  # refuse. QS39 needs the "no algorithm in common" failure to come from a real server, because
+  # that failure is the one most often met against hardware nobody can upgrade.
+  legacy:
+    build: .
+    container_name: qs-sshd-legacy
+    ports:
+      - "127.0.0.1:2224:22"
+    volumes:
+      - ./keys:/keys:ro
+    command: ["legacy"]

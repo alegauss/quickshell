@@ -185,21 +185,25 @@ public sealed class SshNetTransportTests
             await transport.ConnectAsync(Target, [new SshCredential.Password("not the password")],
                                          Trusting, Stop));
 
-        Assert.Equal(SshFailureKind.Authentication, refused.Kind);
+        Assert.Equal(SshFailureKind.NoMethodAccepted, refused.Kind);
         Assert.Contains(Target.ToString(), refused.Message, StringComparison.Ordinal);
         Assert.Null(refused.InnerException);
         Assert.NotNull(refused.Origin);
     }
 
+    /// <summary>
+    /// A port with nothing on it is refused, and is its own kind. QS39 split this out of the coarser
+    /// "unreachable": a refused port and a dropped packet send a user to two different places.
+    /// </summary>
     [Fact]
-    public async Task APortWithNothingBehindItFailsAsUnreachable()
+    public async Task APortWithNothingBehindItFailsAsRefused()
     {
         await using SshNetTransport transport = new();
 
         SshException refused = await Assert.ThrowsAsync<SshException>(async () =>
             await transport.ConnectAsync(SshEndpoint.For(Host, "probe", 2), [Key()], Trusting, Stop));
 
-        Assert.Equal(SshFailureKind.Unreachable, refused.Kind);
+        Assert.Equal(SshFailureKind.Refused, refused.Kind);
     }
 
     /// <summary>
@@ -215,7 +219,7 @@ public sealed class SshNetTransportTests
         SshException refused = await Assert.ThrowsAsync<SshException>(async () =>
             await transport.ConnectAsync(Target, [new SshCredential.Agent()], Trusting, Stop));
 
-        Assert.Equal(SshFailureKind.Authentication, refused.Kind);
+        Assert.Equal(SshFailureKind.NoMethodAccepted, refused.Kind);
         Assert.Contains("agent", refused.Message, StringComparison.OrdinalIgnoreCase);
     }
 

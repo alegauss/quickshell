@@ -68,6 +68,9 @@ public sealed class ReplayTransport : ISshTransport
     /// <inheritdoc/>
     public TimeSpan KeepAlive { get; set; } = TimeSpan.Zero;
 
+    /// <inheritdoc/>
+    public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
+
     /// <summary>Everything written to the shell channel, which is what a test asserts the client sent.</summary>
     public ReadOnlySpan<byte> Written => _written.ToArray();
 
@@ -89,8 +92,8 @@ public sealed class ReplayTransport : ISshTransport
         {
             // A caller with nothing to offer has not decided yet, and connecting anyway would be a
             // connection that succeeds only against a server with no authentication at all.
-            throw new SshException(SshFailureKind.Authentication,
-                                   $"no credential was offered for {endpoint}");
+            throw new SshException(SshFailureKind.NoMethodAccepted,
+                                   $"No credential was offered for {endpoint}.");
         }
 
         Endpoint = endpoint;
@@ -139,8 +142,8 @@ public sealed class ReplayTransport : ISshTransport
 
         // Named rather than returned empty: a file pane against this would silently show an empty
         // home directory, which is a picture of a bug rather than of a missing implementation.
-        throw new SshException(SshFailureKind.Protocol,
-                               "a recorded session carries no file transfer channel");
+        throw new SshException(SshFailureKind.ShellRefused,
+                               "A recorded session carries no file transfer channel.");
     }
 
     /// <inheritdoc/>
@@ -149,8 +152,8 @@ public sealed class ReplayTransport : ISshTransport
     {
         RequireConnected();
 
-        throw new SshException(SshFailureKind.Protocol,
-                               $"a recorded session cannot reach {host}:{port}");
+        throw new SshException(SshFailureKind.ShellRefused,
+                               $"A recorded session cannot reach {host}:{port}.");
     }
 
     /// <summary>Ends the session as a drop rather than as a close, which is what a test of QS38 wants.</summary>

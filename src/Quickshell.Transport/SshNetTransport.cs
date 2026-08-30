@@ -59,6 +59,9 @@ public sealed class SshNetTransport : ISshTransport
     public TimeSpan KeepAlive { get; set; } = TimeSpan.Zero;
 
     /// <inheritdoc/>
+    public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <inheritdoc/>
     public async ValueTask ConnectAsync(SshEndpoint endpoint, IReadOnlyList<SshCredential> credentials,
                                         SshHostKeyCheck? hostKey = null,
                                         CancellationToken cancellationToken = default)
@@ -68,14 +71,20 @@ public sealed class SshNetTransport : ISshTransport
 
         if (credentials.Count == 0)
         {
-            throw new SshException(SshFailureKind.Authentication,
-                                   $"no credential was offered for {endpoint}");
+            throw new SshException(
+                SshFailureKind.NoMethodAccepted,
+                $"No credential was offered for {endpoint}.",
+                "A connection was asked for with nothing to identify the user by.",
+                "Choose a key, a password or an agent for this host.");
         }
 
         Endpoint = endpoint;
 
         AuthenticationMethod[] methods = [.. credentials.Select(credential => Method(endpoint, credential))];
-        ConnectionInfo connection = new(endpoint.Host, endpoint.Port, endpoint.User, methods);
+        ConnectionInfo connection = new(endpoint.Host, endpoint.Port, endpoint.User, methods)
+        {
+            Timeout = Timeout,
+        };
         SshClient client = new(connection);
 
         if (KeepAlive > TimeSpan.Zero)
@@ -101,15 +110,22 @@ public sealed class SshNetTransport : ISshTransport
         catch (OperationCanceledException)
         {
             client.Dispose();
-            throw new SshException(SshFailureKind.Cancelled, $"the connection to {endpoint} was abandoned");
+            throw new SshException(
+                SshFailureKind.Cancelled,
+                $"The attempt to reach {endpoint} was stopped.",
+                "Nothing was left half-done: the connection had not been established.");
         }
         catch (Exception failure)
         {
             client.Dispose();
 
             throw verdict == SshHostKeyVerdict.Refuse && failure is SshConnectionException
-                ? SshException.From(SshFailureKind.HostKey,
-                                    $"the key offered by {endpoint} was refused", failure)
+                ? SshException.From(
+                    SshFailureKind.HostKey,
+                    $"The key {endpoint} presented was refused.",
+                    failure,
+                    "The connection was abandoned before anything was sent to that server.",
+                    "Compare the fingerprint against one you trust before accepting it.")
                 : Translate(endpoint, failure);
         }
 
@@ -138,7 +154,9 @@ public sealed class SshNetTransport : ISshTransport
         }
         catch (Exception failure)
         {
-            throw Translate(Endpoint, failure);
+            // Diagnosed as a shell request rather than as a connection: by here the credentials
+            // were accepted, so nothing about them is worth suggesting to the user.
+            throw SshDiagnosis.Shell(Endpoint, failure);
         }
     }
 
@@ -150,8 +168,10 @@ public sealed class SshNetTransport : ISshTransport
 
         // Named rather than half-built: QS41 is the line, and a file pane against a stub would show
         // an empty home directory, which is a picture of a bug rather than of missing work.
-        throw new SshException(SshFailureKind.Protocol,
-                               "file transfer over this connection is not implemented yet");
+        throw new SshException(
+            SshFailureKind.ShellRefused,
+            "File transfer over this connection is not implemented yet.",
+            "quickshell has not built the channel, which is QS41.");
     }
 
     /// <inheritdoc/>
@@ -160,8 +180,10 @@ public sealed class SshNetTransport : ISshTransport
     {
         Live();
 
-        throw new SshException(SshFailureKind.Protocol,
-                               $"forwarding to {host}:{port} is not implemented yet");
+        throw new SshException(
+            SshFailureKind.ShellRefused,
+            $"Forwarding to {host}:{port} is not implemented yet.",
+            "quickshell has not built the channel, which is QS42.");
     }
 
     /// <inheritdoc/>
@@ -191,7 +213,10 @@ public sealed class SshNetTransport : ISshTransport
 
         if (_client is null || !_client.IsConnected)
         {
-            throw new SshException(SshFailureKind.Dropped, $"there is no connection to {Endpoint}");
+            throw new SshException(
+                SshFailureKind.Dropped,
+                $"There is no connection to {Endpoint}.",
+                "The session is not open, so there is nothing to open a channel on.");
         }
 
         return _client;
@@ -236,11 +261,15 @@ public sealed class SshNetTransport : ISshTransport
             // Until then this is refused by name rather than silently skipped, because a credential
             // that is quietly dropped looks to a user like a server that rejected their key.
             SshCredential.Agent => throw new SshException(
-                SshFailureKind.Authentication,
-                "keys held by an agent are not supported yet"),
+                SshFailureKind.NoMethodAccepted,
+                "Keys held by an agent are not supported yet.",
+                "quickshell cannot ask an agent to sign, so this credential could not be offered.",
+                "Point at the key file directly until QS43 lands."),
 
-            _ => throw new SshException(SshFailureKind.Authentication,
-                                        $"{credential.GetType().Name} is not a credential this transport knows"),
+            _ => throw new SshException(
+                SshFailureKind.NoMethodAccepted,
+                $"{credential.GetType().Name} is not a credential this transport knows.",
+                "This is a gap in quickshell rather than something the server refused."),
         };
 
     private static PrivateKeyFile KeyFile(SshCredential.PrivateKey key)
@@ -253,8 +282,12 @@ public sealed class SshNetTransport : ISshTransport
         }
         catch (Exception failure)
         {
-            throw SshException.From(SshFailureKind.Authentication,
-                                    $"the key at {key.Path} could not be read", failure);
+            throw SshException.From(
+                SshFailureKind.CredentialRejected,
+                $"The key at {key.Path} could not be read.",
+                failure,
+                "The file is missing, is not a private key, or the passphrase is wrong.",
+                "Check the path and the passphrase.");
         }
     }
 
@@ -277,37 +310,9 @@ public sealed class SshNetTransport : ISshTransport
     }
 
     /// <summary>
-    /// A library exception, as this client's failure.
-    ///
-    /// <para>Coarse on purpose. QS39 is the line that makes a refused key read differently from a
-    /// refused port, and it will do it here — the value of doing the translation at the seam now is
-    /// that no assembly above ever learns to catch the other kind.</para>
+    /// A library exception, as this client's failure. The rules live in <see cref="SshDiagnosis"/>,
+    /// which is where the runs that produced them are written down.
     /// </summary>
-    private static SshException Translate(SshEndpoint endpoint, Exception failure) => failure switch
-    {
-        SshAuthenticationException =>
-            SshException.From(SshFailureKind.Authentication,
-                              $"{endpoint} did not accept the credentials offered", failure),
-
-        SshConnectionException =>
-            SshException.From(SshFailureKind.Dropped, $"the connection to {endpoint} ended", failure),
-
-        SshOperationTimeoutException =>
-            SshException.From(SshFailureKind.Unreachable, $"{endpoint} did not answer in time", failure),
-
-        System.Net.Sockets.SocketException =>
-            SshException.From(SshFailureKind.Unreachable, $"{endpoint} could not be reached", failure),
-
-        ProxyException =>
-            SshException.From(SshFailureKind.Unreachable,
-                              $"the proxy in front of {endpoint} refused", failure),
-
-        OperationCanceledException =>
-            SshException.From(SshFailureKind.Cancelled, $"the work against {endpoint} was abandoned", failure),
-
-        _ => SshException.From(SshFailureKind.Protocol,
-                               string.Format(CultureInfo.InvariantCulture,
-                                             "{0} failed in a way this client does not recognise", endpoint),
-                               failure),
-    };
+    private static SshException Translate(SshEndpoint endpoint, Exception failure) =>
+        SshDiagnosis.Translate(endpoint, failure);
 }

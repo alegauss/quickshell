@@ -182,7 +182,7 @@ public sealed class RemoteSessionTests
                 attempts++;
 
                 ReplayTransport transport =
-                    ReplayTransport.Refusing(SshFailureKind.Authentication, "that key is not welcome");
+                    ReplayTransport.Refusing(SshFailureKind.CredentialRejected, "that key is not welcome");
 
                 await transport.ConnectAsync(Somewhere, APassword, Trusting, token);
 

@@ -112,6 +112,16 @@ public interface ISshTransport : IAsyncDisposable
     TimeSpan KeepAlive { get; set; }
 
     /// <summary>
+    /// How long to wait for a server to answer and then to identify itself, before giving up.
+    ///
+    /// <para>Two waits rather than one, and the failure says which ran out: nothing answered at
+    /// all, or something answered and never said it was an SSH server. Those have different
+    /// remedies — a firewall against a wrong port — so they are told apart rather than both
+    /// reported as "timed out".</para>
+    /// </summary>
+    TimeSpan Timeout { get; set; }
+
+    /// <summary>
     /// Completes when the connection is gone, carrying why.
     ///
     /// <para>A task and not an event, for the reason <see cref="IPtyChannel.Closed"/> gives: a

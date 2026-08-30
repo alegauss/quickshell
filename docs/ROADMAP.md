@@ -5,10 +5,10 @@
 ## Block A — A session that stays up, or says why it did not
 
 - ⏳ **QS38** (deps: QS37 ✅, QS111) **A link that drops for ten seconds costs the whole session and its scrollback** — A peer that stopped answering on a socket that stayed open is still invisible, because the library's keepalive keeps a NAT mapping rather than detecting a death. → §QS38
-- 📋 **QS39** (deps: QS37 ✅) **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — The error message is the documentation a user reads at the moment something fails, which is far more often than they read anything else. → §QS39
-- 📋 **QS40** (deps: QS38 ⏳, QS39) **This client has met one server, so an appliance that negotiates differently is an unknown** — Interoperability failures are found by connecting to unusual servers and by no other method, so the unusual servers are enumerated and connected to deliberately. → §QS40
+- 📋 **QS40** (deps: QS38 ⏳, QS39 ✅) **This client has met one server, so an appliance that negotiates differently is an unknown** — Interoperability failures are found by connecting to unusual servers and by no other method, so the unusual servers are enumerated and connected to deliberately. → §QS40
 - 📋 **QS110** (deps: QS37 ✅) **Remote throughput has no local figure taken beside it, so a slow link and a slow client look alike** — Cancelling a pending read aborts a Windows pipe and takes the pseudo-console with it, so the local half of the comparison read nothing at all. → §QS110
 - 📋 **QS111** (deps: QS37 ✅) **A peer that stopped answering on a socket that stayed open is not noticed, so the session looks live for minutes** — The library's keepalive sends without expecting an answer, so it keeps a NAT mapping alive and cannot tell a frozen host from a quiet one. → §QS111
+- 📋 **QS112** (deps: QS39 ✅) **A dead route and a port that is not SSH read as one failure, so the remedy offered covers two things** — The library's asynchronous connect gives both the same sentence, and the synchronous one that tells them apart takes no cancellation token. → §QS112
 
 ## Block B — Keys, agents, and the host you think you reached
 
@@ -85,7 +85,7 @@
 
 ## Block I — An error a user can act on
 
-- 📋 **QS71** (deps: QS39) **When a connection fails there is nothing to read afterwards but the dialog that has gone** — A failure the user cannot reproduce is diagnosed from a log or not at all, and a log that holds secrets is one they are unable to send. → §QS71
+- 📋 **QS71** (deps: QS39 ✅) **When a connection fails there is nothing to read afterwards but the dialog that has gone** — A failure the user cannot reproduce is diagnosed from a log or not at all, and a log that holds secrets is one they are unable to send. → §QS71
 - 📋 **QS72** (deps: QS1 ✅) **A crash takes the session, the scrollback and any explanation of what happened with it** — A client holding four connections that simply vanishes is worse than one that fails visibly, and the difference is entirely what it does in its last second. → §QS72
 - 📋 **QS73** (deps: QS71, QS72) **A user reporting a defect has no way to say what their client was doing when it happened** — Every report arrives without the version, the server, the settings or the environment, and gathering those by correspondence costs days per defect. → §QS73
 

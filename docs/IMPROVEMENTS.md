@@ -29,32 +29,6 @@ event.
 
 Falsified when a reconnect claims to restore state the protocol cannot restore.
 
-### §QS39 The message is the feature
-
-Every failure mode of a connection is enumerated here and given a sentence, because the
-alternative is a stack trace and a user who cannot tell which of six things went wrong.
-
-The list: the name did not resolve; the port refused; the port accepted but nothing
-there spoke SSH; the handshake failed with no algorithm overlap, naming what each side
-offered; the host key did not match, which belongs to Block B and gets the strongest
-wording of anything here; authentication failed, distinguishing no method accepted from
-a method that failed; the shell request was refused, which is what a restricted or
-SFTP-only account looks like; and the connection timed out, distinguishing a connect
-timeout from a handshake timeout.
-
-Each message says what happened, what it means, and what the user might do about it —
-three short clauses, not a paragraph, written for somebody who has not read the code.
-
-Where a technical detail matters for diagnosis it goes to the log rather than into the
-dialog, so the message stays readable while the detail stays available.
-
-An algorithm mismatch deserves particular care, being the failure most often met against
-old appliances: the useful message names the algorithm the server wanted and says
-whether it is refused as insecure or absent as unimplemented, because those two have
-opposite remedies.
-
-Falsified when a connection failure surfaces a library exception type to a user.
-
 ### §QS40 The servers that are not OpenSSH on Linux
 
 OpenSSH on Linux is the easy case and the one every client passes. This matrix is
@@ -135,6 +109,34 @@ link. That half is tested.
 
 Falsified when a frozen peer is reported as dead by anything that did not require an
 answer.
+
+### §QS112 Two timeouts the async path cannot tell apart
+
+QS39's design asks for the connection timing out to be reported "distinguishing a
+connect timeout from a handshake timeout". Measured, that distinction is available and
+costs something QS39 was not willing to pay.
+
+Through `SshClient.ConnectAsync`, an address routed nowhere (192.0.2.1, TEST-NET-1) and
+a socket that accepts and then says nothing both produce `SshOperationTimeoutException`
+carrying the same sentence: **"Connection has timed out."** Same type, same wording,
+nothing to read.
+
+Through the synchronous `Connect()`, they differ: **"Connection failed to establish
+within 3000 milliseconds"** against **"Socket read operation has timed out after 4000
+milliseconds"**. That method takes no cancellation token, so choosing it would mean a
+connection attempt a user cannot abandon — which is a worse thing to be than a message
+that covers two readings.
+
+So the message covers both, honestly, and the remedy names both checks. Naming the wrong
+one confidently is what this avoids: sending somebody to inspect a firewall when the
+port is simply wrong wastes more of their time than saying it might be either.
+
+What would close it: `Connect()` on a thread with the token abandoning the wait rather
+than the connect, which is the same trade QS37 made for reading and is defensible here
+too; or a version of the library whose async path keeps the wording. Either way the
+measurement above is what says whether it worked.
+
+Falsified when the two are reported apart without a run showing they can be.
 
 ## Block B — Keys, agents, and the host you think you reached
 

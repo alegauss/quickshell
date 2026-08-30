@@ -30,4 +30,12 @@ fi
 
 ssh-keygen -A >/dev/null 2>&1 || true
 
+# "legacy" narrows the key exchange to one modern clients refuse as insecure, which is the whole
+# of what an old appliance is for QS39's purposes: a server with nothing in common to negotiate.
+if [ "$1" = "legacy" ]; then
+    # Prepended, not appended: sshd_config ends in Match blocks and KexAlgorithms is refused
+    # inside one, so appending it makes sshd exit rather than narrow.
+    sed -i '1i KexAlgorithms sntrup761x25519-sha512@openssh.com' /etc/ssh/sshd_config
+fi
+
 exec /usr/sbin/sshd -D -e
