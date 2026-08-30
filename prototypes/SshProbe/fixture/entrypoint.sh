@@ -42,6 +42,13 @@ ssh-keygen -A >/dev/null 2>&1 || true
 
 # "legacy" narrows the key exchange to one modern clients refuse as insecure, which is the whole
 # of what an old appliance is for QS39's purposes: a server with nothing in common to negotiate.
+# "nosftp" is the appliance QS63 exists for: an sshd that offers no file-transfer subsystem at
+# all, so the client's fallback is exercised against a server that really does refuse rather than
+# against one told to pretend.
+if [ "$1" = "nosftp" ]; then
+    sed -i '/^Subsystem sftp/d' /etc/ssh/sshd_config
+fi
+
 if [ "$1" = "legacy" ]; then
     # Prepended, not appended: sshd_config ends in Match blocks and KexAlgorithms is refused
     # inside one, so appending it makes sshd exit rather than narrow.

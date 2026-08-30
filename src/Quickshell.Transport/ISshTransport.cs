@@ -232,4 +232,5 @@ public interface ISshTransport : IAsyncDisposable
     /// <summary>Opens a channel to a host reachable from the far end, which is what a jump host is.</summary>
     ValueTask<IForwardedChannel> OpenForwardAsync(string host, int port,
                                                   CancellationToken cancellationToken = default);
+
 }

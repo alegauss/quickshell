@@ -755,32 +755,6 @@ Deleting asks, and says how many entries and whether any of them is a directory.
 
 Falsified when listing fifty thousand entries blocks the pane until it completes.
 
-### §QS63 Kept for the appliance, and honest about why
-
-The non-goal is already written: SCP is not the primary transfer path, because it has no
-directory listing, no resume, no reliable progress and a long history of
-filename-handling flaws — and OpenSSH itself moved its own `scp` onto SFTP for those
-reasons.
-
-What it is kept for is narrow and real: an embedded device, a network appliance or an
-old server whose sshd offers no SFTP subsystem. For those hosts, SCP is the difference
-between transferring a file and not transferring one.
-
-So it is a fallback, offered when the subsystem request is refused, and it announces
-itself rather than switching silently. The user is told which protocol is in use and
-what it costs them: no listing, no resume, and progress that is an estimate.
-
-The implementation is deliberately minimal — send and receive a file or a directory,
-nothing else. The browser does not run on top of it, because a browser needs a listing
-and this protocol has none; the usual workaround is to parse the output of a shell
-command, which is exactly where the filename injection flaws live and is not somewhere
-this client is going.
-
-Filenames are escaped for the remote shell without exception, since this protocol's
-entire vulnerability class is a filename that becomes a command.
-
-Falsified when a filename containing a shell metacharacter transfers without escaping.
-
 ### §QS64 The gesture users try before reading anything
 
 Two drop targets, and they mean different things.

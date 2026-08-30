@@ -41,3 +41,15 @@ services:
     volumes:
       - ./keys:/keys:ro
     command: ["legacy"]
+
+  # An sshd with no sftp subsystem, which is the whole of what an old appliance is for QS63: a
+  # server where the only way to move a file is scp over an exec channel.
+  nosftp:
+    build: .
+    container_name: qs-sshd-nosftp
+    hostname: qs-sshd-nosftp
+    ports:
+      - "127.0.0.1:2225:22"
+    volumes:
+      - ./keys:/keys:ro
+    command: ["nosftp"]

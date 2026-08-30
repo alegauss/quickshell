@@ -66,6 +66,7 @@
 - ✅ **QS59** **Moving a file means a second authentication and a second connection to a host already open** — The file channel opens on the session the shell is already using, and the server's own log shows one authentication and the sftp subsystem on that same connection.
 - ✅ **QS61** **A transfer has no progress, cannot be cancelled, and starts again from zero if it fails** — Transfers queue with progress, rate and estimate, cancel stops the file it is on, and a resume happens only where the partial can be shown to be the source's beginning.
 - ✅ **QS62** **A folder cannot be copied, and a name that already exists on the far side is resolved by guessing** — A folder copies whole, empty directories included, and a cancelled overwrite leaves the file that was there complete because the bytes land beside it first.
+- ✅ **QS63** **A host too old to offer an SFTP subsystem cannot receive a file at all** — A host with no sftp subsystem moves files with scp, every path quoted for the remote shell, and the fallback says what it costs instead of being discovered.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

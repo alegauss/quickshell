@@ -168,6 +168,10 @@ public sealed class SshChain : ISshTransport
         CancellationToken cancellationToken = default) =>
         Live().OpenFileTransferAsync(cancellationToken);
 
+    /// <inheritdoc cref="SshNetTransport.OpenFileCopyAsync"/>
+    public ValueTask<IFileCopy> OpenFileCopyAsync(CancellationToken cancellationToken = default) =>
+        Live().OpenFileCopyAsync(cancellationToken);
+
     /// <inheritdoc/>
     public ValueTask<IForwardedChannel> OpenForwardAsync(string host, int port,
                                                          CancellationToken cancellationToken = default) =>

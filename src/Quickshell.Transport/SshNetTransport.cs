@@ -183,6 +183,34 @@ public sealed class SshNetTransport : ISshTransport
         return SftpChannel.OpenAsync(_client!, Timeout);
     }
 
+    /// <summary>
+    /// The best way this server will move a file: the subsystem where it offers one, and scp where
+    /// it does not.
+    ///
+    /// <para><b>Not on <see cref="ISshTransport"/>, and that is the point.</b> Exactly three kinds
+    /// of channel cross the seam, and scp needs a fourth — a command channel — which the seam does
+    /// not carry and should not. So the fallback lives on the implementations that can actually run
+    /// a command, and a caller reaching for it is choosing to depend on that.</para>
+    /// </summary>
+    /// <param name="cancellationToken">Abandons the attempt.</param>
+    public async ValueTask<IFileCopy> OpenFileCopyAsync(
+        CancellationToken cancellationToken = default)
+    {
+        Live();
+
+        try
+        {
+            return new SftpFileCopy(
+                await OpenFileTransferAsync(cancellationToken).ConfigureAwait(false));
+        }
+        catch (SshException refused) when (refused.Kind == SshFailureKind.ShellRefused)
+        {
+            // The subsystem is not there, which is the one case scp exists for. Any other failure
+            // is a failure and is not quietly downgraded into a worse protocol.
+            return new ScpFileCopy(new ScpChannel(_client!), refused.Message);
+        }
+    }
+
     /// <inheritdoc/>
     public ValueTask<IForwardedChannel> OpenForwardAsync(string host, int port,
                                                          CancellationToken cancellationToken = default)
