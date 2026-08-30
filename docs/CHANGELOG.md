@@ -37,6 +37,7 @@
 - ✅ **QS28** **Arrow keys, function keys and modified keys send nothing a remote program recognises** — Arrows, function keys and modified keys send the forms this client's own terminal name promises, and change shape when the host asks for the application modes.
 - ✅ **QS29 (the composition model)** **Typing Japanese or Chinese shows no composition and commits nothing** — Composition is display state that never touches the buffer, so cancelling leaves nothing behind, and a candidate list is placed by real cell width rather than by counting characters.
 - ✅ **QS30 (the selection and paste model)** **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — A wrapped line copies as one line with no break in it, a terminal's padding is not copied as text, and a paste is stripped of control bytes and bracketed or confirmed.
+- ✅ **QS31 (the viewport and the search)** **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — A search finds a match the wrap fell inside, and a viewport anchored to a line stays on the text a reader is reading while the host keeps printing.
 
 ## Block D — The tree a user organises work in
 
