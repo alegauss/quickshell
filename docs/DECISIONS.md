@@ -36,6 +36,8 @@
 
 - ✅ **QS55** **Every connection is retyped, so a host used daily costs the same as one used once** — The session store holds the name of a credential and never a credential, so the file is safe to commit, share and back up.
 - ✅ **QS56** **Hosts already defined for OpenSSH have to be defined a second time here** — A file OpenSSH also reads is never written by this client, guaranteed by there being no method that could rather than by nobody calling one.
+- ✅ **QS118** **A host reached through a ProxyCommand is read from the config, reported, and cannot be connected to** — A proxy command is a second kind of transport, not an option on the first: its standard streams are the connection, and whatever it printed is the only account it gives of failing.
+- ✅ **QS57** **A host reachable only through a bastion cannot be reached at all** — A jump is a nested session and never a tunnel: each hop's own host key is checked with that hop's own delegate, and no hop's credentials are offered to another.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

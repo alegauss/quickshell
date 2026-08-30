@@ -625,34 +625,33 @@ case. [[QS106]] is the narrower flaw in one of the two.
 Falsified when a build with node reuse off still fails at the same rate over twenty
 runs.
 
+### §QS120 A batch is not a backlog, and reads do not tell them apart
+
+Observed on 2026-08-30, on four consecutive full-suite runs:
+`TheDelayBeforeAReadIsParsedDoesNotGrowWithTheFile` failed with "a single drain took
+5022 reads, which is a backlog and not a batch". The same test, run by itself
+immediately afterwards, passed every time. This is a second defect in the same test and
+not QS106: that one is about comparing two maxima drawn from different sample sizes, and
+a percentile would not move this number at all.
+
+The guard exists to catch the parser falling behind the reader — the thing QS26 exists
+to prevent. But it counts how many reads one drain swallowed, and that count is a
+property of the producer's scheduling, not of the consumer's lag. Under load the reader
+is starved, its reads arrive in a burst, and one drain then legitimately covers
+thousands of them while the parser is no further behind in time or in bytes than it was
+at ten.
+
+So the assertion is strictly weaker than it looks: it passes on an idle machine because
+the reader is served promptly, and fails on a busy one for the same reason it should
+pass.
+
+What would answer the same question: the bytes outstanding when a drain begins, or the
+wall-clock age of the oldest unparsed read. Both say how far behind the parser is, and
+neither moves when the reader happens to deliver in bursts.
+
+Falsified when the test fails on a run where the outstanding bytes never grew.
+
 ## Block D — The tree a user organises work in
-
-### §QS57 A connection carried inside another connection
-
-A jump host is not a proxy setting. It is a connection nested inside another:
-authenticate to the bastion, open a direct-tcpip channel from it to the real target, and
-run an entire second SSH session over that channel's stream. The target's host key is
-the target's own, verified like any other, and the bastion never sees the target's
-traffic in the clear.
-
-That framing decides the design. The transport seam must accept a *stream* and not only
-a socket — a requirement on the seam, and the reason the seam was drawn where it was.
-Chains follow by recursion: a jump through two bastions is the same operation twice, to
-whatever depth the user configured.
-
-`ProxyCommand` is the other route, spawning an external process and using its pipes. It
-is supported because `ssh_config` files in the wild are full of it, and because it is
-the escape hatch for everything the built-in path will never cover: a corporate SSO
-helper, a cloud provider's session manager, somebody's shell script.
-
-Failures must name which hop failed. A bare connection-refused with no hop named is the
-least useful message a chain can produce, and producing it is what this line exists to
-prevent.
-
-Each hop's credentials are its own, and a chain never silently reuses the first hop's
-key.
-
-Falsified when a failure in a two-hop chain does not name the hop that failed.
 
 ### §QS58 The dialog is the settings surface with the highest traffic
 
@@ -705,31 +704,30 @@ Until then the behaviour is written where somebody editing the file will meet it
 
 Falsified when a file with comments is written by the client and still has them.
 
-### §QS118 A process where a socket is expected
+### §QS119 A door held open on the loopback
 
-QS56 lists `ProxyCommand` among the directives worth honouring and ships it reported
-rather than honoured — which is the design's own prescribed alternative to silence, and
-still leaves a user whose config works under `ssh` unable to reach that host here.
+SSH.NET offers no way to hand a session a stream, so both routes through a bastion end
+at the same shape: a `ForwardedPortLocal` bound to `127.0.0.1:0` for a jump, and a
+`TcpListener` on `127.0.0.1:0` for a proxy command. The nested session connects there
+and travels on inside the carrier. End to end the traffic is still the target's own
+encryption and the bastion sees none of it, so the confidentiality claim holds.
 
-It is not a small option on the existing transport. `ProxyCommand` names a program to
-run whose standard input and output *are* the connection: `ssh` writes the protocol into
-the child's stdin and reads it from its stdout, and the child does whatever it likes in
-between — `corkscrew` through an HTTP proxy, `nc` through a socks server, a vendor's own
-binary for an appliance. So the socket is replaced, not configured.
+What does not hold is exclusivity. While the session lasts, that port is open to every
+process running as this user. Anything connecting to it is speaking to the target's sshd
+— it must still authenticate, so this is no way past the target's own credentials, but
+it is a way past the bastion, which is the control the user was relying on. A machine
+reachable only through a jump host has, for the life of the session, a direct route from
+this desktop that nothing audited.
 
-What makes it tractable is that QS36 already put the seam in the right place.
-`SshNetTransport` is one implementation of `ISshTransport`; this is a second that spawns
-the command and hands the library a stream instead of a socket — and whether the library
-will take one is the first question to answer, because `SshClient` builds its own
-connection and may not accept a stream at all. If it will not, the honest options are a
-`Stream`-backed socket shim or the second library QS36 exists to permit.
+The forwarded port is also accepted more than once. A jump is one nested session and a
+proxy command is exactly one, so a second connection is by definition not the client's.
 
-The tokens matter too: `%h`, `%p`, `%r` are substituted before the command runs, and a
-client that passed them through literally would run a command against a host called
-`%h`.
+What would close it: bind and accept once, then refuse; or match the accepted socket's
+owning process against this one. Neither is offered by `ForwardedPortLocal`, so the jump
+path may need the same hand-built listener the proxy path already has.
 
-Falsified when a ProxyCommand host connects and the command's own diagnostics are not
-shown on failure.
+Falsified when a second process can connect to a live jump's bound port and reach the
+target.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

@@ -16,8 +16,14 @@ namespace Quickshell.Transport;
 /// What to do about this machine's key. Its own, checked as any other host's would be — a chain does
 /// not inherit trust from the hop that carried it.
 /// </param>
+/// <param name="ProxyCommand">
+/// A program to run to reach this hop, instead of connecting to it. Set, it replaces the way this hop
+/// is reached and not the hop itself: the host key is still this machine's and is still checked. This
+/// is OpenSSH's <c>ProxyCommand</c>, and it takes precedence over the hop before it exactly as it
+/// does there.
+/// </param>
 public readonly record struct SshHop(SshEndpoint Endpoint, IReadOnlyList<SshCredential> Credentials,
-                                     SshHostKeyCheck? HostKey = null);
+                                     SshHostKeyCheck? HostKey = null, string? ProxyCommand = null);
 
 /// <summary>
 /// A session reached through one or more bastions.
@@ -41,6 +47,7 @@ public sealed class SshChain : ISshTransport
 {
     private readonly List<SshClient> _bastions = [];
     private readonly List<ForwardedPortLocal> _channels = [];
+    private readonly List<ProxyCommandChannel> _proxies = [];
     private readonly IReadOnlyList<SshHop> _through;
 
     private SshNetTransport? _last;
@@ -109,8 +116,25 @@ public sealed class SshChain : ISshTransport
             SshHop step = _through[hop];
             bool last = hop == _through.Count - 1;
 
+            ProxyCommandChannel? running = null;
+
             try
             {
+                // A proxy command replaces the way this hop is reached, so it is consulted before
+                // the tunnel the hop before it opened — which is what OpenSSH does, and what a user
+                // who wrote both into one config is expecting.
+                if (step.ProxyCommand is { Length: > 0 } program)
+                {
+                    ProxyCommandChannel proxy =
+                        await ProxyCommandChannel.StartAsync(program, step.Endpoint, cancellationToken)
+                                                 .ConfigureAwait(false);
+
+                    _proxies.Add(proxy);
+
+                    running = proxy;
+                    reachable = proxy.Reachable;
+                }
+
                 if (last)
                 {
                     SshNetTransport session = new() { KeepAlive = KeepAlive, Timeout = Timeout };
@@ -129,7 +153,7 @@ public sealed class SshChain : ISshTransport
             }
             catch (SshException failure)
             {
-                throw Named(failure, hop, step);
+                throw Named(failure, hop, step, running);
             }
         }
     }
@@ -178,8 +202,14 @@ public sealed class SshChain : ISshTransport
             _bastions[bastion].Dispose();
         }
 
+        for (int proxy = _proxies.Count - 1; proxy >= 0; proxy--)
+        {
+            await _proxies[proxy].DisposeAsync().ConfigureAwait(false);
+        }
+
         _channels.Clear();
         _bastions.Clear();
+        _proxies.Clear();
     }
 
     /// <summary>
@@ -228,12 +258,25 @@ public sealed class SshChain : ISshTransport
     /// <c>ProxyJump bastion</c> is looking for the word "bastion", and telling them 127.0.0.1
     /// refused would be telling them about this client's plumbing.</para>
     /// </summary>
-    private SshException Named(SshException failure, int hop, SshHop step) =>
-        new(failure.Kind,
+    private SshException Named(SshException failure, int hop, SshHop step,
+                               ProxyCommandChannel? running)
+    {
+        // What the proxy command printed is the only account it gives of its own failure: without
+        // it, a program that could not reach anything looks from here like a link that dropped for
+        // no reason at all.
+        string printed = running?.Printed ?? string.Empty;
+
+        string means = printed.Length == 0
+            ? failure.Means
+            : $"{failure.Means} The proxy command said: {printed}";
+
+        return new SshException(
+            failure.Kind,
             $"Hop {hop + 1} of {_through.Count}, {step.Endpoint.Host}: {failure.Message}",
-            failure.Means,
+            means,
             failure.Remedy,
             failure.Origin);
+    }
 
     private SshNetTransport Live()
     {

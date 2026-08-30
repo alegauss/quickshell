@@ -34,13 +34,13 @@
 - 📋 **QS106** (deps: QS26 ✅) **The latency test's bound is a maximum over more reads at sixteen megabytes than at four, so a scheduler hiccup fails it** — A test whose prose says one hiccup owns the number, and which then compares two numbers drawn from different sample sizes, reports growth that is sampling. → §QS106
 - 📋 **QS107** (deps: QS35 ✅) **ClearType coverage is drawn without the contrast enhancement Windows applies, so stems stay lighter than elsewhere** — The coverage DirectWrite hands back is raw, and the curve its renderers apply on top is not published, so matching it needs a reference rather than a formula. → §QS107
 - 📋 **QS108** (deps: QS26 ✅, QS27 ✅) **The suite builds the solution and then measures wall-clock latency against what that build left running** — Two latency tests fail only after a build, so the suite cannot tell a regression from a busy machine, and a red run teaches nobody anything. → §QS108
+- 📋 **QS120** (deps: QS26 ✅, QS106) **The pipeline test's drain guard counts reads rather than bytes, so a loaded machine fails it** — A guard that fires when the producer is fast rather than when the consumer is behind fails on exactly the machine a CI run provides. → §QS120
 
 ## Block D — The tree a user organises work in
 
-- ⏳ **QS57** (deps: QS56 ✅, QS36 ✅) **A host reachable only through a bastion cannot be reached at all** — ProxyCommand is the other route the design names, and QS118 carries it. → §QS57
 - 📋 **QS58** (deps: QS55 ✅) **A session cannot be created or edited, so the store can only be built by editing its file** — The dialog is where most users meet every decision this client has made about connecting, so what it asks for and what it assumes are both design. → §QS58
 - 📋 **QS117** (deps: QS55 ✅) **Comments a user wrote in the session store are gone the next time the client writes it** — Reading the file is lossless and writing it is not, so a store edited by hand and then edited through the client loses the half a person put there for themselves. → §QS117
-- 📋 **QS118** (deps: QS56 ✅, QS36 ✅) **A host reached through a ProxyCommand is read from the config, reported, and cannot be connected to** — The transport opens sockets, and a proxy command is a process whose standard streams are the connection — a second kind of transport, not an option on the first. → §QS118
+- 📋 **QS119** (deps: QS57 ✅) **A jump carries traffic through a local port anything running as this user can connect to** — A bastion exists to be the only way in, and a port on this machine that reaches the target unauthenticated is a second way in that the user never opened. → §QS119
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -229,15 +229,6 @@
 - **Every figure in the comparison document reproduces from a documented run** Settled
   by re-running each measurement it cites, from its own stated method, on its own stated
   machine.
-
-## Done when — QS57
-
-- **The target's own host key is verified, not the bastion's** Settled by connecting
-  through a bastion to a host whose key is unknown, which must raise trust-on-first-use
-  for the target itself.
-- **A three-hop chain uses the same code path as a one-hop chain** Settled by a run
-  through three bastions, since a special case appearing at depth two is where chain
-  support usually turns out to stop.
 
 ## Done when — QS61
 
