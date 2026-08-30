@@ -627,30 +627,6 @@ runs.
 
 ## Block D — The tree a user organises work in
 
-### §QS55 The file a user will still have in five years
-
-The session store is what a user accumulates and what they will not abandon. That makes
-its format a commitment: human-readable, diffable and documented, so it can go under
-version control and be edited without this client running at all.
-
-The structure is a tree of folders, because that is how people organise fleets — by
-environment, by customer, by datacentre. A folder carries defaults its children inherit
-and may override: user, port, key, jump host, terminal settings, colour scheme.
-Inheritance is what makes a hundred hosts manageable, and each node states explicitly
-where a value came from, so a user can see the source rather than deduce it.
-
-Search across the tree by name, host, tag and folder, with results reachable from the
-palette — above about fifty entries the tree stops being how anybody finds anything.
-
-Secrets are not in this file. It holds a *reference* to a credential and never a
-credential, so the file is safe to commit, share and back up. Which is what a user will
-do with it whether or not the design allowed for it, so the design allows for it.
-
-Opening a session is one action from the palette or a double click, and one already open
-is focused rather than opened twice unless the user asks for a second.
-
-Falsified when the store cannot be edited by hand and reloaded.
-
 ### §QS56 Reading a file the user already maintains
 
 A developer arriving at this client very often has a `~/.ssh/config` that already works:
@@ -726,6 +702,31 @@ the global ones, which is what lets a production host look visibly unlike a stag
 That visual difference is a safety feature far more than a preference.
 
 Falsified when the dialog requires a field the store could have inherited.
+
+### §QS117 A file that reads by hand and writes by machine
+
+QS55 committed to a format that is "human-readable, diffable and documented, so it can
+go under version control and be edited without this client running at all", and shipped
+half of it properly. Reading accepts comments and trailing commas, so a file somebody
+typed is a first-class one. Writing serialises the tree, so anything that is not the
+tree — every comment a person wrote to explain why the staging box uses a different jump
+host — is not in the output.
+
+The falsification QS55 was given is that the store cannot be edited by hand and
+reloaded, and that passes. The one this leaves is narrower and lands on the same user:
+somebody comments their file, renames a folder through the palette, and the comments are
+gone with no warning.
+
+Three ways out, in order of cost. Never write the file from the client, making every
+change an instruction the user applies — honest, and unusable. Keep the parsed document
+with its trivia and write back through it, which `System.Text.Json` cannot do and a
+format with a syntax tree can. Or move to a format whose .NET libraries round-trip
+trivia, which means a dependency and a migration for anybody who already has a store.
+
+Until then the behaviour is written where somebody editing the file will meet it, in
+`SessionTree`'s own summary.
+
+Falsified when a file with comments is written by the client and still has them.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

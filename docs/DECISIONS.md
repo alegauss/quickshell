@@ -34,6 +34,8 @@
 
 ## Block D — The tree a user organises work in
 
+- ✅ **QS55** **Every connection is retyped, so a host used daily costs the same as one used once** — The session store holds the name of a credential and never a credential, so the file is safe to commit, share and back up.
+
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox

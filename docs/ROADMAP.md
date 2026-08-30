@@ -37,10 +37,10 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS55** (deps: QS37 ✅) **Every connection is retyped, so a host used daily costs the same as one used once** — The session tree is the artefact a user builds over years and the one that makes leaving a client expensive, so its format is a decision and not a serialisation. → §QS55
-- 📋 **QS56** (deps: QS55) **Hosts already defined for OpenSSH have to be defined a second time here** — A user with a working config has already made every one of these decisions, and asking them to make each of them again is the real cost of switching client. → §QS56
+- 📋 **QS56** (deps: QS55 ✅) **Hosts already defined for OpenSSH have to be defined a second time here** — A user with a working config has already made every one of these decisions, and asking them to make each of them again is the real cost of switching client. → §QS56
 - 📋 **QS57** (deps: QS56, QS36 ✅) **A host reachable only through a bastion cannot be reached at all** — Nearly every production environment this client targets sits behind one, so a client with no jump path cannot open the hosts that actually matter. → §QS57
-- 📋 **QS58** (deps: QS55) **A session cannot be created or edited, so the store can only be built by editing its file** — The dialog is where most users meet every decision this client has made about connecting, so what it asks for and what it assumes are both design. → §QS58
+- 📋 **QS58** (deps: QS55 ✅) **A session cannot be created or edited, so the store can only be built by editing its file** — The dialog is where most users meet every decision this client has made about connecting, so what it asks for and what it assumes are both design. → §QS58
+- 📋 **QS117** (deps: QS55 ✅) **Comments a user wrote in the session store are gone the next time the client writes it** — Reading the file is lossless and writing it is not, so a store edited by hand and then edited through the client loses the half a person put there for themselves. → §QS117
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -91,7 +91,7 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- 📋 **QS80** (deps: QS55) **A MobaXterm or PuTTY user has to recreate every session by hand before they can start** — The session tree is the whole cost of switching, so a client that cannot read the incumbent's is one most users never get past the first evening with. → §QS80
+- 📋 **QS80** (deps: QS55 ✅) **A MobaXterm or PuTTY user has to recreate every session by hand before they can start** — The session tree is the whole cost of switching, so a client that cannot read the incumbent's is one most users never get past the first evening with. → §QS80
 - 📋 **QS81** (deps: QS80) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
 
 ## Block K — The build and the harness — what a green run is evidence of

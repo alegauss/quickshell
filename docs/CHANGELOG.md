@@ -55,6 +55,8 @@
 
 ## Block D — The tree a user organises work in
 
+- ✅ **QS55** **Every connection is retyped, so a host used daily costs the same as one used once** — A tree of folders whose settings a session inherits and may override, each value naming the node that set it, in a file that holds no secret and survives a hand edit.
+
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox
