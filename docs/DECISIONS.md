@@ -48,6 +48,7 @@
 - ✅ **QS61** **A transfer has no progress, cannot be cancelled, and starts again from zero if it fails** — Resume needs proof, not plausibility: without a record of the source the partial was copied from, the bytes are written again and the user is told why.
 - ✅ **QS62** **A folder cannot be copied, and a name that already exists on the far side is resolved by guessing** — Bytes are written to a partial and moved into place only when all of them have arrived, and a collision has four answers with skip standing wherever there is nobody to ask.
 - ✅ **QS63** **A host too old to offer an SFTP subsystem cannot receive a file at all** — Every path is single-quoted with no exception for names that look safe, and the fallback stays off the seam because scp needs a command channel the seam does not carry.
+- ✅ **QS65** **Keeping a local and a remote directory alike means comparing them by eye** — A sync is a value that can be looked at and then applied: deletions come from the list the user saw, never from a second walk, and no confirmation means no deletions.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

@@ -733,34 +733,6 @@ figure.
 Falsified when a path typed into a terminal by a drop is not quoted for the remote
 shell.
 
-### §QS65 Comparing two trees before touching either
-
-Synchronising is a comparison followed by a transfer, and the comparison is the part
-worth designing.
-
-Both trees are walked and compared on size and modification time, with tolerance for
-clock skew and for filesystems whose timestamp resolution differs — one-second
-granularity on one side against hundred-nanosecond on the other will otherwise report
-every file as changed and the feature is useless. A content comparison is offered
-wherever the server can compute a hash, and it is opt-in, since it costs a full read of
-both sides.
-
-The result is shown before anything is transferred: what is new, what changed, what
-exists only on the destination. Nothing runs until the user has seen that list. A sync
-that acts first and reports afterwards is a sync that deletes something.
-
-Direction is explicit — upload, download, or mirror — and mirror, which deletes on the
-destination, takes its own confirmation naming what will be deleted.
-
-A two-way sync with conflict resolution is deliberately out of scope. It needs a change
-history this client does not have, and guessing in its absence is precisely how a
-two-way sync loses somebody's work.
-
-Filters exclude by pattern, using a syntax people already know rather than one invented
-here.
-
-Falsified when a mirror deletes anything the user was not shown first.
-
 ### §QS122 Six names holding up a security property
 
 Sharing one connection between the shell and the file browser is not offered by
