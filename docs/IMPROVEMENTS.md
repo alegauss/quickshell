@@ -1256,31 +1256,6 @@ enabling.
 
 Falsified when broadcast is on and any receiving pane is not visibly marked.
 
-### §QS54 Publishing a buffer nothing else can see
-
-Everything this renderer does well is what makes it invisible to a screen reader. There
-are no controls, no text elements and no automation tree — there is a texture. So the
-accessibility surface is built rather than inherited, and if it is not built it does not
-exist.
-
-A UI Automation provider over the terminal exposes the buffer as a text pattern: the
-visible screen and the scrollback as one document, with ranges so a reader can move by
-character, word and line, and the cursor exposed as the caret.
-
-Change notification decides whether this works in practice. Output arriving raises
-text-changed events, and those must be throttled by the same reasoning that governs
-frames — a screen reader handed one notification per row during a `cat` says nothing
-useful for a minute, by which time the user has lost the session.
-
-The cursor moving raises a caret event, which is what lets a reader follow a shell
-prompt as the user types.
-
-Everything else in the shell — tabs, dialogs, settings — is built from framework
-controls that already carry names and roles, so the work there is labelling, and it is
-done as those surfaces are built rather than swept up here at the end.
-
-Falsified when a screen reader cannot read a line of output that is on screen.
-
 ### §QS83 Borrowing a design system rather than rediscovering one
 
 Two shipped clients in this family have already answered this, and what they share is a

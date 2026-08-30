@@ -63,6 +63,7 @@
 
 - ✅ **QS4** **No decision records which window host can present a swapchain without adding frames of latency** — WPF with a child HWND per pane won on a click-to-pixel floor of 13.8 ms, the only host of three to answer within one refresh interval (design §QS4 recorded in `docs/measurements/host-probe.md`).
 - ✅ **QS46 (the shell)** **There is no window, only a render surface, so nothing can be opened, themed or closed** — A window that opens onto a title bar and a terminal, follows the system theme while running, and comes back where it was on this arrangement of screens.
+- ✅ **QS54** **A screen reader finds nothing on the terminal surface, so the client cannot be used without sight** — The buffer is published as a text pattern with scrollback and screen as one document, the cursor as the caret, and a flood of output as one announcement.
 
 ## Block H — The reason to leave the incumbent
 

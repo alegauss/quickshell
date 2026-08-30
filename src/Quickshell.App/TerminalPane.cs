@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
+using System.Windows.Automation.Peers;
 using System.Windows.Interop;
+using Quickshell.Terminal;
 
 namespace Quickshell.App;
 
@@ -31,6 +33,30 @@ public sealed class TerminalPane : HwndHost
 
     /// <summary>Raised once the handle exists, which is when a renderer may be opened on it.</summary>
     public event EventHandler? Ready;
+
+    /// <summary>
+    /// The buffer a screen reader reads through this pane, or null while there is no session.
+    ///
+    /// <para>Set before the pane is shown. Without it the automation peer has nothing to publish and
+    /// assistive technology finds the rectangle it would have found anyway.</para>
+    /// </summary>
+    public TerminalBuffer? Reading { get; set; }
+
+    /// <summary>What a screen reader sees, which for a texture is only what is built for it.</summary>
+    public TerminalAutomationPeer? Automation { get; private set; }
+
+    /// <inheritdoc/>
+    protected override AutomationPeer OnCreateAutomationPeer()
+    {
+        if (Reading is null)
+        {
+            return base.OnCreateAutomationPeer();
+        }
+
+        Automation = new TerminalAutomationPeer(this, Reading);
+
+        return Automation;
+    }
 
     /// <inheritdoc/>
     protected override HandleRef BuildWindowCore(HandleRef hwndParent)
