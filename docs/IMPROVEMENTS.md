@@ -755,33 +755,6 @@ Deleting asks, and says how many entries and whether any of them is a directory.
 
 Falsified when listing fifty thousand entries blocks the pane until it completes.
 
-### §QS62 Recursion, and the four answers to a collision
-
-Copying a directory is a walk, and the walk has to answer questions the flat case never
-poses.
-
-**Symbolic links**: followed, copied as links, or skipped. Following one is how a
-recursive copy walks into a loop or drags in an entire filesystem, so the default is to
-copy the link and the choice is explicit rather than buried.
-
-**Permissions and times**: preserved wherever the destination can express them, and
-where it cannot — a Unix mode landing on NTFS — the loss is stated once rather than once
-per file. The reverse direction has the same asymmetry and the same treatment.
-
-**Order**: directories created before their contents, and an empty directory in the
-source is an empty directory in the destination. That sounds too obvious to write down
-and is the most commonly skipped part of a recursive copy.
-
-**Collisions** get four answers and no fifth: overwrite, skip, rename, or compare and
-take the newer. The dialog shows both sides with size and time, and offers to apply the
-answer to the rest — a user answering the same question four hundred times will pick
-whichever option ends it soonest, and that is a data-loss mechanism.
-
-Overwrite writes to a temporary name and renames into place wherever the server allows
-it, so an interruption does not leave a truncated file where a complete one used to be.
-
-Falsified when an interrupted overwrite destroys the destination file.
-
 ### §QS63 Kept for the appliance, and honest about why
 
 The non-goal is already written: SCP is not the primary transfer path, because it has no
@@ -889,6 +862,31 @@ A pinned version. The reflection is written against 2026.0.0 and nothing records
 floating reference would move underneath it silently.
 
 Falsified when an SSH.NET upgrade that breaks the sharing passes a run with no fixture.
+
+### §QS123 A link that cannot be read is a link that cannot be copied
+
+SFTP has `SSH_FXP_READLINK` and SSH.NET does not expose it: not on `SftpClient`, not on
+`ISftpFile`, and not on the internal `ISftpSession`, which offers `RequestSymLink` to
+create one and nothing to read one. `Get` follows a link and reports the target's
+attributes without saying what the target is called.
+
+So a downward copy leaves every link out, with the reason attached. That is the honest
+answer — a link recreated from a guess points somewhere nobody chose, and it looks like
+it worked. It is not a good answer. A checkout, a set of dotfiles, or anything with a
+`current -> releases/2026-08` in it arrives subtly broken.
+
+Two ways to close it, and the second is better.
+
+Send the request directly. `SftpSession` already carries the plumbing to send a message
+and match a response, and the client already reaches into it for remove and rename. One
+more member, and the same fragility QS122 describes.
+
+Ask the shell. A session already has one, and `readlink -n` answers exactly this. It
+costs a round trip per link and it uses only documented behaviour of the far side, but
+it means a file operation depending on a shell that a restricted account may not have.
+
+Falsified when a tree containing a symbolic link is copied down and the link is missing
+from the result.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

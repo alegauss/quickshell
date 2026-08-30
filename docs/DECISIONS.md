@@ -44,6 +44,7 @@
 
 - ✅ **QS59** **Moving a file means a second authentication and a second connection to a host already open** — A file transfer is a channel of the session, never a connection of its own, and paths go to the server exactly as given: resolving one deletes the file a link points at.
 - ✅ **QS61** **A transfer has no progress, cannot be cancelled, and starts again from zero if it fails** — Resume needs proof, not plausibility: without a record of the source the partial was copied from, the bytes are written again and the user is told why.
+- ✅ **QS62** **A folder cannot be copied, and a name that already exists on the far side is resolved by guessing** — Bytes are written to a partial and moved into place only when all of them have arrived, and a collision has four answers with skip standing wherever there is nobody to ask.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

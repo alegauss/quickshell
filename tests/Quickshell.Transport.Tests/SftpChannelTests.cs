@@ -226,14 +226,27 @@ public sealed class SftpChannelTests
 
         Random.Shared.NextBytes(sent);
 
-        List<long> reported = [];
+        // Guarded, because Progress<T> hands its callbacks to the thread pool and several can be in
+        // flight at once: an unsynchronised List here corrupts itself and takes the test host down.
+        Lock counting = new();
+        long furthest = 0;
+        int reports = 0;
 
         try
         {
             using MemoryStream source = new(sent);
 
-            await files.UploadAsync(source, mine,
-                                    new Progress<long>(moved => reported.Add(moved)), Stop);
+            await files.UploadAsync(source, mine, new Progress<long>(moved =>
+            {
+                lock (counting)
+                {
+                    furthest = Math.Max(furthest, moved);
+                    reports++;
+                }
+            }), Stop);
+
+            Assert.True(reports > 0, "the upload reported no progress at all");
+            Assert.InRange(furthest, 1, sent.Length);
 
             using MemoryStream back = new();
 

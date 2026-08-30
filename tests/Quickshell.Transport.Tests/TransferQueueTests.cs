@@ -187,8 +187,12 @@ public sealed class TransferQueueTests : IDisposable
     }
 
     /// <summary>
-    /// The same in the other direction, and a partial nothing is recorded about is written again
-    /// rather than resumed.
+    /// The same in the other direction: a partial nothing is recorded about is written again rather
+    /// than resumed.
+    ///
+    /// <para>The leftover sits at the partial's own name, which is where a previous run of this
+    /// client would have left it. The destination itself is a different question and a collision,
+    /// which QS62 answers.</para>
     /// </summary>
     [Fact]
     public async Task ADownloadOverAStrangePartialWritesItAgainAndSaysWhy()
@@ -209,10 +213,10 @@ public sealed class TransferQueueTests : IDisposable
             await files.UploadAsync(source, there, null, Stop);
         }
 
-        // Somebody else's file, at the name this transfer is about to write to.
+        // A partial left behind by something this queue has no record of.
         string mine = Path.Combine(Mine(), "arriving.bin");
 
-        await File.WriteAllBytesAsync(mine, new byte[4096], Stop);
+        await File.WriteAllBytesAsync($"{mine}.qs-part", new byte[4096], Stop);
 
         TransferQueue queue = new(files);
 
