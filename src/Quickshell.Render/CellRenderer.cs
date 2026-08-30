@@ -80,7 +80,7 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
         public float StrikeY;
         public float StrikeThickness;
         public float CursorShowing;
-        public float Reserved;
+        public float ClearType;
         public float CursorRed;
         public float CursorGreen;
         public float CursorBlue;
@@ -318,6 +318,10 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
             StrikeY = Metrics.StrikeY,
             StrikeThickness = Metrics.StrikeThickness,
             CursorShowing = CursorShowing ? 1f : 0f,
+
+            // The atlas's answer and not the renderer's: it is the one that knows both what the font
+            // asked for and what the display said about its stripes.
+            ClearType = _atlas.IsClearType ? 1f : 0f,
             CursorRed = CursorColour.Red / 255f,
             CursorGreen = CursorColour.Green / 255f,
             CursorBlue = CursorColour.Blue / 255f,

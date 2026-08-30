@@ -21,7 +21,7 @@ cbuffer Frame : register(b0)
     float  StrikeY;             // the font's own strikethrough
     float  StrikeThickness;
     float  CursorShowing;       // the blink phase: 1 while the cursor is on, 0 while it is not
-    float  Reserved;
+    float  ClearType;           // 1 while the coverage pages carry one alpha per colour stripe
     float3 CursorColour;
     float  Reserved2;
     float3 SelectionColour;
@@ -31,10 +31,14 @@ cbuffer Frame : register(b0)
 // One per atlas page. D3D feature level 11_0 cannot index a texture array dynamically, so the page
 // is a branch rather than a subscript; a page nothing bound reads as zero coverage, which is the
 // right answer for a glyph that is not there.
-Texture2D<float> Atlas0 : register(t0);
-Texture2D<float> Atlas1 : register(t1);
-Texture2D<float> Atlas2 : register(t2);
-Texture2D<float> Atlas3 : register(t3);
+//
+// Declared float4 and not float because the page is R8_UNorm for grayscale and R8G8B8A8_UNorm for
+// ClearType, and one declaration has to read both. A one-channel format answers (r, 0, 0, 1), so the
+// grayscale case takes .r and spreads it; the ClearType case takes .rgb, which is three coverages.
+Texture2D<float4> Atlas0 : register(t0);
+Texture2D<float4> Atlas1 : register(t1);
+Texture2D<float4> Atlas2 : register(t2);
+Texture2D<float4> Atlas3 : register(t3);
 
 // The colour pages, for glyphs that are painted rather than tinted. An emoji carries its own
 // colours, so the cell's foreground means nothing for one and is ignored below.
@@ -102,24 +106,31 @@ float3 ToEncoded(float3 linearLight)
         : (1.055 * pow(linearLight, 1.0 / 2.4)) - 0.055;
 }
 
-float SampleAtlas(uint page, int2 texel)
+// Three coverages, whatever the page holds: one per colour stripe under ClearType, and the same
+// number three times otherwise. Returning float3 in both cases is what lets the blend below be one
+// expression rather than two, and a lerp by (c, c, c) is exactly the grayscale blend it replaces.
+float3 SampleAtlas(uint page, int2 texel)
 {
+    float4 stored;
+
     if (page == 1u)
     {
-        return Atlas1.Load(int3(texel, 0));
+        stored = Atlas1.Load(int3(texel, 0));
     }
-
-    if (page == 2u)
+    else if (page == 2u)
     {
-        return Atlas2.Load(int3(texel, 0));
+        stored = Atlas2.Load(int3(texel, 0));
     }
-
-    if (page == 3u)
+    else if (page == 3u)
     {
-        return Atlas3.Load(int3(texel, 0));
+        stored = Atlas3.Load(int3(texel, 0));
+    }
+    else
+    {
+        stored = Atlas0.Load(int3(texel, 0));
     }
 
-    return Atlas0.Load(int3(texel, 0));
+    return ClearType > 0.5 ? stored.rgb : stored.rrr;
 }
 
 float4 SampleColour(uint page, int2 texel)
@@ -221,7 +232,7 @@ float4 PixelMain(Fragment input) : SV_Target
     // A colour glyph carries its own colours, so the foreground is not consulted at all: what the
     // atlas holds is already the picture, and the alpha is the only thing the cell contributes to.
     float3 ink = input.Foreground;
-    float coverage = 0.0;
+    float3 coverage = 0.0;
 
     if (inside)
     {
@@ -229,7 +240,7 @@ float4 PixelMain(Fragment input) : SV_Target
         {
             float4 painted = SampleColour(input.Page, input.Glyph.xy + inGlyph);
             ink = painted.rgb;
-            coverage = painted.a;
+            coverage = painted.aaa;
         }
         else
         {

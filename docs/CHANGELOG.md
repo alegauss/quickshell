@@ -41,6 +41,7 @@
 - ✅ **QS32** **Resizing the window leaves the remote program drawing to the geometry it had before** — The model reflows first and the far end is told once the drag settles, so a real shell reports the size the drag ended on, and a drag of two hundred sizes costs a handful of requests.
 - ✅ **QS33 (esctest)** **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — Somebody else's suite now judges the model through a real pseudo-console: 151 of 568 pass, and the 375 failures are grouped by cause and named by class in a report the repository keeps.
 - ✅ **QS34** **A programming font's ligatures do not form, so text set in it looks unlike the same text elsewhere** — A run's glyphs now come from the font's shaper, cached by the run's own text, and the cell under the cursor goes back to its character so no ligature can hide which one it is.
+- ✅ **QS35** **Text is rasterised in grayscale, so it looks thinner here than in every other Windows application** — Coverage is three numbers per pixel where the display has three stripes, refused on a panel that has none and reversed on one that runs the other way.
 
 ## Block D — The tree a user organises work in
 

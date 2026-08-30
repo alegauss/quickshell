@@ -24,6 +24,7 @@
 - ✅ **QS16** **The cursor cannot be moved, a line cannot be erased and no character carries a colour** — A cell stores the colour the host named, default or index, and a frame resolves it - so a theme change repaints the scrollback too.
 - ✅ **QS17** **A full-width line wraps a column early and a scrolled region redraws the wrong rows** — Only a printable character takes an owed wrap; every control cancels it, which is what keeps a full-width line from growing a blank one.
 - ✅ **QS19** **A remote host can write the local clipboard and read back a string it planted in the title** — No reply may contain a byte the host supplied: replies are composed from an enum and integers, and the method that sends them takes no text at all.
+- ✅ **QS35** **Text is rasterised in grayscale, so it looks thinner here than in every other Windows application** — The grid uses no output-merger blend: every cell paints its own opaque background and the pixel shader mixes the coverage itself.
 
 ## Block D — The tree a user organises work in
 

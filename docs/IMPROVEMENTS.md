@@ -365,32 +365,6 @@ with the remaining tenth named individually rather than waved at.
 
 Falsified when a pass rate is quoted without the run and the date that produced it.
 
-### §QS35 Three channels of alpha, and what that costs the blend
-
-Grayscale antialiasing is correct and slightly thin. ClearType is what Windows users
-have looked at for twenty years, and text differing from every other application on the
-machine reads as wrong even when nobody can say why.
-
-The obstacle is arithmetic. Subpixel coverage produces a separate alpha per colour
-channel and standard alpha blending has one. There are two honest ways out: dual-source
-blending computes the per-channel factor in the shader and blends in a single pass,
-which is the right answer wherever the hardware supports it; otherwise the pass splits,
-at the cost of a second draw over the same fill.
-
-`DWRITE_TEXTURE_CLEARTYPE_3x1` is the rasteriser half, and an atlas page for a face
-rendered this way becomes three channels. Both kinds of page coexist, since emoji stay
-RGBA and a fallback face may stay grayscale.
-
-Two conditions make it wrong to switch on blindly, which is why it is a setting and not
-an upgrade. It assumes a horizontal RGB subpixel layout, so it is wrong on a rotated
-display and on some panels. And it assumes an opaque background, so it degrades wherever
-the window is translucent.
-
-Gamma becomes visible here in a way it is not in grayscale, so DirectWrite's contrast
-enhancement has to be carried through rather than dropped on the floor.
-
-Falsified when text on a rotated display shows colour fringing.
-
 ### §QS91 The mark that took no cell and then went nowhere
 
 QS10 settled what a combining mark costs in columns: nothing, which is what the host
@@ -589,6 +563,61 @@ which is stable under sampling and still climbs proportionally if the parser is 
 to the reader.
 
 Falsified when the test fails on a machine where the percentile did not move.
+
+### §QS107 The half of the thinness that is not the coverage
+
+QS35 answered the stated cause — grayscale coverage — and left a second one standing
+that its own design named and this did not do: "DirectWrite's contrast enhancement has
+to be carried through rather than dropped on the floor".
+
+`IDWriteRenderingParams` publishes `Gamma`, `EnhancedContrast` and `ClearTypeLevel`.
+`IDWriteFactory2::CreateGlyphRunAnalysis` takes none of them, so the coverage
+`CreateAlphaTexture` returns has had none of them applied: they are the client's to
+apply, and Direct2D applies them inside a shader whose curve Microsoft does not
+document.
+
+Gamma is arguably already handled and handled better. This renderer mixes coverage in
+linear light, which is what gamma correction exists to approximate, so carrying
+DirectWrite's gamma across would be correcting twice. Enhanced contrast is the part with
+nothing standing in for it: a deliberate perceptual boost that thickens stems, and thin
+stems are exactly the symptom QS35 was filed under.
+
+What this needs is a measurement rather than a guess at the curve. Draw one glyph run
+through Direct2D into an offscreen target, draw the same run through this renderer, and
+difference them. If the pictures agree, the boost is not being applied by D2D either and
+there is nothing to carry. If they differ, the difference is the size of the thing to
+fix and a lookup table fitted to it is honest where a guessed exponent is not. Direct2D
+used only as the reference a test compares against is not a second backend.
+
+Falsified when the two pictures differ and the number is not written down.
+
+### §QS108 Measured against the suite's own build
+
+Two wall-clock tests in `Quickshell.App.Tests` failed on 2026-08-30, one each on
+separate full-suite runs: `TheDelayBeforeAReadIsParsedDoesNotGrowWithTheFile` and
+`AKeystrokeLeavesAsFastUnderALargeFileAsAtRest` — the second at 20.8 ms against a 2.6 ms
+bound.
+
+What was measured rather than guessed. The assembly alone, three runs: no failures. The
+assembly alone straight after `dotnet build Quickshell.sln`, two runs: one failure. One
+test alone after a build, five runs: no failures. So the trigger is a build followed by
+the whole assembly's work, and `Quickshell.App.Tests` is the first directory
+`run-tests.cmd` iterates — it is the one that always runs into it.
+
+What a build leaves behind, counted: about thirty resident `dotnet` processes, MSBuild's
+node reuse keeping workers alive for fifteen minutes, and a `VBCSCompiler` holding 1.1
+GB with over two thousand CPU-seconds against it. Building with node reuse and shared
+compilation off gave three clean runs, which at that sample size against a roughly
+one-in-two failure rate is suggestive and not decisive.
+
+The fix has two halves and they are separable. The harness should not leave its own
+build resident while measuring. And a latency assertion should be able to say "the
+machine was busy" as something other than "the code regressed" — a floor on the at-rest
+reading, a retry that reports both, or a statistic sampled rather than a single worst
+case. [[QS106]] is the narrower flaw in one of the two.
+
+Falsified when a build with node reuse off still fails at the same rate over twenty
+runs.
 
 ## Block D — The tree a user organises work in
 

@@ -28,6 +28,20 @@ public readonly record struct GlyphKey(string Family, FontWeight Weight, FontSty
     /// </summary>
     public const int SubpixelPositions = 4;
 
+    /// <summary>
+    /// Whether this glyph is rasterised with one coverage per colour stripe rather than one per
+    /// pixel.
+    ///
+    /// <para>Part of the key because it is three different bitmaps and one of them: the same
+    /// character at the same size in the same face is a different set of pixels either way, and a
+    /// cache that could not tell them apart would hand a grayscale tile to a ClearType frame the
+    /// first time a font setting changed.</para>
+    ///
+    /// <para>Not to be confused with <see cref="SubpixelOffset"/>, which is a horizontal position
+    /// and not a colour stripe. The words collide; the concepts do not touch.</para>
+    /// </summary>
+    public bool ClearType { get; init; }
+
     /// <summary>The offset this key was quantised to, back in pixels.</summary>
     public float SubpixelOffsetInPixels => (float)SubpixelOffset / SubpixelPositions;
 

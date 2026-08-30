@@ -33,6 +33,23 @@ public readonly record struct FontSettings(string Family, float SizeInPoints, fl
     /// </summary>
     public bool Ligatures { get; init; }
 
+    /// <summary>
+    /// Whether text in this font is rasterised with one coverage per colour stripe — ClearType —
+    /// rather than one per pixel.
+    ///
+    /// <para><b>Off, and a setting rather than an upgrade.</b> It is what the rest of Windows draws
+    /// text with and it is why text there looks heavier than text here, so it is the answer to this
+    /// font's thinness. But it rests on two assumptions this client cannot make on the user's
+    /// behalf: that the display lays its stripes out horizontally in a known order, and that what is
+    /// behind the glyph is opaque. The first is asked of the machine — see
+    /// <see cref="GlyphRasteriser.CanClearType"/>, which overrides this where the answer is no. The
+    /// second is a translucent window, which is the user's choice and not the display's.</para>
+    ///
+    /// <para>Part of the value, so a change to it rebuilds the atlas — and here that is not merely
+    /// tidy, it is required: the pages themselves change format.</para>
+    /// </summary>
+    public bool ClearType { get; init; }
+
     /// <summary>The em size in DIPs, which is the unit DirectWrite states a glyph run in.</summary>
     public float SizeInDips => SizeInPoints * 96f / 72f;
 

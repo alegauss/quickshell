@@ -133,6 +133,17 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
     /// <summary>Rasterisations the atlas has caused. It exists to keep this far below the cells drawn.</summary>
     public int Rasterisations => _rasteriser.Rasterisations;
 
+    /// <summary>
+    /// Whether this atlas is holding ClearType coverage, which is the font's request and the
+    /// display's answer taken together — a font may ask, and a panel with no stripe order refuses.
+    ///
+    /// <para>It is one value for the whole atlas rather than a property of a glyph, and that is what
+    /// keeps the instance format untouched: a font change rebuilds the cache, so every coverage page
+    /// is of one kind at a time and the shader can be told once per frame instead of once per cell.
+    /// There was no bit left in a cell to tell it with — the twenty bytes are full.</para>
+    /// </summary>
+    public bool IsClearType => Font.ClearType && _rasteriser.CanClearType;
+
     /// <summary>The view a shader samples one coverage page through.</summary>
     public ID3D11ShaderResourceView PageView(int page) => _coverage[page].View;
 
@@ -159,7 +170,10 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
     {
         GlyphResolution resolved = _rasteriser.Resolve(Font, weight, slant, codepoint, maximumAdvance);
         GlyphKey key = new(resolved.Family, weight, slant, resolved.SizeInPixels, resolved.Glyph,
-                           GlyphKey.Quantise(penX));
+                           GlyphKey.Quantise(penX))
+        {
+            ClearType = IsClearType,
+        };
 
         return Cache(key);
     }
@@ -197,8 +211,24 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
             return;
         }
 
+        bool wasClearType = IsClearType;
+
         Font = font;
         _entries.Clear();
+
+        // A coverage page is one channel or four depending on this, and a texture's format is fixed
+        // when it is created. So this one setting is the only font change that cannot be answered by
+        // resetting a packer: the pages have to go back to the device and be made again.
+        if (IsClearType != wasClearType)
+        {
+            foreach (Page page in _coverage)
+            {
+                page.View.Dispose();
+                page.Texture.Dispose();
+            }
+
+            _coverage.Clear();
+        }
 
         foreach (Page page in _coverage.Concat(_colour))
         {
@@ -290,20 +320,46 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
     {
         Page target = pages[page];
 
-        // The row pitch is the glyph's own width in bytes, one for coverage and four for colour.
-        // The box confines the write to the rectangle the packer handed out, so no other glyph's
-        // pixels are touched.
+        // ClearType arrives three bytes to a pixel and lands on a four-byte page, because no format
+        // holds exactly three. The fourth byte is written rather than left alone: what is under it
+        // is whatever glyph the packer last had there, and a shader that ever reads it would be
+        // reading somebody else's letter.
+        ReadOnlySpan<byte> pixels = bitmap.Kind == GlyphKind.ClearType
+            ? Widen(bitmap)
+            : bitmap.Coverage;
+
+        int stride = bitmap.Kind == GlyphKind.ClearType ? 4 : bitmap.BytesPerPixel;
+
+        // The row pitch is the glyph's own width in bytes on the page it is landing on. The box
+        // confines the write to the rectangle the packer handed out, so no other glyph is touched.
         _graphics.Context.UpdateSubresource(
-            bitmap.Coverage,
+            pixels,
             target.Texture,
             0,
-            (uint)(bitmap.Width * bitmap.BytesPerPixel),
+            (uint)(bitmap.Width * stride),
             0,
             new Box(x, y, 0, x + bitmap.Width, y + bitmap.Height, 1));
 
         target.LastUsed = ++_clock;
         return new GlyphPlacement(page, x, y, bitmap.Width, bitmap.Height, bitmap.Left, bitmap.Top,
                                   bitmap.Kind == GlyphKind.Colour);
+    }
+
+    /// <summary>Three coverages a pixel, laid out four to a pixel with the fourth set to full.</summary>
+    private static byte[] Widen(GlyphBitmap bitmap)
+    {
+        ReadOnlySpan<byte> three = bitmap.Coverage;
+        byte[] four = new byte[bitmap.Width * bitmap.Height * 4];
+
+        for (int pixel = 0; pixel < bitmap.Width * bitmap.Height; pixel++)
+        {
+            four[pixel * 4] = three[pixel * 3];
+            four[(pixel * 4) + 1] = three[(pixel * 3) + 1];
+            four[(pixel * 4) + 2] = three[(pixel * 3) + 2];
+            four[(pixel * 4) + 3] = byte.MaxValue;
+        }
+
+        return four;
     }
 
     private void AddPage(GlyphKind kind)
@@ -317,10 +373,14 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
             MipLevels = 1,
             ArraySize = 1,
 
-            // One channel for coverage, because the coverage is one channel: a four-channel page
-            // would cost four times the memory to carry three copies of the same byte. Colour
-            // glyphs are the case where all four are carrying something.
-            Format = kind == GlyphKind.Colour ? Format.R8G8B8A8_UNorm : Format.R8_UNorm,
+            // One channel for grayscale coverage, because the coverage is one channel: a
+            // four-channel page would cost four times the memory to carry three copies of the same
+            // byte. Colour glyphs are the case where all four are carrying something, and ClearType
+            // is the case where three are — there is no three-channel texture format, so it pays a
+            // fourth byte per pixel that nothing reads.
+            Format = kind == GlyphKind.Coverage && !IsClearType
+                ? Format.R8_UNorm
+                : Format.R8G8B8A8_UNorm,
             SampleDescription = new SampleDescription(1, 0),
             Usage = ResourceUsage.Default,
             BindFlags = BindFlags.ShaderResource,

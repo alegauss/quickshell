@@ -23,6 +23,13 @@ public enum GlyphKind
 
     /// <summary>Four bytes per pixel, its own colour. An emoji is not a shape somebody tints.</summary>
     Colour,
+
+    /// <summary>
+    /// Three bytes per pixel: one coverage for each of the display's colour stripes, which is what
+    /// ClearType is. Tinted like <see cref="Coverage"/>, but per channel, so the glyph's edges take
+    /// colour and a stem reads as heavier than the same stem antialiased in grey.
+    /// </summary>
+    ClearType,
 }
 
 /// <summary>
@@ -68,8 +75,13 @@ public sealed class GlyphBitmap
     /// <summary>Coverage or colour, which is which kind of page it lands on.</summary>
     public GlyphKind Kind { get; }
 
-    /// <summary>Bytes per pixel: one for coverage, four for colour.</summary>
-    public int BytesPerPixel => Kind == GlyphKind.Colour ? 4 : 1;
+    /// <summary>Bytes per pixel: one for coverage, three for ClearType, four for colour.</summary>
+    public int BytesPerPixel => Kind switch
+    {
+        GlyphKind.Colour => 4,
+        GlyphKind.ClearType => 3,
+        _ => 1,
+    };
 
     /// <summary>Whether this glyph marks no pixels at all.</summary>
     public bool IsEmpty => Width <= 0 || Height <= 0;
@@ -85,9 +97,10 @@ public sealed class GlyphBitmap
 /// produces exactly the coverage bitmap Windows itself would produce. Text here then matches text
 /// everywhere else on the machine instead of being subtly this project's own.</para>
 ///
-/// <para>Grayscale coverage only — <c>DWRITE_TEXTURE_ALIASED_1x1</c>, one channel. Subpixel coverage
-/// is a genuinely different pipeline and a later line; shipping grayscale first means the renderer
-/// is correct before it is pretty.</para>
+/// <para>Two coverages come out of that door. <c>DWRITE_TEXTURE_ALIASED_1x1</c> is one channel, and
+/// is what a face is drawn with unless it asks otherwise. <c>DWRITE_TEXTURE_CLEARTYPE_3x1</c> is
+/// three, one per colour stripe of the display, and is what the rest of Windows draws text with —
+/// see <see cref="Geometry"/> for the condition that makes it wrong rather than merely different.</para>
 ///
 /// <para>This holds no GPU state, so it is deliberately not an <see cref="IDeviceResource"/>: a
 /// device loss costs the atlas its pixels and costs this nothing.</para>
@@ -123,13 +136,60 @@ public sealed class GlyphRasteriser : IDisposable
     private readonly ushort[] _glyph = new ushort[1];
 
     /// <summary>Opens the shared DirectWrite factory and reads the system font collection once.</summary>
-    public GlyphRasteriser()
+    /// <param name="geometry">
+    /// The stripe order to rasterise ClearType for, or null to ask this display. Passed only by a
+    /// test: the panel's answer is not something a machine running the suite can be told to change,
+    /// and a channel swap nobody can exercise is a channel swap nobody has checked.
+    /// </param>
+    public GlyphRasteriser(PixelGeometry? geometry = null)
     {
         // IDWriteFactory2 and not IDWriteFactory, for one argument: its CreateGlyphRunAnalysis is
         // the only one that takes an antialias mode, and grayscale coverage in a one-channel texture
         // is what asking the older factory for a 1x1 texture silently answers empty to.
         _factory = DWrite.DWriteCreateFactory<IDWriteFactory2>(FactoryType.Shared);
         _installed = _factory.GetSystemFontCollection(false);
+        Geometry = geometry ?? Panel(_factory);
+    }
+
+    /// <summary>
+    /// How this display lays its colour stripes out, which is the whole of whether ClearType is
+    /// allowed and which way round its channels go.
+    ///
+    /// <para><b>Read from the machine rather than assumed.</b> ClearType is a bet that a pixel is
+    /// three stripes side by side in a known order. On a panel where that is false — a rotated
+    /// display, most projectors, a good many laptop screens — the bet loses and the result is not
+    /// slightly-off text, it is coloured fringes on every letter. Windows already knows the answer
+    /// and DirectWrite will say it, so there is no reason to guess.</para>
+    ///
+    /// <para><see cref="PixelGeometry.Flat"/> means there is no horizontal stripe order to exploit,
+    /// and <see cref="CanClearType"/> is false there. <see cref="PixelGeometry.Bgr"/> means there is
+    /// one and it runs the other way, which the rasteriser handles by reversing each pixel's three
+    /// coverages as it caches the glyph.</para>
+    /// </summary>
+    public PixelGeometry Geometry { get; }
+
+    /// <summary>
+    /// Whether this display can be drawn ClearType at all. False on a panel with no horizontal
+    /// stripe order, where a font asking for it is quietly given grayscale instead — which looks
+    /// slightly thin, where honouring the request would look broken.
+    /// </summary>
+    public bool CanClearType => Geometry != PixelGeometry.Flat;
+
+    /// <summary>The stripe order the system's rendering parameters report, defaulting to flat.</summary>
+    private static PixelGeometry Panel(IDWriteFactory factory)
+    {
+        try
+        {
+            using IDWriteRenderingParams parameters = factory.CreateRenderingParams();
+
+            return parameters.PixelGeometry;
+        }
+        catch (SharpGenException)
+        {
+            // No parameters to read is not a reason to refuse to draw. Flat is the answer that
+            // costs a slightly thin letter rather than a fringed one.
+            return PixelGeometry.Flat;
+        }
     }
 
     /// <summary>
@@ -272,24 +332,35 @@ public sealed class GlyphRasteriser : IDisposable
 
         Rasterisations++;
 
+        // A colour glyph is asked about first and is never ClearType: an emoji carries its own
+        // pixels, so there is no coverage for a display's stripes to be measured against.
         GlyphBitmap? colour = RasteriseColour(run, key.SubpixelOffsetInPixels);
 
-        return colour ?? RasteriseCoverage(run, key.SubpixelOffsetInPixels);
+        return colour ?? RasteriseCoverage(run, key.SubpixelOffsetInPixels, key.ClearType);
     }
 
-    private GlyphBitmap RasteriseCoverage(GlyphRun run, float subpixelOffset)
+    /// <summary>
+    /// Rasterises a run's coverage, in one channel or in three.
+    ///
+    /// <para>The layer path calls this with <paramref name="clearType"/> false whatever the face
+    /// asked for, which is deliberate: a colour glyph's layers are composited here into a picture,
+    /// and three coverages per layer would be three pictures with nothing to choose between them.</para>
+    /// </summary>
+    private GlyphBitmap RasteriseCoverage(GlyphRun run, float subpixelOffset, bool clearType)
     {
+        TextureType texture = clearType ? TextureType.Cleartype3x1 : TextureType.Aliased1x1;
+
         using IDWriteGlyphRunAnalysis analysis = _factory.CreateGlyphRunAnalysis(
             run,
             null,
-            RenderingMode.NaturalSymmetric,
+            clearType ? RenderingMode.CleartypeNaturalSymmetric : RenderingMode.NaturalSymmetric,
             MeasuringMode.Natural,
             GridFitMode.Default,
-            TextAntialiasMode.Grayscale,
+            clearType ? TextAntialiasMode.Cleartype : TextAntialiasMode.Grayscale,
             subpixelOffset,
             0f);
 
-        RawRect bounds = analysis.GetAlphaTextureBounds(TextureType.Aliased1x1);
+        RawRect bounds = analysis.GetAlphaTextureBounds(texture);
         int width = bounds.Right - bounds.Left;
         int height = bounds.Bottom - bounds.Top;
 
@@ -298,10 +369,36 @@ public sealed class GlyphRasteriser : IDisposable
             return GlyphBitmap.Empty;
         }
 
-        byte[] coverage = new byte[width * height];
-        analysis.CreateAlphaTexture(TextureType.Aliased1x1, bounds, coverage, (uint)coverage.Length);
+        // The bounds are in pixels either way; only the bytes behind each pixel differ, which is
+        // why the size of this buffer and not the size of the rectangle is what carries the three.
+        GlyphKind kind = clearType ? GlyphKind.ClearType : GlyphKind.Coverage;
+        int stride = clearType ? 3 : 1;
+        byte[] coverage = new byte[width * height * stride];
 
-        return new GlyphBitmap(width, height, bounds.Left, bounds.Top, coverage);
+        analysis.CreateAlphaTexture(texture, bounds, coverage, (uint)coverage.Length);
+
+        if (clearType && Geometry == PixelGeometry.Bgr)
+        {
+            Reverse(coverage);
+        }
+
+        return new GlyphBitmap(width, height, bounds.Left, bounds.Top, coverage, kind);
+    }
+
+    /// <summary>
+    /// Puts the stripes in the panel's order, once, at rasterisation time.
+    ///
+    /// <para>DirectWrite always hands back the coverages red, green, blue. A panel whose stripes run
+    /// the other way needs them blue, green, red, and doing it here rather than in the shader costs
+    /// one pass over a glyph that is about to be cached instead of a branch on every pixel of every
+    /// frame. Getting it wrong is not subtle: every letter is fringed on the wrong side.</para>
+    /// </summary>
+    private static void Reverse(Span<byte> coverage)
+    {
+        for (int pixel = 0; pixel + 2 < coverage.Length; pixel += 3)
+        {
+            (coverage[pixel], coverage[pixel + 2]) = (coverage[pixel + 2], coverage[pixel]);
+        }
     }
 
     /// <summary>
@@ -333,7 +430,7 @@ public sealed class GlyphRasteriser : IDisposable
             while (layers.MoveNext())
             {
                 ColorGlyphRun layer = layers.CurrentRun;
-                GlyphBitmap bitmap = RasteriseCoverage(layer.GlyphRun, subpixelOffset);
+                GlyphBitmap bitmap = RasteriseCoverage(layer.GlyphRun, subpixelOffset, false);
 
                 if (bitmap.IsEmpty)
                 {
