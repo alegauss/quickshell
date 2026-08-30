@@ -365,32 +365,6 @@ with the remaining tenth named individually rather than waved at.
 
 Falsified when a pass rate is quoted without the run and the date that produced it.
 
-### §QS34 Shaping across a boundary the grid says exists
-
-A cell grid and a ligature disagree by construction. `=>` in a programming font is one
-glyph spanning two cells, so the renderer must draw a glyph belonging to no single cell
-and the atlas key must be the run rather than the character.
-
-The approach: runs of identical attributes are shaped by `IDWriteTextAnalyzer`, and the
-resulting glyphs are cached against the run's text instead of against a code point. A
-cached run draws as a short sequence of instances whose positions come from the shaper
-rather than from the grid. The grid still owns the cursor, the selection and the copy —
-a ligature changes only what is drawn.
-
-That is also where the cost hides. Shaping is per run, so a line where every cell
-carries a different colour degenerates into per-cell shaping, and a syntax-highlighted
-source file is exactly that line. The cache must be measured against that case and not
-against prose.
-
-Two behaviours are non-negotiable either way: the cursor sits on a character and never
-on half a ligature, and a ligature under the cursor breaks apart so the user can see
-which character they are on.
-
-Off by default, and a per-font setting, because a sizeable share of this client's users
-consider ligatures a defect rather than a feature.
-
-Falsified when the cursor cannot be placed between the two characters of a ligature.
-
 ### §QS35 Three channels of alpha, and what that costs the blend
 
 Grayscale antialiasing is correct and slightly thin. ClearType is what Windows users
@@ -590,6 +564,31 @@ since a cursor owing a wrap is not yet in the row it appears to be in.
 
 Falsified when backspacing over a wrap point puts the cursor somewhere the host does not
 also think it is.
+
+### §QS106 Two maxima over different numbers of reads
+
+Observed on 2026-08-30, on a full-suite run:
+`TheDelayBeforeAReadIsParsedDoesNotGrowWithTheFile` failed with "the worst wait went
+from 2.11 ms at 4 MB to 30.96 ms at 16 MB, and 20.00 ms was the bound". Three runs of
+that test alone passed immediately afterwards, and a second full suite passed.
+
+The test is right about what it wants to know and wrong about how it asks. It reads
+`LongestWait` twice, once after four megabytes and once after sixteen, and compares
+them. Both are maxima, but the second is a maximum over roughly four times as many
+reads. A distribution with a rare tail produces a larger maximum from a larger sample
+whether or not anything is growing, so the comparison confounds growth with sample size
+— and the doc comment already says the absolute number is a maximum over a hundred
+thousand reads that one scheduler hiccup owns.
+
+The floor of 20 ms is what makes it fire: at 2.11 ms early, twice the early wait is 4.22
+ms, so the floor is the live bound and a single 31 ms hiccup crosses it.
+
+What would answer the same question honestly is a statistic that does not grow with the
+count — a high percentile of the waits rather than their maximum, or the mean, either of
+which is stable under sampling and still climbs proportionally if the parser is coupled
+to the reader.
+
+Falsified when the test fails on a machine where the percentile did not move.
 
 ## Block D — The tree a user organises work in
 

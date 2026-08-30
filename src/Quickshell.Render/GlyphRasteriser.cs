@@ -153,6 +153,25 @@ public sealed class GlyphRasteriser : IDisposable
     }
 
     /// <summary>
+    /// The face a family, weight and slant resolve to, for a caller that shapes rather than
+    /// rasterises.
+    ///
+    /// <para>Handed out rather than looked up a second time, because shaping and rasterising
+    /// disagreeing about which face a family means is a bug whose symptom is a glyph index from one
+    /// face drawn out of another — which is not a missing character, it is the wrong one.</para>
+    ///
+    /// <para>The face is owned here and is released with this rasteriser. A caller does not dispose it.</para>
+    /// </summary>
+    public IDWriteFontFace FaceFor(string family, FontWeight weight, FontStyle slant) =>
+        Face(family, weight, slant);
+
+    /// <summary>
+    /// A text analyzer over the same factory, for the same reason: one DirectWrite, one answer.
+    /// The caller owns what this returns.
+    /// </summary>
+    public IDWriteTextAnalyzer CreateAnalyzer() => _factory.CreateTextAnalyzer();
+
+    /// <summary>
     /// The grid geometry a font implies: one cell's advance, the line height, and where the
     /// baseline falls inside it.
     ///

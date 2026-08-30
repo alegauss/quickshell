@@ -40,6 +40,22 @@ public readonly record struct CellInstance(uint Foreground, uint Background,
     public const uint ColourPage = 0x04;
 
     /// <summary>
+    /// The most cells one instance can be told to cover: a wide character's two.
+    ///
+    /// <para><b>Ligatures did not raise this, and the measurement is why.</b> A ligature is one
+    /// glyph over several characters in a proportional face, which would need a wider span than
+    /// anything here has — but a terminal is set in a monospaced one, and a monospaced face forms
+    /// its ligatures the only way it can while staying monospaced: it substitutes one glyph per
+    /// cell, each carrying a piece of the shape. Measured on Cascadia Code, <c>=&gt;</c> shapes to
+    /// two glyphs and <c>&lt;==&gt;</c> to four, one per cell in both.</para>
+    ///
+    /// <para>So the span stays at two, the wire format is unchanged, and a cluster wider than this
+    /// is refused rather than drawn clipped — see <see cref="TextShaper.Draw"/>. The value has room
+    /// to grow to three inside the same two bits if a face ever asks for it.</para>
+    /// </summary>
+    public const int MaximumSpan = 2;
+
+    /// <summary>
     /// Packs a cell.
     ///
     /// <para>A placement that marks no pixels is not a special case: its zero size is what the
@@ -48,9 +64,9 @@ public readonly record struct CellInstance(uint Foreground, uint Background,
     /// <para><paramref name="span"/> is how many cells this one occupies, and it is the model's
     /// answer rather than the renderer's. <b>One</b> is ordinary. <b>Two</b> widens the quad so a
     /// wide character is drawn across both its cells instead of being clipped at the first.
-    /// <b>Zero</b> is the trailing cell of a wide pair: it draws nothing at all, because the cell
-    /// before it has already painted that ground and a second quad over the top would erase the
-    /// right half of the character.</para>
+    /// <see cref="MaximumSpan"/> is as far as that reaches. <b>Zero</b> is the trailing cell of a
+    /// wide pair: it draws nothing at all, because the cell before it has already painted that
+    /// ground and a second quad over the top would erase the right half of the character.</para>
     ///
     /// <para><paramref name="underline"/> and <paramref name="cursor"/> are the two attributes that
     /// are states rather than switches. Neither costs a draw: both are read in the pixel shader and
@@ -66,7 +82,7 @@ public readonly record struct CellInstance(uint Foreground, uint Background,
                                    CursorShape cursor = CursorShape.None)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(span);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(span, 2);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(span, MaximumSpan);
 
         uint attributes = (uint)glyph.Page
             | (glyph.IsColour ? ColourPage : 0u)
