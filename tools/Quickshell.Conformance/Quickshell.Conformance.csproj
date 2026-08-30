@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The external judgement. Not under tests\, and deliberately: run-tests.cmd is the per-commit
+       gate and this needs WSL, a Python suite fetched from elsewhere, and ninety seconds. It is a
+       tool that writes a report the repository keeps, the same shape as the replay harness. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.Conformance</RootNamespace>
+    <AssemblyName>quickshell-conformance</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Quickshell.App\Quickshell.App.csproj" />
+  </ItemGroup>
+
+</Project>

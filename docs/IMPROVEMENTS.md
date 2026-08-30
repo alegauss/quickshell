@@ -519,6 +519,78 @@ That is why it is a ceiling rather than a bug on the hot path.
 
 Falsified when the sequence allocates zero and the ceiling can be lowered to it.
 
+### §QS103 The one sequence that makes the emulator testable from outside
+
+QS33 ran esctest against the model for the first time: 151 of 568 passed. Of the 375
+failures, 228 are the same failure — the suite could not read the screen, so a test
+about backspace or about a scrolling region fails for a reason that has nothing to do
+with either.
+
+The mechanism is DECRQCRA, `CSI Ps ; Pu ; Pi ; Pt ; Pl ; Pb ; Pr * y`: the host asks for
+a checksum over a rectangle of cells and the terminal answers. It is the only way an
+automated suite can see a screen it does not own, which is why esctest leans on it for
+nearly everything.
+
+This is not a fidelity feature for its own sake. It is what turns three hundred and
+seventy-five failures into a number that means something: with it, each of those 228
+either passes or names a real defect, and telling those apart is the whole value of
+having run an external suite.
+
+The algorithm is xterm's and worth being exact about: the negated sum of the cells'
+characters, attributes optionally folded in, and the rectangle taken from the current
+margins where parameters are omitted. Arithmetic subtly wrong is worse than no answer,
+because the suite would report differences that are the checksum's rather than the
+terminal's.
+
+Falsified when a checksum reply differs from xterm's for a screen both have drawn.
+
+### §QS104 Telling a program what is on, and what was never there
+
+QS20 taught the terminal to report a setting when asked in DECRQSS's syntax, and left
+the other half undone: DECRQM, `CSI Ps $ p` and its private form, which asks whether a
+mode is currently set. Twenty-two esctest cases fail on the silence, and they are not
+the interesting part — what silence costs a real program is.
+
+A mode has four answers, not two: set, reset, permanently set, permanently reset. The
+last two are how a terminal says *this is not a thing I have* as distinct from *this is
+a thing I have and it is off*, and the difference decides whether a program falls back
+or waits. Answering everything as merely reset is worse than answering nothing: a
+program told a mode is off will try to turn it on.
+
+Two is the answer for modes this client honours and has on, one for honoured and off,
+four for the ones it will never have — which by now is a list it can state, a mouse
+encoding it refused, an inline-graphics protocol that is a non-goal. Zero is for a mode
+it has never heard of, and is the honest answer for anything not enumerated.
+
+The reply is built from a number and a constant, so it goes down the path QS19 built and
+carries no byte the host supplied.
+
+Falsified when a mode this client refuses on purpose is reported as merely off.
+
+### §QS105 The wrap a cursor has to be able to go back through
+
+Found by esctest in QS33, in the eight `BSTests` and two `CUBTests` failures that are
+not about the checksum: reverse wrap.
+
+Moving left from column one does not always stop. Where the row above continues into
+this one — which the wrapped flag already records, and which QS23 and QS30 both lean on
+— the cursor belongs at the end of that row instead. A shell editing a command longer
+than the terminal is wide does exactly this on every backspace over the wrap point, and
+a terminal that refuses leaves the cursor and the shell's own idea of the cursor in
+different places. Everything typed afterwards lands somewhere neither of them meant.
+
+It is a mode, DECSET 45, and off by default in xterm — but a client that never
+implements it cannot honour the mode either, and the tests that fail here are the ones
+that turn it on and then check.
+
+The interaction to be careful about is the left margin: with one set, reverse wrap goes
+to the margin and not to column one, and the row above is only a candidate if the wrap
+actually happened there. The pending-wrap state QS17 keeps is part of the same question,
+since a cursor owing a wrap is not yet in the row it appears to be in.
+
+Falsified when backspacing over a wrap point puts the cursor somewhere the host does not
+also think it is.
+
 ## Block D — The tree a user organises work in
 
 ### §QS55 The file a user will still have in five years
