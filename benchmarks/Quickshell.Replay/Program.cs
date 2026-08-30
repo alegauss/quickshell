@@ -119,6 +119,11 @@ report.AppendLine("of the stream - which is why a 0.02 MB stream shows tens of K
 report.AppendLine("zero. `parse` reports the same figure as `escape-scan` on every stream, to the decimal, which");
 report.AppendLine("is what says the parser itself allocates nothing.");
 report.AppendLine();
+report.AppendLine("**Since QS94, `render` reports that same figure too.** The 32 MB replay used to allocate");
+report.AppendLine("54,227 KB per MB and take 102 gen-0 collections; it now allocates at the floor and takes none.");
+report.AppendLine("Throughput did not move, and was never the point: allocation on this path bought a collection");
+report.AppendLine("pause during somebody's `vim` session, not megabytes per second.");
+report.AppendLine();
 report.AppendLine("The render arm also stands in for a terminal buffer that does not exist yet: cursor, wrap,");
 report.AppendLine("carriage return, line feed and erase-display, and nothing else. What it measures is the volume");
 report.AppendLine("of glyph and instance work a stream implies, which is the part a real buffer would not change.");

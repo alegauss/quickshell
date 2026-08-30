@@ -547,35 +547,6 @@ proportional-looking text, and `ls --color` in a directory of long unicode filen
 Falsified when a capture replays to a different screen than the one it was recorded
 from, which would make the corpus a picture of a bug rather than of a program.
 
-### §QS94 The allocation the replay harness found
-
-Measured by QS3's render arm on 2026-08-22, and it is the first thing that harness
-found.
-
-`GraphemeSegmenter.Feed` returns `List<string>`: a list per call and a string per
-cluster, which for ordinary text is one string per character. Replaying the 32 MB
-`cat-log` stream through parse, decode, segment, atlas and draw allocates **54 MB per MB
-of stream** — 1.7 GB for that one replay, and 102 gen-0 collections. The parse arm over
-the same bytes reports the same allocation figure as `escape-scan`, to the decimal,
-which is what says the parser itself allocates nothing.
-
-So the design's own rule applies to its neighbour: a path that got correct while
-allocating this much has borrowed from a collection that will happen during somebody's
-`vim` session.
-
-The shape is a segmenter that yields extents rather than strings. `Feed` hands back
-positions into a buffer the caller already has — a `(start, length)` pair per cluster,
-or an enumerator over them — and nothing is copied. The atlas is keyed on a codepoint
-and a face, so it never needed the string; neither does `CharacterWidth.OfCluster`,
-which reads only the base.
-
-The existing API can stay for the callers that want strings, but it must stop being the
-one the hot path reaches for.
-
-Falsified when the render arm's allocation per megabyte stops being dominated by this
-and the remaining figure is the atlas and the instance buffer, which is where it
-belongs.
-
 ### §QS101 The ninety-six bytes QS24 could not name
 
 QS24 took the parse path from fifty-five kilobytes of allocation per megabyte of stream
