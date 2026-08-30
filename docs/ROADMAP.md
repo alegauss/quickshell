@@ -33,7 +33,6 @@
 - 📋 **QS105** (deps: —) **Backspace at the left edge stops there instead of wrapping to the end of the line above** — A shell editing a command that wrapped moves the cursor back through the wrap, and a terminal that will not follow leaves the cursor and the shell disagreeing. → §QS105
 - 📋 **QS107** (deps: QS35 ✅) **ClearType coverage is drawn without the contrast enhancement Windows applies, so stems stay lighter than elsewhere** — The coverage DirectWrite hands back is raw, and the curve its renderers apply on top is not published, so matching it needs a reference rather than a formula. → §QS107
 - 📋 **QS108** (deps: QS26 ✅, QS27 ✅) **The suite builds the solution and then measures wall-clock latency against what that build left running** — Two latency tests fail only after a build, so the suite cannot tell a regression from a busy machine, and a red run teaches nobody anything. → §QS108
-- 🛠 **QS120** (deps: QS26 ✅, QS106 ✅) **The pipeline test's drain guard counts reads rather than bytes, so a loaded machine fails it** — A guard that fires when the producer is fast rather than when the consumer is behind fails on exactly the machine a CI run provides. → §QS120
 
 ## Block D — The tree a user organises work in
 

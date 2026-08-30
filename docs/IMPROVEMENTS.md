@@ -600,32 +600,6 @@ case. [[QS106]] is the narrower flaw in one of the two.
 Falsified when a build with node reuse off still fails at the same rate over twenty
 runs.
 
-### §QS120 A batch is not a backlog, and reads do not tell them apart
-
-Observed on 2026-08-30, on four consecutive full-suite runs:
-`TheDelayBeforeAReadIsParsedDoesNotGrowWithTheFile` failed with "a single drain took
-5022 reads, which is a backlog and not a batch". The same test, run by itself
-immediately afterwards, passed every time. This is a second defect in the same test and
-not QS106: that one is about comparing two maxima drawn from different sample sizes, and
-a percentile would not move this number at all.
-
-The guard exists to catch the parser falling behind the reader — the thing QS26 exists
-to prevent. But it counts how many reads one drain swallowed, and that count is a
-property of the producer's scheduling, not of the consumer's lag. Under load the reader
-is starved, its reads arrive in a burst, and one drain then legitimately covers
-thousands of them while the parser is no further behind in time or in bytes than it was
-at ten.
-
-So the assertion is strictly weaker than it looks: it passes on an idle machine because
-the reader is served promptly, and fails on a busy one for the same reason it should
-pass.
-
-What would answer the same question: the bytes outstanding when a drain begins, or the
-wall-clock age of the oldest unparsed read. Both say how far behind the parser is, and
-neither moves when the reader happens to deliver in bursts.
-
-Falsified when the test fails on a run where the outstanding bytes never grew.
-
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine
