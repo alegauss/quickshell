@@ -30,10 +30,16 @@ public sealed class SftpChannelTests
     /// The line's own falsification: opening the file browser costs no credential the session has
     /// already used.
     ///
-    /// <para>The server's log is the witness. One <c>Accepted publickey</c> appears for the whole
-    /// exchange, and the <c>sftp</c> subsystem starts on the same source port as the shell — which
-    /// is to say on the same TCP connection. A second connection would show a second acceptance from
-    /// a different port, and that is exactly what most clients produce.</para>
+    /// <para>The server's log is the witness, and the lines are compared to each other rather than
+    /// counted: the shell session and the sftp subsystem name the same source port, which is to say
+    /// the same TCP connection, and that connection was authenticated exactly once. A second
+    /// connection would put the subsystem on a different port with an acceptance of its own, which
+    /// is exactly what most clients produce.</para>
+    ///
+    /// <para>Counting every acceptance in a window would be a weaker test and a flakier one: the
+    /// fixture is shared, other tests authenticate against it, and <c>docker logs</c> does not
+    /// promise to be current the moment it is asked. Pairing two lines by port is immune to
+    /// both.</para>
     /// </summary>
     [Fact]
     public async Task OpeningFileTransferCostsNoSecondAuthentication()
@@ -55,21 +61,22 @@ public sealed class SftpChannelTests
 
         _ = await files.StatAsync(".", Stop);
 
-        string[] said = Since(before);
+        // Waited for rather than read once: sshd's output reaches docker on its own schedule, and
+        // asking too early answers with an empty window that looks like a failure.
+        string[] said = await Until(before, "subsystem 'sftp'");
 
-        string[] accepted = [.. said.Where(line =>
-            line.Contains("Accepted publickey", StringComparison.Ordinal))];
+        string subsystem = said.Last(line =>
+            line.Contains("subsystem 'sftp'", StringComparison.Ordinal));
 
-        string[] subsystem = [.. said.Where(line =>
-            line.Contains("subsystem 'sftp'", StringComparison.Ordinal))];
+        string port = SourcePort(subsystem);
 
-        // One authentication for the whole exchange.
-        Assert.Single(accepted);
-        Assert.Single(subsystem);
+        // The shell is on that same connection, which is the claim.
+        Assert.Contains(said, line => line.Contains("Starting session: shell", StringComparison.Ordinal)
+                                      && SourcePort(line) == port);
 
-        // And the file channel arrived on the connection that authentication opened: the server
-        // names the source port on both lines, and they are the same port.
-        Assert.Equal(SourcePort(accepted[0]), SourcePort(subsystem[0]));
+        // And that connection authenticated once. A second connection would carry its own.
+        Assert.Single(said, line => line.Contains("Accepted publickey", StringComparison.Ordinal)
+                                    && SourcePort(line) == port);
     }
 
     /// <summary>
@@ -498,6 +505,31 @@ public sealed class SftpChannelTests
     private static int LinesSoFar() => Log().Length;
 
     private static string[] Since(int before) => [.. Log().Skip(before)];
+
+    /// <summary>
+    /// The log since a mark, once it holds what is being waited for.
+    ///
+    /// <para>Returns what it has at the deadline either way, so the assertion that follows reports
+    /// what the server actually said rather than a timeout.</para>
+    /// </summary>
+    private static async Task<string[]> Until(int before, string wanted)
+    {
+        string[] said = [];
+
+        for (int attempt = 0; attempt < 30; attempt++)
+        {
+            said = Since(before);
+
+            if (said.Any(line => line.Contains(wanted, StringComparison.Ordinal)))
+            {
+                return said;
+            }
+
+            await Task.Delay(200, Stop);
+        }
+
+        return said;
+    }
 
     /// <summary>What the fixture's sshd has said, which is the only impartial account available.</summary>
     private static string[] Log()
