@@ -653,32 +653,6 @@ Falsified when the test fails on a run where the outstanding bytes never grew.
 
 ## Block D — The tree a user organises work in
 
-### §QS58 The dialog is the settings surface with the highest traffic
-
-Most users will configure a session here rather than in the file, so this dialog is
-where the store's model becomes visible and where a bad default silently becomes
-everybody's default.
-
-It asks for the minimum that can open a connection — a host, and nothing else that can
-be inherited or defaulted — with everything further behind a disclosure. A dialog
-demanding twelve fields for a machine on the local network is a dialog that makes simple
-work feel heavy, and that impression is formed once.
-
-Inherited values are shown as inherited with their source named, and overriding one is a
-deliberate act. Without that, a user cannot tell why one session behaves unlike its
-siblings, and answering that question is where an evening goes.
-
-Post-login commands are supported and are exactly as dangerous as they sound: text sent
-to a shell as though typed. So they are visible on the session, they are never silently
-inherited from a folder, and the dialog states what will happen. Sending a password this
-way is refused, with the credential store named as the alternative.
-
-Per-session terminal settings — scheme, font size, terminal type, scrollback — override
-the global ones, which is what lets a production host look visibly unlike a staging one.
-That visual difference is a safety feature far more than a preference.
-
-Falsified when the dialog requires a field the store could have inherited.
-
 ### §QS117 A file that reads by hand and writes by machine
 
 QS55 committed to a format that is "human-readable, diffable and documented, so it can
@@ -728,6 +702,32 @@ path may need the same hand-built listener the proxy path already has.
 
 Falsified when a second process can connect to a live jump's bound port and reach the
 target.
+
+### §QS121 Two finished halves with nothing between them
+
+QS55 built the tree and QS58 the dialog over it, and neither is reachable from the
+running application. `SessionTree.ReadFrom` and `WriteTo` take a path that nothing
+supplies, and `SessionDialog` is constructed by its tests and by nothing else. The
+window has no menu, no key bindings and no session list, so the roadmap's original
+symptom — the store can only be built by editing its file — is still true of the shipped
+program.
+
+Three decisions are missing, and each is a decision rather than plumbing.
+
+Where the file lives. It is the artefact a user builds over years, so it wants a path
+they can find, back up and put in a repository, and a default under `%APPDATA%` is a
+file most users never learn they have.
+
+What opens the dialog. A session list is the obvious answer and is a design in its own
+right: it is the tree made visible, with the folders that carry the inheritance QS58's
+fields report.
+
+When the file is written. Saving on every edit loses a hand-edit made while the client
+is running; writing on exit loses everything to a crash. QS117 already carries what a
+write does not preserve, and this decides when one happens at all.
+
+Falsified when a user can create a session, close the client, reopen it and connect to
+that session without touching a file.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

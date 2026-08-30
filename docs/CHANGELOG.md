@@ -59,6 +59,7 @@
 - ✅ **QS56** **Hosts already defined for OpenSSH have to be defined a second time here** — The user's own ssh_config is read with OpenSSH's first-value-wins rule and its negations, never written, and every directive not acted on names its file and line.
 - ✅ **QS57** **A host reachable only through a bastion cannot be reached at all** — Both routes through a bastion now work, the built-in jump and a proxy command, through one loop that treats three hops as one hop three times.
 - ✅ **QS118** **A host reached through a ProxyCommand is read from the config, reported, and cannot be connected to** — A host reachable only on the container network is reached by running the escape hatch people actually write, ssh -W, and what the program prints on stderr survives into the failure.
+- ✅ **QS58** **A session cannot be created or edited, so the store can only be built by editing its file** — A session is made by typing a host, every other field answered from the folder above with its source named beside it, and a password after login refused.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

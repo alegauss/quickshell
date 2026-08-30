@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -39,11 +40,21 @@ public sealed record SessionSettings
     /// </summary>
     public string? Credential { get; init; }
 
+    /// <summary>Point size for this session's text, where it differs from the global one.</summary>
+    public double? FontSize { get; init; }
+
+    /// <summary>What to claim to be — <c>xterm-256color</c> and its kind.</summary>
+    public string? TerminalType { get; init; }
+
+    /// <summary>How many lines of history to keep.</summary>
+    public int? Scrollback { get; init; }
+
     /// <summary>Whether every field is unset, which is a node that inherits everything.</summary>
     [JsonIgnore]
     public bool IsEmpty =>
         User is null && Port is null && Key is null && JumpHost is null
-        && Scheme is null && Credential is null;
+        && Scheme is null && Credential is null && FontSize is null
+        && TerminalType is null && Scrollback is null;
 }
 
 /// <summary>
@@ -62,6 +73,17 @@ public sealed record SessionNode
 
     /// <summary>What this node sets, and what its children will inherit.</summary>
     public SessionSettings Settings { get; init; } = new();
+
+    /// <summary>
+    /// Text sent to the shell after login, as though somebody typed it.
+    ///
+    /// <para><b>Deliberately not in <see cref="SessionSettings"/>, which is the type that
+    /// inherits.</b> A folder that could set this would be a folder that silently types into every
+    /// machine under it, and a user who added a host to that folder would never see it happen. Being
+    /// outside the inheriting type is what makes "never inherited" a property of the model rather
+    /// than a rule somebody has to keep remembering.</para>
+    /// </summary>
+    public string? PostLogin { get; init; }
 
     /// <summary>Labels a search can find it by.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
@@ -98,7 +120,23 @@ public readonly record struct Source<T>(T Value, string From);
 public sealed record ResolvedSession(string Path, string Host, Source<string>? User, Source<int>? Port,
                                      Source<string>? Key, Source<string>? JumpHost,
                                      Source<string>? Scheme, Source<string>? Credential,
-                                     IReadOnlyList<string> Tags);
+                                     IReadOnlyList<string> Tags)
+{
+    /// <summary>Point size, and which node said so.</summary>
+    public Source<double>? FontSize { get; init; }
+
+    /// <summary>The terminal type to claim, and which node said so.</summary>
+    public Source<string>? TerminalType { get; init; }
+
+    /// <summary>Lines of history, and which node said so.</summary>
+    public Source<int>? Scrollback { get; init; }
+
+    /// <summary>
+    /// What this session types after login, which is its own or nothing. No source accompanies it
+    /// because there is only ever one place it can have come from.
+    /// </summary>
+    public string? PostLogin { get; init; }
+}
 
 /// <summary>
 /// The sessions a user has accumulated, in a file they own.
@@ -204,6 +242,147 @@ public sealed class SessionTree
         return found;
     }
 
+    /// <summary>
+    /// The node at a path, folder or session, or null where there is none. The empty path is the
+    /// root.
+    /// </summary>
+    public SessionNode? Find(string path)
+    {
+        SessionNode? here = Root;
+
+        foreach (string step in Segments(path))
+        {
+            here = here?.Children.FirstOrDefault(child =>
+                string.Equals(child.Name, step, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return here;
+    }
+
+    /// <summary>
+    /// What a node at this path takes from the folders above it, by field name, each with the node
+    /// that set it.
+    ///
+    /// <para>The node's own settings are not in it. That is the whole distinction the dialog rests
+    /// on: what is here is what the user would be overriding, and a value the node set itself is
+    /// not something it inherits.</para>
+    /// </summary>
+    public IReadOnlyDictionary<string, Source<string>> Inherits(string path)
+    {
+        Dictionary<string, string> from = new(StringComparer.Ordinal);
+        SessionSettings carried = new();
+        SessionNode? here = Root;
+        string walked = string.Empty;
+
+        // The root itself can set values, and the last segment is the node being edited, whose own
+        // settings are what this deliberately stops short of.
+        foreach (string step in Segments(path))
+        {
+            carried = Merge(carried, here?.Settings ?? new SessionSettings(),
+                            walked.Length == 0 ? "/" : walked, from);
+
+            here = here?.Children.FirstOrDefault(child =>
+                string.Equals(child.Name, step, StringComparison.OrdinalIgnoreCase));
+
+            walked = walked.Length == 0 ? step : $"{walked}/{step}";
+        }
+
+        if (Segments(path).Count == 0)
+        {
+            return new Dictionary<string, Source<string>>(StringComparer.Ordinal);
+        }
+
+        Dictionary<string, Source<string>> inherited = new(StringComparer.Ordinal);
+
+        Note(nameof(SessionSettings.User), carried.User);
+        Note(nameof(SessionSettings.Port), carried.Port?.ToString(CultureInfo.InvariantCulture));
+        Note(nameof(SessionSettings.Key), carried.Key);
+        Note(nameof(SessionSettings.JumpHost), carried.JumpHost);
+        Note(nameof(SessionSettings.Scheme), carried.Scheme);
+        Note(nameof(SessionSettings.Credential), carried.Credential);
+        Note(nameof(SessionSettings.FontSize),
+             carried.FontSize?.ToString(CultureInfo.InvariantCulture));
+        Note(nameof(SessionSettings.TerminalType), carried.TerminalType);
+        Note(nameof(SessionSettings.Scrollback),
+             carried.Scrollback?.ToString(CultureInfo.InvariantCulture));
+
+        return inherited;
+
+        void Note(string field, string? value)
+        {
+            if (value is not null)
+            {
+                inherited[field] = new Source<string>(value, from[field]);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The same tree with one node put at a path, replacing what was there or adding it to the
+    /// folder above. Nothing is mutated: what comes back is a new tree.
+    /// </summary>
+    public SessionTree With(string path, SessionNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        IReadOnlyList<string> steps = Segments(path);
+
+        if (steps.Count == 0)
+        {
+            return new SessionTree(node);
+        }
+
+        return new SessionTree(Put(Root, steps, 0, node));
+    }
+
+    private static SessionNode Put(SessionNode parent, IReadOnlyList<string> steps, int depth,
+                                   SessionNode node)
+    {
+        string wanted = steps[depth];
+        bool last = depth == steps.Count - 1;
+
+        List<SessionNode> children = [.. parent.Children];
+
+        int at = children.FindIndex(child =>
+            string.Equals(child.Name, wanted, StringComparison.OrdinalIgnoreCase));
+
+        if (last)
+        {
+            if (at < 0)
+            {
+                children.Add(node);
+            }
+            else
+            {
+                children[at] = node;
+            }
+
+            return parent with { Children = children };
+        }
+
+        // A folder named in the path but not in the tree is created, because a caller placing a
+        // session two folders down means both folders.
+        SessionNode below = at < 0 ? new SessionNode { Name = wanted } : children[at];
+        SessionNode rebuilt = Put(below, steps, depth + 1, node);
+
+        if (at < 0)
+        {
+            children.Add(rebuilt);
+        }
+        else
+        {
+            children[at] = rebuilt;
+        }
+
+        return parent with { Children = children };
+    }
+
+    private static IReadOnlyList<string> Segments(string path) =>
+        string.IsNullOrWhiteSpace(path) || path == "/"
+            ? []
+            : [.. path.Split('/', StringSplitOptions.RemoveEmptyEntries
+                                  | StringSplitOptions.TrimEntries)];
+
     /// <summary>One session by its path, or null where there is none.</summary>
     public ResolvedSession? Session(string path) =>
         Sessions().FirstOrDefault(session =>
@@ -261,7 +440,20 @@ public sealed class SessionTree
                 Carry(settings.JumpHost, sources, nameof(SessionSettings.JumpHost)),
                 Carry(settings.Scheme, sources, nameof(SessionSettings.Scheme)),
                 Carry(settings.Credential, sources, nameof(SessionSettings.Credential)),
-                carried));
+                carried)
+            {
+                FontSize = settings.FontSize is { } size
+                    ? new Source<double>(size, sources[nameof(SessionSettings.FontSize)])
+                    : null,
+                TerminalType = Carry(settings.TerminalType, sources,
+                                     nameof(SessionSettings.TerminalType)),
+                Scrollback = settings.Scrollback is { } lines
+                    ? new Source<int>(lines, sources[nameof(SessionSettings.Scrollback)])
+                    : null,
+
+                // Its own, never the folder's: see SessionNode.PostLogin.
+                PostLogin = node.PostLogin,
+            });
         }
 
         foreach (SessionNode child in node.Children)
@@ -289,6 +481,9 @@ public sealed class SessionTree
         Take(own.JumpHost, nameof(SessionSettings.JumpHost));
         Take(own.Scheme, nameof(SessionSettings.Scheme));
         Take(own.Credential, nameof(SessionSettings.Credential));
+        Take(own.FontSize, nameof(SessionSettings.FontSize));
+        Take(own.TerminalType, nameof(SessionSettings.TerminalType));
+        Take(own.Scrollback, nameof(SessionSettings.Scrollback));
 
         return new SessionSettings
         {
@@ -298,6 +493,9 @@ public sealed class SessionTree
             JumpHost = own.JumpHost ?? inherited.JumpHost,
             Scheme = own.Scheme ?? inherited.Scheme,
             Credential = own.Credential ?? inherited.Credential,
+            FontSize = own.FontSize ?? inherited.FontSize,
+            TerminalType = own.TerminalType ?? inherited.TerminalType,
+            Scrollback = own.Scrollback ?? inherited.Scrollback,
         };
 
         void Take(object? value, string field)

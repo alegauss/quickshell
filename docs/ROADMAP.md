@@ -38,9 +38,9 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS58** (deps: QS55 ✅) **A session cannot be created or edited, so the store can only be built by editing its file** — The dialog is where most users meet every decision this client has made about connecting, so what it asks for and what it assumes are both design. → §QS58
 - 📋 **QS117** (deps: QS55 ✅) **Comments a user wrote in the session store are gone the next time the client writes it** — Reading the file is lossless and writing it is not, so a store edited by hand and then edited through the client loses the half a person put there for themselves. → §QS117
 - 📋 **QS119** (deps: QS57 ✅) **A jump carries traffic through a local port anything running as this user can connect to** — A bastion exists to be the only way in, and a port on this machine that reaches the target unauthenticated is a second way in that the user never opened. → §QS119
+- 📋 **QS121** (deps: QS55 ✅, QS58 ✅) **Nothing owns the session store file and nothing opens the session dialog, so neither is reachable** — A store with no owner and a dialog with no way in are two finished parts that a user cannot get to, which is the same to them as neither existing. → §QS121
 
 ## Block E — SCP and SFTP as a thing a person operates
 

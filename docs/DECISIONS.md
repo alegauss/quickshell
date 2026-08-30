@@ -38,6 +38,7 @@
 - ✅ **QS56** **Hosts already defined for OpenSSH have to be defined a second time here** — A file OpenSSH also reads is never written by this client, guaranteed by there being no method that could rather than by nobody calling one.
 - ✅ **QS118** **A host reached through a ProxyCommand is read from the config, reported, and cannot be connected to** — A proxy command is a second kind of transport, not an option on the first: its standard streams are the connection, and whatever it printed is the only account it gives of failing.
 - ✅ **QS57** **A host reachable only through a bastion cannot be reached at all** — A jump is a nested session and never a tunnel: each hop's own host key is checked with that hop's own delegate, and no hop's credentials are offered to another.
+- ✅ **QS58** **A session cannot be created or edited, so the store can only be built by editing its file** — A dialog never requires what the store could inherit, and never writes an inherited value back: an override is an act, so a folder's one default stays one value.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
