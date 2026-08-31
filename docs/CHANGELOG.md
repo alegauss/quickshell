@@ -93,6 +93,8 @@
 
 ## Block I — An error a user can act on
 
+- ✅ **QS71** **When a connection fails there is nothing to read afterwards but the dialog that has gone** — A session writes what happened where a user can send it — connections, credentials by kind, failures in their own words, the negotiation under a trace — and no secret can reach the file.
+
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of

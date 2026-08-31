@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Renci.SshNet;
 using Renci.SshNet.Common;
@@ -39,6 +40,12 @@ public sealed class SshNetTransport : ISshTransport
     /// </summary>
     private const int BufferBytes = 64 * 1024;
 
+    /// <summary>
+    /// Stands where the library will not say. Written out rather than left blank, because an empty
+    /// field in a log reads as "there was nothing" and here it means "nobody was told".
+    /// </summary>
+    private const string Unreported = "not reported by the library";
+
     private readonly TaskCompletionSource<SshException?> _disconnected =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -54,6 +61,15 @@ public sealed class SshNetTransport : ISshTransport
 
     /// <inheritdoc/>
     public Task<SshException?> Disconnected => _disconnected.Task;
+
+    /// <summary>
+    /// Where this session records what happened, or null to record nothing.
+    ///
+    /// <para>What reaches it is the shape of the exchange and never its content — see
+    /// <see cref="SessionLog"/> for why that is a property of the surface rather than a rule
+    /// somebody follows.</para>
+    /// </summary>
+    public SessionLog? Log { get; init; }
 
     /// <inheritdoc/>
     public TimeSpan KeepAlive { get; set; } = TimeSpan.Zero;
@@ -90,7 +106,32 @@ public sealed class SshNetTransport : ISshTransport
 
         Endpoint = endpoint;
 
-        AuthenticationMethod[] methods = Offer(endpoint, credentials);
+        // Before anything can fail, including reading a key file: an attempt that never reached the
+        // network is exactly the one a user cannot explain afterwards.
+        Log?.Connecting(endpoint);
+
+        foreach (SshCredential offered in credentials)
+        {
+            // What kind, never which. The credential itself has no route into the log.
+            Log?.Offered(endpoint, Kind(offered));
+        }
+
+        AuthenticationMethod[] methods;
+
+        try
+        {
+            methods = Offer(endpoint, credentials);
+        }
+        catch (SshException told)
+        {
+            // A key that cannot be read, or an agent holding nothing, fails before the network is
+            // touched — and that is the failure a user is least able to explain afterwards, because
+            // no server was involved in it and there is nothing on the far side to ask.
+            Log?.Failed(endpoint, told.Kind, told.Message);
+
+            throw;
+        }
+
         ConnectionInfo connection = new(endpoint.Host, endpoint.Port, endpoint.User, methods)
         {
             Timeout = Timeout,
@@ -113,6 +154,8 @@ public sealed class SshNetTransport : ISshTransport
             presented.CanTrust = verdict != SshHostKeyVerdict.Refuse;
         };
 
+        long began = Stopwatch.GetTimestamp();
+
         try
         {
             await client.ConnectAsync(cancellationToken).ConfigureAwait(false);
@@ -120,6 +163,9 @@ public sealed class SshNetTransport : ISshTransport
         catch (OperationCanceledException)
         {
             client.Dispose();
+
+            Log?.Failed(endpoint, SshFailureKind.Cancelled, "the attempt was stopped");
+
             throw new SshException(
                 SshFailureKind.Cancelled,
                 $"The attempt to reach {endpoint} was stopped.",
@@ -129,7 +175,7 @@ public sealed class SshNetTransport : ISshTransport
         {
             client.Dispose();
 
-            throw verdict == SshHostKeyVerdict.Refuse && failure is SshConnectionException
+            SshException told = verdict == SshHostKeyVerdict.Refuse && failure is SshConnectionException
                 ? SshException.From(
                     SshFailureKind.HostKey,
                     $"The key {endpoint} presented was refused.",
@@ -137,11 +183,45 @@ public sealed class SshNetTransport : ISshTransport
                     "The connection was abandoned before anything was sent to that server.",
                     "Compare the fingerprint against one you trust before accepting it.")
                 : Translate(endpoint, failure);
+
+            Log?.Failed(endpoint, told.Kind, told.Message);
+
+            // Only where the server is the thing that said no. `Refused` is a port with nothing
+            // listening on it, and writing "auth-refused" for that would send a user hunting through
+            // their keys for a failure that never reached an authentication exchange.
+            if (told.Kind is SshFailureKind.NoMethodAccepted or SshFailureKind.CredentialRejected)
+            {
+                foreach (SshCredential credential in credentials)
+                {
+                    // Every one of them: the library offers each in turn and fails only when the
+                    // last has been refused, so nothing here is being guessed at.
+                    Log?.Refused(endpoint, Kind(credential));
+                }
+            }
+
+            // The trace is written on the way out as well as on the way in, and this is the case it
+            // exists for: an appliance that will not negotiate leaves nothing behind but what the
+            // two sides offered.
+            Traced(connection);
+
+            throw told;
         }
+
+        Log?.Connected(endpoint, Stopwatch.GetElapsedTime(began));
+        Log?.Authenticated(endpoint);
+
+        Traced(connection);
 
         _client = client;
         _client.ErrorOccurred += (_, error) =>
-            _disconnected.TrySetResult(Translate(endpoint, error.Exception));
+        {
+            SshException dropped = Translate(endpoint, error.Exception);
+
+            Log?.Failed(endpoint, dropped.Kind, dropped.Message);
+            Log?.Disconnected(endpoint, expected: false);
+
+            _disconnected.TrySetResult(dropped);
+        };
     }
 
     /// <inheritdoc/>
@@ -159,6 +239,8 @@ public sealed class SshNetTransport : ISshTransport
                 TerminalType, (uint)columns, (uint)rows, 0, 0, BufferBytes);
 
             _shell = new SshNetChannel(shell, columns, rows);
+
+            Log?.Channel(ChannelKind.Shell, opened: true);
 
             return ValueTask.FromResult<IPtyChannel>(_shell);
         }
@@ -236,12 +318,80 @@ public sealed class SshNetTransport : ISshTransport
         if (_shell is not null)
         {
             await _shell.DisposeAsync().ConfigureAwait(false);
+
+            Log?.Channel(ChannelKind.Shell, opened: false);
+        }
+
+        if (_client is not null)
+        {
+            // Told apart from the drop recorded in ErrorOccurred: a session that ended because
+            // somebody closed it and one that ended on its own are the same line in a log that does
+            // not distinguish them, and they are the whole question a report is asking.
+            Log?.Disconnected(Endpoint, expected: true);
         }
 
         _client?.Dispose();
         _client = null;
         _disconnected.TrySetResult(null);
     }
+
+    /// <summary>
+    /// The negotiation, at trace level: the two version strings and, for each thing the two sides
+    /// have to agree on, what this client offered and what was agreed.
+    ///
+    /// <para><b>What the server offered is not in here, and the log says so rather than leaving a
+    /// blank.</b> SSH.NET keeps the peer's KEXINIT lists to itself — its <c>ConnectionInfo</c>
+    /// exposes what this side supports and what was chosen, and nothing in between. Half the
+    /// negotiation still diagnoses most of what this level exists for: an appliance that agrees on
+    /// nothing leaves a record of everything this client was willing to speak, which is what turns
+    /// "connection failed" into a list to compare against the server's config. The other half is
+    /// QS128.</para>
+    ///
+    /// <para>Called after a failure as well as after a success, because a handshake that did not
+    /// finish is the one nobody can reconstruct afterwards.</para>
+    /// </summary>
+    private void Traced(ConnectionInfo connection)
+    {
+        if (Log is null)
+        {
+            return;
+        }
+
+        Log.Versions(connection.ClientVersion ?? Unreported,
+                     connection.ServerVersion ?? "none — the version exchange did not finish");
+
+        Log.Negotiated("kex", Offered(connection.KeyExchangeAlgorithms), Unreported,
+                       Agreed(connection.CurrentKeyExchangeAlgorithm));
+        Log.Negotiated("host key", Offered(connection.HostKeyAlgorithms), Unreported,
+                       Agreed(connection.CurrentHostKeyAlgorithm));
+        Log.Negotiated("cipher", Offered(connection.Encryptions), Unreported,
+                       Agreed(connection.CurrentServerEncryption));
+        Log.Negotiated("mac", Offered(connection.HmacAlgorithms), Unreported,
+                       Agreed(connection.CurrentServerHmacAlgorithm));
+    }
+
+    /// <summary>What this side was willing to speak, in the order it was willing to speak it.</summary>
+    private static string Offered<T>(IDictionary<string, T> supported) =>
+        supported.Count == 0 ? "none" : string.Join(',', supported.Keys);
+
+    /// <summary>What was settled on, or the fact that nothing was.</summary>
+    private static string Agreed(string? chosen) =>
+        chosen is { Length: > 0 } settled ? settled : "none";
+
+    /// <summary>
+    /// What a credential is, for the log.
+    ///
+    /// <para>A shape and never a value: this is the only thing about a credential that any log in
+    /// this client is given, and the type it returns cannot carry one.</para>
+    /// </summary>
+    private static CredentialKind Kind(SshCredential credential) =>
+        credential switch
+        {
+            SshCredential.Password => CredentialKind.Password,
+            SshCredential.PrivateKey => CredentialKind.PrivateKey,
+            SshCredential.Agent => CredentialKind.Agent,
+            _ => CredentialKind.Interactive,
+        };
 
     /// <summary>The client, or a failure saying there is not one, rather than a null reference.</summary>
     private SshClient Live()

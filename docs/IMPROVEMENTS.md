@@ -1409,34 +1409,6 @@ Falsified when this repository quotes an input-to-photon figure with no run behi
 
 ## Block I — An error a user can act on
 
-### §QS71 A log worth sending, which means a log without secrets
-
-Two levels of detail and one hard rule.
-
-**Ordinary logging** records the shape of what happened: connections opened and closed
-with their outcome, authentication methods attempted and their results, channels opened,
-forwards started and stopped, transfers, and every error in the same wording the user
-saw. On by default, at a level that costs nothing, and it is what a bug report needs.
-
-**A transport trace** is the second level, off by default and enabled per session:
-version exchange, algorithm negotiation with what each side offered, key exchange, and
-the sequence of channel operations. This is what diagnoses an appliance that will not
-negotiate, which is the failure class this client will meet most often.
-
-The hard rule is that neither level may contain a secret. Passwords, key material,
-passphrases, agent responses and channel contents are redacted *at the point of writing*
-rather than filtered afterwards — a filter is a list of things somebody remembered, and
-the forgotten one is always the one that matters. Payloads are logged as lengths and
-types, never as bytes.
-
-Logs rotate by size against a bounded total, because a trace left running overnight must
-not fill a disk.
-
-The file's location is discoverable from inside the client, since a log a user cannot
-find is a log that does not exist.
-
-Falsified when any secret appears in a log at any level.
-
 ### §QS72 The last second, and what is kept from it
 
 Crashes happen, and this client has unusually good reasons to expect them: a graphics
@@ -1488,6 +1460,81 @@ test by moving one file rather than by writing one.
 Nothing here is automatic and nothing is sent.
 
 Falsified when a recording captures typed input.
+
+### §QS128 A trace that carries both sides of the negotiation
+
+QS71 shipped a trace that records this client's version, the algorithms it was willing
+to speak for each of kex, host key, cipher and mac, and what was agreed. What it cannot
+record is the server's own offer, and the log writes "not reported by the library" in
+that field rather than leaving a blank that would read as "the server offered nothing".
+
+SSH.NET's `ConnectionInfo` exposes the supported sets on this side and the `Current*`
+result of each negotiation. The peer's KEXINIT lists are parsed inside the library and
+never surfaced. So the one failure this level exists for — an appliance that shares no
+algorithm — leaves a log holding one of the two lists a reader has to compare.
+
+Three ways out, in increasing cost. The library may expose the peer's lists in a later
+version, which is a version bump and a call. Its `Session` type raises message events
+that a reflection-free seam might subscribe to, if KEXINIT is among them. Failing both,
+this client reads the version exchange and the first KEXINIT off the socket itself
+before handing it to the library, which is a real protocol implementation in a
+repository whose non-goals say there is not one — so that route is a decision, not an
+implementation detail.
+
+Measure first: check what the installed SSH.NET actually exposes before assuming the
+worst of it.
+
+Falsified when a failed negotiation against the `legacy` fixture leaves a log naming
+both sides' algorithm lists.
+
+### §QS129 The log, reachable from inside the window
+
+QS71 built the log and the guarantee that it holds no secret. It did not attach one to
+anything a user drives: the app never constructs a transport itself yet — sessions are
+started through a delegate the tests supply — so today the only caller that gets a log
+is a test.
+
+Three things this owes a person at the terminal. A log **exists** for every session,
+opened where the client's own data lives, at the ordinary level, without anybody asking.
+Its location is **reachable from the window** — a menu item that opens the folder is
+enough, and it is what a support reply can say in one sentence. And the trace is a
+**per-session toggle**, on the session rather than global, because the whole point of
+the second level is to turn it on for the one host that will not negotiate and leave
+every other session cheap.
+
+The toggle is a setting, and this project treats a setting as a surface with a cost, so
+it is named for the behaviour and it appears wherever settings are documented. There is
+no README today; that is the moment to decide where a user reads about this at all.
+
+The trace is off by default and stays off across a restart: a client that quietly keeps
+tracing after somebody diagnosed something once is a client writing a large file nobody
+asked for.
+
+Falsified when a running client cannot tell a user where its log is.
+
+### §QS130 What crosses the connection, and not only the connection
+
+The log surface QS71 built already carries `Channel`, `Forward`, `Moved` and `Payload`.
+Nothing calls three of them. The transport records a shell channel opening and closing;
+the SFTP channel, the scp fallback, every forward and every byte counted are silent.
+
+That is the wrong half to have. A dropped connection is visible in the window and the
+user can say what happened. A transfer that stopped at 40% against one server, or a
+forward that went away an hour into a session, is precisely the report that arrives as
+"it sometimes doesn't work" — and the log is the only thing that could say the channel
+closed, when, and with what error.
+
+What to wire, all of it against methods that already exist: the file-transfer channel
+and the scp fallback as `channel-open` and `channel-close` with their kind; each
+forward's start and stop by its ports, including the one that stopped because the
+session did; transfers as byte counts at completion rather than per chunk, since a
+progress bar in a log file is a rotation nobody wanted.
+
+The rule QS71 established holds without restating it: these methods take counts and
+kinds, and there is no overload that takes a byte. A path being transferred is a
+filename, which is the user's business but not a credential — record it.
+
+Falsified when a transfer that failed halfway leaves nothing in the log.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 

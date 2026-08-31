@@ -82,9 +82,11 @@
 
 ## Block I — An error a user can act on
 
-- 📋 **QS71** (deps: QS39 ✅) **When a connection fails there is nothing to read afterwards but the dialog that has gone** — A failure the user cannot reproduce is diagnosed from a log or not at all, and a log that holds secrets is one they are unable to send. → §QS71
 - 📋 **QS72** (deps: QS1 ✅) **A crash takes the session, the scrollback and any explanation of what happened with it** — A client holding four connections that simply vanishes is worse than one that fails visibly, and the difference is entirely what it does in its last second. → §QS72
-- 📋 **QS73** (deps: QS71, QS72) **A user reporting a defect has no way to say what their client was doing when it happened** — Every report arrives without the version, the server, the settings or the environment, and gathering those by correspondence costs days per defect. → §QS73
+- 📋 **QS73** (deps: QS71 ✅, QS72) **A user reporting a defect has no way to say what their client was doing when it happened** — Every report arrives without the version, the server, the settings or the environment, and gathering those by correspondence costs days per defect. → §QS73
+- 📋 **QS128** (deps: QS71 ✅) **A trace shows what this client offered and never what the server did** — Half a negotiation cannot settle "no algorithm in common", so the appliance failures this level exists for are still diagnosed by guesswork. → §QS128
+- 📋 **QS129** (deps: QS71 ✅) **Nothing in the client says where its log is, or turns the trace on** — A log a user cannot find is a log that does not exist, and a trace that can only be enabled by editing code is one no bug report will ever carry. → §QS129
+- 📋 **QS130** (deps: QS71 ✅) **The log goes quiet exactly where a transfer or a tunnel failed** — A connection's own life is recorded and everything carried over it is not, so the reports hardest to reproduce are the ones the log has least to say about. → §QS130
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
