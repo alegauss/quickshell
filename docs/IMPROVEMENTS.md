@@ -602,34 +602,38 @@ runs.
 
 ### §QS139 Gigabytes waiting in a channel nobody is draining fast enough
 
-Found by QS78's harness on its first working run, and **first filed against the wrong
-layer**. One printing session against the fixture, a 200x50 emulator, 64 KB reads:
+A host sending faster than its consumer buffers inside the channel. Measured, one
+printing session against the fixture, ~3 min each:
 
-| ~3 min, one session | parser on | parser off (`--no-parse`) |
+| arrangement | moved | retained after a full GC |
 |---|---|---|
-| moved | 153 MB | 18,176 MB |
-| managed heap after a forced full collection | 2,055 MB | 8.9 MB |
+| reads only, no parsing | 18,176 MB | 8.9 MB |
+| reads + parse, through `SessionPipeline` | 657 MB | 1,035 MB |
+| reads + parse, reading the channel directly | 143 MB | 2,055 MB |
+| parsing 64 MB headlessly, no SSH at all | — | under 8 MB |
 
-That looked like the emulator retaining thirteen bytes per byte parsed. It is not.
-`ParseRetentionTests` feeds one emulator 64 MB of `cat-log` headlessly and finds under 8
-MB held after a blocking compacting gen2 collection. The emulator retains nothing.
+**It is not the emulator.** One 200x50 emulator with 2,000 lines of scrollback holds
+under 128 MB absolutely, and feeding it 64 MB adds under 8 MB. Both are asserted in
+`ParseRetentionTests`.
 
-What the numbers actually say: the host sent roughly two gigabytes while the parser
-consumed 153 MB, and the difference sat in the channel. Bypassing the parser made the
-consumer fast, so nothing accumulated — which is why the experiment implicated the wrong
-half.
+**It is the large object heap**, and nothing else: 1,046 MB there against a gen2 of 4.6
+MB and an empty pinned heap. Flat from the first sample, so a fixed high-water mark
+rather than a leak.
 
-So this is flow control. A session whose consumer is slower than its host must make the
-host wait, not buffer. `SessionPipeline` was built for exactly that — a bounded queue
-whose full state makes the reader wait — and the soak read the channel directly instead,
-which is the arrangement no real client uses. Two things to settle, in order: whether
-the same growth happens through `SessionPipeline`, and if it does, where SSH.NET's own
-receive buffer is bounded.
+**It tracks consumer slowness, not bytes.** The faster the reader, the less is held —
+`SessionPipeline` halves it and moves 4.6 times more — and with no SSH channel at all
+there is none. That is SSH.NET buffering what it has received and cannot hand on.
 
-Reproduce: `Quickshell.Soak.exe --hours 0.05 --sessions 1 --warmup 0.5`, then
-`--no-parse`.
+Where the bound is set is the remaining question, and the size argues against the
+obvious answer. A protocol window is measured in megabytes and none explains a gigabyte.
+What does is `ShellStream` reading from the channel into a buffer of its own as fast as
+the server sends, whatever rate the consumer manages — and the 64 KB passed to
+`CreateShellStream` evidently does not bound it.
 
-Falsified when an unread session grows without limit.</body>
+If so there is no knob, and the choice is between consuming `ShellStream` differently
+and not using it here. That is a transport decision, not a tuning one.</replacement>
+
+ Falsified when an unread session grows without limit.</body>
 
 ### §QS140 A cap that is the number it says
 

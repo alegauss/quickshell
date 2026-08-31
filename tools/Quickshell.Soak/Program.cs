@@ -41,6 +41,8 @@ public static class Soak
                   --host/--port/--user/--key   the fixture (defaults: 127.0.0.1 2222 probe)
                   --no-parse        read host output and drop it, so a counter that rises anyway
                                     belongs to the transport rather than to the parser
+                  --raw-read        read the channel directly instead of through SessionPipeline,
+                                    which is the arrangement no real client uses (QS139)
                   --out <file>      write the report here as well as printing it
 
                 Needs the fixture up: prototypes/SshProbe/fixture/up.sh
@@ -83,9 +85,15 @@ public static class Soak
         // the transport sees them, so a counter that rises either way is not the parser's.
         bool parse = Argument(arguments, "--no-parse") is null;
 
+        // The pipeline is how a real client reads: a bounded queue, and a reader that waits. Off
+        // reads the channel directly, which is what this harness did when it produced the numbers
+        // QS139 was first filed on — kept so the two arrangements can be compared rather than
+        // argued about.
+        bool pipeline = Argument(arguments, "--raw-read") is null;
+
         List<Soaked> sessions = [.. Enumerable.Range(0, count)
                                               .Select(at => new Soaked(Roles(at), at, host, port,
-                                                                       user, key, parse))];
+                                                                       user, key, parse, pipeline))];
 
         foreach (Soaked session in sessions)
         {
@@ -144,9 +152,17 @@ public static class Soak
         Trend handles = new("handles", "handles", tolerance: 200);
         Trend threads = new("threads", "threads", tolerance: 10);
         Trend gen2 = new("gen2 heap (MB)", "MB", tolerance: 15);
+
+        // The large and pinned object heaps, because a gen2 of half a megabyte beside a total heap of
+        // a gigabyte says the memory is somewhere this was not looking. Anything 85 KB or over lands
+        // in the large one, and a pinned buffer handed to native code lands in the other — which for
+        // a client whose whole job is moving buffers is exactly where to look first.
+        Trend loh = new("large object heap (MB)", "MB", tolerance: 15);
+        Trend poh = new("pinned object heap (MB)", "MB", tolerance: 15);
+
         Trend scrollback = new("scrollback lines (one model)", "lines", tolerance: 0);
 
-        Trend[] watched = [working, managed, handles, threads, gen2, scrollback];
+        Trend[] watched = [working, managed, handles, threads, gen2, loh, poh, scrollback];
 
         Stopwatch clock = Stopwatch.StartNew();
         TimeSpan warm = TimeSpan.FromMinutes(warmup);
@@ -182,10 +198,9 @@ public static class Soak
             managed.Took(since, GC.GetTotalMemory(forceFullCollection: false) / (1024.0 * 1024.0));
             handles.Took(since, self.HandleCount);
             threads.Took(since, self.Threads.Count);
-            gen2.Took(since,
-                      gc.GenerationInfo.Length > 2
-                          ? gc.GenerationInfo[2].SizeAfterBytes / (1024.0 * 1024.0)
-                          : 0);
+            gen2.Took(since, Generation(gc, 2));
+            loh.Took(since, Generation(gc, 3));
+            poh.Took(since, Generation(gc, 4));
 
             // The counter-example: it is meant to reach capacity and stop. A tolerance of zero says
             // so, and a ring that kept growing would be the one failure this row can report.
@@ -214,6 +229,15 @@ public static class Soak
                        beforeCollecting / (1024.0 * 1024.0), afterCollecting / (1024.0 * 1024.0),
                        privateAfter / (1024.0 * 1024.0));
     }
+
+    /// <summary>
+    /// One generation's size after the last collection, in megabytes, or zero where this runtime
+    /// does not report it.
+    /// </summary>
+    private static double Generation(GCMemoryInfo gc, int which) =>
+        gc.GenerationInfo.Length > which
+            ? gc.GenerationInfo[which].SizeAfterBytes / (1024.0 * 1024.0)
+            : 0;
 
     /// <summary>The deepest scrollback any model has reached.</summary>
     private static double Deepest(List<Soaked> sessions) =>

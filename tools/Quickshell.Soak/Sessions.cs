@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text;
+using Quickshell.App;
 using Quickshell.Terminal;
 using Quickshell.Transport;
 
@@ -39,7 +40,7 @@ internal enum Role
 /// network. What must not be forgiven is a failure that repeats, so the count is reported.</para>
 /// </summary>
 internal sealed class Soaked(Role role, int number, string host, int port, string user, string key,
-                             bool parse = true)
+                             bool parse = true, bool pipeline = true)
     : IAsyncDisposable
 {
     private const int ReadSize = 64 * 1024;
@@ -48,8 +49,11 @@ internal sealed class Soaked(Role role, int number, string host, int port, strin
 
     private SshNetTransport? _transport;
     private IPtyChannel? _shell;
+    private SessionPipeline? _pipeline;
     private LocalForward? _forward;
     private Task _running = Task.CompletedTask;
+    private long _pipelined;
+    private long _read;
 
     /// <summary>Which role this is.</summary>
     public Role Role { get; } = role;
@@ -63,8 +67,14 @@ internal sealed class Soaked(Role role, int number, string host, int port, strin
     /// <summary>How many connections this role has made. A churning role makes many.</summary>
     public long Connections { get; private set; }
 
-    /// <summary>How many bytes the host has sent it.</summary>
-    public long Bytes { get; private set; }
+    /// <summary>
+    /// How many bytes the host has sent it, whichever way it is reading.
+    ///
+    /// <para>The pipeline counts its own, and a session that has been reconnected has to keep what
+    /// earlier connections moved — otherwise a churning role reports only its last few seconds.</para>
+    /// </summary>
+    public long Bytes =>
+        _pipelined + (_pipeline?.Work.Bytes ?? 0) + _read;
 
     /// <summary>How many failures it has swallowed and carried on from.</summary>
     public long Failures { get; private set; }
@@ -208,6 +218,13 @@ internal sealed class Soaked(Role role, int number, string host, int port, strin
                 await _shell.WriteAsync(Encoding.ASCII.GetBytes(command), stopping)
                             .ConfigureAwait(false);
             }
+
+            if (pipeline)
+            {
+                // The arrangement a real client reads through: a bounded queue of 64 reads, and a
+                // reader that waits when it is full so the wait reaches the far end's flow control.
+                _pipeline = SessionPipeline.Start(_shell, Emulator);
+            }
         }
         else if (Role == Role.Forwarding)
         {
@@ -220,6 +237,15 @@ internal sealed class Soaked(Role role, int number, string host, int port, strin
     /// <summary>Reads whatever the host is sending, into the model, until stopped.</summary>
     private async Task ReadAsync(CancellationToken stopping)
     {
+        if (_pipeline is not null)
+        {
+            // The pipeline owns the reading. Waiting on it is the whole of this role's work, and
+            // what it moved is counted by the pipeline itself.
+            await _pipeline.Completed.WaitAsync(stopping).ConfigureAwait(false);
+
+            return;
+        }
+
         if (_shell is null)
         {
             return;
@@ -257,7 +283,7 @@ internal sealed class Soaked(Role role, int number, string host, int port, strin
                     await _shell.WriteAsync(reply, stopping).ConfigureAwait(false);
                 }
 
-                Bytes += read;
+                _read += read;
             }
         }
         finally
@@ -280,7 +306,7 @@ internal sealed class Soaked(Role role, int number, string host, int port, strin
 
             int read = await client.GetStream().ReadAsync(banner, stopping).ConfigureAwait(false);
 
-            Bytes += read;
+            _read += read;
 
             await Task.Delay(TimeSpan.FromSeconds(5), stopping).ConfigureAwait(false);
         }
@@ -288,6 +314,16 @@ internal sealed class Soaked(Role role, int number, string host, int port, strin
 
     private async ValueTask Close()
     {
+        if (_pipeline is not null)
+        {
+            // Carried across, so a churning role's total is what it has ever moved rather than what
+            // its last connection did.
+            _pipelined += _pipeline.Work.Bytes;
+
+            await _pipeline.DisposeAsync().ConfigureAwait(false);
+            _pipeline = null;
+        }
+
         if (_forward is not null)
         {
             await _forward.DisposeAsync().ConfigureAwait(false);

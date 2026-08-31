@@ -60,6 +60,43 @@ public sealed class ParseRetentionTests
     }
 
     /// <summary>
+    /// What one emulator costs to open at all, measured absolutely rather than as a delta.
+    ///
+    /// <para><b>This is the hole the test above had.</b> That one measures the heap before and after
+    /// a large feed, so it proves there is no growth — and a fixed allocation made before the
+    /// measurement starts is invisible to it. QS78's soak watched the large object heap and found a
+    /// gigabyte sitting in it, flat from the first sample, which is exactly the shape a delta cannot
+    /// see.</para>
+    ///
+    /// <para>A 200x50 grid with 2,000 lines of scrollback is 410,000 cells. What that should cost is
+    /// cells times the size of one, twice over for the two screens — anything hugely above that is a
+    /// number worth knowing before a client opens twenty of them.</para>
+    /// </summary>
+    [Fact]
+    public void OneEmulatorCostsWhatItsCellsCost()
+    {
+        long empty = Settled();
+
+        Emulator emulator = new(200, 50, scrollback: 2_000);
+
+        // Enough to make it build whatever it builds lazily, and far too little to be the cost.
+        emulator.Feed(Corpus("htop").AsSpan(0, 4096));
+
+        long held = Settled() - empty;
+
+        double heldMb = held / (1024.0 * 1024.0);
+
+        // 410,000 cells across two screens. Sixty-four bytes a cell would be 52 MB, which is already
+        // generous for a cell holding a codepoint, a pen and some flags — so 128 MB is a bound that
+        // cannot be met by anything reasonable and is still far under the gigabyte the soak saw.
+        Assert.True(heldMb < 128.0,
+                    $"one 200x50 emulator with 2,000 lines of scrollback holds {heldMb:F1} MB");
+
+        // Named so a regression reads as a number rather than as a pass or a fail.
+        Assert.True(emulator.Screens.Primary.Capacity >= 2_000);
+    }
+
+    /// <summary>
     /// The reply buffer is bounded whether or not anybody drains it — nearly.
     ///
     /// <para><b>It overshoots its own stated maximum by one answer's length</b>, because

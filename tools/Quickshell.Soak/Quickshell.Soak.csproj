@@ -11,6 +11,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Quickshell.Terminal\Quickshell.Terminal.csproj" />
     <ProjectReference Include="..\..\src\Quickshell.Transport\Quickshell.Transport.csproj" />
+    <!-- For SessionPipeline, which is the arrangement a real client reads through: a bounded queue
+         whose full state makes the reader wait, so backpressure reaches the far end's flow control.
+         The first version of this harness read the channel directly and measured something no client
+         does - QS139 is what that cost. -->
+    <ProjectReference Include="..\..\src\Quickshell.App\Quickshell.App.csproj" />
   </ItemGroup>
 
 </Project>
