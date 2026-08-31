@@ -33,6 +33,7 @@
 - 📋 **QS105** (deps: —) **Backspace at the left edge stops there instead of wrapping to the end of the line above** — A shell editing a command that wrapped moves the cursor back through the wrap, and a terminal that will not follow leaves the cursor and the shell disagreeing. → §QS105
 - 📋 **QS107** (deps: QS35 ✅) **ClearType coverage is drawn without the contrast enhancement Windows applies, so stems stay lighter than elsewhere** — The coverage DirectWrite hands back is raw, and the curve its renderers apply on top is not published, so matching it needs a reference rather than a formula. → §QS107
 - 📋 **QS108** (deps: QS26 ✅, QS27 ✅) **The suite builds the solution and then measures wall-clock latency against what that build left running** — Two latency tests fail only after a build, so the suite cannot tell a regression from a busy machine, and a red run teaches nobody anything. → §QS108
+- 📋 **QS139** (deps: —) **Feeding the emulator retains about thirteen bytes per byte parsed, and a full collection frees none of it** — One session reproduces it in three minutes, and the same run moves 118 times more data with the parser bypassed, so it costs memory and throughput at once. → §QS139
 
 ## Block D — The tree a user organises work in
 
@@ -74,7 +75,7 @@
 
 - 📋 **QS75** (deps: QS2 ✅, QS46 ⏳) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
 - 📋 **QS77** (deps: QS75) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
-- 📋 **QS78** (deps: QS37 ✅, QS66 ✅) **Nothing has run for longer than a working session, so a slow leak would reach users first** — Leaks in a long-lived client appear after days rather than minutes, which is exactly the interval no test covers and every user reaches. → §QS78
+- ⏳ **QS78** (deps: QS37 ✅, QS66 ✅) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - 📋 **QS79** (deps: QS3 ✅, QS75) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
 - 📋 **QS86** (deps: QS7 ✅, QS9 ✅) **Input to photon is the first figure in the budget and the only one nothing has ever measured** — The present path was built to bound it and the one workload that exists cannot run ahead of the display, so the flags remain an argument rather than a number. → §QS86
 - 📋 **QS135** (deps: QS74 ✅) **Three settings are read, written and kept faithfully, and nothing acts on them** — The typeface, its size and the scrollback depth reach no pane, so a user who edits the file sees the theme change and the rest do nothing. → §QS135
@@ -102,6 +103,7 @@
 - 📋 **QS99** (deps: —) **A failed build leaves the old test binary in place and running it reports a green suite that proves nothing** — Twice this session a compile error was swallowed and the previous assembly ran, reporting the old pass count as if it were the new one. → §QS99
 - 📋 **QS102** (deps: QS24 ✅) **The parser is fuzzed only by the suite's own mutator, which stops when the build does** — A bounded run at a fixed seed explores the same inputs for ever, so coverage-guided fuzzing needs a harness that runs for hours outside the suite. → §QS102
 - 📋 **QS136** (deps: —) **A run with a hundred tests skipped prints the same "Passed" as one with none** — The fixture stops on its own and the summary line does not change, so the green that proves nothing looks exactly like the green that proves everything. → §QS136
+- 📋 **QS138** (deps: —) **Eight minutes of the suite is one helper waiting out a timeout it then ignores** — A test that passes by timing out would pass if the command never ran, and it costs the run more than every other test put together. → §QS138
 
 ## Done when — Block A
 
@@ -250,6 +252,17 @@
   checkout report the same result twenty times, and a failure that is not reproducible
   that way is a defect filed against the test rather than a re-run. A flake teaches
   everyone to re-run, and the first real regression is then re-run away as the flake.
+
+## Done when — QS78
+
+- **A seventy-two-hour run has actually finished** Checked by a report in
+  benchmarks/results whose span is at least 72 h, whose verdict column says flat rather
+  than "too short to judge", and whose session table shows every role connected with the
+  failures it swallowed named.
+- **Atlas and GPU memory are among the watched counters** The design names atlas memory
+  specifically, being the one cache with an eviction policy and therefore the one where
+  a policy defect is indistinguishable from a leak. Checked by both appearing as rows in
+  the report, which needs a graphics device the harness does not yet hold.
 
 ## Non-goals
 

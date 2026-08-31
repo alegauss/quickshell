@@ -92,6 +92,7 @@
 - ✅ **QS3** **Nothing replays a real terminal workload, so a change that halves throughput lands unnoticed** — Both replay arms are wired, and the gap between them is 623 against 8 MB/s on the 32 MB stream.
 - ✅ **QS74** **Settings have no file, so nothing survives a restart and nothing can be moved to another machine** — Settings are a versioned, hand-editable file that keeps keys this build has never heard of, backs itself up before migrating, and moves beside the executable on a marker.
 - ✅ **QS76** **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Ten minutes idle costs 0 ms of core time and raises no system timer, against the incumbent's 3,625 ms on the same desk, and an idle render loop presents nothing to the GPU.
+- ✅ **QS78 (the harness)** **Nothing has run for longer than a working session, so a slow leak would reach users first** — Twenty sessions in six roles soak against a real sshd, and every watched counter carries a slope extrapolated over three weeks rather than a bound it sits under.
 
 ## Block I — An error a user can act on
 

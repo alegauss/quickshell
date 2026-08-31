@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The soak. A tool and not a test: its unit of time is days, and it drives real connections
+       against the docker fixture. Nothing here belongs on a run that has to finish. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.Soak</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Quickshell.Terminal\Quickshell.Terminal.csproj" />
+    <ProjectReference Include="..\..\src\Quickshell.Transport\Quickshell.Transport.csproj" />
+  </ItemGroup>
+
+</Project>

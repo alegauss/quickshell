@@ -600,6 +600,36 @@ case. [[QS106]] is the narrower flaw in one of the two.
 Falsified when a build with node reuse off still fails at the same rate over twenty
 runs.
 
+### §QS139 Thirteen bytes held per byte parsed
+
+Found by QS78's harness on its first working run, in three minutes rather than three
+days. One printing session against the fixture, a 200x50 emulator with 2,000 lines of
+scrollback, reading 64 KB chunks off a live channel:
+
+| | parser on | parser off (`--no-parse`) |
+|---|---|---|
+| moved in ~3 min | 153 MB | 18,176 MB |
+| managed heap after a forced full collection | 2,055 MB | 8.9 MB |
+| private memory | 3,676 MB | 41.6 MB |
+
+Two things follow, and they may be one bug. The memory is **retained, not garbage** — a
+forced full collection freed 6 MB of 2,061. And it is **the parser and not the
+transport**: with the same bytes read and dropped, the heap collects to 8.9 MB.
+
+The throughput gap is the same size of surprise. Figure 2 of the budget asks for 400
+MB/s sustained and `benchmarks/results/replay-xps.md` measures 977 MB/s parsing
+`cat-log`. Here the parser manages roughly 0.85 MB/s. A structure that grows with bytes
+fed and is walked per feed would produce both numbers from one cause, which is the first
+hypothesis to test.
+
+What is bounded and therefore not the answer: the scrollback ring held flat at 2,000
+lines throughout, and clusters are capped at 4,096.
+
+Reproduce: `Quickshell.Soak.exe --hours 0.05 --sessions 1 --warmup 0.5`, then the same
+with `--no-parse`.
+
+Falsified when parsing a gigabyte leaves a heap a full collection cannot reduce.
+
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine
@@ -1756,3 +1786,29 @@ run can name the fixture rather than leaving a reader to guess.
 CI needs this most: nobody there is watching a terminal.
 
 Falsified when a run that skipped the whole network suite exits 0 without saying so.
+
+### §QS138 The eight minutes nobody had measured
+
+The suite takes about eighteen minutes and `Quickshell.Transport.Tests` is all of it.
+Inside that, `ScpChannelTests` is roughly eight minutes on its own — the runner's own
+`[slow] still running after 1m 00s` lines name the cases: each of the seven
+shell-metacharacter names, plus `ADirectoryGoesOverWhole`.
+
+The cause is in the helper rather than in the transfers. `Run` writes a bracketed
+command to a shell, waits for its end marker, and carries `CancelAfter(20s)` with an
+empty `catch (OperationCanceledException)`. When the marker is not matched the read
+waits the full twenty seconds and the method returns whatever it has. Three calls per
+case is a minute of nothing.
+
+Two problems, and the second is the one that matters. It is **slow**: eight minutes per
+run, every run, on the assembly every task touches. And it is **quiet about failing** —
+a helper that swallows its own timeout and returns a partial string means a case which
+never ran its command reads identically to one that did. Whatever those cases prove
+today, they would prove with the shell disconnected.
+
+So the fix is not a shorter timeout. It is a helper that distinguishes "the marker
+arrived" from "the wait ran out", and fails the test in the second case. The runtime
+falls out of that for free.
+
+Falsified when a run of the suite spends more time waiting for markers than transferring
+files.
