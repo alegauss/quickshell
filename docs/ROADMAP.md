@@ -72,13 +72,13 @@
 
 ## Block H — The reason to leave the incumbent
 
-- 📋 **QS74** (deps: QS1 ✅) **Settings have no file, so nothing survives a restart and nothing can be moved to another machine** — The config format is a compatibility contract from the first release, and a schema with no version is one that cannot change without breaking somebody. → §QS74
 - 📋 **QS75** (deps: QS2 ✅, QS46 ⏳) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
 - 📋 **QS76** (deps: QS26 ✅, QS2 ✅) **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Idle cost is what a laptop user experiences as battery life, and it is the figure the incumbent loses on most clearly. → §QS76
 - 📋 **QS77** (deps: QS75) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
 - 📋 **QS78** (deps: QS37 ✅, QS66 ✅) **Nothing has run for longer than a working session, so a slow leak would reach users first** — Leaks in a long-lived client appear after days rather than minutes, which is exactly the interval no test covers and every user reaches. → §QS78
 - 📋 **QS79** (deps: QS3 ✅, QS75) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
 - 📋 **QS86** (deps: QS7 ✅, QS9 ✅) **Input to photon is the first figure in the budget and the only one nothing has ever measured** — The present path was built to bound it and the one workload that exists cannot run ahead of the display, so the flags remain an argument rather than a number. → §QS86
+- 📋 **QS135** (deps: QS74 ✅) **Three settings are read, written and kept faithfully, and nothing acts on them** — The typeface, its size and the scrollback depth reach no pane, so a user who edits the file sees the theme change and the rest do nothing. → §QS135
 
 ## Block I — An error a user can act on
 
@@ -101,6 +101,7 @@
 - 📋 **QS90** (deps: —) **Nobody has built this repository from a clean clone, so the steps it needs beyond the SDK are unknown** — Every build so far has run on the machine that wrote the code, which is the one machine whose caches and installed components prove nothing about the next. → §QS90
 - 📋 **QS99** (deps: —) **A failed build leaves the old test binary in place and running it reports a green suite that proves nothing** — Twice this session a compile error was swallowed and the previous assembly ran, reporting the old pass count as if it were the new one. → §QS99
 - 📋 **QS102** (deps: QS24 ✅) **The parser is fuzzed only by the suite's own mutator, which stops when the build does** — A bounded run at a fixed seed explores the same inputs for ever, so coverage-guided fuzzing needs a harness that runs for hours outside the suite. → §QS102
+- 📋 **QS136** (deps: —) **A run with a hundred tests skipped prints the same "Passed" as one with none** — The fixture stops on its own and the summary line does not change, so the green that proves nothing looks exactly like the green that proves everything. → §QS136
 
 ## Done when — Block A
 

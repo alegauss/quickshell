@@ -168,6 +168,31 @@ public sealed class MainWindow : Window
         return path;
     }
 
+    /// <summary>
+    /// Applies what was read from the settings file to a window that is already up.
+    ///
+    /// <para><b>A correction and not a precondition</b>, which is the same shape as
+    /// <see cref="PlaceAt"/> and for the same reason: nothing is read before the first paint, so a
+    /// slow disk costs a window that repaints once rather than a window that is late. WPF's
+    /// <c>ThemeMode</c> is designed for exactly this — it repaints a live window.</para>
+    ///
+    /// <para>The typeface, its size and the scrollback depth are in the file and in
+    /// <see cref="Settings"/>, and nothing consumes them yet: the terminal pane that would is not
+    /// wired to a session. They are written and read faithfully, which is what keeps a user's choice
+    /// from being lost in the meantime.</para>
+    /// </summary>
+    public void Apply(Settings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        ThemeMode = settings.Theme switch
+        {
+            ChromeTheme.Light => ThemeMode.Light,
+            ChromeTheme.Dark => ThemeMode.Dark,
+            _ => ThemeMode.System,
+        };
+    }
+
     /// <summary>Puts the window where it was last time on this arrangement of screens.</summary>
     public void PlaceAt(Placement? placement)
     {

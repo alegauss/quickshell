@@ -40,7 +40,10 @@ public static class Entry
 
         window.Show();
 
-        // Only now, with something on screen.
+        // Only now, with something on screen. Both of these are corrections to a window that is
+        // already up: the settings file decides the theme, and neither read is on the way to the
+        // first paint.
+        window.Apply(SettingsFile.ReadFrom(Locations.Current.Settings));
         window.PlaceAt(WindowPlacements.ReadFrom(Placements()).For(Screens()));
 
         application.Run(window);
@@ -80,9 +83,7 @@ public static class Entry
     {
         try
         {
-            string folder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "quickshell", "logs");
+            string folder = Locations.Current.Logs;
 
             return Directory.Exists(folder)
                 ? [.. Directory.EnumerateFiles(folder, "*.log")
@@ -103,7 +104,5 @@ public static class Entry
     ];
 
     /// <summary>Where the window's position is remembered, beside the user's other settings.</summary>
-    private static string Placements() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                     "quickshell", "windows.json");
+    private static string Placements() => Locations.Current.Windows;
 }

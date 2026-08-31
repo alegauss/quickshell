@@ -1221,31 +1221,6 @@ Falsified when a component ships with no line naming what will reach it.
 
 ## Block H — The reason to leave the incumbent
 
-### §QS74 A format that can change without breaking anyone
-
-Settings, the session store and keybindings are files. Text, commented, hand-editable,
-under the user's own control — which is what lets them be versioned, shared and diffed,
-and what makes support possible without screenshots.
-
-Every file carries a schema version from the first release, because the alternative is
-discovering at version 1.4 that no key can be changed without breaking every
-installation that exists. Migration is forward-only, runs on load, and writes a backup
-of the original beside it before touching anything.
-
-An unknown key is preserved rather than dropped. A user running a newer build on one
-machine and an older build on another must not have their settings silently pruned by
-the older one, which is exactly what discarding unknown keys does.
-
-Portable mode is that file layout beside the executable instead of in the user profile,
-chosen by a marker file. It is what the footprint argument implies in practice: this
-client on a USB stick with no installation. Its consequence for credentials is already
-stated in Block B and is not softened here.
-
-Otherwise the location follows the platform's own convention, and the client can say
-where its files are — a user who cannot find them cannot back them up.
-
-Falsified when a key an older build does not recognise is lost on save.
-
 ### §QS75 Where the first four hundred milliseconds go
 
 Cold start is a publishing decision more than a coding one, so it is measured and tuned
@@ -1406,6 +1381,31 @@ this line settles is the shape - one frame against several - not the eight milli
 a 120 Hz panel would allow.
 
 Falsified when this repository quotes an input-to-photon figure with no run behind it.
+
+### §QS135 The settings that are still only stored
+
+QS74 built the file and its contract: a schema from the first release, forward-only
+migration with a backup, unknown keys preserved, and portable mode. What it could wire
+was the theme, because WPF's `ThemeMode` repaints a live window and so can be applied as
+a correction after the first paint.
+
+`fontFamily`, `fontSize` and `scrollback` are read, held and written back faithfully.
+Nothing consumes them. The pane that would is not attached to a session, and inventing a
+consumer to make the file look finished would have been the wrong order — a setting
+wired to a stub is harder to remove than one that was never wired.
+
+Storing them anyway was deliberate: a user editing a hand-editable file will set these
+before anything reads them, and a build that dropped what it could not use would lose
+the choice at the moment it was made. They are preserved by exactly the mechanism that
+preserves a future build's keys.
+
+What this owes: the typeface and size reaching the glyph rasteriser without a restart —
+they are a live change, not a start-up one — and the scrollback depth reaching the
+emulator's buffer, which has to decide what happens to lines already held when the depth
+shrinks.
+
+Falsified when a user changes the font in the settings file and the terminal does not
+change.
 
 ## Block I — An error a user can act on
 
@@ -1736,3 +1736,26 @@ streams, a place for findings to land as new seeds, and a way to run it that is 
 developer remembering to. A crash it finds becomes a case in the suite's own list.
 
 Falsified when a crash found here is not reproducible from the suite afterwards.
+
+### §QS136 A green that says how much it covered
+
+`run-tests.cmd` already refuses one way of shrinking silently: no test applications
+found is not a pass. It does not refuse the other. The docker sshd fixture stops on its
+own — twice in one session's work, both times `Exited (0)`, which is a graceful stop
+rather than a crash — and every test that needs it calls `Assert.SkipUnless`. The run
+then reports **Passed**, `All 5 test assemblies passed`, and exits 0, with 103 of 228
+tests never executed. The line a person reads is identical either way.
+
+That is the exact shape of failure the script's own comment argues against: a command
+that reports something the tree does not have teaches people to stop reading it. Here it
+is worse than a false red, because a false green is the one nobody investigates.
+
+What to do, in order of how much it is worth. **Print the skip count in the summary**,
+always — one number, and the difference becomes visible. **Fail on a skip budget**: a
+number per assembly, checked in, so a new skip is a decision somebody makes rather than
+weather. **Say why**: the skip reasons are already written and are one line each, so the
+run can name the fixture rather than leaving a reader to guess.
+
+CI needs this most: nobody there is watching a terminal.
+
+Falsified when a run that skipped the whole network suite exits 0 without saying so.

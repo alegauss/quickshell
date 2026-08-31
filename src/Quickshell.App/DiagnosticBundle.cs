@@ -13,15 +13,12 @@ namespace Quickshell.App;
 /// <param name="Recordings">Where <see cref="SessionRecording"/> writes.</param>
 public sealed record DiagnosticSources(string Config, string Logs, string Crashes, string Recordings)
 {
-    /// <summary>The four folders this client actually uses.</summary>
+    /// <summary>The four folders this client actually uses, in whichever layout it is running.</summary>
     public static DiagnosticSources Default()
     {
-        string data = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "quickshell");
+        Locations where = Locations.Current;
 
-        return new DiagnosticSources(data, Path.Combine(data, "logs"),
-                                     Path.Combine(data, "crashes"),
-                                     Path.Combine(data, "recordings"));
+        return new DiagnosticSources(where.Root, where.Logs, where.Crashes, where.Recordings);
     }
 }
 
@@ -59,9 +56,7 @@ public static class DiagnosticBundle
     ];
 
     /// <summary>Where bundles go.</summary>
-    public static string Folder() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                     "quickshell", "diagnostics");
+    public static string Folder() => Locations.Current.Diagnostics;
 
     /// <summary>
     /// Gathers everything and writes one file, returning where it went.
@@ -105,6 +100,19 @@ public static class DiagnosticBundle
               .AppendLine("Passwords, passphrases and key material are not in it: the session log")
               .AppendLine("cannot hold one, and every settings value that could hide one has been")
               .AppendLine("removed rather than copied.")
+              .AppendLine();
+
+        Heading(bundle, "where this client keeps its files");
+
+        // Named before anything else it gathered from them: "where are my settings" is a support
+        // question that should cost one line rather than an exchange of messages, and a portable
+        // installation is the case where the answer is not the one anybody would guess.
+        bundle.AppendLine(Locations.Current.Means)
+              .AppendLine()
+              .AppendLine(Field("settings", from.Config))
+              .AppendLine(Field("logs", from.Logs))
+              .AppendLine(Field("crashes", from.Crashes))
+              .AppendLine(Field("recordings", from.Recordings))
               .AppendLine();
 
         Heading(bundle, "the machine and the build");

@@ -26,7 +26,7 @@ namespace Quickshell.App;
 /// </summary>
 public sealed class CrashGuard : IDisposable
 {
-    private readonly string _folder;
+    private readonly Func<string> _folder;
     private readonly Func<CrashContext> _gather;
     private readonly Action<CrashNotice> _tell;
     private readonly Application? _application;
@@ -34,7 +34,7 @@ public sealed class CrashGuard : IDisposable
     private int _reporting;
     private bool _disposed;
 
-    private CrashGuard(string folder, Func<CrashContext> gather, Action<CrashNotice> tell,
+    private CrashGuard(Func<string> folder, Func<CrashContext> gather, Action<CrashNotice> tell,
                        Application? application)
     {
         _folder = folder;
@@ -59,12 +59,16 @@ public sealed class CrashGuard : IDisposable
     /// <param name="application">The WPF application, so an exception off the UI thread is caught
     /// too. Null in a test that has no application.</param>
     /// <param name="gather">What the client was doing, asked for at the moment of the failure.</param>
-    /// <param name="folder">Where reports go. Defaults to beside the user's other data.</param>
+    /// <param name="folder">
+    /// Where reports go. Defaults to beside the user's other data — and resolved when a report is
+    /// written rather than here, because working out which layout this client is running touches a
+    /// disk, and arming happens on the way to the first paint where nothing may.
+    /// </param>
     /// <param name="tell">How the user is told. Defaults to a dialog offering to open the file.</param>
     public static CrashGuard Arm(Application? application = null, Func<CrashContext>? gather = null,
                                  string? folder = null, Action<CrashNotice>? tell = null) =>
-        new(folder ?? CrashReport.Folder(), gather ?? CrashContext.Minimal, tell ?? Dialog,
-            application);
+        new(folder is null ? CrashReport.Folder : () => folder, gather ?? CrashContext.Minimal,
+            tell ?? Dialog, application);
 
     /// <summary>
     /// Writes the report for one failure and returns what the user would be told.
@@ -79,7 +83,7 @@ public sealed class CrashGuard : IDisposable
         CrashContext what = Gathered();
         DateTimeOffset when = DateTimeOffset.UtcNow;
 
-        string path = CrashReport.WriteTo(_folder, CrashReport.Compose(kind, failure, what, when),
+        string path = CrashReport.WriteTo(Where(), CrashReport.Compose(kind, failure, what, when),
                                           when);
 
         CrashNotice notice = new(kind, path, CrashReport.Say(kind, path, what));
@@ -150,6 +154,26 @@ public sealed class CrashGuard : IDisposable
     /// call that may fail again — and losing the report because the header could not be filled in
     /// would be the worst trade in this file.</para>
     /// </summary>
+    /// <summary>
+    /// Where to write, asked at the moment of the crash.
+    ///
+    /// <para>A folder that cannot be worked out is not a reason to lose the report:
+    /// <see cref="CrashReport.WriteTo"/> answers an empty path with an empty path, and the sentence
+    /// the user reads then says there was nowhere to put it — which is still more than a silent
+    /// exit.</para>
+    /// </summary>
+    private string Where()
+    {
+        try
+        {
+            return _folder();
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+    }
+
     private CrashContext Gathered()
     {
         try

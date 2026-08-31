@@ -101,10 +101,8 @@ public static class CrashReport
         unchecked((int)0x887A0007), unchecked((int)0x887A0020),
     ];
 
-    /// <summary>Where reports go, beside the user's other data.</summary>
-    public static string Folder() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                     "quickshell", "crashes");
+    /// <summary>Where reports go, beside the user's other data and in whichever layout it uses.</summary>
+    public static string Folder() => Locations.Current.Crashes;
 
     /// <summary>
     /// Which failure this is. The inner exceptions are read too, since a device loss arrives wrapped

@@ -90,6 +90,7 @@
 - ✅ **QS84** **The pipeline pins its actions by tag and nothing watches them, so a stale or advisory-bearing action is found by chance** — Dependabot watches the actions the pipeline pins and opens one grouped pull request a week, so a stale action arrives as a review rather than as a surprise.
 - ✅ **QS85** **The commit script stages the whole tree, so a second session's half-written work lands inside another task's commit** — run-commit.cmd stages only the paths a commit declares after --, and says what it is sweeping when none are declared, so a second session's files stay out.
 - ✅ **QS3** **Nothing replays a real terminal workload, so a change that halves throughput lands unnoticed** — Both replay arms are wired, and the gap between them is 623 against 8 MB/s on the 32 MB stream.
+- ✅ **QS74** **Settings have no file, so nothing survives a restart and nothing can be moved to another machine** — Settings are a versioned, hand-editable file that keeps keys this build has never heard of, backs itself up before migrating, and moves beside the executable on a marker.
 
 ## Block I — An error a user can act on
 
