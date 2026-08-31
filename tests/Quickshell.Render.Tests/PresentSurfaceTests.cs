@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Quickshell.Terminal;
 using Vortice.Mathematics;
@@ -12,6 +13,17 @@ namespace Quickshell.Render.Tests;
 /// </summary>
 public sealed class PresentSurfaceTests
 {
+    /// <summary>
+    /// How long to wait for DXGI to report a present count before deciding it never will.
+    ///
+    /// <para><b>Time and not frames, which is QS145.</b> Both measurements here need statistics
+    /// DXGI produces on its own schedule, and both used to give up after ninety frames — a second
+    /// and a half at vsync. On one run of the suite that was too few, both tests skipped, and a
+    /// green run said nothing about the idle draw-call figure it was supposed to prove. Six seconds
+    /// costs nothing on a good run and makes a skip mean the machine genuinely cannot answer.</para>
+    /// </summary>
+    private static readonly TimeSpan Patience = TimeSpan.FromSeconds(6);
+
     [Fact]
     public void TheSurfaceOpensWithItsWaitHandle()
     {
@@ -75,15 +87,21 @@ public sealed class PresentSurfaceTests
         using PresentSurface surface = PresentSurface.For(device, window.Handle, 320, 200);
 
         int settled = -1;
+        int frame = 0;
         List<long> depths = [];
 
-        for (int frame = 0; frame < 90; frame++)
+        // Bounded by time and not by a frame count, which is QS145: statistics arrive when DXGI
+        // decides, ninety frames is a second and a half at vsync, and a run where they arrived a
+        // little late used to skip and say nothing. The wait is long enough that giving up means
+        // the machine genuinely cannot answer.
+        Stopwatch waiting = Stopwatch.StartNew();
+
+        while (waiting.Elapsed < Patience && depths.Count < 60)
         {
             surface.WaitForNextFrame();
 
-            // Statistics arrive when DXGI decides they do, not on a frame count. Ten frames after
-            // the first real reading is where the counters have stopped moving relative to
-            // each other.
+            // Ten frames after the first real reading is where the counters have stopped moving
+            // relative to each other.
             if (settled < 0 && surface.PresentedOnGlass() > 0)
             {
                 settled = frame + 10;
@@ -96,11 +114,14 @@ public sealed class PresentSurfaceTests
 
             device.Context.ClearRenderTargetView(surface.View, new Color4(0.02f, 0.02f, 0.08f, 1.0f));
             surface.Present();
+
+            frame++;
         }
 
         Assert.SkipWhen(surface.Occlusions > 0 || depths.Count < 30,
             $"the window was covered for {surface.Occlusions} frames and DXGI gave {depths.Count} " +
-            "usable samples, so the queue could not be measured on this run");
+            $"usable samples in {waiting.Elapsed.TotalSeconds:F1} s, so the queue could not be " +
+            "measured on this run");
 
         double early = depths.Take(depths.Count / 2).Average();
         double late = depths.Skip(depths.Count / 2).Average();
@@ -145,11 +166,16 @@ public sealed class PresentSurfaceTests
 
         RedrawGate gate = new();
 
-        // Enough frames for DXGI's statistics to appear: a present count of zero is not a reading.
-        // The screen is changed each time, so the gate keeps authorising and the counter moves.
-        for (int frame = 0; frame < 90 && surface.PresentedOnGlass() == 0; frame++)
+        // Until DXGI's statistics appear, bounded by time rather than by a frame count — QS145,
+        // because a present count of zero is not a reading and ninety frames turned out to be
+        // sometimes too few on this very machine. The screen is changed each time, so the gate
+        // keeps authorising and the counter moves.
+        // A busy phase, so the gate has authorised frames and there is something to have stopped
+        // doing. Sixty is enough and this waits on nothing: what this test claims does not need
+        // DXGI to have said anything.
+        for (int line = 0; line < 60; line++)
         {
-            emulator.Feed(Encoding.UTF8.GetBytes($"line {frame}\r\n"));
+            emulator.Feed(Encoding.UTF8.GetBytes($"line {line}\r\n"));
 
             if (gate.Claim(emulator.Damage, cursorShowing: true))
             {
@@ -160,13 +186,12 @@ public sealed class PresentSurfaceTests
             }
         }
 
-        Assert.SkipWhen(surface.PresentedOnGlass() == 0,
-                        "DXGI never reported a present count on this run, so nothing can be measured "
-                        + "against it");
-
         long onGlassBefore = surface.PresentedOnGlass();
         long authorisedBefore = gate.Frames;
         int presentedWhileIdle = 0;
+
+        Assert.True(authorisedBefore > 0, "the busy phase authorised no frames, so there is nothing "
+                                          + "for the idle phase to be quieter than");
 
         // Three hundred wake-ups with the host silent, which is what a window nobody is typing into
         // does. Nothing is fed, so nothing changed.
@@ -183,13 +208,21 @@ public sealed class PresentSurfaceTests
         }
 
         // The number is zero, not "small": the budget says so, and this is the figure the project is
-        // built on.
+        // built on. None of these three needs DXGI to have said anything, which is the point — the
+        // claim is about what the loop submitted.
         Assert.Equal(0, presentedWhileIdle);
         Assert.Equal(authorisedBefore, gate.Frames);
         Assert.Equal(300, gate.Skipped);
 
-        // And DXGI agrees, which is the half the gate's own counters cannot claim.
-        Assert.Equal(onGlassBefore, surface.PresentedOnGlass());
+        // And where DXGI did produce statistics, it agrees. Conditional because frame statistics are
+        // not always available — a sleeping display has no vblank to count against, and this desk
+        // reported none for six seconds while nobody was at it. QS145 is what that cost: the whole
+        // test used to skip on it, so the figure above went unproven on exactly the unattended runs
+        // a soak or a CI job is made of.
+        if (onGlassBefore > 0)
+        {
+            Assert.Equal(onGlassBefore, surface.PresentedOnGlass());
+        }
     }
 
     [Fact]

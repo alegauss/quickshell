@@ -1944,27 +1944,3 @@ falls out of that for free.
 
 Falsified when a run of the suite spends more time waiting for markers than transferring
 files.
-
-### §QS145 A precondition worth waiting for rather than skipping on
-
-`PresentSurfaceTests.TheFrameQueueNeverGetsAheadOfTheDisplay` and
-`AnIdleRenderLoopPresentsNothingToTheGpu` both guard on DXGI having produced a present
-count, and skip when it has not. Both skipped on one run of the suite this session and
-neither did on the runs before it, same machine, same build.
-
-The guard is right in principle — a frame-queue depth measured without statistics is not
-a measurement — and wrong in what it does about it. Statistics arrive when DXGI decides,
-and the tests give up after a fixed number of frames. So the idle draw-call figure,
-which is Block C's criterion *an idle window issues no draw calls* and half of the
-budget's figure 4, is proven on some runs and quietly not on others.
-
-Waiting is cheap and the loop already knows how to: both spin until `PresentedOnGlass()`
-moves, and both cap that at 90 frames, which at a vsync-locked present is a second and a
-half. A wait measured in time rather than frames, generous enough that the skip means
-the machine genuinely cannot answer, costs a second on a bad run and removes the
-ambiguity from every good one.
-
-Keep the skip for the case that remains — a headless agent, a session with no compositor
-— and say which it was.
-
-Falsified when the idle draw-call claim is unproven on a run that reported success.
