@@ -253,6 +253,48 @@ public sealed class DecodingTests
         Assert.Matches(@"^\d+\.\d+\.\d+$", CharacterWidth.UnicodeVersion);
     }
 
+    /// <summary>
+    /// The fast path's premise, checked against the tables rather than trusted.
+    ///
+    /// <para><c>Of</c> returns one for every printable codepoint below U+0300 without searching,
+    /// because neither generated table can hold anything lower — the zero ranges begin at U+0300
+    /// and the wide ranges at U+1100. That shortcut is 22% of what placing a character costs
+    /// (QS146), and it is only correct while the claim holds. So the claim is the test: every
+    /// codepoint beneath the exit is asked of the tables directly, and a regeneration that added a
+    /// lower range would fail here rather than quietly making the shortcut wrong.</para>
+    /// </summary>
+    [Fact]
+    public void NothingBelowTheFastPathsExitIsZeroWidthOrWide()
+    {
+        List<string> offenders = [];
+
+        for (int codepoint = 0; codepoint < 0x0300; codepoint++)
+        {
+            // The control ranges are decided before the shortcut and are not its business.
+            if (codepoint < 0x20 || (codepoint >= 0x7F && codepoint < 0xA0))
+            {
+                continue;
+            }
+
+            if (CharacterWidth.IsZeroWidth(codepoint))
+            {
+                offenders.Add($"U+{codepoint:X4} is zero-width");
+            }
+
+            if (CharacterWidth.IsWide(codepoint))
+            {
+                offenders.Add($"U+{codepoint:X4} is wide");
+            }
+        }
+
+        Assert.Empty(offenders);
+
+        // And the first codepoint past the exit is genuinely a combining mark, so the exit is not
+        // set higher than the evidence allows.
+        Assert.Equal(1, CharacterWidth.Of(0x02FF));
+        Assert.Equal(0, CharacterWidth.Of(0x0300));
+    }
+
     [Theory]
     [InlineData('A', 1)]
     [InlineData(0x4E2D, 2)]      // CJK

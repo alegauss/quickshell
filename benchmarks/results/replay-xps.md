@@ -4,42 +4,42 @@ Captured streams replayed through every consumer that exists. Run on XPS, .NET 1
 
 | stream | MB | consumer | MB/s | alloc KB/MB | gen0 |
 |---|---|---|---|---|---|
-| `cat-log` | 32.00 | escape-scan | 2991 | 0.0 | 0 |
-| `cat-log` | 32.00 | parse | 1054 | 0.0 | 0 |
-| `cat-log` | 32.00 | decode | 525 | 1.9 | 0 |
-| `cat-log` | 32.00 | segment | 59 | 3.9 | 0 |
-| `cat-log` | 32.00 | emulate | 11 | 3.9 | 0 |
+| `cat-log` | 32.00 | escape-scan | 2943 | 0.0 | 0 |
+| `cat-log` | 32.00 | parse | 1128 | 0.0 | 0 |
+| `cat-log` | 32.00 | decode | 489 | 1.9 | 0 |
+| `cat-log` | 32.00 | segment | 60 | 3.9 | 0 |
+| `cat-log` | 32.00 | emulate | 15 | 3.9 | 0 |
 | `cat-log` | 32.00 | render | 6 | 0.0 | 0 |
-| `dmesg` | 0.18 | escape-scan | 1396 | 4.0 | 0 |
-| `dmesg` | 0.18 | parse | 154 | 4.0 | 0 |
-| `dmesg` | 0.18 | decode | 127 | 4.0 | 0 |
-| `dmesg` | 0.18 | segment | 39 | 4.0 | 0 |
-| `dmesg` | 0.18 | emulate | 15 | 0.2 | 0 |
-| `dmesg` | 0.18 | render | 7 | 4.0 | 0 |
-| `htop` | 0.02 | escape-scan | 828 | 2.1 | 0 |
+| `dmesg` | 0.18 | escape-scan | 1428 | 0.2 | 0 |
+| `dmesg` | 0.18 | parse | 155 | 4.0 | 0 |
+| `dmesg` | 0.18 | decode | 137 | 4.0 | 0 |
+| `dmesg` | 0.18 | segment | 38 | 0.2 | 0 |
+| `dmesg` | 0.18 | emulate | 18 | 0.2 | 0 |
+| `dmesg` | 0.18 | render | 8 | 0.2 | 0 |
+| `htop` | 0.02 | escape-scan | 839 | 2.1 | 0 |
 | `htop` | 0.02 | parse | 50 | 2.1 | 0 |
-| `htop` | 0.02 | decode | 46 | 2.1 | 0 |
+| `htop` | 0.02 | decode | 47 | 2.1 | 0 |
 | `htop` | 0.02 | segment | 35 | 2.1 | 0 |
-| `htop` | 0.02 | emulate | 19 | 2.1 | 0 |
-| `htop` | 0.02 | render | 16 | 37.2 | 0 |
-| `ls-color-r` | 0.79 | escape-scan | 1592 | 0.0 | 0 |
-| `ls-color-r` | 0.79 | parse | 346 | 0.0 | 0 |
-| `ls-color-r` | 0.79 | decode | 278 | 0.0 | 0 |
-| `ls-color-r` | 0.79 | segment | 41 | 0.9 | 0 |
-| `ls-color-r` | 0.79 | emulate | 15 | 0.0 | 0 |
-| `ls-color-r` | 0.79 | render | 5 | 0.9 | 0 |
-| `tmux-resize` | 0.02 | escape-scan | 842 | 2.6 | 0 |
-| `tmux-resize` | 0.02 | parse | 168 | 46.1 | 0 |
-| `tmux-resize` | 0.02 | decode | 140 | 2.6 | 0 |
-| `tmux-resize` | 0.02 | segment | 52 | 46.1 | 0 |
-| `tmux-resize` | 0.02 | emulate | 21 | 52.8 | 0 |
-| `tmux-resize` | 0.02 | render | 11 | 2.6 | 0 |
-| `vim-scroll` | 0.23 | escape-scan | 1218 | 0.2 | 0 |
-| `vim-scroll` | 0.23 | parse | 205 | 0.2 | 0 |
-| `vim-scroll` | 0.23 | decode | 173 | 0.2 | 0 |
-| `vim-scroll` | 0.23 | segment | 42 | 3.0 | 0 |
-| `vim-scroll` | 0.23 | emulate | 19 | 3.0 | 0 |
-| `vim-scroll` | 0.23 | render | 8 | 0.2 | 0 |
+| `htop` | 0.02 | emulate | 21 | 2.1 | 0 |
+| `htop` | 0.02 | render | 17 | 2.1 | 0 |
+| `ls-color-r` | 0.79 | escape-scan | 1558 | 0.9 | 0 |
+| `ls-color-r` | 0.79 | parse | 347 | 0.9 | 0 |
+| `ls-color-r` | 0.79 | decode | 283 | 0.0 | 0 |
+| `ls-color-r` | 0.79 | segment | 34 | 0.0 | 0 |
+| `ls-color-r` | 0.79 | emulate | 18 | 0.0 | 0 |
+| `ls-color-r` | 0.79 | render | 6 | 0.9 | 0 |
+| `tmux-resize` | 0.02 | escape-scan | 802 | 46.1 | 0 |
+| `tmux-resize` | 0.02 | parse | 164 | 2.6 | 0 |
+| `tmux-resize` | 0.02 | decode | 133 | 2.6 | 0 |
+| `tmux-resize` | 0.02 | segment | 55 | 46.1 | 0 |
+| `tmux-resize` | 0.02 | emulate | 24 | 52.8 | 0 |
+| `tmux-resize` | 0.02 | render | 12 | 46.1 | 0 |
+| `vim-scroll` | 0.23 | escape-scan | 1221 | 0.2 | 0 |
+| `vim-scroll` | 0.23 | parse | 210 | 3.0 | 0 |
+| `vim-scroll` | 0.23 | decode | 138 | 3.0 | 0 |
+| `vim-scroll` | 0.23 | segment | 46 | 0.2 | 0 |
+| `vim-scroll` | 0.23 | emulate | 24 | 0.2 | 0 |
+| `vim-scroll` | 0.23 | render | 9 | 3.0 | 0 |
 
 ## What the arms noticed
 

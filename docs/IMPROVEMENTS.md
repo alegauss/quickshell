@@ -734,32 +734,6 @@ hurts CJK has moved the cost rather than removed it.
 
 Falsified when clustering ASCII costs more than decoding it.
 
-### §QS146 Eighty-seven nanoseconds a character
-
-QS144 measured the stage and cleared scrolling of it: the ring rotates, its fill costs
-about a seventh, and the remaining 87 per cent is `PrintCluster` and what it calls. On
-the 32 MB stream that is 33.5 M characters in 2.9 s — **87 ns each**, on a machine that
-can scan a byte in a third of a nanosecond.
-
-Eighty-seven nanoseconds is roughly two hundred cycles to place one ASCII character into
-a grid, and nothing in the description of the work sounds like two hundred cycles. So
-the first job is separating it, and the candidates are countable: the cluster side-table
-lookup that interns anything wider than a base codepoint, the wrap and margin checks
-that run per character rather than per run, the `Touch` that moves a generation for the
-damage model, and the bounds arithmetic between a visible row and a ring index.
-
-`ClusterCount` read 0 on every corpus stream, which is worth pausing on — no cluster was
-ever interned, so whatever that path costs is being paid on a lookup that never finds
-anything.
-
-The shape of a fix, if the split says so, is a run rather than a character: printed text
-arrives as a span, and a span of plain ASCII with no wrap in it could be written as one
-copy with one generation bump.
-
-Measure per candidate before changing any of them.
-
-Falsified when the split is not measured before the fix is written.
-
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine

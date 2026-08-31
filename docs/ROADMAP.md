@@ -38,7 +38,6 @@
 - 📋 **QS140** (deps: —) **The reply buffer exceeds the maximum its own constant states** — The cap is checked before an answer is appended rather than after, so a hostile host reaches 4098 bytes against a stated 4096 and the constant is not the bound. → §QS140
 - ⏳ **QS141** (deps: QS139) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
 - 📋 **QS143** (deps: QS141 ⏳) **Grapheme clustering costs nine times everything that reaches it** — It adds 14.5 ms per megabyte against decoding's 1.06, and almost every cluster in ordinary output is one plain ASCII character that needed no clustering at all. → §QS143
-- 📋 **QS146** (deps: QS144 ✅) **Placing one character costs eighty-seven nanoseconds, and nobody knows which part** — It is 87 per cent of what writing cells costs and four fifths of a whole session's parse time, and the work in it has never been separated. → §QS146
 
 ## Block D — The tree a user organises work in
 

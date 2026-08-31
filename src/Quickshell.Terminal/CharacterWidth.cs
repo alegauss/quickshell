@@ -17,6 +17,16 @@ namespace Quickshell.Terminal;
 public static partial class CharacterWidth
 {
     /// <summary>
+    /// The lowest codepoint that either range table can contain, so everything printable below it
+    /// is one column and needs no search.
+    ///
+    /// <para><b>This constant is a claim about the generated tables and it is checked</b> —
+    /// <c>CharacterWidthTests</c> walks every codepoint beneath it against the tables themselves,
+    /// so a regeneration that added a lower range fails rather than silently making this wrong.</para>
+    /// </summary>
+    private const int FirstNarrowExit = 0x0300;
+
+    /// <summary>
     /// How many cells <paramref name="codepoint"/> occupies.
     ///
     /// <para>Zero for a combining mark, which attaches to the cell before it; zero for a control
@@ -36,6 +46,20 @@ public static partial class CharacterWidth
         if (codepoint < 0x20 || (codepoint >= 0x7F && codepoint < 0xA0))
         {
             return 0;
+        }
+
+        // Below the first codepoint either table can hold, so both searches below are guaranteed to
+        // miss and neither is worth making. This is provable from the generated tables rather than
+        // assumed: ZeroRanges begins at U+0300 and WideRanges at U+1100, and the explicit joiners
+        // and direction marks IsZeroWidth names outside the table all start at U+200B.
+        //
+        // It is worth a comment this long because it is 22% of what placing a character costs.
+        // Measured: the lookup was 14.3 ns of a 63.6 ns path, and every ASCII character in every
+        // corpus stream paid two binary searches over Unicode range tables to be told it was one
+        // column wide. QS146 is where that was separated out.
+        if (codepoint < FirstNarrowExit)
+        {
+            return 1;
         }
 
         if (IsZeroWidth(codepoint))

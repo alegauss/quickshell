@@ -56,6 +56,7 @@
 - ✅ **QS120** **The pipeline test's drain guard counts reads rather than bytes, so a loaded machine fails it** — The parser's backlog is now measured as bytes waiting when a drain begins, which says how far behind it is rather than how the reader happened to be scheduled.
 - ✅ **QS141 (the arm the budget governs)** **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — The replay harness gained an `emulate` arm that feeds the real terminal, measuring 10–21 MB/s where `parse` reports 1,200, and figure 2 now names which of the two it governs.
 - ✅ **QS144** **Writing cells is sixty milliseconds a megabyte, the largest cost on the path** — Scrolling is cleared of it: the ring already rotates and its fill is a seventh, measured by widening the screen tenfold, so 87 per cent is the per-character path at 87 ns each.
+- ✅ **QS146** **Placing one character costs eighty-seven nanoseconds, and nobody knows which part** — The width lookup was 22 per cent of placing a character and two binary searches guaranteed to miss for ASCII; below U+0300 it now answers without searching, and the path is 19 per cent faster.
 
 ## Block D — The tree a user organises work in
 
