@@ -91,6 +91,7 @@
 - ✅ **QS85** **The commit script stages the whole tree, so a second session's half-written work lands inside another task's commit** — run-commit.cmd stages only the paths a commit declares after --, and says what it is sweeping when none are declared, so a second session's files stay out.
 - ✅ **QS3** **Nothing replays a real terminal workload, so a change that halves throughput lands unnoticed** — Both replay arms are wired, and the gap between them is 623 against 8 MB/s on the 32 MB stream.
 - ✅ **QS74** **Settings have no file, so nothing survives a restart and nothing can be moved to another machine** — Settings are a versioned, hand-editable file that keeps keys this build has never heard of, backs itself up before migrating, and moves beside the executable on a marker.
+- ✅ **QS76** **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Ten minutes idle costs 0 ms of core time and raises no system timer, against the incumbent's 3,625 ms on the same desk, and an idle render loop presents nothing to the GPU.
 
 ## Block I — An error a user can act on
 

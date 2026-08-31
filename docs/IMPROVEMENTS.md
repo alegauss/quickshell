@@ -1249,34 +1249,6 @@ comparison is the actual claim being made.
 
 Falsified when a cold start figure is published without the machine and cache state.
 
-### §QS76 Proving the window does nothing
-
-The renderer was designed to do nothing when nothing has changed. This line proves it,
-because a design intention is not a measurement, and this is the figure most likely to
-have quietly regressed since it was designed.
-
-The measurement is a window open, connected, with a shell at a prompt, untouched for ten
-minutes: draw calls issued, CPU time consumed, GPU utilisation, and timer resolution
-requested. The target is zero draw calls and no measurable occupancy.
-
-The things that break it are known, and each is checked separately. A cursor blink is a
-legitimate wake, its cost is bounded, and it disappears when blinking is off. A UI
-framework animating something invisible is not legitimate and is a common cause. A timer
-polling anything is not legitimate. Keepalive traffic wakes the process, and its
-interval is a genuine trade against battery.
-
-Requesting a high timer resolution is the one that is invisible and expensive: it
-affects the whole system, so a client that raises it and never lowers it is costing
-battery inside every other application on the machine too.
-
-Several idle panes must cost what one costs, which is the occlusion and damage work
-verified rather than assumed.
-
-The comparison against the incumbent on the same machine is part of the result, since
-this is the claim the project is built on.
-
-Falsified when an idle window issues a draw call or holds a raised timer resolution.
-
 ### §QS77 Installing, signing, and updating without a service
 
 An installer that does the least: a per-user install with no administrator prompt by
@@ -1406,6 +1378,31 @@ shrinks.
 
 Falsified when a user changes the font in the settings file and the terminal does not
 change.
+
+### §QS137 The idle figure a connected client owes
+
+QS76 measured what exists and the number is good: 0 ms of core time over 601 seconds, no
+system timer raised, and zero presents through a real device. Against MobaXterm's two
+processes on the same desk — 3,625 ms and 0.6 % of a core — it is the win the project
+claims.
+
+It is also not the figure the budget describes. Figure 4 is a window *connected, with a
+shell at a prompt*, and this client cannot be in that state: nothing above the seam
+constructs a transport and no pane drives a render loop. What was measured is a WPF
+window, the crash guard and a settings read.
+
+Three things are owed once a session can be opened. **A connected session's idle cost**,
+which brings keepalive with it — a genuine trade against battery. **Several idle panes
+costing what one costs**, which is the occlusion and damage work verified instead of
+assumed. **A live loop's GPU occupancy**, since zero draw calls bounds submission and
+not residency.
+
+One row of the comparison wants following up on its own: MobaXterm idles in 62.4 MB
+against quickshell's 79.4 MB, and quickshell's window is empty. Figure 6 allows 120 MB
+for a connected session, so there is 40 MB of headroom for everything a session adds —
+which is not much, and is worth knowing before it is spent.
+
+Falsified when the idle figure is quoted for a client that has never held a connection.
 
 ## Block I — An error a user can act on
 

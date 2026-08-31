@@ -1,3 +1,5 @@
+using System.Text;
+using Quickshell.Terminal;
 using Vortice.Mathematics;
 using Xunit;
 
@@ -114,6 +116,80 @@ public sealed class PresentSurfaceTests
         Assert.True(depths.Max() <= 8,
             $"the frame queue reached {depths.Max()}, which is deeper than any presentation path " +
             "this has been measured on and deeper than a latency of one can explain");
+    }
+
+    /// <summary>
+    /// Figure 4's first half, measured on the GPU rather than on the gate's own counter: an idle
+    /// render loop submits nothing.
+    ///
+    /// <para><b>Why this is not <c>RedrawGateTests</c> again.</b> That test asks the gate whether it
+    /// would authorise a frame, and it answers correctly a thousand times. What it cannot say is
+    /// whether the loop around it presents anyway — the two counters that matter are DXGI's, and this
+    /// is the assembly that has a real device to ask. The loop here is written the way a renderer's
+    /// is: ask, and present only when told.</para>
+    ///
+    /// <para><b>Not tautological, because the loop is the subject.</b> A loop that presented
+    /// unconditionally would fail this, and that is the defect being guarded against — one which
+    /// would not look like a defect, only like a laptop that runs warm.</para>
+    /// </summary>
+    [Fact]
+    public void AnIdleRenderLoopPresentsNothingToTheGpu()
+    {
+        using TestWindow window = new(320, 200);
+        using GraphicsDevice device = GraphicsDevice.Open(outputWindow: window.Handle);
+        using PresentSurface surface = PresentSurface.For(device, window.Handle, 320, 200);
+
+        Emulator emulator = new(80, 25);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("a screen with something on it\r\n"));
+
+        RedrawGate gate = new();
+
+        // Enough frames for DXGI's statistics to appear: a present count of zero is not a reading.
+        // The screen is changed each time, so the gate keeps authorising and the counter moves.
+        for (int frame = 0; frame < 90 && surface.PresentedOnGlass() == 0; frame++)
+        {
+            emulator.Feed(Encoding.UTF8.GetBytes($"line {frame}\r\n"));
+
+            if (gate.Claim(emulator.Damage, cursorShowing: true))
+            {
+                surface.WaitForNextFrame();
+                device.Context.ClearRenderTargetView(surface.View,
+                                                     new Color4(0.02f, 0.02f, 0.08f, 1.0f));
+                surface.Present();
+            }
+        }
+
+        Assert.SkipWhen(surface.PresentedOnGlass() == 0,
+                        "DXGI never reported a present count on this run, so nothing can be measured "
+                        + "against it");
+
+        long onGlassBefore = surface.PresentedOnGlass();
+        long authorisedBefore = gate.Frames;
+        int presentedWhileIdle = 0;
+
+        // Three hundred wake-ups with the host silent, which is what a window nobody is typing into
+        // does. Nothing is fed, so nothing changed.
+        for (int tick = 0; tick < 300; tick++)
+        {
+            if (gate.Claim(emulator.Damage, cursorShowing: true))
+            {
+                surface.WaitForNextFrame();
+                device.Context.ClearRenderTargetView(surface.View,
+                                                     new Color4(0.02f, 0.02f, 0.08f, 1.0f));
+                surface.Present();
+                presentedWhileIdle++;
+            }
+        }
+
+        // The number is zero, not "small": the budget says so, and this is the figure the project is
+        // built on.
+        Assert.Equal(0, presentedWhileIdle);
+        Assert.Equal(authorisedBefore, gate.Frames);
+        Assert.Equal(300, gate.Skipped);
+
+        // And DXGI agrees, which is the half the gate's own counters cannot claim.
+        Assert.Equal(onGlassBefore, surface.PresentedOnGlass());
     }
 
     [Fact]
