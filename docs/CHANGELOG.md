@@ -106,7 +106,7 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- ✅ **QS80 (the reader and the preview)** **A MobaXterm or PuTTY user has to recreate every session by hand before they can start** — Ctrl+Shift+I reads MobaXterm's sessions into the tree with folders, names every field it cannot place — identified or not — and writes nothing until the preview is agreed to.
+- ✅ **QS80** **A MobaXterm or PuTTY user has to recreate every session by hand before they can start** — PuTTY's registry reads with the same accounting as MobaXterm's file, and a UI case reads the preview and refuses it — the dialog no capture could reach.
 
 ## Block K — The build and the harness — what a green run is evidence of
 

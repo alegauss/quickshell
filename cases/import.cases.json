@@ -1,0 +1,55 @@
+{
+  // QS80's outstanding criterion, and the first case that reads something worth reading.
+  //
+  // This dialog is the one that could not be photographed: Windows declined foreground twenty-five
+  // times running on an unattended desk. Reading it needs neither, which is QS147's whole point.
+  //
+  // `--import` and not the keybinding, because `press` spells Tab and the arrows and not Ctrl+Shift+I
+  // (WW317, filed against the engine). The flag is not a test hook: a client with no menu has the
+  // command line as a real surface, and it is the only one a script or another program can reach.
+
+  "fixtures": [
+    {
+      // The dialog opens over the window rather than instead of it, so the fixture is the
+      // application with the flag on.
+      "name": "the import preview",
+      "arguments": ["--import"],
+      "shareable": true
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "the import preview is up and offers a way to refuse it",
+      "catches": "an import that writes first and reports afterwards, or a preview with no way out of it",
+      "filed": "QS80",
+      "tags": ["smoke", "import"],
+      "fixture": "the import preview",
+
+      "steps": [
+        {
+          // Selected by kind and read for its name, so the locator does not fix the reading. The
+          // caption is this client's own string; the counts and the path in the body are not
+          // assertable, because `expect` is equality and both change with the machine.
+          "locator": "Window[class=\"#32770\"]",
+          "act": "read",
+          "expect": "Import sessions",
+          "reads": "name",
+          "named": "the preview is on the desk under its own caption"
+        },
+        {
+          // The rightmost button, because it cannot be named: MessageBox takes its captions from
+          // Windows, so on this desk they read "Sim" and "Não". That is QS131 — the dialog is
+          // bilingual — and here it is the difference between a case that runs anywhere and one
+          // that runs on an English machine.
+          //
+          // `invoke` and not `click`: the pattern is the act, and a synthesised pointer would need
+          // the foreground this whole exercise exists to stop needing.
+          "locator": "Button[order=right]",
+          "act": "invoke",
+          "named": "refusing the import, which is what writes nothing"
+        }
+      ]
+    }
+  ]
+}

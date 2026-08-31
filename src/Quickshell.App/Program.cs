@@ -24,10 +24,19 @@ public static class Entry
     /// <summary>When this process started, for the one line of a crash report that says how long.</summary>
     private static readonly long Started = Stopwatch.GetTimestamp();
 
-    /// <summary>Opens the window, runs until it closes, and remembers where it was.</summary>
+    /// <summary>
+    /// Opens the window, runs until it closes, and remembers where it was.
+    /// </summary>
+    /// <param name="arguments">
+    /// What the command line asked for. This client has no menu on purpose, so the command line is
+    /// a real surface here rather than a convenience — the same standing as a keybinding, and the
+    /// only one a script or another program can reach.
+    /// </param>
     [STAThread]
-    public static int Main()
+    public static int Main(string[] arguments)
     {
+        ArgumentNullException.ThrowIfNull(arguments);
+
         Application application = new() { ShutdownMode = ShutdownMode.OnMainWindowClose };
         MainWindow? window = null;
 
@@ -45,6 +54,14 @@ public static class Entry
         // first paint.
         window.Apply(SettingsFile.ReadFrom(Locations.Current.Settings));
         window.PlaceAt(WindowPlacements.ReadFrom(Placements()).For(Screens()));
+
+        // `--import` opens what Ctrl+Shift+I opens, and after the window is up rather than before:
+        // the preview is a dialog over a window, and a modal with nothing behind it is a client that
+        // looks like it failed to start. It still writes nothing until the answer is yes.
+        if (arguments.Contains("--import", StringComparer.Ordinal))
+        {
+            window.Dispatcher.BeginInvoke(() => window.ImportSessions());
+        }
 
         application.Run(window);
 

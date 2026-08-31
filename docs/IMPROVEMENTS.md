@@ -1693,32 +1693,6 @@ session that shows it.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-### §QS80 Reading the incumbent's files
-
-The barrier to leaving is not features. It is the two hundred sessions somebody has
-accumulated over five years. So this reads them.
-
-MobaXterm keeps sessions in an INI file in a positional format. PuTTY keeps them in the
-registry under its own key, one subkey per session, and the PuTTY-derived clients follow
-it. Both are readable, and reading them is the single highest-leverage piece of work in
-this block.
-
-What maps cleanly: name, folder, host, port, user, key file, and the terminal settings
-with an equivalent here. What does *not* map is at least as important, and it is
-reported per session rather than dropped: X11 settings, macros, and everything else the
-non-goals already refuse. A user who imports and is told what was not carried over has
-an accurate picture; one who is told nothing discovers it three weeks later and blames
-the client for hiding it.
-
-Keys are referenced rather than copied, and a `.ppk` is read where it lies rather than
-converted — converting somebody's key without being asked is the kind of surprise that
-costs trust in the first ten minutes.
-
-Import is previewed before it writes: what will be created, where, and what will be
-skipped. Nothing lands unseen.
-
-Falsified when an import silently drops a setting the source file carried.
-
 ### §QS81 The document the non-goals were written for
 
 The non-goals are a decision record aimed inward. This is the same content aimed
