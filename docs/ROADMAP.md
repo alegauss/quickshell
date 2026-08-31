@@ -9,6 +9,7 @@
 - 📋 **QS110** (deps: QS37 ✅) **Remote throughput has no local figure taken beside it, so a slow link and a slow client look alike** — Cancelling a pending read aborts a Windows pipe and takes the pseudo-console with it, so the local half of the comparison read nothing at all. → §QS110
 - 📋 **QS111** (deps: QS37 ✅) **A peer that stopped answering on a socket that stayed open is not noticed, so the session looks live for minutes** — The library's keepalive sends without expecting an answer, so it keeps a NAT mapping alive and cannot tell a frozen host from a quiet one. → §QS111
 - 📋 **QS112** (deps: QS39 ✅) **A dead route and a port that is not SSH read as one failure, so the remedy offered covers two things** — The library's asynchronous connect gives both the same sentence, and the synchronous one that tells them apart takes no cancellation token. → §QS112
+- 📋 **QS142** (deps: QS139) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
 
 ## Block B — Keys, agents, and the host you think you reached
 
@@ -265,6 +266,13 @@
   specifically, being the one cache with an eviction policy and therefore the one where
   a policy defect is indistinguishable from a leak. Checked by both appearing as rows in
   the report, which needs a graphics device the harness does not yet hold.
+
+## Done when — QS136
+
+- **The run repeats its failures and its skip count at the very end** Progress lines
+  dominate the log, so any truncated view loses the one thing being looked for — it cost
+  two rereads in one session. Checked by the last lines of a red run naming every failed
+  test and the skip count, without scrolling.
 
 ## Non-goals
 

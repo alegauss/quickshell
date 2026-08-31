@@ -138,6 +138,31 @@ measurement above is what says whether it worked.
 
 Falsified when the two are reported apart without a run showing they can be.
 
+### §QS142 Taking it upstream, or not staying here
+
+QS139 measured the defect and found the trade: `ShellStream` resizes and buffers without
+bound, `Shell` bounds and cannot resize, and the non-goal forbids writing the channel
+layer here. Every route out of that runs through somebody else's code.
+
+Three, in increasing cost. **Report it**, with the reproduction QS139 already has — ten
+seconds of an unread shell holding three gigabytes is a defect statement that needs no
+argument, and the fix upstream is to stop extending the window ahead of consumption.
+**Add what is missing**: a window-change request on `Shell`, or a bounded mode on
+`ShellStream`, contributed rather than requested. **Or leave**: evaluate another managed
+SSH library against the same reproduction, which is a bigger decision than this line and
+would want its own measurement of what else would have to move.
+
+What makes this worth filing rather than enduring: the trade is not a tuning choice, it
+is two shipped properties that cannot both hold. A user resizing a window and a user
+connected to a fast host are the same user.
+
+Before any of it, confirm the premise against the newest SSH.NET rather than the pinned
+one — 2026.0.0 is what was measured, and a bounded `ShellStream` may already exist
+upstream. That is one version bump and one run of `ChannelBackpressureTests`, and it
+would make the rest of this unnecessary.
+
+Falsified when the trade turns out not to exist.
+
 ## Block B — Keys, agents, and the host you think you reached
 
 ### §QS43 Two agents, one protocol, and the key that never leaves
@@ -623,11 +648,15 @@ slowness rather than bytes parsed:
 
 The pipeline's bounded queue halves it and moves 4.6 times more, and does not fix it.
 
-**And there is no knob.** `ConnectionInfo` carries no window-size member — a compile
-probe says so — and the 64 KB handed to `CreateShellStream` is plainly not a bound. So
-the choice is consuming `ShellStream` differently, not using it, or bounding a window
-the library keeps internal. Reading faster only moves the memory: what is missing is
-protocol flow control. QS141 is the other half.
+**The library forces a choice**, and compile probes settle it. `ConnectionInfo` has no
+window-size member. `Shell` — the one API writing received bytes into a `Stream` this
+client owns, which is backpressure out of public parts alone — has no
+`ChangeWindowSize`. So `ShellStream` gives a resizable terminal and unbounded memory;
+`Shell` gives bounded memory and no resize. Writing the channel layer here is what the
+non-goal forbids.
+
+Hence the order. The exposure bites when the reader stops, and it stops because the
+parser is slow — QS141. Fixing that shrinks it to the hostile case without closing it.
 
 Falsified when an unread session grows without limit.</body>
 
