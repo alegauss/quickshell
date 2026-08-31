@@ -9,6 +9,11 @@ AllowTcpForwarding yes
 PermitTunnel yes
 LogLevel VERBOSE
 
+# A fixture, not a server. The forwarding tests open connections to this sshd as a generic TCP
+# target and abandon them before authenticating, and the default MaxStartups begins dropping them
+# at ten outstanding — which fails a test for a reason that has nothing to do with the client.
+MaxStartups 200
+
 # The certificate question needs a CA the server trusts and a user with no authorized_keys,
 # so a connection that succeeds can only have succeeded on the certificate.
 TrustedUserCAKeys /keys/ca.pub

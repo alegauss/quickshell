@@ -918,6 +918,33 @@ the same thing for its own reason, so the two are one piece of work.
 
 Falsified when a wrong target port and a closed connection produce the same message.
 
+### §QS127 A proxy that answers wrongly is worse than no proxy
+
+Measured on 2026-08-30 with twenty lines using SSH.NET alone, no code of this project
+involved. Speaking SOCKS5 to `ForwardedPortDynamic` and reading the ten-byte reply:
+
+    one client, one proxy, eight requests:       0 0 0 0 0 0 0 0
+    one proxy, connects around a BIND:          -4 0 0 0 | BIND 0 | 0 0 0 0
+    a fresh client and proxy each time:          0 0 -4 0 0 0 -4 0
+
+Zero is a granted reply. Minus four is a reply whose first byte is not 5 — the connect
+reply was never sent and the target's own first bytes arrived instead. It is not a race
+with `BIND`, and not only the first request after opening; it worsens as a process opens
+and closes more of them.
+
+The same proxy also answers a `BIND` request with success and then connects, so an
+application that asked to listen is handed a connection somewhere else.
+
+Neither can be corrected from outside: the listener, the SOCKS conversation and the
+channel all live inside the library. A front end that holds the SOCKS conversation and
+passes only a connect through was written and thrown away — it inherits the
+unreliability of whatever it forwards to.
+
+So dynamic forwarding waits on the same listener of our own that QS124 needs, over a
+direct-tcpip channel, speaking SOCKS here.
+
+Falsified when a hundred connects through the proxy all receive a well-formed reply.
+
 ## Block G — The clean interface, defended
 
 ### §QS46 What is on screen by default, and what is not

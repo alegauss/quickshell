@@ -49,11 +49,12 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-- 📋 **QS68** (deps: QS66 ✅) **Reaching many hosts on the remote network needs one forward configured per host** — A SOCKS proxy is a single forward covering a whole network, which is what a browser or a cloud tool needs and what per-host forwards cannot provide. → §QS68
+- 📋 **QS68** (deps: QS66 ✅, QS127) **Reaching many hosts on the remote network needs one forward configured per host** — A SOCKS proxy is a single forward covering a whole network, which is what a browser or a cloud tool needs and what per-host forwards cannot provide. → §QS68
 - 📋 **QS69** (deps: QS66 ✅, QS67 ✅, QS68, QS38 ⏳) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
 - 📋 **QS70** (deps: QS69) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — A forward is invisible by nature, and a client that will not show its own listeners makes the user consult netstat to understand the client. → §QS70
 - 📋 **QS124** (deps: QS66 ✅) **A forward drops the whole connection when one direction half-closes, so protocols that shut and wait hang** — Many protocols send, shut their sending half, and wait for the answer; against this forward they get a closed socket instead of a reply. → §QS124
 - 📋 **QS125** (deps: QS66 ✅) **A forward cannot tell a refused target from a normal close, and cannot be bound to every interface** — The design asks for three failures told apart and only one is, so a user with a wrong port and a user with a wrong name are shown the same nothing. → §QS125
+- 📋 **QS127** (deps: QS124) **The library's SOCKS proxy answers about one request in six with something that is not a SOCKS reply** — A proxy that drops a request in six is worse than none: a browser retries and a script fails, and neither can tell this apart from the network. → §QS127
 
 ## Block G — The clean interface, defended
 
