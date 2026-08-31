@@ -44,6 +44,15 @@ public sealed class GraphemeSegmenter
     /// </summary>
     public const int MaximumCluster = 64;
 
+    /// <summary>
+    /// The fast path's bounds, spelled as numbers rather than as literals.
+    ///
+    /// <para>U+0300 is a combining mark: written as a character literal it is invisible in a diff
+    /// and in most editors, which is the mistake QS100 cost this project once already.</para>
+    /// </summary>
+    private const char FirstPrintable = ' ';
+    private const char FirstCombining = '\u0300';
+
     private char[] _pending = new char[256];
     private int _start;
     private int _end;
@@ -114,6 +123,20 @@ public sealed class GraphemeSegmenter
         if (usable <= 0)
         {
             return false;
+        }
+
+        // Two characters that cannot join means the first is a complete cluster and the boundary
+        // rules would spend a table walk saying so. This is 43% of what placing a character costs
+        // (QS143), paid on every letter of every line a host prints.
+        //
+        // See Standalone for why the range is safe. The pair is enough: the second character
+        // starting a new cluster is exactly what makes the first one certainly finished, which is
+        // the condition this method exists to establish.
+        if (usable >= 2 && Standalone(_pending[_start]) && Standalone(_pending[_start + 1]))
+        {
+            cluster = Take(1);
+
+            return true;
         }
 
         int length = Measure(usable, out int window);
@@ -189,6 +212,24 @@ public sealed class GraphemeSegmenter
             yield return (string)enumerator.Current;
         }
     }
+
+    /// <summary>
+    /// Whether this character can neither be joined to by what follows nor join what precedes it,
+    /// so a pair of them always has a cluster boundary between.
+    ///
+    /// <para><b>The range is an argument about UAX #29, and it is checked exhaustively</b> —
+    /// <c>CompositionTests</c> asks the runtime's own rules about every ordered pair in it, so a
+    /// Unicode update that made one of these combine fails rather than silently mis-segmenting.</para>
+    ///
+    /// <para>Below U+0300 nothing is <c>Extend</c>, <c>SpacingMark</c> or <c>ZWJ</c>; the lowest
+    /// <c>Prepend</c> is U+0600, the lowest Hangul jamo U+1100 and the lowest regional indicator
+    /// U+1F1E6. That leaves one rule that could join two characters this low — <c>CR × LF</c> — and
+    /// the lower bound of U+0020 excludes it. Controls do not reach here anyway, since the parser
+    /// executes them rather than printing them, but the bound costs nothing and does not rely on
+    /// that.</para>
+    /// </summary>
+    private static bool Standalone(char character) =>
+        character >= FirstPrintable && character < FirstCombining;
 
     /// <summary>
     /// How long the next cluster is, looking at no more than the cap plus one character.

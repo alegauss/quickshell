@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Quickshell.Terminal;
 using Xunit;
@@ -9,6 +10,86 @@ namespace Quickshell.Terminal.Tests;
 /// </summary>
 public sealed class CompositionTests
 {
+    // ---- The segmenter's fast path, checked against the rules it skips ----
+
+    /// <summary>
+    /// Every ordered pair the fast path claims to know about, asked of UAX #29 itself.
+    ///
+    /// <para><c>GraphemeSegmenter</c> answers "one character, complete" without consulting the
+    /// boundary rules whenever two consecutive characters are both in [U+0020, U+0300). That is 43%
+    /// of what placing a character costs (QS143), and it is an argument about Unicode: nothing below
+    /// U+0300 is <c>Extend</c>, <c>SpacingMark</c> or <c>ZWJ</c>, the lowest <c>Prepend</c> is
+    /// U+0600, and the one remaining rule that could join two characters this low — <c>CR × LF</c> —
+    /// is excluded by the lower bound.</para>
+    ///
+    /// <para>An argument is not evidence, so this asks <see cref="StringInfo"/> about all 541,696
+    /// ordered pairs. A Unicode update that made any of them combine fails here rather than
+    /// silently mis-segmenting somebody's terminal.</para>
+    /// </summary>
+    [Fact]
+    public void NoPairInsideTheFastPathsRangeEverCombines()
+    {
+        const int First = 0x0020;
+        const int Past = 0x0300;
+
+        List<string> offenders = [];
+        char[] pair = new char[2];
+
+        for (int left = First; left < Past; left++)
+        {
+            pair[0] = (char)left;
+
+            for (int right = First; right < Past; right++)
+            {
+                pair[1] = (char)right;
+
+                if (StringInfo.GetNextTextElementLength(pair) != 1)
+                {
+                    offenders.Add($"U+{left:X4} U+{right:X4}");
+
+                    // One example is the finding; five hundred thousand would be a wall of text.
+                    if (offenders.Count > 8)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        Assert.Empty(offenders);
+    }
+
+    /// <summary>
+    /// And the fast path did not change what the segmenter answers: the same text through the same
+    /// class still clusters the way the rules say, including where a mark follows a letter inside
+    /// the range's own neighbourhood.
+    /// </summary>
+    [Fact]
+    public void TheFastPathAgreesWithTheRulesItSkips()
+    {
+        GraphemeSegmenter segmenter = new();
+
+        // Plain letters, then a decomposed e-acute, then letters again. Written as escapes: a
+        // precomposed U+00E9 would sit inside the fast path's range and never reach the rules this
+        // is checking, and the two spellings are indistinguishable in an editor.
+        segmenter.Append("ab\u0065\u0301cd");
+
+        List<string> clusters = [];
+
+        while (segmenter.TryNext(out ReadOnlySpan<char> cluster))
+        {
+            clusters.Add(new string(cluster));
+        }
+
+        while (segmenter.TryFlush(out ReadOnlySpan<char> cluster))
+        {
+            clusters.Add(new string(cluster));
+        }
+
+        // The e and its acute are one cell; everything around them is its own.
+        Assert.Equal(["a", "b", "\u0065\u0301", "c", "d"], clusters);
+    }
+
     // ---- It is not in the buffer ----
 
     /// <summary>

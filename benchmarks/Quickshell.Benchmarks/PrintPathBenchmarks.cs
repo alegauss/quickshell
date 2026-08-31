@@ -25,7 +25,9 @@ public class PrintPathBenchmarks
 
     private TerminalBuffer _buffer = new(200, 50, scrollback: 2_000);
     private Emulator _emulator = new(200, 50, scrollback: 2_000);
+    private readonly GraphemeSegmenter _segmenter = new();
     private byte[] _line = [];
+    private char[] _text = [];
 
     [GlobalSetup]
     public void Prepare()
@@ -40,6 +42,13 @@ public class PrintPathBenchmarks
         for (int at = 0; at < _line.Length; at++)
         {
             _line[at] = (byte)('a' + (at % 26));
+        }
+
+        _text = new char[Characters];
+
+        for (int at = 0; at < _text.Length; at++)
+        {
+            _text[at] = (char)('a' + (at % 26));
         }
     }
 
@@ -100,8 +109,35 @@ public class PrintPathBenchmarks
     }
 
     /// <summary>
-    /// The whole path, for the number the other three are read against: bytes in at one end and
-    /// cells in the grid at the other.
+    /// Grapheme clustering on its own, which the ladder says is the other large stage.
+    ///
+    /// <para>Every character in the corpus is one cluster and no cluster was ever interned, yet each
+    /// one goes through the runtime's UAX #29 boundary rules to be told so. This prices that.</para>
+    /// </summary>
+    [Benchmark(OperationsPerInvoke = Characters)]
+    public int ClusteringAscii()
+    {
+        int clusters = 0;
+
+        _segmenter.Reset();
+        _segmenter.Append(_text);
+
+        while (_segmenter.TryNext(out ReadOnlySpan<char> cluster))
+        {
+            clusters += cluster.Length;
+        }
+
+        while (_segmenter.TryFlush(out ReadOnlySpan<char> cluster))
+        {
+            clusters += cluster.Length;
+        }
+
+        return clusters;
+    }
+
+    /// <summary>
+    /// The whole path, for the number the others are read against: bytes in at one end and cells in
+    /// the grid at the other.
     /// </summary>
     [Benchmark(OperationsPerInvoke = Characters, Baseline = true)]
     public void TheWholePath() => _emulator.Feed(_line);

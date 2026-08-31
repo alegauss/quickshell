@@ -710,30 +710,6 @@ where the answer is, and it is the same reason QS139's buffer fills.
 
 Falsified when a figure is quoted for a path it was not measured on.
 
-### §QS143 The fast path clustering does not have
-
-The replay ladder puts a number on it. On the 32 MB stream, `decode` runs at 523 MB/s
-and `segment` at 61 — grapheme clustering adds **14.5 ms per megabyte** where decoding
-added 1.06 and the state machine 0.51. It is the larger of the two multipliers between a
-byte scan and a working terminal.
-
-What makes that suspicious rather than merely expensive: the corpus is overwhelmingly
-plain ASCII. A run of `cat`, `ls --color` or `dmesg` is characters that cannot combine
-with anything, and each one is being put through machinery built for the case where it
-might. `GraphemeSegmenter` also allocates — 1.9 KB/MB appears at `decode` and doubles to
-3.9 at `segment`, against a `parse` arm that allocates at the floor.
-
-The shape of the fix is a fast path, not a rewrite: a character below the first
-codepoint that can combine, followed by another such character, is its own cluster and
-needs no boundary search. Unicode's own rules make that decidable cheaply, and the slow
-path stays for everything else — which is where correctness lives and must not move.
-QS33's conformance suite is what says it did not.
-
-Measure before and after on the same ladder, because a fast path that helps ASCII and
-hurts CJK has moved the cost rather than removed it.
-
-Falsified when clustering ASCII costs more than decoding it.
-
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine
