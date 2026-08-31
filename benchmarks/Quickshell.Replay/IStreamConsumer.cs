@@ -23,6 +23,18 @@ public interface IStreamConsumer
 
     /// <summary>Something derived from the whole stream, so the work cannot be optimised away.</summary>
     long Result { get; }
+
+    /// <summary>
+    /// What this consumer noticed about the run, beyond throughput and allocation.
+    ///
+    /// <para>A rate says how long something took and never what it was doing. An arm that holds a
+    /// real subsystem can read that subsystem's own counters afterwards and say which part of the
+    /// work was which — which is how QS144 asked whether writing cells is dominated by scrolling
+    /// without adding a single line of instrumentation to the terminal.</para>
+    ///
+    /// <para>Empty by default, so an arm with nothing to add says nothing.</para>
+    /// </summary>
+    string Note => string.Empty;
 }
 
 /// <summary>

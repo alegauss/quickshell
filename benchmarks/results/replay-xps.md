@@ -4,42 +4,57 @@ Captured streams replayed through every consumer that exists. Run on XPS, .NET 1
 
 | stream | MB | consumer | MB/s | alloc KB/MB | gen0 |
 |---|---|---|---|---|---|
-| `cat-log` | 32.00 | escape-scan | 2824 | 0.0 | 0 |
-| `cat-log` | 32.00 | parse | 1168 | 0.0 | 0 |
-| `cat-log` | 32.00 | decode | 487 | 1.9 | 0 |
-| `cat-log` | 32.00 | segment | 63 | 3.9 | 0 |
+| `cat-log` | 32.00 | escape-scan | 2991 | 0.0 | 0 |
+| `cat-log` | 32.00 | parse | 1054 | 0.0 | 0 |
+| `cat-log` | 32.00 | decode | 525 | 1.9 | 0 |
+| `cat-log` | 32.00 | segment | 59 | 3.9 | 0 |
 | `cat-log` | 32.00 | emulate | 11 | 3.9 | 0 |
-| `cat-log` | 32.00 | render | 5 | 0.0 | 0 |
-| `dmesg` | 0.18 | escape-scan | 983 | 0.2 | 0 |
-| `dmesg` | 0.18 | parse | 94 | 4.0 | 0 |
-| `dmesg` | 0.18 | decode | 50 | 4.0 | 0 |
-| `dmesg` | 0.18 | segment | 24 | 4.0 | 0 |
+| `cat-log` | 32.00 | render | 6 | 0.0 | 0 |
+| `dmesg` | 0.18 | escape-scan | 1396 | 4.0 | 0 |
+| `dmesg` | 0.18 | parse | 154 | 4.0 | 0 |
+| `dmesg` | 0.18 | decode | 127 | 4.0 | 0 |
+| `dmesg` | 0.18 | segment | 39 | 4.0 | 0 |
 | `dmesg` | 0.18 | emulate | 15 | 0.2 | 0 |
-| `dmesg` | 0.18 | render | 7 | 0.2 | 0 |
-| `htop` | 0.02 | escape-scan | 636 | 2.1 | 0 |
-| `htop` | 0.02 | parse | 46 | 2.1 | 0 |
+| `dmesg` | 0.18 | render | 7 | 4.0 | 0 |
+| `htop` | 0.02 | escape-scan | 828 | 2.1 | 0 |
+| `htop` | 0.02 | parse | 50 | 2.1 | 0 |
 | `htop` | 0.02 | decode | 46 | 2.1 | 0 |
-| `htop` | 0.02 | segment | 32 | 37.2 | 0 |
-| `htop` | 0.02 | emulate | 19 | 37.2 | 0 |
-| `htop` | 0.02 | render | 15 | 37.2 | 0 |
-| `ls-color-r` | 0.79 | escape-scan | 1599 | 0.0 | 0 |
-| `ls-color-r` | 0.79 | parse | 344 | 0.0 | 0 |
-| `ls-color-r` | 0.79 | decode | 277 | 0.0 | 0 |
-| `ls-color-r` | 0.79 | segment | 40 | 0.9 | 0 |
-| `ls-color-r` | 0.79 | emulate | 15 | 0.9 | 0 |
-| `ls-color-r` | 0.79 | render | 6 | 0.9 | 0 |
-| `tmux-resize` | 0.02 | escape-scan | 833 | 46.1 | 0 |
-| `tmux-resize` | 0.02 | parse | 167 | 46.1 | 0 |
-| `tmux-resize` | 0.02 | decode | 156 | 46.1 | 0 |
-| `tmux-resize` | 0.02 | segment | 43 | 46.1 | 0 |
+| `htop` | 0.02 | segment | 35 | 2.1 | 0 |
+| `htop` | 0.02 | emulate | 19 | 2.1 | 0 |
+| `htop` | 0.02 | render | 16 | 37.2 | 0 |
+| `ls-color-r` | 0.79 | escape-scan | 1592 | 0.0 | 0 |
+| `ls-color-r` | 0.79 | parse | 346 | 0.0 | 0 |
+| `ls-color-r` | 0.79 | decode | 278 | 0.0 | 0 |
+| `ls-color-r` | 0.79 | segment | 41 | 0.9 | 0 |
+| `ls-color-r` | 0.79 | emulate | 15 | 0.0 | 0 |
+| `ls-color-r` | 0.79 | render | 5 | 0.9 | 0 |
+| `tmux-resize` | 0.02 | escape-scan | 842 | 2.6 | 0 |
+| `tmux-resize` | 0.02 | parse | 168 | 46.1 | 0 |
+| `tmux-resize` | 0.02 | decode | 140 | 2.6 | 0 |
+| `tmux-resize` | 0.02 | segment | 52 | 46.1 | 0 |
 | `tmux-resize` | 0.02 | emulate | 21 | 52.8 | 0 |
-| `tmux-resize` | 0.02 | render | 11 | 46.1 | 0 |
-| `vim-scroll` | 0.23 | escape-scan | 1199 | 3.0 | 0 |
-| `vim-scroll` | 0.23 | parse | 210 | 3.0 | 0 |
-| `vim-scroll` | 0.23 | decode | 325 | 3.0 | 0 |
-| `vim-scroll` | 0.23 | segment | 40 | 3.0 | 0 |
-| `vim-scroll` | 0.23 | emulate | 18 | 0.2 | 0 |
-| `vim-scroll` | 0.23 | render | 9 | 0.2 | 0 |
+| `tmux-resize` | 0.02 | render | 11 | 2.6 | 0 |
+| `vim-scroll` | 0.23 | escape-scan | 1218 | 0.2 | 0 |
+| `vim-scroll` | 0.23 | parse | 205 | 0.2 | 0 |
+| `vim-scroll` | 0.23 | decode | 173 | 0.2 | 0 |
+| `vim-scroll` | 0.23 | segment | 42 | 3.0 | 0 |
+| `vim-scroll` | 0.23 | emulate | 19 | 3.0 | 0 |
+| `vim-scroll` | 0.23 | render | 8 | 0.2 | 0 |
+
+## What the arms noticed
+
+Counters read off the subsystem itself after the run, which a throughput
+figure cannot report. `cells moved by scrolling` against the cells a stream
+printed is what says whether the terminal's cost is writing or shifting.
+
+| stream | consumer | what it counted |
+|---|---|---|
+| `cat-log` | `emulate` | 830401 scrolls, 166080200 cells moved by scrolling, 0 clusters interned |
+| `dmesg` | `emulate` | 1650 scrolls, 330000 cells moved by scrolling, 0 clusters interned |
+| `htop` | `emulate` | 0 scrolls, 0 cells moved by scrolling, 0 clusters interned |
+| `ls-color-r` | `emulate` | 12112 scrolls, 2422400 cells moved by scrolling, 0 clusters interned |
+| `tmux-resize` | `emulate` | 0 scrolls, 0 cells moved by scrolling, 0 clusters interned |
+| `vim-scroll` | `emulate` | 0 scrolls, 0 cells moved by scrolling, 0 clusters interned |
 
 ## Reading these numbers
 

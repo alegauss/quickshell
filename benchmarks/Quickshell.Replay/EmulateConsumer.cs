@@ -1,3 +1,4 @@
+using System.Globalization;
 using Quickshell.Terminal;
 
 namespace Quickshell.Replay;
@@ -38,6 +39,27 @@ public sealed class EmulateConsumer : IStreamConsumer
     /// The buffer's own generation, which moves with every write and cannot be folded away.
     /// </summary>
     public long Result => _emulator.Buffer.Generation;
+
+    /// <summary>
+    /// What the buffer did, read off its own counters — which is what separates "writing cells is
+    /// expensive" from "scrolling is expensive and happens once a line".
+    ///
+    /// <para>`CellsWrittenByScrolling` against the cells the stream actually printed is the whole
+    /// question: a ring that rotates moves no cells at all, and one that copies moves a screenful
+    /// every line.</para>
+    /// </summary>
+    public string Note
+    {
+        get
+        {
+            TerminalBuffer buffer = _emulator.Screens.Primary;
+
+            return string.Create(
+                CultureInfo.InvariantCulture,
+                $"{buffer.Scrolls} scrolls, {buffer.CellsWrittenByScrolling} cells moved by "
+                + $"scrolling, {buffer.ClusterCount} clusters interned");
+        }
+    }
 
     /// <inheritdoc/>
     public void Reset() => _emulator = Make();

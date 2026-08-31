@@ -33,6 +33,8 @@ const int ChunkSize = 64 * 1024;
 const int Warmups = 1;
 const int Runs = 5;
 
+List<string> notes = [];
+
 StringBuilder report = new();
 report.AppendLine("# Replay results");
 report.AppendLine();
@@ -103,6 +105,34 @@ foreach (Corpus stream in streams)
             "{0,-16} {1,8:F2} MB  {2,-14} {3,8:F0} MB/s  {4,7:F1} KB/MB",
             stream.Name, stream.Megabytes, consumer.Name, best,
             bestAllocated / Math.Max(0.001, stream.Megabytes) / 1024.0));
+
+        // What the arm noticed about its own subsystem, where it has one to notice with. Read from
+        // the last run rather than the fastest, which is the same shape of work either way.
+        if (consumer.Note is { Length: > 0 } note)
+        {
+            notes.Add(string.Create(CultureInfo.InvariantCulture,
+                                    $"| `{stream.Name}` | `{consumer.Name}` | {note} |"));
+
+            Console.WriteLine($"{string.Empty,-16} {string.Empty,8}     {string.Empty,-14} {note}");
+        }
+    }
+}
+
+if (notes.Count > 0)
+{
+    report.AppendLine();
+    report.AppendLine("## What the arms noticed");
+    report.AppendLine();
+    report.AppendLine("Counters read off the subsystem itself after the run, which a throughput");
+    report.AppendLine("figure cannot report. `cells moved by scrolling` against the cells a stream");
+    report.AppendLine("printed is what says whether the terminal's cost is writing or shifting.");
+    report.AppendLine();
+    report.AppendLine("| stream | consumer | what it counted |");
+    report.AppendLine("|---|---|---|");
+
+    foreach (string note in notes)
+    {
+        report.AppendLine(note);
     }
 }
 

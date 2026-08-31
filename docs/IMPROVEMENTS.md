@@ -734,29 +734,31 @@ hurts CJK has moved the cost rather than removed it.
 
 Falsified when clustering ASCII costs more than decoding it.
 
-### §QS144 What a cell costs to write
+### §QS146 Eighty-seven nanoseconds a character
 
-The ladder's largest step. `segment` runs at 61 MB/s and `emulate` at 13, so writing
-cells adds **60.5 ms per megabyte** — four times what every stage before it costs put
-together.
+QS144 measured the stage and cleared scrolling of it: the ring rotates, its fill costs
+about a seventh, and the remaining 87 per cent is `PrintCluster` and what it calls. On
+the 32 MB stream that is 33.5 M characters in 2.9 s — **87 ns each**, on a machine that
+can scan a byte in a third of a nanosecond.
 
-Unlike clustering, this is not obviously waste. Writing a cell is what a terminal is
-for, and 32 MB of `cat` output at 200 columns is millions of cells genuinely written,
-wrapped and scrolled. So the first question is not how to make it faster but **what it
-is made of**: cell writes, cursor advance and wrap, the scroll that fires on every line,
-and the generation bookkeeping the damage model needs. A megabyte of 200-column lines is
-about 5,000 scrolls, and a scroll that copies rather than rotates a ring would be the
-whole answer on its own.
+Eighty-seven nanoseconds is roughly two hundred cycles to place one ASCII character into
+a grid, and nothing in the description of the work sounds like two hundred cycles. So
+the first job is separating it, and the candidates are countable: the cluster side-table
+lookup that interns anything wider than a base codepoint, the wrap and margin checks
+that run per character rather than per run, the `Touch` that moves a generation for the
+damage model, and the bounds arithmetic between a visible row and a ring index.
 
-`TerminalBuffer` already counts `Scrolls` and `CellsWrittenByScrolling`, which is
-exactly the pair that separates those two hypotheses without any new instrumentation —
-read them after a replay and the arithmetic says whether scrolling dominates.
+`ClusterCount` read 0 on every corpus stream, which is worth pausing on — no cluster was
+ever interned, so whatever that path costs is being paid on a lookup that never finds
+anything.
 
-It allocates nothing, which is worth stating: the 3.9 KB/MB the `emulate` arm reports is
-all inherited from `decode` and `segment`. So this is time, not garbage, and the fix
-will be about memory traffic rather than about the collector.
+The shape of a fix, if the split says so, is a run rather than a character: printed text
+arrives as a span, and a span of plain ASCII with no wrap in it could be written as one
+copy with one generation bump.
 
-Falsified when scrolling a line costs more than writing the cells it contains.
+Measure per candidate before changing any of them.
+
+Falsified when the split is not measured before the fix is written.
 
 ## Block D — The tree a user organises work in
 
