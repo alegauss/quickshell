@@ -36,7 +36,9 @@
 - 📋 **QS108** (deps: QS26 ✅, QS27 ✅) **The suite builds the solution and then measures wall-clock latency against what that build left running** — Two latency tests fail only after a build, so the suite cannot tell a regression from a busy machine, and a red run teaches nobody anything. → §QS108
 - 📋 **QS139** (deps: —) **A host sending faster than the parser consumes buffers gigabytes inside the channel** — The bytes sit in the transport rather than in the emulator, so an unread session grows without limit while a headless parse of 64 MB retains under 8 MB. → §QS139
 - 📋 **QS140** (deps: —) **The reply buffer exceeds the maximum its own constant states** — The cap is checked before an answer is appended rather than after, so a hostile host reaches 4098 bytes against a stated 4096 and the constant is not the bound. → §QS140
-- ⏳ **QS141** (deps: QS139) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Why a cell costs a hundred times a scan is unanswered, and the whole path still has no budget figure. → §QS141
+- ⏳ **QS141** (deps: QS139) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
+- 📋 **QS143** (deps: QS141 ⏳) **Grapheme clustering costs nine times everything that reaches it** — It adds 14.5 ms per megabyte against decoding's 1.06, and almost every cluster in ordinary output is one plain ASCII character that needed no clustering at all. → §QS143
+- 📋 **QS144** (deps: QS141 ⏳) **Writing cells is sixty milliseconds a megabyte, the largest cost on the path** — It is four fifths of what a session spends parsing, and it is the one stage doing work a terminal cannot avoid, so what it costs has to be known rather than assumed. → §QS144
 
 ## Block D — The tree a user organises work in
 
@@ -107,6 +109,7 @@
 - 📋 **QS102** (deps: QS24 ✅) **The parser is fuzzed only by the suite's own mutator, which stops when the build does** — A bounded run at a fixed seed explores the same inputs for ever, so coverage-guided fuzzing needs a harness that runs for hours outside the suite. → §QS102
 - 📋 **QS136** (deps: —) **A run with a hundred tests skipped prints the same "Passed" as one with none** — The fixture stops on its own and the summary line does not change, so the green that proves nothing looks exactly like the green that proves everything. → §QS136
 - 📋 **QS138** (deps: —) **Eight minutes of the suite is one helper waiting out a timeout it then ignores** — A test that passes by timing out would pass if the command never ran, and it costs the run more than every other test put together. → §QS138
+- 📋 **QS145** (deps: —) **Two render claims skip themselves whenever DXGI is slow to report statistics** — The idle draw-call figure is proven on some runs and silently not on others, on the same machine, so a green says nothing about which. → §QS145
 
 ## Done when — Block A
 

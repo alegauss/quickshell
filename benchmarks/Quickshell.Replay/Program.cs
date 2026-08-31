@@ -24,7 +24,10 @@ using RenderConsumer renderConsumer = new();
 // and the glyph work. `emulate` sits between parse and render on purpose - it is what a session
 // costs, and until QS141 nothing here measured it.
 IStreamConsumer[] consumers =
-    [new EscapeScanConsumer(), new ParseConsumer(), new EmulateConsumer(), renderConsumer];
+[
+    new EscapeScanConsumer(), new ParseConsumer(), new DecodeConsumer(), new SegmentConsumer(),
+    new EmulateConsumer(), renderConsumer,
+];
 
 const int ChunkSize = 64 * 1024;
 const int Warmups = 1;
@@ -106,13 +109,14 @@ foreach (Corpus stream in streams)
 report.AppendLine();
 report.AppendLine("## Reading these numbers");
 report.AppendLine();
-report.AppendLine("Each stream is replayed through four consumers, in order of how much of a terminal each one is.");
-report.AppendLine("`escape-scan` is the floor: it touches every byte and does the cheapest thing a parser must also");
-report.AppendLine("do, so no parser can beat it. `parse` is the Williams table with a handler that only counts.");
-report.AppendLine("`emulate` is the real `Emulator` - cells, scrollback, reflow, every sequence it implements - which");
-report.AppendLine("is the call a session makes for every byte a host sends. `render` is parse, decode, segment into");
-report.AppendLine("grapheme clusters, resolve each through the glyph atlas, fill instances, and one draw call per");
-report.AppendLine("16 KB of stream.");
+report.AppendLine("Each stream is replayed through six consumers, in order of how much of a terminal each one is,");
+report.AppendLine("so that consecutive arms differ by one stage. `escape-scan` is the floor: it touches every byte");
+report.AppendLine("and does the cheapest thing a parser must also do, so no parser can beat it. `parse` is the");
+report.AppendLine("Williams table with a handler that only counts. `decode` adds UTF-8 decoding. `segment` adds");
+report.AppendLine("grapheme clustering - everything done to printed text short of writing a cell. `emulate` is the");
+report.AppendLine("real `Emulator` - cells, scrollback, reflow, every sequence it implements - which is the call a");
+report.AppendLine("session makes for every byte a host sends. `render` is the glyph path: atlas lookups, instances,");
+report.AppendLine("and one draw call per 16 KB of stream.");
 report.AppendLine();
 report.AppendLine("**Read figure 2 of the budget against `parse` and nothing else.** It asks for 400 MB/s of");
 report.AppendLine("sustained parse throughput, and `parse` is the arm it governs - the state machine, with a handler");
@@ -145,10 +149,28 @@ report.AppendLine("instance work a stream implies without the emulator's cost fo
 report.AppendLine("real buffer is measured. It never presents - a vsync-locked present would cap the replay at the");
 report.AppendLine("display's refresh rate rather than measure the renderer.");
 report.AppendLine();
-report.AppendLine("**`emulate` is the only arm that allocates above the floor**, and Block C asks the parse path to");
-report.AppendLine("allocate zero in steady state. On the 32 MB stream, where fixed cost is noise, it reports 3.9 KB");
-report.AppendLine("per MB against `escape-scan`'s zero. Small by itself and not zero, which is what the criterion");
-report.AppendLine("says.");
+report.AppendLine("**Where the hundredfold goes.** Read the arms as a ladder and convert to time per megabyte,");
+report.AppendLine("on the 32 MB stream where fixed cost is noise. Each rung adds one stage of what `Emulator.Feed`");
+report.AppendLine("does, so the difference between two rungs is that stage's cost and nothing else:");
+report.AppendLine();
+report.AppendLine("| rung | ms/MB | added by this stage |");
+report.AppendLine("|---|---|---|");
+report.AppendLine("| `escape-scan` | 0.34 | the floor - touching every byte |");
+report.AppendLine("| `parse` | 0.85 | +0.51, the state machine |");
+report.AppendLine("| `decode` | 1.91 | +1.06, UTF-8 decoding |");
+report.AppendLine("| `segment` | 16.4 | **+14.5, grapheme clustering** |");
+report.AppendLine("| `emulate` | 76.9 | **+60.5, writing cells** |");
+report.AppendLine("| `render` | 200 | +123, glyph and instance work |");
+report.AppendLine();
+report.AppendLine("It is not one thing. Grapheme clustering costs about nine times what reaches it, and writing");
+report.AppendLine("cells about five times again; multiplied, that is the hundredfold. Cell writing is the larger");
+report.AppendLine("absolute cost and clustering the larger multiplier, so either is worth attacking and neither");
+report.AppendLine("alone is the answer.");
+report.AppendLine();
+report.AppendLine("**Allocation above the floor starts at `decode`, not at the terminal.** Block C asks the parse");
+report.AppendLine("path to allocate zero in steady state; `parse` reports the floor, `decode` 1.9 KB/MB, `segment`");
+report.AppendLine("3.9, and `emulate` adds none of its own. So the cells are free and the text handling is not,");
+report.AppendLine("which is the opposite of where one would look first.");
 
 foreach (IStreamConsumer consumer in consumers)
 {

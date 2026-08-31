@@ -710,6 +710,54 @@ where the answer is, and it is the same reason QS139's buffer fills.
 
 Falsified when a figure is quoted for a path it was not measured on.
 
+### §QS143 The fast path clustering does not have
+
+The replay ladder puts a number on it. On the 32 MB stream, `decode` runs at 523 MB/s
+and `segment` at 61 — grapheme clustering adds **14.5 ms per megabyte** where decoding
+added 1.06 and the state machine 0.51. It is the larger of the two multipliers between a
+byte scan and a working terminal.
+
+What makes that suspicious rather than merely expensive: the corpus is overwhelmingly
+plain ASCII. A run of `cat`, `ls --color` or `dmesg` is characters that cannot combine
+with anything, and each one is being put through machinery built for the case where it
+might. `GraphemeSegmenter` also allocates — 1.9 KB/MB appears at `decode` and doubles to
+3.9 at `segment`, against a `parse` arm that allocates at the floor.
+
+The shape of the fix is a fast path, not a rewrite: a character below the first
+codepoint that can combine, followed by another such character, is its own cluster and
+needs no boundary search. Unicode's own rules make that decidable cheaply, and the slow
+path stays for everything else — which is where correctness lives and must not move.
+QS33's conformance suite is what says it did not.
+
+Measure before and after on the same ladder, because a fast path that helps ASCII and
+hurts CJK has moved the cost rather than removed it.
+
+Falsified when clustering ASCII costs more than decoding it.
+
+### §QS144 What a cell costs to write
+
+The ladder's largest step. `segment` runs at 61 MB/s and `emulate` at 13, so writing
+cells adds **60.5 ms per megabyte** — four times what every stage before it costs put
+together.
+
+Unlike clustering, this is not obviously waste. Writing a cell is what a terminal is
+for, and 32 MB of `cat` output at 200 columns is millions of cells genuinely written,
+wrapped and scrolled. So the first question is not how to make it faster but **what it
+is made of**: cell writes, cursor advance and wrap, the scroll that fires on every line,
+and the generation bookkeeping the damage model needs. A megabyte of 200-column lines is
+about 5,000 scrolls, and a scroll that copies rather than rotates a ring would be the
+whole answer on its own.
+
+`TerminalBuffer` already counts `Scrolls` and `CellsWrittenByScrolling`, which is
+exactly the pair that separates those two hypotheses without any new instrumentation —
+read them after a replay and the arithmetic says whether scrolling dominates.
+
+It allocates nothing, which is worth stating: the 3.9 KB/MB the `emulate` arm reports is
+all inherited from `decode` and `segment`. So this is time, not garbage, and the fix
+will be about memory traffic rather than about the collector.
+
+Falsified when scrolling a line costs more than writing the cells it contains.
+
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine
@@ -1896,3 +1944,27 @@ falls out of that for free.
 
 Falsified when a run of the suite spends more time waiting for markers than transferring
 files.
+
+### §QS145 A precondition worth waiting for rather than skipping on
+
+`PresentSurfaceTests.TheFrameQueueNeverGetsAheadOfTheDisplay` and
+`AnIdleRenderLoopPresentsNothingToTheGpu` both guard on DXGI having produced a present
+count, and skip when it has not. Both skipped on one run of the suite this session and
+neither did on the runs before it, same machine, same build.
+
+The guard is right in principle — a frame-queue depth measured without statistics is not
+a measurement — and wrong in what it does about it. Statistics arrive when DXGI decides,
+and the tests give up after a fixed number of frames. So the idle draw-call figure,
+which is Block C's criterion *an idle window issues no draw calls* and half of the
+budget's figure 4, is proven on some runs and quietly not on others.
+
+Waiting is cheap and the loop already knows how to: both spin until `PresentedOnGlass()`
+moves, and both cap that at 90 frames, which at a vsync-locked present is a second and a
+half. A wait measured in time rather than frames, generous enough that the skip means
+the machine genuinely cannot answer, costs a second on a bad run and removes the
+ambiguity from every good one.
+
+Keep the skip for the case that remains — a headless agent, a session with no compositor
+— and say which it was.
+
+Falsified when the idle draw-call claim is unproven on a run that reported success.
