@@ -134,6 +134,7 @@ public sealed class GlyphRasteriser : IDisposable
     // time, so the batch of one is kept rather than allocated on every cache miss.
     private readonly uint[] _codepoint = new uint[1];
     private readonly ushort[] _glyph = new ushort[1];
+    private readonly GlyphMetrics[] _designMetrics = new GlyphMetrics[1];
 
     /// <summary>Opens the shared DirectWrite factory and reads the system font collection once.</summary>
     /// <param name="geometry">
@@ -557,12 +558,18 @@ public sealed class GlyphRasteriser : IDisposable
     private float AdvanceOf(string family, FontWeight weight, FontStyle slant, ushort glyph, float size)
     {
         IDWriteFontFace face = Face(family, weight, slant);
-        GlyphMetrics[] metrics = new GlyphMetrics[1];
+
+        // Reused, for the same reason _glyph beside it is: this runs once per cell whenever a
+        // caller asks for a glyph to be fitted to an advance, so a one-element array allocated here
+        // is one allocation per character on screen per frame. Measured at 89 KB a frame on an
+        // 80x25 grid before it was a field — QS116, which is the first task to paint a frame from a
+        // real buffer and therefore the first to notice.
+        _designMetrics[0] = default;
 
         _glyph[0] = glyph;
-        face.GetDesignGlyphMetrics(_glyph, metrics, false);
+        face.GetDesignGlyphMetrics(_glyph, _designMetrics, false);
 
-        return metrics[0].AdvanceWidth * size / face.Metrics.DesignUnitsPerEm;
+        return _designMetrics[0].AdvanceWidth * size / face.Metrics.DesignUnitsPerEm;
     }
 
     /// <summary>
