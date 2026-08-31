@@ -1,0 +1,26 @@
+{
+  // What is true of this project rather than of any one case. Every relative path resolves against
+  // this file's own directory, so a case carries no path and runs on any checkout.
+  //
+  // QS147. Three dialogs in this client were verified by granting foreground, sending a synthetic
+  // keystroke and photographing the screen; the third could not be photographed at all, because
+  // Windows declined foreground twenty-five times running on an unattended desk. Reading the
+  // accessibility tree needs neither, which is why this file exists.
+
+  // The Debug output and the RID, because Quickshell.App sets RuntimeIdentifier unconditionally and
+  // run-tests.cmd builds Debug.
+  "executable": "src/Quickshell.App/bin/Debug/net10.0-windows/win-x64/quickshell.exe",
+
+  "sourceRoot": "src",
+
+  "timeouts": {
+    // This window is built and shown before anything else happens - cold start is a number this
+    // project publishes - so a launch that takes longer than a few seconds is itself a finding.
+    // Ten is far above what QS2 budgets and still short enough that a hang fails rather than hangs.
+    "launch": 10000,
+    "resolve": 5000,
+    "act": 5000,
+    "poll": 25,
+    "stop": 5000
+  }
+}

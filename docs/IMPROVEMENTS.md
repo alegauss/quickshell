@@ -1896,33 +1896,3 @@ falls out of that for free.
 
 Falsified when a run of the suite spends more time waiting for markers than transferring
 files.
-
-### §QS147 Reading the window instead of photographing it
-
-Three dialogs were verified this way — the crash report, the diagnostics bundle, the
-import preview. Each needed `SetForegroundWindow` granted, a synthetic `keybd_event`,
-and a screen capture. Two worked; the third could not be photographed, because Windows
-declined foreground twenty-five times running on an unattended desk. The same condition
-makes DXGI report no frame statistics, which is what QS145 was about.
-
-So the method needs somebody at the machine, which is the opposite of what a harness is
-for, and CI has no desk at all.
-
-The sibling project already solved this. **Winwright** lives at
-`D:\Git\alegauss\winwright` — `src/Winwright`, `Winwright.Fixture`, `Winwright.InApp`,
-packages under `packages/`, and 0.1.0 with its alphas already in this machine's NuGet
-cache. `claude-tray` drives its cases with one `PackageReference` and no path into the
-engine's source.
-
-It reads the **accessibility tree** rather than pixels, so it needs neither foreground
-nor capture; cases are declarative JSON; and `Desk.CanObserve` names an unobservable
-desk rather than skipping quietly — the rule QS136 argues for, already built.
-
-Two things to settle before adopting. Whether the driver may reference this application:
-`claude-tray` says flatly it must not, and `Winwright.InApp` suggests an in-application
-half whose rules differ. And where the feed comes from — the user's `NuGet.Config` names
-only nuget.org, so the cached package arrived by a route this repository must reproduce.
-
-A picture is still worth taking for a human. It should not be the evidence.
-
-Falsified when a UI claim can only be checked by somebody watching.</body>

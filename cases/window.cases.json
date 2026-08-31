@@ -1,0 +1,43 @@
+{
+  // QS147. The first case read through the accessibility tree instead of a screenshot.
+  //
+  // What it asserts is thin, and the thinness is itself the finding: this window is a title bar, a
+  // terminal and nothing else, so there is very little in its tree to read. That is QS46's design
+  // working as intended, and it means the cases worth writing here are about the dialogs — which is
+  // WW317 in the engine's roadmap, because every one of them is behind a keyboard chord `press`
+  // cannot yet spell.
+  //
+  // What is deliberately NOT here: "there is no toolbar, no status bar, no menu". A locator matching
+  // nothing has no subject to read, so an expectation of absence is indistinguishable from a broken
+  // read — WW318, filed against the engine. `WindowTests` walks the visual tree in-process for that
+  // claim and keeps it until there is a word for absence.
+
+  "fixtures": [
+    {
+      "name": "the window a default installation opens",
+      "arguments": [],
+      "shareable": true
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "a default installation puts a window named quickshell on the desk",
+      "catches": "an application that builds its window correctly and then shows something else, or nothing at all — which every test running inside the process would pass",
+      "filed": "QS147",
+      "tags": ["smoke", "window"],
+      "fixture": "the window a default installation opens",
+
+      "steps": [
+        {
+          // Selected by kind and read for its name, so the locator does not fix the reading.
+          "locator": "TitleBar",
+          "act": "read",
+          "expect": "quickshell",
+          "reads": "name",
+          "named": "the title bar carries the application's own name"
+        }
+      ]
+    }
+  ]
+}

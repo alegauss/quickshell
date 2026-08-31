@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- QS147. The driving half of the UI cases in ..\..\cases.
+
+       One package reference and no path into the engine's source, which is what the sibling
+       project's own adoption sample says an adopter is. It references Quickshell.App through
+       nothing either: the application under test must not be on the driving project's reference
+       graph, or a case would be asserting against types it was compiled with rather than against
+       what a user launches.
+
+       It lives under tests\ so run-tests.cmd runs it with everything else - the point of the whole
+       exercise is that a UI claim is part of the suite rather than something somebody does by hand
+       on a desk they happen to be sitting at. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.Cases</RootNamespace>
+
+    <!-- No RuntimeIdentifier, deliberately. It would put the executable under a win-x64 segment,
+         and run-tests.cmd looks for tests\<Name>\bin\<Config>\net10.0-windows\<Name>.exe — so a RID
+         here reads as "no test application" and counts as a failed assembly. The application under
+         test sets one; this project only launches it by the path winwright.json spells. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Winwright" Version="0.1.0-alpha.3" />
+  </ItemGroup>
+
+</Project>

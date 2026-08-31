@@ -107,7 +107,6 @@
 - 📋 **QS102** (deps: QS24 ✅) **The parser is fuzzed only by the suite's own mutator, which stops when the build does** — A bounded run at a fixed seed explores the same inputs for ever, so coverage-guided fuzzing needs a harness that runs for hours outside the suite. → §QS102
 - 📋 **QS136** (deps: —) **A run with a hundred tests skipped prints the same "Passed" as one with none** — The fixture stops on its own and the summary line does not change, so the green that proves nothing looks exactly like the green that proves everything. → §QS136
 - 📋 **QS138** (deps: —) **Eight minutes of the suite is one helper waiting out a timeout it then ignores** — A test that passes by timing out would pass if the command never ran, and it costs the run more than every other test put together. → §QS138
-- 📋 **QS147** (deps: —) **UI is verified by synthetic keystrokes and screenshots, which need a desk somebody is sitting at** — Windows refused foreground twenty-five times running, so a dialog that works was unphotographable, and the same condition silences the render suite's statistics. → §QS147
 
 ## Done when — Block A
 
