@@ -94,6 +94,7 @@
 ## Block I — An error a user can act on
 
 - ✅ **QS71** **When a connection fails there is nothing to read afterwards but the dialog that has gone** — A session writes what happened where a user can send it — connections, credentials by kind, failures in their own words, the negotiation under a trace — and no secret can reach the file.
+- ✅ **QS72** **A crash takes the session, the scrollback and any explanation of what happened with it** — A crash writes a report naming the build, the machine and what was open, then tells the user where it is — and a lost graphics device is told apart from a defect.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 

@@ -1409,33 +1409,6 @@ Falsified when this repository quotes an input-to-photon figure with no run behi
 
 ## Block I — An error a user can act on
 
-### §QS72 The last second, and what is kept from it
-
-Crashes happen, and this client has unusually good reasons to expect them: a graphics
-driver, a native interop boundary, and a protocol library parsing input chosen by a
-remote machine.
-
-An unhandled exception writes a report before anything else — the exception, the stack,
-the version, the GPU and driver in use, the number of open sessions, and the last log
-entries under the same redaction rules the log itself uses. Written to a file, locally.
-Nothing is sent anywhere.
-
-Then it tells the user plainly that the client crashed, where the report is, and what it
-was doing at the time. A silent disappearance is the outcome this line exists to
-prevent, because a user whose client vanished has nothing to report and nothing to
-report it with.
-
-Sending is entirely the user's own act: a button that opens the file so they can read it
-before deciding. A report a user has not seen is a report they should not be asked to
-send. This is the telemetry non-goal applied at the exact moment it is most tempting to
-break.
-
-A render-thread failure gets separate handling, since a lost device is recoverable and
-must not be reported as a crash. Drawing that distinction carefully is what stops the
-reports filling with the one failure that is already handled.
-
-Falsified when a crash exits with no report and no message.
-
 ### §QS73 One action that produces everything a maintainer will ask for
 
 A defect report costs several round trips because the first message never carries what
@@ -1535,6 +1508,57 @@ kinds, and there is no overload that takes a byte. A path being transferred is a
 filename, which is the user's business but not a credential — record it.
 
 Falsified when a transfer that failed halfway leaves nothing in the log.
+
+### §QS131 The crash dialog says what its buttons do
+
+QS72 tells the user through `MessageBox`, which is the right amount of machinery for a
+process that is already dying — no window to build, no resources to load, nothing that
+can fail a second time. It has one cost, visible the moment it was photographed on a
+Portuguese Windows: the sentence is this client's English and the buttons are the
+operating system's "Sim" and "Não".
+
+Two problems, and the second is the larger. **The dialog is bilingual**, which reads as
+a client that was not finished. And **"Yes/No" names neither action**: the question is
+"Open the report now?", so the buttons should say "Open the report" and "Close" — naming
+the act is what lets somebody answer without re-reading the sentence above it.
+
+The fix is a small window of this client's own, and the constraint it inherits is the
+reason `MessageBox` was chosen: it has to be constructible after an unhandled exception,
+on a thread that may not be the dispatcher, with the application object possibly already
+torn down. So it loads no styles, references no session state, and falls back to
+`MessageBox` if constructing it throws — a dialog that fails to appear is worse than a
+bilingual one.
+
+While there, the report's own path is long enough to wrap awkwardly; a button that opens
+the containing folder is usually what a person actually wants.
+
+Falsified when the buttons on the crash dialog do not say what they do.
+
+### §QS132 The adapter line, filled in
+
+QS72's report carries a field for the adapter and a placeholder in it. That is not an
+oversight in the report: the composing layer genuinely has no device to ask. The render
+layer opens a `GraphicsDevice` where a pane needs one, and nothing at the window level
+holds a reference — so `Entry.Doing` writes what is true rather than a name it guessed
+at.
+
+The cost is exactly where it hurts. `CrashKind.DeviceLost` exists to say a failure was
+about the machine, and a device-loss report that cannot say which adapter, which vendor,
+or how many recoveries had already happened is a report naming a category and no
+evidence. `AdapterChoice.ToString` already renders the line wanted — which link of the
+chain answered, the adapter's own description, and what was skipped to reach it — and
+`GraphicsDevice.Recoveries` already counts the losses survived. Both are one reference
+away.
+
+So this is a wiring question and not a design one: whatever ends up owning the device
+for a pane exposes it to the crash context, through an interface narrow enough that the
+composing layer does not gain a second reason to know about D3D. A delegate returning a
+string is probably the whole of it.
+
+Do it when the pane holds a device, and not before — a hook with nothing on the other
+end is a field that says "unknown" in a different way.
+
+Falsified when a device-loss report cannot say which adapter was lost.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
