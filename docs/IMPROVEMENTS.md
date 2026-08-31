@@ -602,38 +602,34 @@ runs.
 
 ### §QS139 Gigabytes waiting in a channel nobody is draining fast enough
 
-A host sending faster than its consumer buffers inside the channel. Measured, one
-printing session against the fixture, ~3 min each:
+A host sending faster than its consumer buffers inside the channel, without bound.
 
-| arrangement | moved | retained after a full GC |
-|---|---|---|
-| reads only, no parsing | 18,176 MB | 8.9 MB |
-| reads + parse, through `SessionPipeline` | 657 MB | 1,035 MB |
-| reads + parse, reading the channel directly | 143 MB | 2,055 MB |
-| parsing 64 MB headlessly, no SSH at all | — | under 8 MB |
+**Settled by asking directly.** A shell opened, the host told to print on a loop,
+nothing reading for ten seconds: **3,072 MB held** after a compacting collection, all
+but a megabyte of it large object heap. About 300 MB/s of pure buffering, so any host a
+user connects to can exhaust this client's memory in seconds. `ChannelBackpressureTests`
+is that reproduction, skipped and naming this line.
 
 **It is not the emulator.** One 200x50 emulator with 2,000 lines of scrollback holds
-under 128 MB absolutely, and feeding it 64 MB adds under 8 MB. Both are asserted in
-`ParseRetentionTests`.
+under 128 MB absolutely, and feeding it 64 MB adds under 8 MB; both are asserted in
+`ParseRetentionTests`. Measured against the fixture, retention tracks the consumer's
+slowness rather than bytes parsed:
 
-**It is the large object heap**, and nothing else: 1,046 MB there against a gen2 of 4.6
-MB and an empty pinned heap. Flat from the first sample, so a fixed high-water mark
-rather than a leak.
+| one printing session, ~3 min | moved | retained |
+|---|---|---|
+| reads only, no parsing | 18,176 MB | 8.9 MB |
+| through `SessionPipeline` | 657 MB | 1,035 MB |
+| reading the channel directly | 143 MB | 2,055 MB |
 
-**It tracks consumer slowness, not bytes.** The faster the reader, the less is held —
-`SessionPipeline` halves it and moves 4.6 times more — and with no SSH channel at all
-there is none. That is SSH.NET buffering what it has received and cannot hand on.
+The pipeline's bounded queue halves it and moves 4.6 times more, and does not fix it.
 
-Where the bound is set is the remaining question, and the size argues against the
-obvious answer. A protocol window is measured in megabytes and none explains a gigabyte.
-What does is `ShellStream` reading from the channel into a buffer of its own as fast as
-the server sends, whatever rate the consumer manages — and the 64 KB passed to
-`CreateShellStream` evidently does not bound it.
+**And there is no knob.** `ConnectionInfo` carries no window-size member — a compile
+probe says so — and the 64 KB handed to `CreateShellStream` is plainly not a bound. So
+the choice is consuming `ShellStream` differently, not using it, or bounding a window
+the library keeps internal. Reading faster only moves the memory: what is missing is
+protocol flow control. QS141 is the other half.
 
-If so there is no knob, and the choice is between consuming `ShellStream` differently
-and not using it here. That is a transport decision, not a tuning one.</replacement>
-
- Falsified when an unread session grows without limit.</body>
+Falsified when an unread session grows without limit.</body>
 
 ### §QS140 A cap that is the number it says
 
@@ -659,6 +655,31 @@ behaviour with sixty-four bytes of slack and checks that answers really were ref
 the growth property stays watched until this makes the number exact.
 
 Falsified when the reply buffer exceeds the constant that names its maximum.
+
+### §QS141 The figure and the path it is measured on
+
+Figure 2 of the budget is *sustained parse throughput, at least 400 MB/s*, measured by a
+headless harness with no renderer. `benchmarks/results/replay-xps.md` reports 977 MB/s
+for `cat-log` under the `parse` consumer, so the figure looks met.
+
+`Emulator.Feed` does not run at that speed. Measured twice, independently:
+`ParseRetentionTests` feeds one emulator 64 MB of `cat-log` in 64 KB chunks and takes
+about seventeen seconds — near **4 MB/s**. Through `SessionPipeline` against the
+fixture, 657 MB in about three minutes — near **3.5 MB/s**. The two agree with each
+other and disagree with the published figure by two orders of magnitude.
+
+The likely explanation is that they are not the same path. The replay harness's `parse`
+arm is the scanner and the state machine; the same table's `render` arm is 9 MB/s.
+`Feed` also writes cells, and writing cells is what a terminal is for. If so, the figure
+is honest about what it measures and silent about what a session costs — which is the
+number that matters.
+
+Two things to settle, and the order matters. **Which arm figure 2 governs** — if it is
+the scanner alone, the budget needs a figure for the whole path, or nobody can tell
+whether a session is fast. And **why cells cost 250 times a scan**, because that is
+where the answer is, and it is the same reason QS139's buffer fills.
+
+Falsified when a figure is quoted for a path it was not measured on.
 
 ## Block D — The tree a user organises work in
 
