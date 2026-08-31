@@ -110,10 +110,13 @@ public sealed class SessionPipeline : IAsyncDisposable
     private long _told;
     private bool _disposed;
 
-    private SessionPipeline(IPtyChannel channel, Emulator emulator, int capacity)
+    private SessionPipeline(IPtyChannel channel, Emulator emulator, int capacity,
+                            SessionRecording? recording)
     {
         _channel = channel;
         _emulator = emulator;
+
+        Recording = recording;
 
         // Wait, not drop. This one option is the whole no-lost-bytes property.
         _queue = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(capacity)
@@ -126,6 +129,17 @@ public sealed class SessionPipeline : IAsyncDisposable
 
     /// <summary>What a render loop waits on.</summary>
     public DamageSignal Damage { get; } = new();
+
+    /// <summary>
+    /// Where this session's output is being kept, or null to keep none.
+    ///
+    /// <para><b>Fed from the parser stage and from nowhere else</b>, which is what makes "output
+    /// only" a property of the arrangement rather than a promise. <see cref="TypeAsync"/> writes
+    /// straight to the channel — it shares no queue, no buffer and no lock with this side — so there
+    /// is no path by which a keystroke could reach a recording, and a password typed at a prompt
+    /// cannot end up in a file the user is invited to send.</para>
+    /// </summary>
+    public SessionRecording? Recording { get; }
 
     /// <summary>Set when the model has taken a new size and the far end has not been told yet.</summary>
     private DamageSignal Resized { get; } = new();
@@ -158,17 +172,28 @@ public sealed class SessionPipeline : IAsyncDisposable
         Interlocked.Read(ref _keystrokes),
         TimeSpan.FromTicks(Interlocked.Read(ref _longestKeystrokeTicks)));
 
-    /// <summary>Starts the reader and the parser over a channel and a model of the same size.</summary>
+    /// <summary>
+    /// Starts the reader and the parser over a channel and a model of the same size.
+    /// </summary>
+    /// <param name="channel">The far end.</param>
+    /// <param name="emulator">The model its output is parsed into.</param>
+    /// <param name="capacity">How many reads may be waiting before the reader has to wait.</param>
+    /// <param name="recording">
+    /// Where to keep this session's output, or null to keep none. Passed at construction and never
+    /// afterwards: a recording that could be switched on mid-session is one a user could be unaware
+    /// had started, and the window's own indication is set from the same decision as this.
+    /// </param>
     public static SessionPipeline Start(
         IPtyChannel channel,
         Emulator emulator,
-        int capacity = QueueCapacity)
+        int capacity = QueueCapacity,
+        SessionRecording? recording = null)
     {
         ArgumentNullException.ThrowIfNull(channel);
         ArgumentNullException.ThrowIfNull(emulator);
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
 
-        SessionPipeline pipeline = new(channel, emulator, capacity);
+        SessionPipeline pipeline = new(channel, emulator, capacity, recording);
 
         // Two long-running loops rather than two threads: neither of them ever blocks, so a thread
         // each would be a thread each spent waiting.
@@ -429,6 +454,10 @@ public sealed class SessionPipeline : IAsyncDisposable
 
         Interlocked.Add(ref _totalWaitTicks, waited);
         Interlocked.Add(ref _queuedBytes, -chunk.Length);
+
+        // Before the emulator, so what is kept is what arrived rather than what this client made of
+        // it. A corpus that had been through a parser is a corpus that no longer contains the defect.
+        Recording?.HostSent(chunk.Buffer!.AsSpan(0, chunk.Length));
 
         _emulator.Feed(chunk.Buffer!.AsSpan(0, chunk.Length));
 

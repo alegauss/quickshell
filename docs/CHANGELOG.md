@@ -95,6 +95,7 @@
 
 - ✅ **QS71** **When a connection fails there is nothing to read afterwards but the dialog that has gone** — A session writes what happened where a user can send it — connections, credentials by kind, failures in their own words, the negotiation under a trace — and no secret can reach the file.
 - ✅ **QS72** **A crash takes the session, the scrollback and any explanation of what happened with it** — A crash writes a report naming the build, the machine and what was open, then tells the user where it is — and a lost graphics device is told apart from a defect.
+- ✅ **QS73** **A user reporting a defect has no way to say what their client was doing when it happened** — Ctrl+Shift+F1 writes one file holding the machine, the adapter, the settings with every value a secret could hide behind removed, the log and the crashes — and output records without keystrokes.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 

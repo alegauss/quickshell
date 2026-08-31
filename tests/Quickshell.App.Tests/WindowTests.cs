@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using Quickshell.App;
 using Quickshell.Terminal;
@@ -316,6 +317,76 @@ public sealed class WindowTests : IDisposable
         // enough that a configuration file parsed here would show.
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(2),
                     $"building the window took {clock.Elapsed.TotalMilliseconds:F0} ms");
+    }
+
+    // ---- recording, and the one action that reports a defect ----
+
+    /// <summary>
+    /// A recording says so in the title, because a client writing a user's session to disk while
+    /// they believe it is not would be the worst thing in this repository.
+    ///
+    /// <para>In the title and not in a status bar: there is no status bar here, and adding one to
+    /// carry a badge would spend the argument the test above makes.</para>
+    /// </summary>
+    [Fact]
+    public void ARecordingSaysSoWhereAPersonCanSeeIt()
+    {
+        (string quiet, string recording, string after) = OnStaThread(() =>
+        {
+            MainWindow window = new();
+
+            string before = window.Title;
+
+            window.Recording = true;
+
+            string during = window.Title;
+
+            window.Recording = false;
+
+            return (before, during, window.Title);
+        });
+
+        Assert.Equal("quickshell", quiet);
+        Assert.Contains("recording", recording, StringComparison.Ordinal);
+
+        // Leading, because a taskbar button shows the first few characters and nothing else.
+        Assert.StartsWith("●", recording, StringComparison.Ordinal);
+
+        // And it goes away again, so the indication means what it says.
+        Assert.Equal("quickshell", after);
+    }
+
+    /// <summary>
+    /// Ctrl+Shift+F1 writes the bundle. Asserted through the binding the window actually carries,
+    /// since a method nothing is bound to is a feature no user can reach.
+    /// </summary>
+    [Fact]
+    public void CtrlShiftF1WritesADiagnosticBundle()
+    {
+        string written = OnStaThread(() =>
+        {
+            MainWindow window = new()
+            {
+                DiagnosticsFolder = _directory,
+                Wrote = _ => { },
+            };
+
+            KeyBinding binding = window.InputBindings
+                                       .OfType<KeyBinding>()
+                                       .Single(bound => bound.Key == System.Windows.Input.Key.F1);
+
+            Assert.Equal(ModifierKeys.Control | ModifierKeys.Shift, binding.Modifiers);
+
+            // Through the command the binding holds, which is the path a keypress takes.
+            binding.Command.Execute(null);
+
+            return Directory.GetFiles(_directory, "quickshell-diagnostics-*.txt").Single();
+        });
+
+        string bundle = File.ReadAllText(written);
+
+        Assert.Contains("quickshell diagnostics", bundle, StringComparison.Ordinal);
+        Assert.Contains("has not been sent to anybody", bundle, StringComparison.Ordinal);
     }
 
     // ---- plumbing ----

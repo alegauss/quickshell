@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace Quickshell.App;
 
@@ -23,6 +25,8 @@ public sealed class MainWindow : Window
 {
     private readonly ContentControl _terminal = new();
     private readonly TabControl _tabs = new();
+
+    private bool _recording;
 
     /// <summary>Builds the window. Reads no file, opens no connection, and paints immediately.</summary>
     /// <param name="appearance">How it looks; <see cref="Appearance.Default"/> when null.</param>
@@ -59,6 +63,14 @@ public sealed class MainWindow : Window
         layout.Children.Add(_terminal);
 
         Content = layout;
+
+        // The one action that collects a defect report. A binding and not a menu item, because this
+        // window has no menu and gaining one to hold a maintenance command would spend the argument
+        // it makes. Ctrl+Shift+F1: F1 is where a person looks for help, and the two modifiers keep
+        // it away from anything the terminal owes the host — an unmodified F1 belongs to the program
+        // on the far side and always will.
+        InputBindings.Add(new KeyBinding(new Diagnose(this), Key.F1,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
     }
 
     /// <summary>How this window looks. The palette here is the terminal's and not the chrome's.</summary>
@@ -69,6 +81,29 @@ public sealed class MainWindow : Window
 
     /// <summary>How many tabs are open, which is what decides whether the strip is visible.</summary>
     public int Tabs => Math.Max(1, _tabs.Items.Count);
+
+    /// <summary>
+    /// Whether this window is recording a session's output, shown in the title.
+    ///
+    /// <para><b>The title and not a status bar.</b> A recording that runs without saying so is a
+    /// client writing a user's session to disk while they believe it is not — so it has to be
+    /// visible, and the only surface this window has is the one it is named by. There is no status
+    /// bar here to put it in, and adding one to carry a badge would spend the argument the whole
+    /// window makes.</para>
+    ///
+    /// <para>It leads the title rather than trailing it, because a taskbar button shows the first
+    /// few characters and nothing else.</para>
+    /// </summary>
+    public bool Recording
+    {
+        get => _recording;
+
+        set
+        {
+            _recording = value;
+            Title = value ? "● recording — quickshell" : "quickshell";
+        }
+    }
 
     /// <summary>Whether the tab strip is on screen.</summary>
     public bool TabStripShowing => _tabs.Visibility == Visibility.Visible;
@@ -105,6 +140,34 @@ public sealed class MainWindow : Window
         _tabs.Visibility = _tabs.Items.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>
+    /// What happens once a bundle is written. A dialog naming the file, unless a caller says
+    /// otherwise — which is how a test asks this question without a modal window in the way.
+    /// </summary>
+    public Action<string>? Wrote { get; set; }
+
+    /// <summary>
+    /// Where bundles go. The client's own folder unless a caller says otherwise.
+    /// </summary>
+    public string? DiagnosticsFolder { get; set; }
+
+    /// <summary>
+    /// Writes one bundle and says where it went.
+    ///
+    /// <para>Reached from Ctrl+Shift+F1, and from nowhere automatic: this reads files and asks DXGI
+    /// a question, neither of which belongs on a path a user did not ask for. Nothing is sent, and
+    /// the file is the user's to read first.</para>
+    /// </summary>
+    public string WriteDiagnostics()
+    {
+        string path = DiagnosticBundle.WriteTo(DiagnosticsFolder ?? DiagnosticBundle.Folder(),
+                                               DiagnosticSources.Default(), DateTimeOffset.UtcNow);
+
+        (Wrote ?? Told)(path);
+
+        return path;
+    }
+
     /// <summary>Puts the window where it was last time on this arrangement of screens.</summary>
     public void PlaceAt(Placement? placement)
     {
@@ -124,6 +187,53 @@ public sealed class MainWindow : Window
         Width = where.Width;
         Height = where.Height;
         WindowState = where.Maximised ? WindowState.Maximized : WindowState.Normal;
+    }
+
+    /// <summary>
+    /// The default telling: a dialog that offers to open the file, never one that sends it.
+    ///
+    /// <para>The same shape as the crash path's, and for the same reason — a report the user has not
+    /// read is a report they should not be asked to send.</para>
+    /// </summary>
+    private static void Told(string path)
+    {
+        MessageBoxResult answer = MessageBox.Show(
+            $"What your client was doing is written to {path}.\n\n"
+            + "Read it before sending it to anybody. Nothing has been sent, and passwords and key "
+            + "material are not in it.\n\nOpen it now?",
+            "quickshell diagnostics", MessageBoxButton.YesNo, MessageBoxImage.Information);
+
+        if (answer != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true })?.Dispose();
+        }
+        catch (Exception)
+        {
+            // The file is there and the dialog named it. Failing to open it is not worth a second
+            // dialog.
+        }
+    }
+
+    /// <summary>The binding's command, which is the whole of what a command is here.</summary>
+    private sealed class Diagnose(MainWindow window) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.WriteDiagnostics();
     }
 
     /// <summary>Where this window is now, for remembering.</summary>

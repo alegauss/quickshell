@@ -82,12 +82,13 @@
 
 ## Block I — An error a user can act on
 
-- 📋 **QS73** (deps: QS71 ✅, QS72 ✅) **A user reporting a defect has no way to say what their client was doing when it happened** — Every report arrives without the version, the server, the settings or the environment, and gathering those by correspondence costs days per defect. → §QS73
 - 📋 **QS128** (deps: QS71 ✅) **A trace shows what this client offered and never what the server did** — Half a negotiation cannot settle "no algorithm in common", so the appliance failures this level exists for are still diagnosed by guesswork. → §QS128
 - 📋 **QS129** (deps: QS71 ✅) **Nothing in the client says where its log is, or turns the trace on** — A log a user cannot find is a log that does not exist, and a trace that can only be enabled by editing code is one no bug report will ever carry. → §QS129
 - 📋 **QS130** (deps: QS71 ✅) **The log goes quiet exactly where a transfer or a tunnel failed** — A connection's own life is recorded and everything carried over it is not, so the reports hardest to reproduce are the ones the log has least to say about. → §QS130
-- 📋 **QS131** (deps: QS72 ✅) **The crash dialog mixes this client's English with Windows' own button words** — A person reading the worst message this client sends gets it in two languages, and "Yes/No" names neither of the things the buttons do. → §QS131
+- 📋 **QS131** (deps: QS72 ✅) **The crash dialog mixes this client's English with Windows' own button words** — Two dialogs do it now, the crash report and the diagnostics bundle, and "Yes/No" names neither of the things their buttons actually do. → §QS131
 - 📋 **QS132** (deps: QS72 ✅) **A crash report cannot name the GPU, on the failures most likely to be about one** — The adapter line reads "no device is held at this level" because nothing above the pane holds one, so a driver report arrives without the driver. → §QS132
+- 📋 **QS133** (deps: QS73 ✅) **A recording has no bound and will fill a disk if it is left running** — The log rotates against a fixed total and a recording does not, so the one that writes every byte a host sends is the one with nothing stopping it. → §QS133
+- 📋 **QS134** (deps: QS73 ✅, QS129) **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The recorder and the title's indication both work, and the only caller that can begin one is a test, so the feature reaches no user. → §QS134
 
 ## Block J — Leaving MobaXterm, proven by the switch
 

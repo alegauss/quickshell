@@ -1409,31 +1409,6 @@ Falsified when this repository quotes an input-to-photon figure with no run behi
 
 ## Block I — An error a user can act on
 
-### §QS73 One action that produces everything a maintainer will ask for
-
-A defect report costs several round trips because the first message never carries what
-is needed. This is one action that collects it: version and build, Windows version, GPU
-and driver, the render backend actually in use and whether it fell back, the negotiated
-algorithms of the affected session, the configuration with secrets removed, the recent
-log, and any crash reports.
-
-It writes one file the user can inspect before sending, and inspecting it is the point —
-the same reasoning as the crash path, and the reason this is not a button that uploads.
-
-The terminal has one thing to add that nothing else can: recording a session's raw byte
-stream. Terminal defects are close to impossible to describe and trivial to reproduce
-from bytes, so a recording turns *the box drawing looks wrong on this router* into a
-file that reproduces it on a maintainer's machine. Per session, explicit, visibly
-indicated while running, and it captures output only — input is what the user typed, and
-may be a password.
-
-That recording is also a corpus entry, so a defect found this way becomes a regression
-test by moving one file rather than by writing one.
-
-Nothing here is automatic and nothing is sent.
-
-Falsified when a recording captures typed input.
-
 ### §QS128 A trace that carries both sides of the negotiation
 
 QS71 shipped a trace that records this client's version, the algorithms it was willing
@@ -1559,6 +1534,55 @@ Do it when the pane holds a device, and not before — a hook with nothing on th
 end is a field that says "unknown" in a different way.
 
 Falsified when a device-loss report cannot say which adapter was lost.
+
+### §QS133 A recording that stops before the disk does
+
+QS71 worried about a trace left running overnight and gave the log a bounded total.
+QS73's recording has none, and it is the greedier of the two: it writes every byte a
+host sends. A `cat` of a large file is thirty megabytes in a few seconds, and the corpus
+already holds one capture that was 33 MB raw.
+
+Rotation is not the answer here, and that is the whole difficulty. A log is a sequence
+of independent lines and dropping the oldest costs the oldest. A recording is one
+continuous byte stream feeding a state machine — cut the front off and what is left
+starts mid-escape-sequence, which is a file that no longer reproduces anything. So the
+bound has to be a **stop**, not a roll.
+
+Which makes it a question about what the user is told. A recording that quietly stopped
+at a limit is worse than one that filled a disk, because the defect the user was trying
+to capture happened after it stopped and nobody said so. So: a cap the user can see
+before starting, the title's indication changing when it is reached, and the file itself
+carrying a last line saying where it was cut.
+
+Compressed size is the number to bound, since that is what reaches a disk and what the
+user has to send.
+
+Falsified when a session left recording overnight fills a disk, or stops without saying
+that it did.
+
+### §QS134 Starting a recording from the window
+
+QS73 built the recorder, fed it from the parser stage where the user's keystrokes cannot
+reach, and made the window say so in its title. What it did not build is the way to
+start one: `SessionPipeline.Start` takes a recording at construction, and nothing at the
+window level constructs a session yet — the same hole QS129 names for the log.
+
+That order was deliberate. A recording that could be switched on mid-session is one a
+user could be unaware had started, so the decision belongs where the session begins, and
+the window's indication is set from the same decision. Wiring a toggle before there was
+a session to toggle would have meant inventing a lifecycle to match.
+
+What this owes when the session lifecycle exists: a way to say *record this session* at
+the moment it opens, a name for the file that means something later, and a way to stop
+one that names the file it wrote so the user can find it. The title already changes; the
+stop is what needs the sentence.
+
+Keep the asymmetry. Starting is a decision made once, in the open; stopping is safe at
+any time and can be a keystroke. A recording that can be started by a keystroke is one
+somebody starts by accident.
+
+Falsified when a user who has just hit a terminal defect has no way to record the
+session that shows it.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
