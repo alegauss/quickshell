@@ -600,35 +600,61 @@ case. [[QS106]] is the narrower flaw in one of the two.
 Falsified when a build with node reuse off still fails at the same rate over twenty
 runs.
 
-### §QS139 Thirteen bytes held per byte parsed
+### §QS139 Gigabytes waiting in a channel nobody is draining fast enough
 
-Found by QS78's harness on its first working run, in three minutes rather than three
-days. One printing session against the fixture, a 200x50 emulator with 2,000 lines of
-scrollback, reading 64 KB chunks off a live channel:
+Found by QS78's harness on its first working run, and **first filed against the wrong
+layer**. One printing session against the fixture, a 200x50 emulator, 64 KB reads:
 
-| | parser on | parser off (`--no-parse`) |
+| ~3 min, one session | parser on | parser off (`--no-parse`) |
 |---|---|---|
-| moved in ~3 min | 153 MB | 18,176 MB |
+| moved | 153 MB | 18,176 MB |
 | managed heap after a forced full collection | 2,055 MB | 8.9 MB |
-| private memory | 3,676 MB | 41.6 MB |
 
-Two things follow, and they may be one bug. The memory is **retained, not garbage** — a
-forced full collection freed 6 MB of 2,061. And it is **the parser and not the
-transport**: with the same bytes read and dropped, the heap collects to 8.9 MB.
+That looked like the emulator retaining thirteen bytes per byte parsed. It is not.
+`ParseRetentionTests` feeds one emulator 64 MB of `cat-log` headlessly and finds under 8
+MB held after a blocking compacting gen2 collection. The emulator retains nothing.
 
-The throughput gap is the same size of surprise. Figure 2 of the budget asks for 400
-MB/s sustained and `benchmarks/results/replay-xps.md` measures 977 MB/s parsing
-`cat-log`. Here the parser manages roughly 0.85 MB/s. A structure that grows with bytes
-fed and is walked per feed would produce both numbers from one cause, which is the first
-hypothesis to test.
+What the numbers actually say: the host sent roughly two gigabytes while the parser
+consumed 153 MB, and the difference sat in the channel. Bypassing the parser made the
+consumer fast, so nothing accumulated — which is why the experiment implicated the wrong
+half.
 
-What is bounded and therefore not the answer: the scrollback ring held flat at 2,000
-lines throughout, and clusters are capped at 4,096.
+So this is flow control. A session whose consumer is slower than its host must make the
+host wait, not buffer. `SessionPipeline` was built for exactly that — a bounded queue
+whose full state makes the reader wait — and the soak read the channel directly instead,
+which is the arrangement no real client uses. Two things to settle, in order: whether
+the same growth happens through `SessionPipeline`, and if it does, where SSH.NET's own
+receive buffer is bounded.
 
-Reproduce: `Quickshell.Soak.exe --hours 0.05 --sessions 1 --warmup 0.5`, then the same
-with `--no-parse`.
+Reproduce: `Quickshell.Soak.exe --hours 0.05 --sessions 1 --warmup 0.5`, then
+`--no-parse`.
 
-Falsified when parsing a gigabyte leaves a heap a full collection cannot reduce.
+Falsified when an unread session grows without limit.</body>
+
+### §QS140 A cap that is the number it says
+
+`Emulator.MaximumReplyLength` is 4,096 and `Send` refuses to answer once `_reply.Count`
+has reached it — then, having passed the check, appends a whole answer. So the buffer
+can end at `MaximumReplyLength - 1` plus one answer's length. Two hundred thousand
+undrained cursor-position requests reach **4,098** bytes, measured.
+
+Two bytes is not a memory problem and this is not filed as one. It is filed because the
+constant is documented as the bound — *"how much the terminal will owe the host before
+it stops answering"* — and it is not the bound, which makes it the wrong number to
+reason from. The next answer added to that switch could be longer than a cursor
+position; a `DECRPSS` string reply is not two bytes, and nothing in the check knows how
+long the thing it is about to append is.
+
+The fix is to reserve headroom: refuse when the buffer plus the longest answer this file
+can build would exceed the maximum. That wants the longest answer to be a stated
+constant next to the cap, which is worth having anyway — right now it is a fact spread
+across a switch.
+
+`ParseRetentionTests.TheReplyBufferDoesNotGrowWithoutBound` asserts the present
+behaviour with sixty-four bytes of slack and checks that answers really were refused, so
+the growth property stays watched until this makes the number exact.
+
+Falsified when the reply buffer exceeds the constant that names its maximum.
 
 ## Block D — The tree a user organises work in
 
@@ -1768,24 +1794,28 @@ Falsified when a crash found here is not reproducible from the suite afterwards.
 
 `run-tests.cmd` already refuses one way of shrinking silently: no test applications
 found is not a pass. It does not refuse the other. The docker sshd fixture stops on its
-own — twice in one session's work, both times `Exited (0)`, which is a graceful stop
-rather than a crash — and every test that needs it calls `Assert.SkipUnless`. The run
-then reports **Passed**, `All 5 test assemblies passed`, and exits 0, with 103 of 228
-tests never executed. The line a person reads is identical either way.
+own, and every test needing it calls `Assert.SkipUnless`. The run then reports
+**Passed**, `All 5 test assemblies passed`, and exits 0, with 103 of 228 tests never
+executed. The line a person reads is identical either way.
 
-That is the exact shape of failure the script's own comment argues against: a command
-that reports something the tree does not have teaches people to stop reading it. Here it
-is worse than a false red, because a false green is the one nobody investigates.
+That is the shape of failure the script's own comment argues against: a command
+reporting something the tree does not have teaches people to stop reading it. A false
+green is worse than a false red, because nobody investigates it.
 
-What to do, in order of how much it is worth. **Print the skip count in the summary**,
-always — one number, and the difference becomes visible. **Fail on a skip budget**: a
-number per assembly, checked in, so a new skip is a decision somebody makes rather than
-weather. **Say why**: the skip reasons are already written and are one line each, so the
-run can name the fixture rather than leaving a reader to guess.
+What to do, in order of worth. **Print the skip count in the summary**, always — one
+number, and the difference becomes visible. **Fail on a skip budget**: a number per
+assembly, checked in, so a new skip is a decision rather than weather. **Say why**: the
+skip reasons are already one line each. CI needs this most, because nobody there watches
+a terminal.
 
-CI needs this most: nobody there is watching a terminal.
+The fixture half is the **engine**, not the containers. They exit `(0)` because the
+engine under them stops — this desk runs FreeWilly, which then answers "the FreeWilly
+engine is not running". So `restart: unless-stopped` in `compose.yaml` is worth having
+and is not enough: the suite has to notice. One session saw four green runs skipping 81,
+103, 96 and 96 of 228 tests.
 
-Falsified when a run that skipped the whole network suite exits 0 without saying so.
+Falsified when a run that skipped the whole network suite exits 0 without saying
+so.</body>
 
 ### §QS138 The eight minutes nobody had measured
 

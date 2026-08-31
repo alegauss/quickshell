@@ -54,9 +54,18 @@ The first working run produced a defect the seventy-two-hour run was supposed to
 | managed heap after a forced full collection | 2,055 MB | 8.9 MB |
 | private memory | 3,676 MB | 41.6 MB |
 
-Roughly thirteen bytes retained per byte parsed, surviving a full collection, entirely on the parser
-side of the seam — and the same arrangement moves 118 times more data with the emulator bypassed.
-Filed as QS139, with the reproduction above.
+**This was first read as the emulator retaining thirteen bytes per byte parsed, and that reading was
+wrong.** `ParseRetentionTests` feeds one emulator 64 MB of `cat-log` headlessly and finds under 8 MB
+held after a blocking compacting gen2 collection — the emulator retains nothing.
+
+What the numbers actually say: the host sent roughly two gigabytes while the parser consumed 153 MB,
+and the difference sat in the channel. Bypassing the parser made the *consumer* fast, so nothing
+accumulated — which is exactly why the experiment implicated the wrong half. It is a flow-control
+defect, and QS139 now says so.
+
+Worth recording as a method note: an A/B that changes one call can still change two things. Removing
+`Feed` removed the retention **and** removed the slowness that caused it, and the conclusion followed
+the change rather than the cause. The headless test is what separated them.
 
 ## Also worth knowing
 
