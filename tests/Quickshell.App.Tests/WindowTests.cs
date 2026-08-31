@@ -389,6 +389,61 @@ public sealed class WindowTests : IDisposable
         Assert.Contains("has not been sent to anybody", bundle, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Ctrl+Shift+I imports, and nothing lands unseen: a preview that is refused writes no file.
+    ///
+    /// <para>Driven through the binding the window actually carries, because a method nothing is
+    /// bound to is a feature no user can reach — and the refusal is asserted first, since "nothing
+    /// lands unseen" is the half of this that a user is trusting.</para>
+    /// </summary>
+    [Fact]
+    public void CtrlShiftIImportsAndWritesNothingUntilItIsAgreedTo()
+    {
+        string into = Path.Combine(_directory, "sessions.json");
+
+        (bool asked, bool wroteOnRefusal, bool wroteOnAgreement) = OnStaThread(() =>
+        {
+            Directory.CreateDirectory(_directory);
+
+            bool shown = false;
+
+            MainWindow window = new()
+            {
+                SessionsFile = into,
+                Importing = _ =>
+                {
+                    shown = true;
+
+                    return false;
+                },
+            };
+
+            KeyBinding binding = window.InputBindings
+                                       .OfType<KeyBinding>()
+                                       .Single(bound => bound.Key == System.Windows.Input.Key.I);
+
+            Assert.Equal(ModifierKeys.Control | ModifierKeys.Shift, binding.Modifiers);
+
+            binding.Command.Execute(null);
+
+            bool afterRefusing = File.Exists(into);
+
+            // And again, agreeing this time.
+            window.Importing = _ => true;
+
+            binding.Command.Execute(null);
+
+            return (shown, afterRefusing, File.Exists(into));
+        });
+
+        Assert.True(asked, "the import ran without previewing anything");
+        Assert.False(wroteOnRefusal, "a refused import wrote a file anyway");
+
+        // Agreement writes, but only where this machine has something to read: the importer finds
+        // no source on a machine with no MobaXterm, and then there is nothing to write either.
+        Assert.Equal(MobaXtermImport.Find() is not null, wroteOnAgreement);
+    }
+
     // ---- plumbing ----
 
     /// <summary>

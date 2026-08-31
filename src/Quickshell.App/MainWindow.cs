@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -70,6 +72,12 @@ public sealed class MainWindow : Window
         // it away from anything the terminal owes the host — an unmodified F1 belongs to the program
         // on the far side and always will.
         InputBindings.Add(new KeyBinding(new Diagnose(this), Key.F1,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        // Importing the incumbent's sessions. Ctrl+Shift+I for the same reason as F1 above: two
+        // modifiers keep it away from anything the terminal owes the host, and an unmodified key
+        // belongs to the program on the far side.
+        InputBindings.Add(new KeyBinding(new Import(this), Key.I,
                                          ModifierKeys.Control | ModifierKeys.Shift));
     }
 
@@ -193,6 +201,47 @@ public sealed class MainWindow : Window
         };
     }
 
+    /// <summary>
+    /// What happens once an import has been previewed. A dialog that shows what would be created and
+    /// what would not, unless a caller says otherwise.
+    /// </summary>
+    public Func<ImportPreview, bool>? Importing { get; set; }
+
+    /// <summary>Where imported sessions are written. The client's own store unless a caller says.</summary>
+    public string? SessionsFile { get; set; }
+
+    /// <summary>
+    /// Reads the incumbent's sessions, shows what the import would do, and writes only if the user
+    /// agrees.
+    ///
+    /// <para><b>Nothing lands unseen</b>, which is the design's own requirement and the reason this
+    /// is two steps rather than one: the preview is built and shown, and the tree is written after
+    /// the answer and not before it.</para>
+    /// </summary>
+    /// <returns>Where the sessions were written, or empty where nothing was.</returns>
+    public string ImportSessions()
+    {
+        if (MobaXtermImport.Find() is not { } found)
+        {
+            (Importing ?? Asked)(new ImportPreview([], string.Empty));
+
+            return string.Empty;
+        }
+
+        ImportPreview preview = MobaXtermImport.Preview(found);
+
+        if (!(Importing ?? Asked)(preview))
+        {
+            return string.Empty;
+        }
+
+        string into = SessionsFile ?? Locations.Current.Sessions;
+
+        SessionTree.Of(preview.Tree()).WriteTo(into);
+
+        return into;
+    }
+
     /// <summary>Puts the window where it was last time on this arrangement of screens.</summary>
     public void PlaceAt(Placement? placement)
     {
@@ -244,6 +293,62 @@ public sealed class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// The default asking: what the import would do, and a choice.
+    ///
+    /// <para>The counts first, because a user with two hundred sessions wants to know the number
+    /// before the detail; then what will not come across, named. A user told nothing discovers it
+    /// three weeks later and blames the client for hiding it.</para>
+    /// </summary>
+    private static bool Asked(ImportPreview preview)
+    {
+        if (preview.Source.Length == 0)
+        {
+            MessageBox.Show("No MobaXterm session file was found on this machine.",
+                            "Import sessions", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            return false;
+        }
+
+        StringBuilder said = new();
+
+        said.AppendLine(preview.Source)
+            .AppendLine()
+            .AppendLine(Count(preview.Carrying, "session") + " would be imported.");
+
+        if (preview.Skipping > 0)
+        {
+            said.AppendLine(Count(preview.Skipping, "session")
+                            + " would not, because this client does not connect that way:");
+
+            foreach (IGrouping<string, ImportedSession> why in
+                     preview.Sessions.Where(session => !session.Carried)
+                                     .GroupBy(session => session.Skipped))
+            {
+                said.AppendLine("  • " + Count(why.Count(), "session") + " — " + why.Key);
+            }
+        }
+
+        int noted = preview.Sessions.Sum(session => session.Unmapped.Count);
+
+        if (noted > 0)
+        {
+            said.AppendLine()
+                .AppendLine(Count(noted, "setting")
+                            + " across those sessions have nowhere to go here, and each is named "
+                            + "beside the session it came from rather than dropped.");
+        }
+
+        said.AppendLine().Append("Import them now?");
+
+        return MessageBox.Show(said.ToString(), "Import sessions", MessageBoxButton.YesNo,
+                               MessageBoxImage.Question) == MessageBoxResult.Yes;
+    }
+
+    /// <summary>A count with its noun, pluralised, because "1 sessions" reads as a bug.</summary>
+    private static string Count(int how, string what) =>
+        how.ToString(CultureInfo.InvariantCulture) + " " + what + (how == 1 ? string.Empty : "s");
+
     /// <summary>The binding's command, which is the whole of what a command is here.</summary>
     private sealed class Diagnose(MainWindow window) : ICommand
     {
@@ -259,6 +364,23 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public void Execute(object? parameter) => window.WriteDiagnostics();
+    }
+
+    /// <summary>The import binding's command.</summary>
+    private sealed class Import(MainWindow window) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.ImportSessions();
     }
 
     /// <summary>Where this window is now, for remembering.</summary>

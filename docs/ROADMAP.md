@@ -96,8 +96,8 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- 📋 **QS80** (deps: QS55 ✅) **A MobaXterm or PuTTY user has to recreate every session by hand before they can start** — The session tree is the whole cost of switching, so a client that cannot read the incumbent's is one most users never get past the first evening with. → §QS80
-- 📋 **QS81** (deps: QS80) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
+- ⏳ **QS80** (deps: QS55 ✅) **A MobaXterm or PuTTY user has to recreate every session by hand before they can start** — The preview dialog has never been photographed, because this desk refuses foreground, and PuTTY's registry is unread. → §QS80
+- 📋 **QS81** (deps: QS80 ⏳) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
 
 ## Block K — The build and the harness — what a green run is evidence of
 
@@ -107,6 +107,7 @@
 - 📋 **QS102** (deps: QS24 ✅) **The parser is fuzzed only by the suite's own mutator, which stops when the build does** — A bounded run at a fixed seed explores the same inputs for ever, so coverage-guided fuzzing needs a harness that runs for hours outside the suite. → §QS102
 - 📋 **QS136** (deps: —) **A run with a hundred tests skipped prints the same "Passed" as one with none** — The fixture stops on its own and the summary line does not change, so the green that proves nothing looks exactly like the green that proves everything. → §QS136
 - 📋 **QS138** (deps: —) **Eight minutes of the suite is one helper waiting out a timeout it then ignores** — A test that passes by timing out would pass if the command never ran, and it costs the run more than every other test put together. → §QS138
+- 📋 **QS147** (deps: —) **UI is verified by synthetic keystrokes and screenshots, which need a desk somebody is sitting at** — Windows refused foreground twenty-five times running, so a dialog that works was unphotographable, and the same condition silences the render suite's statistics. → §QS147
 
 ## Done when — Block A
 
@@ -284,6 +285,17 @@
   there is none rather than inventing one. Checked by figure 2 or a figure beside it
   stating a number for the `emulate` arm, with the reasoning for that number and not
   merely the measurement it was taken from.
+
+## Done when — QS80
+
+- **PuTTY's sessions are read from the registry** The line names PuTTY and only
+  MobaXterm is read. Checked against HKCU Software\SimonTatham\PuTTY\Sessions, one
+  subkey per session, with the same accounting: carried, or named as not carried, and
+  every value that has nowhere to go reported rather than dropped.
+- **The preview has been seen by somebody, not only asserted** Its binding, its refusal
+  and its writing are tested, and the dialog itself has never been looked at — this desk
+  declined foreground twenty-five times. Checked by a capture, or by QS147's
+  accessibility reading, which needs no desk.
 
 ## Non-goals
 

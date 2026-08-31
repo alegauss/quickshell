@@ -106,6 +106,8 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
+- ✅ **QS80 (the reader and the preview)** **A MobaXterm or PuTTY user has to recreate every session by hand before they can start** — Ctrl+Shift+I reads MobaXterm's sessions into the tree with folders, names every field it cannot place — identified or not — and writes nothing until the preview is agreed to.
+
 ## Block K — The build and the harness — what a green run is evidence of
 
 - ✅ **QS88** **dotnet test reports zero tests and exits non-zero on a tree whose suite passes when the assembly is run directly** — `.\run-tests.cmd` runs every test assembly, and its exit code is the verdict (design §QS88 superseded: it falsified only on dotnet test) (design §QS88 recorded in `run-tests.cmd`).
