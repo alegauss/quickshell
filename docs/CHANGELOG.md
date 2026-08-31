@@ -54,6 +54,7 @@
 - ✅ **QS109** **The golden suite's text tolerance does not hold on the CI runner, so every commit's build is red for the same pixels** — A text scene is judged by how far the whole picture moved rather than by its noisiest pixel, which separates a rasteriser from a regression by 251 times.
 - ✅ **QS106** **The latency test's bound is a maximum over more reads at sixteen megabytes than at four, so a scheduler hiccup fails it** — The latency claim is now checked with the mean wait over each interval, which does not climb merely because the later reading covers four times as many reads.
 - ✅ **QS120** **The pipeline test's drain guard counts reads rather than bytes, so a loaded machine fails it** — The parser's backlog is now measured as bytes waiting when a drain begins, which says how far behind it is rather than how the reader happened to be scheduled.
+- ✅ **QS141 (the arm the budget governs)** **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — The replay harness gained an `emulate` arm that feeds the real terminal, measuring 10–21 MB/s where `parse` reports 1,200, and figure 2 now names which of the two it governs.
 
 ## Block D — The tree a user organises work in
 

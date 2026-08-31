@@ -50,6 +50,17 @@ over a stream long enough that startup and file I/O are noise. Parsing must neve
 reason output is slow, so this figure is deliberately measured where nothing else can be
 blamed for it.
 
+*Which arm this governs:* the replay harness's **`parse`** consumer — the state machine with a
+handler that only counts — and nothing else. It reports 1,200 MB/s on the 32 MB stream and
+under 400 on every smaller one, where fixed cost dominates.
+
+*What it does not govern, said plainly:* the call a session actually makes for every byte a
+host sends is `Emulator.Feed`, and that is the **`emulate`** arm, measured at **10–21 MB/s**.
+Until QS141 nothing measured it, so this figure could be met while a session was slow. There
+is deliberately **no budget number for the whole path yet** — inventing one to fill the gap
+would be a target nobody argued for. QS141 carries the argument, and this section is where the
+number lands once there is one.
+
 ### 3. Steady-state frame cost — under 2 ms
 
 One filled 200x50 grid, redrawn continuously.

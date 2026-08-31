@@ -34,9 +34,9 @@
 - 📋 **QS105** (deps: —) **Backspace at the left edge stops there instead of wrapping to the end of the line above** — A shell editing a command that wrapped moves the cursor back through the wrap, and a terminal that will not follow leaves the cursor and the shell disagreeing. → §QS105
 - 📋 **QS107** (deps: QS35 ✅) **ClearType coverage is drawn without the contrast enhancement Windows applies, so stems stay lighter than elsewhere** — The coverage DirectWrite hands back is raw, and the curve its renderers apply on top is not published, so matching it needs a reference rather than a formula. → §QS107
 - 📋 **QS108** (deps: QS26 ✅, QS27 ✅) **The suite builds the solution and then measures wall-clock latency against what that build left running** — Two latency tests fail only after a build, so the suite cannot tell a regression from a busy machine, and a red run teaches nobody anything. → §QS108
-- 🛠 **QS139** (deps: —) **A host sending faster than the parser consumes buffers gigabytes inside the channel** — The bytes sit in the transport rather than in the emulator, so an unread session grows without limit while a headless parse of 64 MB retains under 8 MB. → §QS139
+- 📋 **QS139** (deps: —) **A host sending faster than the parser consumes buffers gigabytes inside the channel** — The bytes sit in the transport rather than in the emulator, so an unread session grows without limit while a headless parse of 64 MB retains under 8 MB. → §QS139
 - 📋 **QS140** (deps: —) **The reply buffer exceeds the maximum its own constant states** — The cap is checked before an answer is appended rather than after, so a hostile host reaches 4098 bytes against a stated 4096 and the constant is not the bound. → §QS140
-- 📋 **QS141** (deps: QS139) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — A host prints at 300 MB/s, so a parser two orders of magnitude under its figure is what makes an unbounded channel buffer actually fill. → §QS141
+- ⏳ **QS141** (deps: QS139) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Why a cell costs a hundred times a scan is unanswered, and the whole path still has no budget figure. → §QS141
 
 ## Block D — The tree a user organises work in
 
@@ -273,6 +273,17 @@
   dominate the log, so any truncated view loses the one thing being looked for — it cost
   two rereads in one session. Checked by the last lines of a red run naming every failed
   test and the skip count, without scrolling.
+
+## Done when — QS141
+
+- **Where the hundredfold goes is named, per stage** `parse` reports 1,200 MB/s on
+  cat-log and `emulate` 10, and a ratio is not a diagnosis. Checked by a measurement
+  attributing the difference to named work — cell writes, scrolling, grapheme
+  segmentation, decoding — rather than to the emulator as a whole.
+- **The whole path has a budget figure somebody argued for** PERFORMANCE.md now says
+  there is none rather than inventing one. Checked by figure 2 or a figure beside it
+  stating a number for the `emulate` arm, with the reasoning for that number and not
+  merely the measurement it was taken from.
 
 ## Non-goals
 

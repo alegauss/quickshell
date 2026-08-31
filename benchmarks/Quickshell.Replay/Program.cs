@@ -19,7 +19,12 @@ if (streams.Count == 0)
 }
 
 using RenderConsumer renderConsumer = new();
-IStreamConsumer[] consumers = [new EscapeScanConsumer(), new ParseConsumer(), renderConsumer];
+
+// In order of how much of a terminal each one is: the floor, the state machine, the real terminal,
+// and the glyph work. `emulate` sits between parse and render on purpose - it is what a session
+// costs, and until QS141 nothing here measured it.
+IStreamConsumer[] consumers =
+    [new EscapeScanConsumer(), new ParseConsumer(), new EmulateConsumer(), renderConsumer];
 
 const int ChunkSize = 64 * 1024;
 const int Warmups = 1;
@@ -101,11 +106,20 @@ foreach (Corpus stream in streams)
 report.AppendLine();
 report.AppendLine("## Reading these numbers");
 report.AppendLine();
-report.AppendLine("Each stream is replayed through three consumers. `escape-scan` is the floor: it touches every");
-report.AppendLine("byte and does the cheapest thing a parser must also do, so no parser can beat it. `parse` is the");
-report.AppendLine("Williams table with a handler that only counts. `render` is the whole path - parse, decode,");
-report.AppendLine("segment into grapheme clusters, resolve each through the glyph atlas, fill instances, and one");
-report.AppendLine("draw call per 16 KB of stream.");
+report.AppendLine("Each stream is replayed through four consumers, in order of how much of a terminal each one is.");
+report.AppendLine("`escape-scan` is the floor: it touches every byte and does the cheapest thing a parser must also");
+report.AppendLine("do, so no parser can beat it. `parse` is the Williams table with a handler that only counts.");
+report.AppendLine("`emulate` is the real `Emulator` - cells, scrollback, reflow, every sequence it implements - which");
+report.AppendLine("is the call a session makes for every byte a host sends. `render` is parse, decode, segment into");
+report.AppendLine("grapheme clusters, resolve each through the glyph atlas, fill instances, and one draw call per");
+report.AppendLine("16 KB of stream.");
+report.AppendLine();
+report.AppendLine("**Read figure 2 of the budget against `parse` and nothing else.** It asks for 400 MB/s of");
+report.AppendLine("sustained parse throughput, and `parse` is the arm it governs - the state machine, with a handler");
+report.AppendLine("that builds nothing. `emulate` is one to two orders of magnitude below it, and `emulate` is what");
+report.AppendLine("a session costs. Until QS141 nothing here measured that at all, so the figure could be met while");
+report.AppendLine("the thing it is about was slow. It also only meets 400 on the 32 MB stream: the smaller captures");
+report.AppendLine("are dominated by fixed cost, which the allocation note below applies to throughput too.");
 report.AppendLine();
 report.AppendLine("**The gap between `parse` and `render` is the figure this harness exists for.** It used to be");
 report.AppendLine("dominated by allocation rather than by drawing: the render arm allocated tens of megabytes per");
@@ -124,11 +138,17 @@ report.AppendLine("54,227 KB per MB and take 102 gen-0 collections; it now alloc
 report.AppendLine("Throughput did not move, and was never the point: allocation on this path bought a collection");
 report.AppendLine("pause during somebody's `vim` session, not megabytes per second.");
 report.AppendLine();
-report.AppendLine("The render arm also stands in for a terminal buffer that does not exist yet: cursor, wrap,");
-report.AppendLine("carriage return, line feed and erase-display, and nothing else. What it measures is the volume");
-report.AppendLine("of glyph and instance work a stream implies, which is the part a real buffer would not change.");
-report.AppendLine("It never presents - a vsync-locked present would cap the replay at the display's refresh rate");
-report.AppendLine("rather than measure the renderer.");
+report.AppendLine("The render arm keeps a stub of a buffer rather than the real one - cursor, wrap, carriage return,");
+report.AppendLine("line feed and erase-display, and nothing else. That was once because no terminal buffer existed;");
+report.AppendLine("now one does, and the stub is kept on purpose so this arm measures the volume of glyph and");
+report.AppendLine("instance work a stream implies without the emulator's cost folded in. `emulate` is where the");
+report.AppendLine("real buffer is measured. It never presents - a vsync-locked present would cap the replay at the");
+report.AppendLine("display's refresh rate rather than measure the renderer.");
+report.AppendLine();
+report.AppendLine("**`emulate` is the only arm that allocates above the floor**, and Block C asks the parse path to");
+report.AppendLine("allocate zero in steady state. On the 32 MB stream, where fixed cost is noise, it reports 3.9 KB");
+report.AppendLine("per MB against `escape-scan`'s zero. Small by itself and not zero, which is what the criterion");
+report.AppendLine("says.");
 
 foreach (IStreamConsumer consumer in consumers)
 {
