@@ -194,6 +194,12 @@ public sealed class SshNetTransportTests
     /// <summary>
     /// A port with nothing on it is refused, and is its own kind. QS39 split this out of the coarser
     /// "unreachable": a refused port and a dropped packet send a user to two different places.
+    ///
+    /// <para><b>A password and not a key, because the credential is not what is under test.</b> This
+    /// connection is refused before any of it is offered. Passing the fixture's key made this case
+    /// need a file that is gitignored — correctly, it is a private key — so on any machine without
+    /// the fixture it failed as <c>CredentialRejected</c> before reaching the socket at all, which
+    /// is QS157 and is how it failed in the guest for a week.</para>
     /// </summary>
     [Fact]
     public async Task APortWithNothingBehindItFailsAsRefused()
@@ -201,10 +207,20 @@ public sealed class SshNetTransportTests
         await using SshNetTransport transport = new();
 
         SshException refused = await Assert.ThrowsAsync<SshException>(async () =>
-            await transport.ConnectAsync(SshEndpoint.For(Host, "probe", 2), [Key()], Trusting, Stop));
+            await transport.ConnectAsync(SshEndpoint.For(Host, "probe", 2), [Unused()], Trusting,
+                                         Stop));
 
         Assert.Equal(SshFailureKind.Refused, refused.Kind);
     }
+
+    /// <summary>
+    /// A credential for a connection that never gets far enough to offer one.
+    ///
+    /// <para>It needs no file, which is the whole point: a case about the network must not depend on
+    /// a key that cannot be committed and therefore cannot travel.</para>
+    /// </summary>
+    private static SshCredential.Password Unused() =>
+        new SshCredential.Password(Secret.From("no connection here ever offers this"));
 
     /// <summary>
     /// An agent key is refused by name. QS5 established the library has none and QS43 is the line

@@ -1974,32 +1974,6 @@ Cheap, and it belongs beside the check it generalises rather than in a new file.
 
 Falsified by a file that carries mojibake through a green suite.
 
-### §QS157 The verdict that depends on the desk
-
-Found running the suite in the VMware guest after QS154. Three cases fail there and none
-here, on the same working tree, minutes apart:
-`WhatTheProgramPrintedSurvivesIntoTheFailure`, `AFailureAtTheFirstHopNamesTheFirstHop`
-and `APortWithNothingBehindItFailsAsRefused`.
-
-They have one thing in common, and it is the lead. Each asserts a substring of a
-*failure message*. QS154 turned invariant globalization off, so a framework exception
-now answers in whatever language the runtime has resources for — and a guest with a
-different .NET install answers in one this machine does not. The first of them reads
-back what a child process printed, which is not a framework string at all, so the lead
-does not cover all three and is a lead rather than an answer.
-
-What makes it worth a line is what QS95 bought. A guest run is the quiet desk *and* the
-second environment in QS12's matrix, and both are worth only what the verdict is worth:
-three cases that disagree by machine turn every guest run into a judgement about which
-failures to believe.
-
-If the lead holds, the fix is not a tolerance. An assertion about wording is an
-assertion about a resource file, and the sentence worth checking is the one this client
-composed rather than the one it quoted.
-
-Falsified when the same tree gives two verdicts on two machines and neither is
-explained.
-
 ### §QS159 Two instructions about evidence, and the wrong one is louder
 
 `.claude/skills/roadmap-docs/SKILL.md` says a UI task is not done without the picture,

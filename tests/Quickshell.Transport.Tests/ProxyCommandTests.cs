@@ -142,17 +142,23 @@ public sealed class ProxyCommandTests : IDisposable
     /// <para>A proxy command fails by exiting, which from SSH.NET's side is a link that dropped for
     /// no reason. Losing the program's own message leaves a user with an error that describes this
     /// client's plumbing and says nothing about the thing that actually went wrong.</para>
+    ///
+    /// <para><b>A password and not a key, because the credential is not what is under test.</b> The
+    /// program exits before a connection exists to offer one on. Passing the fixture's key made this
+    /// case need a file that is gitignored — correctly, it is a private key — so on a machine
+    /// without the fixture the client rejected the credential first and this read back a sentence
+    /// about a missing key file instead of the program's own. That is QS157.</para>
     /// </summary>
     [Fact]
     public async Task WhatTheProgramPrintedSurvivesIntoTheFailure()
     {
         await using SshChain chain = new([
-            new SshHop(SshEndpoint.For("example.test", "probe", 22), [Key()], Trusting,
+            new SshHop(SshEndpoint.For("example.test", "probe", 22), [Unused()], Trusting,
                        ProxyCommand: "cmd /c \"echo the vpn is not up 1>&2 & exit 1\""),
         ]);
 
         SshException failed = await Assert.ThrowsAsync<SshException>(async () =>
-            await chain.ConnectAsync(chain.Endpoint, [Key()], Trusting, Stop));
+            await chain.ConnectAsync(chain.Endpoint, [Unused()], Trusting, Stop));
 
         Assert.Contains("Hop 1 of 1", failed.Message, StringComparison.Ordinal);
         Assert.Contains("the vpn is not up", failed.Means, StringComparison.Ordinal);
@@ -251,6 +257,15 @@ public sealed class ProxyCommandTests : IDisposable
         Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519");
 
     private static SshCredential.PrivateKey Key() => new(KeyFile());
+
+    /// <summary>
+    /// A credential for a connection the proxy command never lets happen.
+    ///
+    /// <para>It needs no file, which is the whole point: a case about a program's own output must
+    /// not depend on a key that cannot be committed and therefore cannot travel.</para>
+    /// </summary>
+    private static SshCredential.Password Unused() =>
+        new SshCredential.Password(Secret.From("no proxy here ever gets far enough to offer this"));
 
     private static async Task<string> Until(IPtyChannel channel, string wanted)
     {

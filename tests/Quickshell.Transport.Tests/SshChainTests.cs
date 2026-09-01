@@ -35,6 +35,16 @@ public sealed class SshChainTests
     private static SshHop Hop(string host, int port, SshHostKeyCheck? check = null) =>
         new(SshEndpoint.For(host, "probe", port), [Key()], check ?? Trusting);
 
+    /// <summary>
+    /// A credential for a hop that never gets far enough to offer one.
+    ///
+    /// <para>It needs no file, which is the whole point: a case about which hop failed must not
+    /// depend on a key that cannot be committed and therefore cannot travel to another machine.
+    /// </para>
+    /// </summary>
+    private static SshCredential.Password Unused() =>
+        new SshCredential.Password(Secret.From("no hop here ever offers this"));
+
     // ---- Reaching what cannot be reached directly ----
 
     /// <summary>
@@ -115,17 +125,23 @@ public sealed class SshChainTests
     /// <para>The first hop is a port with nothing on it, so the failure is the bastion's and the
     /// message must say so. A bare connection-refused with no hop named is the least useful message
     /// a chain can produce.</para>
+    ///
+    /// <para><b>A password and not a key, because the credential is not what is under test.</b> The
+    /// first hop is refused before any of it is offered. Passing the fixture's key made this case
+    /// need a file that is gitignored — correctly, it is a private key — so on a machine without the
+    /// fixture it failed as <c>CredentialRejected</c> before reaching the socket, which is QS157.
+    /// </para>
     /// </summary>
     [Fact]
     public async Task AFailureAtTheFirstHopNamesTheFirstHop()
     {
         await using SshChain chain = new([
-            Hop("127.0.0.1", 2),
+            new SshHop(SshEndpoint.For("127.0.0.1", "probe", 2), [Unused()], Trusting),
             Hop(TargetOnTheNetwork, 22),
         ]);
 
         SshException failed = await Assert.ThrowsAsync<SshException>(async () =>
-            await chain.ConnectAsync(chain.Endpoint, [Key()], Trusting, Stop));
+            await chain.ConnectAsync(chain.Endpoint, [Unused()], Trusting, Stop));
 
         Assert.Contains("Hop 1 of 2", failed.Message, StringComparison.Ordinal);
         Assert.Contains("127.0.0.1", failed.Message, StringComparison.Ordinal);
