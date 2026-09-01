@@ -123,6 +123,10 @@ public sealed class TerminalLeaf : IAsyncDisposable
         // model is resized to it before a frame is drawn.
         Emulator emulator = new(80, 25, settings.Scrollback);
 
+        // Before anything is drawn, so a pane opened after the scheme was chosen is not the one
+        // pane wearing the defaults.
+        settings.Colours.ApplyTo(emulator.Palette);
+
         return new TerminalLeaf(emulator, new TerminalPane { Reading = emulator.Buffer },
                                 share, settings, host);
     }
@@ -179,13 +183,26 @@ public sealed class TerminalLeaf : IAsyncDisposable
     /// atlas rasterised at a size and the grid was measured from it, so changing it is a new atlas
     /// and a new grid for every pane at once — QS168, and it is the share's to do rather than a
     /// pane's.</para>
+    ///
+    /// <para><b>The colour scheme repaints the scrollback with it</b>, which is QS51's falsification
+    /// and works only because a cell stores the colour role the host asked for. It is applied before
+    /// the early return below: a pane whose swapchain has not opened yet still has a model, and a
+    /// scheme that reached the model would otherwise be lost on the pane least likely to be
+    /// noticed.</para>
     /// </summary>
     public void Apply(Settings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
+        // Onto the model's own palette, which the painter resolves every cell against as it builds
+        // a frame — so every line already on screen takes the new colours rather than only the ones
+        // written after this.
+        settings.Colours.ApplyTo(Emulator.Palette);
+
         if (Terminal.View is not { } view)
         {
+            _damage.Set();
+
             return;
         }
 

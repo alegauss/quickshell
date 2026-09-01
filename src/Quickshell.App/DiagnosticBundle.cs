@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using Quickshell.Render;
+using Quickshell.Terminal;
 
 namespace Quickshell.App;
 
@@ -135,6 +136,10 @@ public static class DiagnosticBundle
 
         bundle.AppendLine(Configuration(from.Config)).AppendLine();
 
+        Heading(bundle, "the colour scheme");
+
+        bundle.AppendLine(Scheme(from.Config)).AppendLine();
+
         Heading(bundle, "crash reports");
 
         bundle.AppendLine(Crashes(from.Crashes)).AppendLine();
@@ -169,6 +174,53 @@ public static class DiagnosticBundle
         bundle.AppendLine($"---- {what} ----").AppendLine();
 
     private static string Field(string name, string value) => $"{name}: {value}";
+
+    /// <summary>
+    /// The scheme in use, and every colour in it that cannot be read against its own background.
+    ///
+    /// <para><b>QS51's contrast check reports here rather than refusing there.</b> A scheme with an
+    /// unreadable pair is the user's choice to make, and half the published ones are unreadable
+    /// somewhere on purpose — but "the text went invisible" is a support question, and the bundle is
+    /// where a support question is already being answered. Naming the pair costs a line and saves an
+    /// exchange of messages.</para>
+    ///
+    /// <para>Read from the settings file rather than from a live window, which is what lets this run
+    /// from the crash path and from a test with nothing on screen.</para>
+    /// </summary>
+    private static string Scheme(string folder)
+    {
+        Settings settings = SettingsFile.ReadFrom(Path.Combine(folder, "settings.json"));
+
+        StringBuilder said = new();
+
+        said.AppendLine(Field("scheme", settings.Colours.Name))
+            .AppendLine(Field("from", settings.Scheme is { Length: > 0 } named
+                                          ? named
+                                          : "the built-in scheme"));
+
+        IReadOnlyList<Unreadable> unreadable = settings.Colours.Unreadable;
+
+        if (unreadable.Count == 0)
+        {
+            said.Append("every colour in it can be read against its background.");
+
+            return said.ToString();
+        }
+
+        said.AppendLine()
+            .AppendLine("these are hard to read against this scheme's background. That is allowed —")
+            .AppendLine("many schemes do it deliberately — and it is named here because it is what")
+            .AppendLine("\"the text went invisible\" usually turns out to be:")
+            .AppendLine();
+
+        foreach (Unreadable one in unreadable)
+        {
+            said.AppendLine(
+                $"  {one.What}: {one.Ratio.ToString("F1", CultureInfo.InvariantCulture)} to 1");
+        }
+
+        return said.ToString().TrimEnd();
+    }
 
     /// <summary>
     /// Every JSON file in the settings folder, rewritten with the sensitive values dropped.

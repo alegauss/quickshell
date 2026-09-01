@@ -31,7 +31,8 @@ and the chord works whether the watch armed or not.
   "ligatures": true,
   "cursor": "Block",
   "cursorBlink": true,
-  "warnOnPaste": true
+  "warnOnPaste": true,
+  "colourScheme": ""
 }
 ```
 
@@ -109,6 +110,49 @@ removes the only check that exists for the ones that do not.
 
 Control characters are stripped from a paste either way. That is not a setting.
 
+### `colourScheme`
+
+A path to a scheme file. Empty — the default — is the built-in scheme.
+
+**Both formats that already circulate are read**, and which one a file is is decided by what is in
+it rather than by what it is called:
+
+- **iTerm2**, the `.itermcolors` property list. Nearly every scheme published anywhere exists in
+  this form.
+- **Windows Terminal**, the JSON fragment out of its `schemes` array — the object with `"name"`,
+  `"background"`, `"black"`, `"brightWhite"` and the rest. Paste it into a file of its own and point
+  this at it. Both `purple` and `magenta` are accepted for the same colour, since Microsoft's
+  schemes use the first name and everybody else's use the second.
+
+**A relative path is relative to this file**, not to wherever the client was started from. A scheme
+sitting beside your settings is the arrangement that survives being cloned onto another machine,
+which is the point of the file being text you can commit.
+
+**What a scheme sets.** Nineteen colours: the sixteen a terminal numbers, the default foreground and
+background, and the cursor. The 6·6·6 cube and the greyscale ramp above index 15 are left alone —
+every terminal derives those the same way, and a scheme that changed them would make a 256-colour
+program look wrong here and nowhere else.
+
+**What it does not set.** The selection colour, which both formats carry and this client ignores. A
+selected cell has its two colours swapped instead. A fixed highlight is a colour chosen without
+knowing the scheme it will sit on, and over a blue scheme a blue highlight selects text into
+invisibility.
+
+**Where a file leaves the cursor out, it becomes the foreground.** That is a rule and not a guess:
+the foreground has to be legible against the background, so a cursor taking it is legible too.
+
+**Applying a scheme repaints what is already on screen**, scrollback included. Nothing needs
+reopening.
+
+**Contrast is reported, never enforced.** A scheme is loaded as written even where some of it is
+hard to read — many are that way deliberately. Which colours those are is named in the diagnostic
+report (**Ctrl+Shift+F1**), because *the text went invisible* is a support question and that is where
+support questions are answered.
+
+A path that leads nowhere, or a file this cannot read, is the built-in scheme and no error. This is
+a value somebody typed, so it is the likeliest line in the file to have a typo in it, and refusing
+to start over one would be refusing at the worst possible moment.
+
 ## What is deliberately not here
 
 - **Anything to reach parity with another client.** A feature comparison is not an argument; a user's
@@ -117,5 +161,6 @@ Control characters are stripped from a paste either way. That is not a setting.
   a client that lets you tell a host something untrue about what it is talking to.
 - **Keybindings.** Not yet configurable. The chords this client takes from the remote program are
   written down in [the keys reference](KEYS.md), which is what that page is for.
-- **The colour scheme.** A terminal palette is a setting; reading the two formats everybody already
-  shares is QS51, and this key arrives with it rather than before it.
+- **A scheme gallery.** The client ships one scheme and reads the rest from files. A bundled
+  collection is a maintenance burden and an invitation to screenshots, and an import path makes it
+  unnecessary.

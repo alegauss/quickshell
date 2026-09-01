@@ -63,6 +63,21 @@ public sealed record Settings
     public bool WarnOnPaste { get; init; } = true;
 
     /// <summary>
+    /// Where the terminal's colour scheme is read from, as the file wrote it. Empty is the built-in
+    /// one.
+    /// </summary>
+    public string Scheme { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The scheme itself, loaded from <see cref="Scheme"/> when the settings were read.
+    ///
+    /// <para><b>Resolved once, here, rather than by everything that wants it.</b> Sixteen open panes
+    /// applying a settings change would otherwise be sixteen reads of the same file, and a scheme
+    /// that changed on disk between two of them would leave two panes painted differently.</para>
+    /// </summary>
+    public ColourScheme Colours { get; init; } = ColourScheme.Default;
+
+    /// <summary>
     /// Every key this build did not recognise, kept exactly as it was read so it can be written back
     /// unchanged.
     /// </summary>
@@ -106,7 +121,7 @@ public static class SettingsFile
     public static readonly string[] Known =
     [
         Version, "theme", "fontFamily", "fontSize", "scrollback", "ligatures", "cursor",
-        "cursorBlink", "warnOnPaste",
+        "cursorBlink", "warnOnPaste", "colourScheme",
     ];
 
     /// <summary>
@@ -163,7 +178,7 @@ public static class SettingsFile
             Backup(path, was);
         }
 
-        return Migrated(Read(root, was), was);
+        return Migrated(Read(root, was, path), was);
     }
 
     /// <summary>
@@ -215,6 +230,7 @@ public static class SettingsFile
             writer.WriteString("cursor", settings.Cursor.ToString());
             writer.WriteBoolean("cursorBlink", settings.CursorBlink);
             writer.WriteBoolean("warnOnPaste", settings.WarnOnPaste);
+            writer.WriteString("colourScheme", settings.Scheme);
 
             foreach ((string name, JsonElement value) in settings.Unrecognised)
             {
@@ -257,6 +273,7 @@ public static class SettingsFile
             ["cursor"] = Quoted(settings.Cursor.ToString()),
             ["cursorBlink"] = settings.CursorBlink ? "true" : "false",
             ["warnOnPaste"] = settings.WarnOnPaste ? "true" : "false",
+            ["colourScheme"] = Quoted(settings.Scheme),
         };
 
         List<(int At, int Length, string Value)> edits = [];
@@ -332,7 +349,7 @@ public static class SettingsFile
     private static string Quoted(string value) => JsonSerializer.Serialize(value);
 
     /// <summary>The file as this build reads it, with everything else set aside.</summary>
-    private static Settings Read(JsonElement root, int schema)
+    private static Settings Read(JsonElement root, int schema, string path)
     {
         Dictionary<string, JsonElement> unrecognised = new(StringComparer.Ordinal);
 
@@ -343,6 +360,8 @@ public static class SettingsFile
                 unrecognised[property.Name] = property.Value.Clone();
             }
         }
+
+        string named = Text(root, "colourScheme") ?? Settings.Default.Scheme;
 
         return new Settings
         {
@@ -355,8 +374,37 @@ public static class SettingsFile
             Cursor = Shape(root) ?? Settings.Default.Cursor,
             CursorBlink = Yes(root, "cursorBlink") ?? Settings.Default.CursorBlink,
             WarnOnPaste = Yes(root, "warnOnPaste") ?? Settings.Default.WarnOnPaste,
+            Scheme = named,
+            Colours = Scheme(named, path),
             Unrecognised = unrecognised,
         };
+    }
+
+    /// <summary>
+    /// The scheme the file names, or the built-in one.
+    ///
+    /// <para><b>A relative path is relative to the settings file and not to the working directory.</b>
+    /// The settings file is the thing a user puts under version control, and a scheme beside it is
+    /// the arrangement that survives being cloned onto another machine — which is the entire reason
+    /// the file is hand-editable in the first place.</para>
+    ///
+    /// <para>A path that leads nowhere is the built-in scheme and never an error. It is a value
+    /// somebody typed, so it is the value likeliest in the whole file to have a typo in it, and a
+    /// client that refused to start over one would be unusable at exactly the wrong moment.</para>
+    /// </summary>
+    private static ColourScheme Scheme(string named, string path)
+    {
+        if (named is not { Length: > 0 })
+        {
+            return ColourScheme.Default;
+        }
+
+        string beside = Path.IsPathRooted(named)
+                            ? named
+                            : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".",
+                                           named);
+
+        return SchemeFile.ReadFrom(beside) ?? ColourScheme.Default;
     }
 
     /// <summary>

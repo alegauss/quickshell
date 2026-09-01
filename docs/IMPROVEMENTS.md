@@ -1074,33 +1074,6 @@ Falsified when a hundred connects through the proxy all receive a well-formed re
 
 ## Block G — The clean interface, defended
 
-### §QS51 Reading the two formats that already exist
-
-Nobody types twenty colours. Schemes circulate as files, in two formats that between
-them cover very nearly everything published: the iTerm2 `.itermcolors` property list,
-and the Windows Terminal JSON fragment.
-
-Reading both is a small piece of work with a disproportionate effect. It means a user
-arrives with the scheme they already use, on the first evening, instead of approximating
-it and quietly resenting the result.
-
-A scheme is twenty values: sixteen palette entries, default foreground and background,
-cursor, and selection. Where a format omits one, the omission is derived by a stated
-rule rather than guessed, and that rule lives in the reference.
-
-The client ships a small set of defaults and no more. A scheme gallery is a maintenance
-burden and an invitation to screenshots, and an import path makes it unnecessary.
-
-Applying a scheme repaints existing scrollback — which works only because the model
-stores colour roles rather than resolved values. This line is where that earlier
-decision gets spent.
-
-Contrast is checked and reported, never enforced: a scheme with unreadable combinations
-is the user's choice to make, and a warning naming which pair is unreadable is more use
-than a refusal.
-
-Falsified when applying a scheme leaves existing scrollback in the previous palette.
-
 ### §QS52 The surface that lets the other surfaces stay small
 
 A palette is the mechanism that makes the non-goal about toolbars affordable. Every
