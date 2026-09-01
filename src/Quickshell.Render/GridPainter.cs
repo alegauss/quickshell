@@ -50,8 +50,20 @@ public sealed class GridPainter
     /// <param name="cursorColumn">Its column.</param>
     /// <param name="cursor">What shape to draw it as.</param>
     /// <param name="metrics">The cell box, for the advance a wide glyph is fitted to.</param>
+    /// <param name="selection">
+    /// What is selected, or null for nothing.
+    ///
+    /// <para><b>The two colours are swapped rather than a highlight colour being chosen</b>, which is
+    /// what every terminal does and is the only rule that works against an arbitrary palette: a fixed
+    /// blue over a blue scheme selects text into invisibility, and a scheme this client did not write
+    /// is the ordinary case.</para>
+    ///
+    /// <para>Asked per cell by absolute line, because a selection outlives the scrolling underneath
+    /// it — that is what QS22's line identities were for.</para>
+    /// </param>
     public void Paint(TerminalBuffer buffer, Span<CellInstance> into, int cursorRow,
-                      int cursorColumn, CursorShape cursor, CellMetrics metrics)
+                      int cursorColumn, CursorShape cursor, CellMetrics metrics,
+                      Selection? selection = null)
     {
         ArgumentNullException.ThrowIfNull(buffer);
 
@@ -62,9 +74,12 @@ public sealed class GridPainter
 
         Painted = 0;
 
+        bool selecting = selection is { IsActive: true };
+
         for (int row = 0; row < rows; row++)
         {
             ReadOnlySpan<Cell> line = buffer.Screen(row);
+            long absolute = selecting ? buffer.AbsoluteLine(row) : 0;
 
             for (int column = 0; column < columns; column++)
             {
@@ -76,6 +91,11 @@ public sealed class GridPainter
 
                 Rgb foreground = _palette.Resolve(cell.Foreground);
                 Rgb background = _palette.Resolve(cell.Background, background: true);
+
+                if (selecting && selection!.Contains(absolute, column))
+                {
+                    (foreground, background) = (background, foreground);
+                }
 
                 GlyphPlacement glyph = span == 0 || cell.Codepoint == ' '
                     ? GlyphPlacement.Empty

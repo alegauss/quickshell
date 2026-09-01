@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using Quickshell.Render;
 using Quickshell.Terminal;
@@ -25,8 +26,10 @@ public sealed class PaneAttachment : IDisposable
     private readonly string _family;
     private readonly float _sizeInPoints;
     private readonly CancellationTokenSource _stop = new();
+    private readonly Pointer _pointer = new();
 
     private Task _loop = Task.CompletedTask;
+    private bool _dragging;
     private bool _disposed;
 
     internal PaneAttachment(TerminalPane pane, Emulator emulator, DamageSignal damage,
@@ -47,6 +50,7 @@ public sealed class PaneAttachment : IDisposable
         Resized = emulator.Resize;
 
         _pane.SizeChanged += Sized;
+        _pane.Mouse += Pointed;
 
         // In case the pane already has both, which is the case when a caller attaches to a window
         // that is already up.
@@ -86,6 +90,7 @@ public sealed class PaneAttachment : IDisposable
 
         _disposed = true;
         _pane.SizeChanged -= Sized;
+        _pane.Mouse -= Pointed;
 
         _stop.Cancel();
 
@@ -120,6 +125,113 @@ public sealed class PaneAttachment : IDisposable
         // The loop sleeps on this signal, and a resize is the one change no parser ever reports.
         // Without it a window resized while the host is silent keeps the frame it had.
         _damage.Set();
+    }
+
+    /// <summary>
+    /// What is selected, as text, with a wrapped line joined back into one.
+    ///
+    /// <para>Empty where nothing is selected, which is what a copy with no selection should put on
+    /// the clipboard: a client that emptied somebody's clipboard because they pressed a chord with
+    /// nothing highlighted would have destroyed something they still wanted.</para>
+    /// </summary>
+    public string Selected()
+    {
+        if (View is not { Selection.IsActive: true } view)
+        {
+            return string.Empty;
+        }
+
+        TerminalBuffer buffer = _emulator.Buffer;
+        int length = view.Selection.MeasureCopy(buffer);
+
+        if (length <= 0)
+        {
+            return string.Empty;
+        }
+
+        char[] text = new char[length];
+
+        return view.Selection.CopyTo(buffer, text) is var written && written > 0
+            ? new string(text, 0, written)
+            : string.Empty;
+    }
+
+    /// <summary>
+    /// The mouse on the pane, in the client's own gestures rather than the host's.
+    ///
+    /// <para><b>The host gets the mouse the moment it asks for it, and shift takes it back.</b> That
+    /// is the convention every terminal follows and the only one that works: a program tracking the
+    /// mouse owns the pointer, and a user who still wants to copy something out of it holds shift.
+    /// Forwarding to the host is QS21's encoder and is not reached from here yet — until it is, a
+    /// click inside a program that asked for the mouse does nothing, which is honest and is not a
+    /// selection made behind that program's back.</para>
+    /// </summary>
+    private void Pointed(PaneMouse mouse)
+    {
+        if (View is not { } view)
+        {
+            return;
+        }
+
+        ModifierKeys held = Keyboard.Modifiers;
+
+        if (_emulator.MouseReporting != MouseTracking.Off && (held & ModifierKeys.Shift) == 0)
+        {
+            return;
+        }
+
+        switch (mouse.Kind)
+        {
+            case PaneMouseKind.Pressed:
+                Press(view, mouse, held);
+                break;
+
+            case PaneMouseKind.Moved when _dragging:
+                view.Selection.Extend(_emulator.Buffer,
+                                      Pointer.CellAt(mouse.X, mouse.Y, view.Renderer.Metrics,
+                                                     _emulator.Buffer));
+                break;
+
+            case PaneMouseKind.Released:
+                _dragging = false;
+
+                return;
+
+            default:
+                return;
+        }
+
+        // The terminal never sees a selection — nothing was printed — so the gate would answer that
+        // the frame on the glass is still current. Both calls: one to forget that frame, one to wake
+        // the loop that would otherwise be asleep on a silent host.
+        view.Moved();
+        _damage.Set();
+    }
+
+    /// <summary>
+    /// A press: extend what is there where shift is held, and otherwise start again.
+    ///
+    /// <para>Shift-click extending rather than restarting is what lets somebody select a screenful
+    /// by clicking at the top and shift-clicking at the bottom, which is how a person selects
+    /// something too long to drag across.</para>
+    /// </summary>
+    private void Press(TerminalView view, PaneMouse mouse, ModifierKeys held)
+    {
+        TerminalBuffer buffer = _emulator.Buffer;
+        SelectionPoint at = Pointer.CellAt(mouse.X, mouse.Y, view.Renderer.Metrics, buffer);
+
+        _dragging = true;
+
+        if ((held & ModifierKeys.Shift) != 0 && view.Selection.IsActive)
+        {
+            view.Selection.Extend(buffer, at);
+
+            return;
+        }
+
+        int clicks = _pointer.Clicked(mouse.X, mouse.Y, Environment.TickCount64);
+
+        view.Selection.Begin(buffer, at, Pointer.ModeFor(clicks, held));
     }
 
     private void Begin()

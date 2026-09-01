@@ -95,6 +95,27 @@ public sealed class TerminalView : IDisposable
     public CellRenderer Renderer => _renderer;
 
     /// <summary>
+    /// What is selected, drawn with its two colours swapped.
+    ///
+    /// <para><b>Read on the render thread and written on WPF's</b>, which is safe for exactly the
+    /// reason the model is: the frame draws whatever the selection says at the instant it is asked,
+    /// and a drag that lands between two frames is a highlight one frame late. What must not be
+    /// missed is the frame itself, which is why <see cref="Moved"/> exists rather than the drag
+    /// simply mutating this and hoping.</para>
+    /// </summary>
+    public Selection Selection { get; } = new();
+
+    /// <summary>
+    /// The selection changed, so the picture is wrong even though the model is not.
+    ///
+    /// <para>A selection is invisible to the terminal: nothing was printed and no damage was raised,
+    /// so the gate would answer that the screen on the glass is still current. This is the same
+    /// admission <see cref="Invalidate"/> makes for a theme or a font, named for the caller that has
+    /// it hundreds of times a second.</para>
+    /// </summary>
+    public void Moved() => _gate.Invalidate();
+
+    /// <summary>
     /// The swapchain on the pane's handle, for what a diagnostic bundle asks it: how deep the
     /// present queue is, how many frames reached the glass and how many were occluded.
     /// </summary>
@@ -253,7 +274,7 @@ public sealed class TerminalView : IDisposable
         bool caret = damage.CursorVisible && _renderer.CursorShowing;
 
         _painter.Paint(buffer, _cells, caret ? damage.CursorRow : -1, damage.CursorColumn,
-                       caret ? Cursor : CursorShape.None, _renderer.Metrics);
+                       caret ? Cursor : CursorShape.None, _renderer.Metrics, Selection);
 
         // Waited for here and not at the top of the loop: the wait is for a queue slot, and a
         // wake-up with nothing to draw should not be parked on the swapchain.

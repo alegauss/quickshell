@@ -7,6 +7,11 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 
+// Both namespaces name a Key. Here the window's is meant every time: these are chords a person
+// presses, not sequences a host is sent.
+using Key = System.Windows.Input.Key;
+using Paste = Quickshell.Terminal.Paste;
+
 namespace Quickshell.App;
 
 /// <summary>
@@ -80,6 +85,16 @@ public sealed class MainWindow : Window
         // modifiers keep it away from anything the terminal owes the host, and an unmodified key
         // belongs to the program on the far side.
         InputBindings.Add(new KeyBinding(new Import(this), Key.I,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        // Copy and paste, on the two chords every terminal on this platform uses. Ctrl+C is not one
+        // of them and must never become one: it is how a person stops a runaway program, and a
+        // client that stole it would have taken away the thing they reach for when something has
+        // gone wrong.
+        InputBindings.Add(new KeyBinding(new Copy(this), Key.C,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        InputBindings.Add(new KeyBinding(new PasteIn(this), Key.V,
                                          ModifierKeys.Control | ModifierKeys.Shift));
     }
 
@@ -398,6 +413,222 @@ public sealed class MainWindow : Window
         return into;
     }
 
+    /// <summary>
+    /// What is selected in the terminal, or null while nothing can answer.
+    ///
+    /// <para>A delegate rather than a reference to the pane, because what is selected is the view's
+    /// and the view does not exist until the window has been laid out — and this window is built
+    /// before any of that on purpose.</para>
+    /// </summary>
+    public Func<string>? Selected { get; set; }
+
+    /// <summary>Where a paste goes, or null while there is no session to send it to.</summary>
+    public Func<string, ValueTask>? Pasting { get; set; }
+
+    /// <summary>
+    /// Whether the program has turned bracketed paste on, which decides whether this client asks.
+    /// </summary>
+    public Func<bool>? Bracketed { get; set; }
+
+    /// <summary>
+    /// How a risky paste is shown. A dialog carrying exactly what would be sent, unless a caller
+    /// says otherwise — the same shape as <see cref="AskingToClose"/>, and for the same reason.
+    /// </summary>
+    public Func<string, bool>? AskingToPaste { get; set; }
+
+    /// <summary>
+    /// Puts the selection on the clipboard.
+    ///
+    /// <para><b>Nothing selected puts nothing on it.</b> A client that emptied somebody's clipboard
+    /// because they pressed a chord with nothing highlighted would have destroyed something they
+    /// were still going to use, and there is no undo for that.</para>
+    /// </summary>
+    /// <returns>What was copied, empty where nothing was.</returns>
+    public string CopySelection()
+    {
+        string text = Selected?.Invoke() ?? string.Empty;
+
+        if (text.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            Clipboard.SetText(text);
+        }
+        catch (Exception)
+        {
+            // Another process holds the clipboard open, which happens and passes. Losing a copy is
+            // not worth a dialog, and the selection is still on screen to try again with.
+            return string.Empty;
+        }
+
+        return text;
+    }
+
+    /// <summary>
+    /// Sends the clipboard to the host, having first made it safe to send.
+    ///
+    /// <para><b>This is the security half of QS30 and the order is the whole of it.</b> The text is
+    /// cleaned of control characters first, because nothing legitimate pastes an escape sequence and
+    /// a paste that could carry one could set a mode or answer a query on the user's behalf. Then it
+    /// is either handed to a program that asked to be told it is a paste, or shown to the user — a
+    /// newline is what makes pasted text run itself, and what somebody read on a web page and what
+    /// their clipboard holds are not obliged to match.</para>
+    /// </summary>
+    /// <returns>What was sent, empty where nothing was.</returns>
+    public string PasteFromClipboard()
+    {
+        string held;
+
+        try
+        {
+            held = Clipboard.ContainsText() ? Clipboard.GetText() : string.Empty;
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+
+        if (held.Length == 0 || Pasting is not { } sending)
+        {
+            return string.Empty;
+        }
+
+        char[] cleaned = new char[Paste.MeasureClean(held)];
+        int written = Paste.Clean(held, cleaned);
+
+        if (written <= 0)
+        {
+            return string.Empty;
+        }
+
+        string text = new(cleaned, 0, written);
+        bool bracketed = Bracketed?.Invoke() ?? false;
+
+        // Shown before it is sent, and the dialog carries the text itself rather than a count: a
+        // user asked whether to paste "4 lines" has been told nothing they can act on.
+        if (Paste.NeedsConfirming(text, bracketed) && !(AskingToPaste ?? AskedToPaste)(text))
+        {
+            return string.Empty;
+        }
+
+        string sent = bracketed ? Paste.Start + text + Paste.Finish : text;
+
+        // Not awaited: this is the UI thread, and the ordering is the channel's. The same reasoning
+        // as a keystroke's, and for the same reason it must not block a window's repaint.
+        _ = sending(sent);
+
+        return sent;
+    }
+
+    /// <summary>
+    /// The default asking about a paste: the text, and a choice.
+    ///
+    /// <para>A window rather than a message box, because what matters here is that the user can read
+    /// what is about to run — so it scrolls, it is monospaced, and it is not truncated into an
+    /// ellipsis by a dialog that was built for one sentence.</para>
+    /// </summary>
+    private bool AskedToPaste(string text)
+    {
+        StackPanel body = new() { Margin = new Thickness(20) };
+
+        body.Children.Add(new TextBlock
+        {
+            Text = Count(Lines(text), "line") + " would be sent, and this will run:",
+            FontSize = 15,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 10),
+        });
+
+        body.Children.Add(new ScrollViewer
+        {
+            MaxHeight = 220,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+
+            // The carriage returns Paste.Clean settled on are what the host will see and what a
+            // TextBlock renders as nothing at all, so they are shown as the line breaks they are.
+            //
+            // In the chrome's own face and not a monospaced one, which is not a preference: this
+            // process runs with InvariantGlobalization, and naming a typeface here sends WPF down a
+            // path whose static constructor builds a CultureInfo("en") and throws — which killed the
+            // client the first time this dialog was opened. QS154 is that, and the monospace belongs
+            // here once it is fixed.
+            Content = new TextBlock { Text = text.Replace('\r', '\n') },
+        });
+
+        StackPanel buttons = new()
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 20, 0, 0),
+        };
+
+        Button stay = new() { Content = "Cancel", MinWidth = 88, IsCancel = true, IsDefault = true };
+        Button send = new() { Content = "Paste", MinWidth = 88, Margin = new Thickness(8, 0, 0, 0) };
+
+        buttons.Children.Add(stay);
+        buttons.Children.Add(send);
+        body.Children.Add(buttons);
+
+        Window asking = new()
+        {
+            Title = "quickshell",
+            Content = body,
+            Owner = this,
+            ThemeMode = ThemeMode,
+            Width = 520,
+            SizeToContent = SizeToContent.Height,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+
+        bool pasting = false;
+
+        send.Click += (_, _) =>
+        {
+            pasting = true;
+            asking.DialogResult = true;
+        };
+
+        asking.ShowDialog();
+
+        return pasting;
+    }
+
+    /// <summary>
+    /// How many lines the host would see.
+    ///
+    /// <para><b>A trailing break does not add a line, and getting that wrong is not cosmetic.</b>
+    /// The number is the whole reason a user glances at this dialog before reading it, and a paste
+    /// of two commands announced as three is a client saying there is something in the clipboard
+    /// that the user cannot see.</para>
+    /// </summary>
+    public static int Lines(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        if (text.Length == 0)
+        {
+            return 0;
+        }
+
+        int breaks = 0;
+
+        foreach (char character in text)
+        {
+            if (character is '\r' or '\n')
+            {
+                breaks++;
+            }
+        }
+
+        return text[^1] is '\r' or '\n' ? breaks : breaks + 1;
+    }
+
     /// <summary>Puts the window where it was last time on this arrangement of screens.</summary>
     public void PlaceAt(Placement? placement)
     {
@@ -614,6 +845,40 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public void Execute(object? parameter) => window.WriteDiagnostics();
+    }
+
+    /// <summary>The copy binding's command.</summary>
+    private sealed class Copy(MainWindow window) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.CopySelection();
+    }
+
+    /// <summary>The paste binding's command.</summary>
+    private sealed class PasteIn(MainWindow window) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.PasteFromClipboard();
     }
 
     /// <summary>The import binding's command.</summary>

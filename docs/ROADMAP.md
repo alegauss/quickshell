@@ -21,7 +21,6 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- ⏳ **QS30** (deps: QS26 ✅, QS21 ✅, QS46 ✅) **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — The gestures that drive it, the clipboard it copies to, and the dialogue a paste raises, all of which need a window. → §QS30
 - ⏳ **QS31** (deps: QS15 ✅, QS26 ✅, QS46 ✅) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The wheel, the scrollbar and the search box that drive them, which need a window. → §QS31
 - 🛠 **QS33** (deps: QS17 ✅, QS18 ✅, QS20 ✅, QS21 ✅, QS25 ✅, QS93) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — vttest's verdict is a person looking at the screen, so automating it needs something to compare against rather than a way to press its keys. → §QS33
 - 📋 **QS91** (deps: —) **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — Text that arrives decomposed is ordinary on macOS and in Git output, and a client that silently drops the accent is one that shows the wrong filename. → §QS91
@@ -285,12 +284,6 @@
   there is none rather than inventing one. Checked by figure 2 or a figure beside it
   stating a number for the `emulate` arm, with the reasoning for that number and not
   merely the measurement it was taken from.
-
-## Done when — QS30
-
-- **A wrapped line copies as one line, and a risky paste is shown before it is sent**
-  The buffer knows which rows are continuations and that half is checked. What is left
-  is a gesture, a clipboard and a dialogue, none of which exists without a window.
 
 ## Done when — QS31
 

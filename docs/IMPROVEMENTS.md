@@ -297,30 +297,6 @@ Falsified when the derivation changes without a way to read what the old one wro
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS30 Selecting over a wrapped line, and the paste that runs itself
-
-Selection has three modes because users have three intents: character, word and line, on
-single, double and triple click. Dragging past the edge scrolls; shift-click extends an
-existing selection rather than starting a new one. Block selection on a modifier is the
-fourth, and it is what makes copying one column out of tabular output possible at all.
-
-Copying is where the wrapped flag earns its place. A logical line broken across three
-rows must copy as one line with no inserted break, and trailing whitespace is stripped
-per row, because a terminal pads rows and the user did not type that padding. Text goes
-to the clipboard, and hyperlinks with it where the selection carries any.
-
-Pasting is the security half of this line. Text pasted into a shell executes the moment
-it contains a newline, and a command with a newline hidden in it is an old and effective
-trick. So bracketed paste, DECSET 2004, is honoured whenever the program enables it,
-which lets the program itself decline to run the text. Where bracketed paste is
-unavailable, a paste containing a newline raises a confirmation that shows exactly what
-will be sent.
-
-Control characters in a paste are filtered out, since nothing legitimate pastes an
-escape sequence.
-
-Falsified when a wrapped line copies with a line break inside it.
-
 ### §QS31 A viewport onto the ring, and finding something in it
 
 The ring already holds the history, so scrolling back is a viewport offset rather than a

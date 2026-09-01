@@ -96,6 +96,12 @@ public static class Entry
         // host prints, the cell size with the font, and the pane's own origin with the tab strip.
         window.Input.Placing = composing => Placed(window, pane, terminal, emulator, composing);
 
+        // Copying reads what the drag selected; whether a paste has to be shown first is the
+        // program's answer and not this client's, so the mode is asked afresh at the moment of the
+        // paste rather than remembered from whenever the window was built.
+        window.Selected = terminal.Selected;
+        window.Bracketed = () => emulator.BracketedPaste;
+
         // The shell, and it is the last thing for the same reason the pane was: creating a
         // pseudo-console and starting a process are not on the way to the user's first sight of the
         // window. Not awaited here — this is the thread the window is drawn on.
@@ -178,6 +184,10 @@ public static class Entry
 
             typist.Sending = bytes => session.Pipeline.TypeAsync(bytes);
             terminal.Resized = session.Pipeline.Resize;
+
+            // A paste goes down the keystroke path and not the parser's, which is what makes it
+            // arrive in order with what the user is typing around it.
+            window.Pasting = text => session.Pipeline.TypeAsync(Encoding.UTF8.GetBytes(text));
 
             // The program's name and not its path, because this string is read back to the user in
             // the closing question and nowhere else. Registered once the shell is actually running:
