@@ -297,32 +297,6 @@ Falsified when the derivation changes without a way to read what the old one wro
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS29 Composition over a surface the IME cannot see
-
-An input method needs two things from the client: somewhere to draw the candidate list,
-and the composition string as it evolves. A GPU-rendered surface offers neither by
-default, because the IME cannot inspect what is on it.
-
-So the client handles the IME messages itself rather than letting a default window
-procedure guess. `WM_IME_STARTCOMPOSITION` opens composition, `WM_IME_COMPOSITION`
-delivers the string in progress and then the committed result, and the candidate window
-is positioned explicitly at the cursor's cell — converted out of grid coordinates, which
-the client is the only thing capable of doing.
-
-The composition string is drawn by the terminal as part of its own grid, at the cursor,
-with the underline the convention expects. It is *not* written into the buffer: it is
-display state that vanishes when composition is cancelled, and putting it in the buffer
-is what leaves abandoned text behind after a cancel.
-
-The committed result goes to the host as encoded characters, down the same path any
-other typed character takes.
-
-Wide characters compound this with the width model: a composition of CJK characters
-occupies two cells each, so the candidate window must be placed against real width and
-never against a character count.
-
-Falsified when the candidate window appears anywhere other than at the cursor.
-
 ### §QS30 Selecting over a wrapped line, and the paste that runs itself
 
 Selection has three modes because users have three intents: character, word and line, on
@@ -709,6 +683,30 @@ whether a session is fast. And **why cells cost 250 times a scan**, because that
 where the answer is, and it is the same reason QS139's buffer fills.
 
 Falsified when a figure is quoted for a path it was not measured on.
+
+### §QS153 Composition drawn by the terminal rather than over it
+
+QS29 gave the input method a point and let it draw. That is the arrangement Windows
+falls back to and it works: the composition appears at the cursor because
+`ImmSetCompositionWindow` was told where the cursor is. It is a floating box in the
+system's own font over a GPU surface it cannot see, so it does not scroll with the line,
+does not take the session's colours, and covers whatever is under it.
+
+What the design asked for instead is the composition drawn as part of the grid — at the
+cursor, in the session's font and palette, underlined, the convention every terminal
+follows. `Composition` already holds everything that needs: the text, the caret inside
+it, and the width in cells. What is missing is a painting path, because `GridPainter`
+builds instances from a `TerminalBuffer` and a composition is deliberately not in one.
+
+So the work is an overlay: cells appended after the buffer's, from the composition's own
+text, through the same atlas. It is also where the underline goes, and `CellMetrics`
+already answers where an underline sits in a cell.
+
+Two things fall out for free. The client stops needing `CFS_POINT` to draw anything, and
+a composition that reaches the right edge wraps the way the text under it does, because
+it is the same grid.
+
+Falsified when a composition is on screen in a font the session did not choose.
 
 ## Block D — The tree a user organises work in
 

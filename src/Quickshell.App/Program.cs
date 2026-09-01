@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
+using System.Windows.Media;
 using Quickshell.App;
 using Quickshell.Terminal;
 
@@ -90,6 +91,11 @@ public static class Entry
         // with no text in it for the life of the window.
         window.Show(pane);
 
+        // Where the input method draws. Asked afresh every time a composition moves rather than set
+        // once, because every number in it changes while the client runs: the cursor with what the
+        // host prints, the cell size with the font, and the pane's own origin with the tab strip.
+        window.Input.Placing = composing => Placed(window, pane, terminal, emulator, composing);
+
         // The shell, and it is the last thing for the same reason the pane was: creating a
         // pseudo-console and starting a process are not on the way to the user's first sight of the
         // window. Not awaited here — this is the thread the window is drawn on.
@@ -114,6 +120,43 @@ public static class Entry
         WindowPlacements.ReadFrom(Placements()).Remember(Screens(), window.Where());
 
         return 0;
+    }
+
+    /// <summary>
+    /// Where the candidate list goes for the composition being typed, in the window's own pixels.
+    ///
+    /// <para>Three things are added up and none of them is a constant. The cursor's cell, from the
+    /// model. The composition's own width in cells, which <see cref="Composition.Candidate"/> counts
+    /// rather than guessing from a character count. And the pane's origin inside the window, because
+    /// the tab strip sits above it — a position measured from the window's corner would put the
+    /// candidate list a strip's height too high the moment a second tab opens.</para>
+    ///
+    /// <para>Null before the pane has a device: there is no cell size then, and a position invented
+    /// without one is a number this client made up.</para>
+    /// </summary>
+    private static CandidateSpot? Placed(MainWindow window, TerminalPane pane,
+                                         PaneAttachment terminal, Emulator emulator,
+                                         Composition composing)
+    {
+        if (terminal.View is not { } view)
+        {
+            return null;
+        }
+
+        Damage where = emulator.Damage;
+
+        CandidatePlacement at = composing.Candidate(where.CursorColumn, where.CursorRow,
+                                                    Math.Max(1, view.Columns));
+
+        // The pane's corner in the window's pixels. WPF measures in device-independent units and an
+        // input method is told device pixels, so the scale is the pane's own rather than a constant:
+        // this client runs on displays that are not all 96 dots per inch, often at the same time.
+        Point corner = pane.TranslatePoint(new Point(0, 0), window);
+        DpiScale dpi = VisualTreeHelper.GetDpi(pane);
+
+        return InputMethod.SpotFor(at, view.Renderer.Metrics,
+                                   (int)(corner.X * dpi.DpiScaleX),
+                                   (int)(corner.Y * dpi.DpiScaleY));
     }
 
     /// <summary>

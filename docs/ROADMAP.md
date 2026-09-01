@@ -21,7 +21,6 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- ⏳ **QS29** (deps: QS28 ✅, QS46 ✅) **Typing Japanese or Chinese shows no composition and commits nothing** — The input method's own messages, and the call that places the candidate window, both of which need a window to arrive at. → §QS29
 - ⏳ **QS30** (deps: QS26 ✅, QS21 ✅, QS46 ✅) **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — The gestures that drive it, the clipboard it copies to, and the dialogue a paste raises, all of which need a window. → §QS30
 - ⏳ **QS31** (deps: QS15 ✅, QS26 ✅, QS46 ✅) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The wheel, the scrollbar and the search box that drive them, which need a window. → §QS31
 - 🛠 **QS33** (deps: QS17 ✅, QS18 ✅, QS20 ✅, QS21 ✅, QS25 ✅, QS93) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — vttest's verdict is a person looking at the screen, so automating it needs something to compare against rather than a way to press its keys. → §QS33
@@ -37,6 +36,7 @@
 - 📋 **QS139** (deps: —) **A host sending faster than the parser consumes buffers gigabytes inside the channel** — The bytes sit in the transport rather than in the emulator, so an unread session grows without limit while a headless parse of 64 MB retains under 8 MB. → §QS139
 - 📋 **QS140** (deps: —) **The reply buffer exceeds the maximum its own constant states** — The cap is checked before an answer is appended rather than after, so a hostile host reaches 4098 bytes against a stated 4096 and the constant is not the bound. → §QS140
 - ⏳ **QS141** (deps: QS139) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
+- 📋 **QS153** (deps: QS29 ✅) **The text being composed is a box the input method draws over the grid, not underlined text inside it** — QS29 placed that box on the cursor and stopped there, so a phrase being typed sits on top of the line it belongs in. → §QS153
 
 ## Block D — The tree a user organises work in
 
@@ -285,13 +285,6 @@
   there is none rather than inventing one. Checked by figure 2 or a figure beside it
   stating a number for the `emulate` arm, with the reasoning for that number and not
   merely the measurement it was taken from.
-
-## Done when — QS29
-
-- **The candidate window appears at the cursor's cell** This line's own falsification,
-  and it needs a window for the IME's messages to arrive at. The width the placement
-  must be measured against is already checked; so is the committed text's path to the
-  host, once there is one.
 
 ## Done when — QS30
 

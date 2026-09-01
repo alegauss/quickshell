@@ -5,6 +5,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 
 namespace Quickshell.App;
 
@@ -140,6 +141,45 @@ public sealed class MainWindow : Window
     /// otherwise — the same shape as <see cref="Importing"/>, and for the same reason.
     /// </summary>
     public Func<ClosingQuestion, ClosingAnswer>? AskingToClose { get; set; }
+
+    /// <summary>
+    /// The input method's composition, and where its windows are put.
+    ///
+    /// <para><b>On the window and not on the pane, and QS4 is why</b> — the same sentence as
+    /// <see cref="Typing"/>. The pane is a child HWND whose window procedure does nothing at all, so
+    /// it never has focus and an input method's messages never reach it. They arrive here, at the
+    /// window WPF gives keyboard focus to, which is also the window whose client pixels a candidate
+    /// position is measured in.</para>
+    /// </summary>
+    public InputMethod Input { get; } = new();
+
+    /// <summary>
+    /// Puts this window's own handle under the hook the input method needs.
+    ///
+    /// <para>The earliest moment there is a handle, and the reason this is not in the constructor:
+    /// before the source exists there is nothing to hook, and after the first composition it is too
+    /// late.</para>
+    /// </summary>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        (PresentationSource.FromVisual(this) as HwndSource)?.AddHook(Hooked);
+    }
+
+    /// <summary>
+    /// Every message this window gets, of which three are ours.
+    ///
+    /// <para><b>Handled is never set.</b> WPF's own IME handling is what turns a committed phrase
+    /// into the <c>WM_CHAR</c> that <see cref="OnTextInput"/> sends to the host, so a hook that
+    /// consumed these would compose beautifully and commit nothing.</para>
+    /// </summary>
+    private nint Hooked(nint window, int message, nint wide, nint low, ref bool handled)
+    {
+        Input.Handle(window, message, low);
+
+        return nint.Zero;
+    }
 
     /// <summary>
     /// Who this window's keystrokes belong to, or null while nothing is listening.
