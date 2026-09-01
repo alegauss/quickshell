@@ -76,6 +76,8 @@
 - 📋 **QS162** (deps: QS47 ✅) **This client now takes thirteen chords from the remote program and tells nobody which** — Every one was reserved with a comment arguing it was worth taking, and the user who loses one finds out by pressing it. → §QS162
 - 📋 **QS163** (deps: QS48 ✅) **A divider cannot be dragged, so the only sizes a split has are the halves it was created with** — QS48 gave the layout a share to set and left every way of setting it to a chord, so the gesture a person reaches for first does nothing. → §QS163
 - 📋 **QS164** (deps: QS48 ✅) **Four panes open four graphics devices, and nothing in the client stops a user opening sixteen** — QS48 made splitting one chord away and QS49 has not landed, so the cost the block's own criterion bounds is now reachable by holding a key. → §QS164
+- 📋 **QS165** (deps: QS49 ✅) **A pane reports the whole client's draw calls as its own, so a per-pane frame count is the sum of every pane's** — QS49 made the renderer shared and left the counter on it, so the number a test reads to prove one pane idle is now everybody's. → §QS165
+- 📋 **QS166** (deps: QS49 ✅) **A pane behind another tab keeps drawing, so a client with eight tabs presents seven frames nobody sees** — QS49's design says an invisible pane draws nothing and the loop it shipped asks every pane whether it has damage, not whether anyone can see it. → §QS166
 
 ## Block H — The reason to leave the incumbent
 

@@ -1382,6 +1382,52 @@ a graphics driver.
 
 Falsified when a client with sixteen panes open holds sixteen devices.
 
+### §QS165 The counter that stopped being one pane's
+
+`TerminalView.Draws` returns `CellRenderer.Draws`, and since QS49 the renderer is
+shared. So the number is the whole client's, and a window with four panes reports each
+of them as having drawn what all four did.
+
+Nothing is wrong today, and that is the part worth writing down. Every case that reads
+it opens a share of its own, so the sum happens to be that pane's — `TerminalViewTests`
+is four cases each with one pane. The reading is right for the wrong reason, and it
+stays right only while nobody writes the case that would catch this: two panes, one
+idle, asserting the idle one drew nothing.
+
+That case is exactly Block C's criterion — *an idle window issues no draw calls* — read
+against a client that now has more than one pane. It cannot be written against this
+counter.
+
+`Frames` is already per pane, because `RedrawGate` is. The difference between them is
+real and worth keeping: a gate counts frames a pane was owed, a renderer counts draw
+calls issued. What is missing is the second one per pane, which is a counter on the view
+incremented where it calls the renderer.
+
+Falsified when a pane with nothing to draw reports draw calls another pane made.
+
+### §QS166 The frames drawn for a pane nobody can see
+
+QS49's design is explicit: *an invisible pane — another tab, a minimised window, an
+occluded one — draws nothing at all. `DXGI_STATUS_OCCLUDED` from a present is the signal
+to stop; damage is what resumes it.* The loop that shipped does the first half of the
+arrangement and none of this.
+
+So a client with eight tabs of busy hosts draws eight panes and shows one. The cost is
+real and it is the one Block H exists to defend: a present is a queue slot and a copy,
+and seven of every eight are for a window hidden behind another.
+
+The signal is already there and already read. `PresentSurface` knows what `Present`
+returned, and QS12's frame-queue work is what taught this repository what
+`DXGI_STATUS_OCCLUDED` means. What is missing is the loop asking, and a pane that stops
+needing to be told to start again — which is what makes damage the resume rather than a
+timer.
+
+The tab-switch half is cheaper still and does not need DXGI at all: the window already
+hides a pane that is not on screen, and `Hidden` is a thing the loop could be told
+rather than left to discover from a present.
+
+Falsified when a window showing one tab presents a frame for another.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
