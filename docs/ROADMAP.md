@@ -76,6 +76,8 @@
 - 📋 **QS164** (deps: QS48 ✅) **Four panes open four graphics devices, and nothing in the client stops a user opening sixteen** — QS48 made splitting one chord away and QS49 has not landed, so the cost the block's own criterion bounds is now reachable by holding a key. → §QS164
 - 📋 **QS168** (deps: QS50 ✅, QS49 ✅) **Changing the font in the settings file does nothing until the client is restarted** — QS50 applies the cursor and the blink live and leaves the one setting people actually experiment with needing a restart, which is what stops them experimenting. → §QS168
 - 📋 **QS170** (deps: QS50 ✅) **Every setting has to be found and typed by hand, because the surface over the file was never built** — QS50 shipped the file and its reference and left the half a user meets first, so discovering a setting means reading a document about a file. → §QS170
+- 📋 **QS171** (deps: —) **Splitting a pane is bound to one Oem key, and which character that is depends on the layout** — Splitting beside was bound twice because the backslash moves between layouts; splitting below was bound once, and nothing tested the keyboards it moves on. → §QS171
+- 📋 **QS172** (deps: —) **A user looking for help presses Ctrl+Shift+F1 and gets a defect report** — F1 is where a person looks for help, this client binds it to collecting a diagnostic bundle, and the keys reference it should open is a file in the repository. → §QS172
 
 ## Block H — The reason to leave the incumbent
 

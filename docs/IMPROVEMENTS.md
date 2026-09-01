@@ -1377,6 +1377,53 @@ than a key, which is exactly why the reference test is on the key.
 
 Falsified when a setting can be changed in the window and not in the file.
 
+### §QS171 Chords built on keys that are not where you left them
+
+Ctrl+Shift+\ is bound to both `Key.OemBackslash` and `Key.Oem5` because those are the
+same character on different physical keyboards and binding one would have worked on half
+of them. Ctrl+Shift+- is bound to `Key.OemMinus` alone. Nothing decided that asymmetry;
+the first binding hedged because somebody thought about it and the second did not.
+
+The failure is quiet in the way that matters: a user on a layout where the key is
+elsewhere presses the chord, the terminal receives nothing the client claims, and the
+character they pressed goes to the remote program instead. So the client both fails to
+split and types something. There is no error and nothing to search for.
+
+Oem keys are the only ones with this problem. Letters, digits and the named keys are the
+same `Key` value everywhere; the Oem range is defined by position on a US keyboard and
+every layout that differs remaps it.
+
+What is wanted is a decision rather than more bindings: either the split chords move off
+Oem keys entirely, or every Oem chord is bound across the values it takes on the layouts
+this client supports, and which layouts those are is written down. The keys reference
+QS162 wrote is where the answer belongs, because it is already the one list of what this
+client takes.
+
+Falsified when a chord in the reference does not fire on a supported layout.
+
+### §QS172 The one chord a user guesses, pointed at the wrong thing
+
+Ctrl+Shift+F1 collects a diagnostic report. The comment where it is bound argues F1
+because *that is where a person looks for help* — which is exactly the argument for it
+not being this. A user who has never read anything about this client and wants to know
+what it can do will press it, and will be shown a folder of logs.
+
+QS162 wrote docs/KEYS.md, so there is now something to show. It is a file in the
+repository that a user who installed a binary has no path to at all, which makes the
+reference half a surface: it answers the question for anybody reading the source and
+nobody else.
+
+The cheap answer is that help is the chord and the report moves. The report is a
+maintenance action reached deliberately, and moving it costs nothing because nobody has
+it in their fingers yet — this client has no users. Delaying is what makes it expensive.
+
+What help opens is the smaller question and should stay small: the keys, and a way to
+reach the settings file. Not a manual, not a window this client has to lay out. A shell
+that opens the reference and a chrome-free view of the same table are both defensible; a
+help system is not, and would be the surface Block G exists to refuse.
+
+Falsified when a user presses the help chord and is shown something that is not help.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
