@@ -704,6 +704,30 @@ makes a wheel work inside a pager that never heard of one.
 
 Falsified when a program with mouse tracking on cannot tell a click from silence.
 
+### §QS156 The boundary ICU is asked for and ASCII never needed
+
+Measured on the replayed corpus, same machine, one build apart. Segmentation falls from
+181 MB/s to 82 on `cat-log` and from 83 to 59 on `ls-color-r`; the whole emulate stage
+falls about a sixth, 18 MB/s to 16. Nothing else moved: the escape scan, the parser and
+the decoder are within noise of where they were.
+
+The cause is one call. `GraphemeSegmenter` asks `StringInfo.GetNextTextElementLength`
+for every cluster, and with ICU present that is a call across the interop boundary into
+`icu.dll` rather than the runtime's own simplified breaking. QS154's trade was worth
+taking — the client could not show a text box — but the rate is Block C's to defend and
+this is where it went.
+
+What it does not need is a different segmenter. A terminal's stream is overwhelmingly
+characters that cannot begin a cluster at all: an ASCII letter followed by another ASCII
+letter is one cell and needs nobody asked. The rule is cheap and exact, and it is the
+same shape as the fast paths already in the parser.
+
+What has to stay true is the answer. The segmenter's whole reason for using the
+runtime's tables is that this project does not maintain its own, and a fast path that
+guessed a boundary would be that by another name.
+
+Falsified when the segmenter answers a boundary the runtime's own tables would not.
+
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine
