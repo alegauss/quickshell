@@ -37,6 +37,7 @@
 - 📋 **QS153** (deps: QS29 ✅) **The text being composed is a box the input method draws over the grid, not underlined text inside it** — QS29 placed that box on the cursor and stopped there, so a phrase being typed sits on top of the line it belongs in. → §QS153
 - 📋 **QS155** (deps: QS21 ✅, QS30 ✅) **A program that asks for the mouse never gets one, and the wheel scrolls nothing at all** — QS21's encoder and QS22's viewport are named by no code in the client, so both shipped features are unreachable from the running program. → §QS155
 - 📋 **QS156** (deps: QS154 ✅) **Grapheme segmentation runs at half its old rate, because every cluster now asks ICU where the boundary is** — QS154 turned invariant globalization off to keep the client alive, and StringInfo stopped using the runtime's own simple breaking. → §QS156
+- 📋 **QS158** (deps: QS31 ✅) **Nothing says how far back the view is, so a reader who scrolled has no idea where they are or that output arrived** — QS31 gave the viewport a wheel and a find and left it with no indicator, and the reading it already answers reaches nobody. → §QS158
 
 ## Block D — The tree a user organises work in
 
@@ -108,6 +109,7 @@
 - 📋 **QS136** (deps: —) **A run with a hundred tests skipped prints the same "Passed" as one with none** — The fixture stops on its own and the summary line does not change, so the green that proves nothing looks exactly like the green that proves everything. → §QS136
 - 📋 **QS138** (deps: —) **Eight minutes of the suite is one helper waiting out a timeout it then ignores** — A test that passes by timing out would pass if the command never ran, and it costs the run more than every other test put together. → §QS138
 - 📋 **QS149** (deps: —) **A tool that rewrites a source file can mangle its punctuation and every check stays green** — The hygiene test bans control bytes and says nothing about text that decoded through the wrong codepage on its way back to disk. → §QS149
+- 📋 **QS157** (deps: QS95 ✅) **Three proxy-command tests fail in the guest and pass on this machine, and nothing says which desk is right** — A suite whose result depends on which machine ran it is a suite that cannot say a change was safe. → §QS157
 
 ## Done when — Block A
 

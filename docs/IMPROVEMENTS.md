@@ -704,6 +704,29 @@ guessed a boundary would be that by another name.
 
 Falsified when the segmenter answers a boundary the runtime's own tables would not.
 
+### §QS158 A scrollbar with nowhere to be drawn
+
+`Viewport` already answers all three questions: how far back the view is, how much
+history there is, and whether output arrived while somebody was reading.
+`PaneAttachment.Where` returns them. Nothing shows them.
+
+Where it goes is the whole difficulty and is why QS31 shipped without it. A WPF
+scrollbar beside the pane is chrome, and `Chrome.Default` says a default installation
+shows a title bar and a terminal — a claim QS46 shipped and `WindowTests` holds. A
+scrollbar over the pane is not possible at all: the pane is a child HWND with a
+swapchain presenting into it, so WPF cannot draw on top of it.
+
+That leaves the answer every terminal reaches on its own, which is also the one this
+client is best placed to take: draw it in the grid. A column of cells at the right edge,
+in the session's own palette, sized by the same metrics as the text — no chrome, no
+airspace, and it scales with the font because it is the font.
+
+The unseen-output half is the part worth getting right. Somebody reading is not to be
+interrupted, so it is a mark and never a jump: the whole point of the anchor is that new
+output moves nothing.
+
+Falsified when a reader scrolled into the history cannot tell that output arrived.
+
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine
@@ -1909,3 +1932,29 @@ real prose in any language it is written in.
 Cheap, and it belongs beside the check it generalises rather than in a new file.
 
 Falsified by a file that carries mojibake through a green suite.
+
+### §QS157 The verdict that depends on the desk
+
+Found running the suite in the VMware guest after QS154. `ProxyCommandTests` reports
+three failures there and none here, on the same working tree, minutes apart. The one
+read in full was `WhatTheProgramPrintedSurvivesIntoTheFailure`: it runs `cmd /c "echo
+the vpn is not up 1>&2 & exit 1"` and asserts the program's own stderr survives into the
+failure, and in the guest that substring is not there.
+
+Nothing about it is obviously environmental. It starts a child process and reads what
+the child printed — no network, no fixture, no GPU, and the two skipped cases beside it
+already declare the fixture they need. So either the guest runs the child differently,
+or the assertion depends on something nobody wrote down.
+
+What makes it worth a line rather than a shrug is what QS95 bought. A guest run is the
+quiet desk *and* the second environment in QS12's matrix, and both of those are worth
+only what the verdict is worth. Three cases that disagree by machine turn every future
+guest run into a judgement about which failures to believe, which is how a suite stops
+being read.
+
+The work is to find out which desk is telling the truth, and then either fix the client
+or say in the case what it needs — the way the fixture-dependent cases beside it already
+do.
+
+Falsified when the same tree gives two verdicts on two machines and neither is
+explained.
