@@ -37,6 +37,7 @@ public sealed class TerminalView : IDisposable
     private readonly RedrawGate _gate = new();
 
     private CellInstance[] _cells;
+    private long _wanted;
 
     private TerminalView(GraphicsDevice device, GlyphRasteriser rasteriser, GlyphAtlas atlas,
                          PresentSurface surface, CellRenderer renderer, Palette palette)
@@ -54,10 +55,20 @@ public sealed class TerminalView : IDisposable
     }
 
     /// <summary>How many columns the surface holds at this font and size.</summary>
-    public int Columns { get; }
+    public int Columns { get; private set; }
 
     /// <summary>How many rows.</summary>
-    public int Rows { get; }
+    public int Rows { get; private set; }
+
+    /// <summary>
+    /// The grid this view now holds, raised after a resize has reached the swapchain.
+    ///
+    /// <para><b>Raised on the render thread, and after rather than before.</b> The order is QS32's:
+    /// what a model reflows to and what the far end is eventually told is the size the window
+    /// actually has, not the size it was on its way to. A handler that reflowed first would be
+    /// reflowing to a grid the swapchain might still fail to take.</para>
+    /// </summary>
+    public event Action<int, int>? GridChanged;
 
     /// <summary>Frames this view has authorised, which is the number the idle criterion reads.</summary>
     public long Frames => _gate.Frames;
@@ -131,6 +142,74 @@ public sealed class TerminalView : IDisposable
     }
 
     /// <summary>
+    /// The window is a different size in pixels.
+    ///
+    /// <para><b>Recorded here and applied on the render thread</b>, which is the whole reason this
+    /// method does nothing else. A resize reallocates the swapchain's buffers and draws into them,
+    /// and the D3D11 context that would do it is being used by the loop; applying it where it
+    /// arrives would be two threads in one context, on the one path guaranteed to be busy — a drag
+    /// fires continuously.</para>
+    ///
+    /// <para>The last size wins, and the ones in between are never drawn. A drag across a screen
+    /// produces hundreds of these, and every one of them that reached the swapchain would be a
+    /// buffer reallocation for a size the window has already left.</para>
+    /// </summary>
+    /// <param name="width">The pane's new width in pixels.</param>
+    /// <param name="height">Its new height.</param>
+    public void Resize(uint width, uint height)
+    {
+        // One field, so a wake-up cannot read a width from one size and a height from another.
+        Interlocked.Exchange(ref _wanted, ((long)Math.Max(1u, width) << 32) | Math.Max(1u, height));
+    }
+
+    /// <summary>
+    /// Takes whatever size arrived while the loop was elsewhere.
+    ///
+    /// <para>Called on the render thread and nowhere else. The gate is invalidated because a
+    /// resized window is a changed picture the terminal knows nothing about — the model's damage
+    /// is identical across a resize that only moved pixels.</para>
+    /// </summary>
+    private void ApplyResize()
+    {
+        long wanted = Interlocked.Exchange(ref _wanted, 0);
+
+        if (wanted == 0)
+        {
+            return;
+        }
+
+        uint width = (uint)(wanted >> 32);
+        uint height = (uint)wanted;
+
+        if (width == _surface.Width && height == _surface.Height)
+        {
+            return;
+        }
+
+        _surface.Resize(width, height);
+        _gate.Invalidate();
+
+        (int columns, int rows) = _renderer.Metrics.GridFor(_surface.Width, _surface.Height);
+
+        // A window dragged narrower than one cell is not a grid. Clamped rather than refused,
+        // because some programs divide by it and none of them expects a zero.
+        columns = Math.Max(1, columns);
+        rows = Math.Max(1, rows);
+
+        if (columns == Columns && rows == Rows)
+        {
+            // Pixels moved and the grid did not, which is most of a slow drag. The frame is owed;
+            // the model and the far end are not.
+            return;
+        }
+
+        Columns = columns;
+        Rows = rows;
+
+        GridChanged?.Invoke(columns, rows);
+    }
+
+    /// <summary>
     /// Draws one frame if the screen is not the one already on the glass.
     ///
     /// <para>The gate is asked once and the answer is acted on, which is the contract it documents:
@@ -143,6 +222,11 @@ public sealed class TerminalView : IDisposable
     public bool DrawIfNeeded(Emulator emulator)
     {
         ArgumentNullException.ThrowIfNull(emulator);
+
+        // First, because a resize decides both what the frame is drawn into and what the model is
+        // about to be reflowed to. Asking the model for its damage first would read a grid that is
+        // one size behind the window.
+        ApplyResize();
 
         Damage damage = emulator.Damage;
 

@@ -111,11 +111,12 @@ public sealed class SessionPipeline : IAsyncDisposable
     private bool _disposed;
 
     private SessionPipeline(IPtyChannel channel, Emulator emulator, int capacity,
-                            SessionRecording? recording)
+                            SessionRecording? recording, DamageSignal damage)
     {
         _channel = channel;
         _emulator = emulator;
 
+        Damage = damage;
         Recording = recording;
 
         // Wait, not drop. This one option is the whole no-lost-bytes property.
@@ -127,8 +128,15 @@ public sealed class SessionPipeline : IAsyncDisposable
         });
     }
 
-    /// <summary>What a render loop waits on.</summary>
-    public DamageSignal Damage { get; } = new();
+    /// <summary>
+    /// What a render loop waits on.
+    ///
+    /// <para><b>Handed in where a loop is already waiting on one.</b> A pane's loop is opened before
+    /// there is a session to put behind it — the window has to be on screen first — so the signal
+    /// exists before this does. A session that made its own would set a signal nothing sleeps on, and
+    /// the window would show the first frame and then nothing the host printed after it.</para>
+    /// </summary>
+    public DamageSignal Damage { get; }
 
     /// <summary>
     /// Where this session's output is being kept, or null to keep none.
@@ -183,17 +191,24 @@ public sealed class SessionPipeline : IAsyncDisposable
     /// afterwards: a recording that could be switched on mid-session is one a user could be unaware
     /// had started, and the window's own indication is set from the same decision as this.
     /// </param>
+    /// <param name="damage">
+    /// The signal a render loop is already waiting on, or null for one of this session's own. A
+    /// client hands in the pane's, because a pane asleep on a different signal from the one this
+    /// parser sets is a window that never repaints.
+    /// </param>
     public static SessionPipeline Start(
         IPtyChannel channel,
         Emulator emulator,
         int capacity = QueueCapacity,
-        SessionRecording? recording = null)
+        SessionRecording? recording = null,
+        DamageSignal? damage = null)
     {
         ArgumentNullException.ThrowIfNull(channel);
         ArgumentNullException.ThrowIfNull(emulator);
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
 
-        SessionPipeline pipeline = new(channel, emulator, capacity, recording);
+        SessionPipeline pipeline =
+            new(channel, emulator, capacity, recording, damage ?? new DamageSignal());
 
         // Two long-running loops rather than two threads: neither of them ever blocks, so a thread
         // each would be a thread each spent waiting.

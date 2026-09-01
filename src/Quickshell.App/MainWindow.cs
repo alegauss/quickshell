@@ -117,6 +117,63 @@ public sealed class MainWindow : Window
     public bool TabStripShowing => _tabs.Visibility == Visibility.Visible;
 
     /// <summary>
+    /// Who this window's keystrokes belong to, or null while nothing is listening.
+    ///
+    /// <para>On the window rather than on the pane, and QS4 is why: the pane is a child HWND whose
+    /// window procedure does nothing at all, deliberately, so that input arrives through WPF and
+    /// pixels arrive through the swapchain. This is the WPF half of that sentence.</para>
+    /// </summary>
+    public Typist? Typing { get; set; }
+
+    /// <summary>
+    /// A key the window did not claim goes to the host.
+    ///
+    /// <para><b>After the base call and only when nothing has handled it</b>, which is what gives
+    /// the local layer priority without this method knowing what is in it. A binding that ran has
+    /// already marked the event, and the terminal never sees the chord — the ordering <c>Keys</c>
+    /// describes, enforced by where these two lines are rather than by a second list.</para>
+    /// </summary>
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+
+        ArgumentNullException.ThrowIfNull(e);
+
+        // Alt chords arrive as System with the real key beside them, and a client reading only Key
+        // would send alt-f as nothing at all.
+        if (!e.Handled && Typing is not null
+            && Typing.Press(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers))
+        {
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    /// A character the keyboard layout resolved goes to the host as itself.
+    ///
+    /// <para><c>ControlText</c> where there is no <c>Text</c>: WPF puts control-C's <c>0x03</c>
+    /// there, and a client reading only the latter is one where control-C does nothing.</para>
+    /// </summary>
+    protected override void OnTextInput(TextCompositionEventArgs e)
+    {
+        base.OnTextInput(e);
+
+        ArgumentNullException.ThrowIfNull(e);
+
+        if (e.Handled || Typing is null)
+        {
+            return;
+        }
+
+        string text = string.IsNullOrEmpty(e.Text) ? e.ControlText : e.Text;
+
+        if (Typing.Type(text, Keyboard.Modifiers))
+        {
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
     /// Puts the terminal's own window inside this one.
     ///
     /// <para>Separate from the constructor because the pane creates a handle, and a handle is the

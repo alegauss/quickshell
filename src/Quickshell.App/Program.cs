@@ -2,6 +2,7 @@
 // file name it.
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Windows;
 using Quickshell.App;
 using Quickshell.Terminal;
@@ -68,13 +69,28 @@ public static class Entry
         Emulator emulator = new(80, 25, settings.Scrollback);
         TerminalPane pane = new() { Reading = emulator.Buffer };
 
-        terminal = TerminalView.Attach(pane, emulator, new DamageSignal(),
+        // One signal for the loop and for the session behind it. The loop is opened here and the
+        // session several statements later, so the thing they share is created before either.
+        DamageSignal damage = new();
+
+        terminal = TerminalView.Attach(pane, emulator, damage,
                                        settings.FontFamily, (float)settings.FontSize);
+
+        // Keys go to the model, which knows what its modes make them mean. Where they go after that
+        // is the session's, and Opening below is where it is told.
+        Typist typist = new(emulator);
+
+        window.Typing = typist;
 
         // Before the pane is shown, and the order is the whole of it: WPF builds an element's
         // automation peer once and keeps it, so a pane shown without a buffer publishes a terminal
         // with no text in it for the life of the window.
         window.Show(pane);
+
+        // The shell, and it is the last thing for the same reason the pane was: creating a
+        // pseudo-console and starting a process are not on the way to the user's first sight of the
+        // window. Not awaited here — this is the thread the window is drawn on.
+        Task<LocalSession?> opening = Opening(emulator, damage, terminal, typist);
 
         // `--import` opens what Ctrl+Shift+I opens, and after the window is up rather than before:
         // the preview is a dialog over a window, and a modal with nothing behind it is a client that
@@ -90,9 +106,79 @@ public static class Entry
         // handle that is on its way out.
         terminal.Dispose();
 
+        Close(opening);
+
         WindowPlacements.ReadFrom(Placements()).Remember(Screens(), window.Where());
 
         return 0;
+    }
+
+    /// <summary>
+    /// Opens the shell and joins it to the window, or says on the terminal why it could not.
+    ///
+    /// <para><b>Nothing here is on the way to the first frame</b>, which is why it is a task the
+    /// caller does not await. The pane already has a device, a loop and a keyboard by the time this
+    /// runs; what it gains is somebody to talk to.</para>
+    /// </summary>
+    private static async Task<LocalSession?> Opening(Emulator emulator, DamageSignal damage,
+                                                     PaneAttachment terminal, Typist typist)
+    {
+        try
+        {
+            LocalSession session = await LocalSession
+                .OpenAsync(emulator, damage, emulator.Buffer.Columns, emulator.Buffer.Rows)
+                .ConfigureAwait(false);
+
+            typist.Sending = bytes => session.Pipeline.TypeAsync(bytes);
+            terminal.Resized = session.Pipeline.Resize;
+
+            // The grid the pane settled on while this was starting, which arrived when there was no
+            // session to hear it. Sent once rather than assumed: a program wrong about its own width
+            // draws a screen for a terminal nobody has.
+            session.Pipeline.Resize(emulator.Buffer.Columns, emulator.Buffer.Rows);
+
+            return session;
+        }
+        catch (Exception failed)
+        {
+            Refused(emulator, damage, failed);
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Says on the terminal that the shell did not start, and what Windows said about it.
+    ///
+    /// <para>Written into the model, because that is where the user is already looking and there is
+    /// no session to have carried it anywhere else. It is safe to write from here for the one reason
+    /// that matters: the pipeline never started, so this is the only writer the render loop has.</para>
+    /// </summary>
+    private static void Refused(Emulator emulator, DamageSignal damage, Exception failed)
+    {
+        emulator.Feed(Encoding.UTF8.GetBytes(
+            $"quickshell could not start {LocalSession.Shell}\r\n{failed.Message}\r\n"));
+
+        damage.Set();
+    }
+
+    /// <summary>
+    /// Ends the session, and waits for it.
+    ///
+    /// <para>Blocking, on the way out rather than on the way in: a pseudo-console still holding a
+    /// child is a shell that outlives the window that opened it.</para>
+    /// </summary>
+    private static void Close(Task<LocalSession?> opening)
+    {
+        try
+        {
+            opening.GetAwaiter().GetResult()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+        catch (Exception)
+        {
+            // A session that would not close is not a reason to fail on the way out, and the next
+            // thing to happen is this process ending — which Windows closes the handles for.
+        }
     }
 
     /// <summary>

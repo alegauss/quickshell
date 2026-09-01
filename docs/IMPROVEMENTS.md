@@ -1283,30 +1283,6 @@ must be a popup or drawn by the pane itself; an adorner will not appear.
 
 Falsified when two windows in this repository declare the same colour.
 
-### §QS116 The three halves that have never met
-
-Every piece is built and tested on its own. `CellRenderer` draws a grid in one call into
-a `PresentSurface`. `SessionPipeline` carries bytes from a channel into an `Emulator`
-and raises a `DamageSignal` when something changed. `TerminalPane` owns a child window
-whose handle a swapchain can be created against. Nothing joins them, so the window QS46
-opens shows a rectangle the colour of whatever was behind it.
-
-What the joining needs, and none of it is speculative. A swapchain on
-`TerminalPane.PaneHandle` rather than on a test window. A loop that waits on the damage
-signal rather than on a timer, because QS12's criterion is that an idle window issues no
-draw calls and a frame drawn on a clock is a frame drawn for nothing. Cells built from
-the `TerminalBuffer`'s lines through the glyph atlas — the Painter in the golden tests
-already does exactly this and is the shape of it, written in a test because there was
-nowhere else for it to live. A resize that reaches three parties in the order QS32
-settled. And keystrokes from WPF's input into `Emulator.Encode` and out through
-`SessionPipeline.TypeAsync`.
-
-The order matters for what it proves: cells from a real buffer first, because that is
-the piece living in a test file rather than in the client, and every other piece is
-already exercised somewhere.
-
-Falsified when a window is drawing at a steady rate while nothing on screen is changing.
-
 ### §QS126 Machinery with no way in
 
 Counted on 2026-08-30 across `src/Quickshell.App/*.cs`. Not one file names `SshChain`,

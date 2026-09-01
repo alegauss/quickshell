@@ -62,7 +62,7 @@
 
 ## Block G — The clean interface, defended
 
-- ⏳ **QS46** (deps: QS4 ✅, QS9 ✅, QS116 🛠) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The pane now has a swapchain and a loop, so what is left is a terminal with no session behind it: QS126's connection, not this line's chrome. → §QS46
+- ⏳ **QS46** (deps: QS4 ✅, QS9 ✅, QS116 ✅) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The pane now has a swapchain and a loop, so what is left is a terminal with no session behind it: QS126's connection, not this line's chrome. → §QS46
 - 📋 **QS47** (deps: QS46 ⏳, QS26 ✅) **Every session needs its own window, so working across four hosts means four windows to arrange** — A tab is what makes several sessions one workspace, and it is the surface the window title, the session tree and the layout all attach to. → §QS47
 - 📋 **QS48** (deps: QS47) **Two sessions cannot be seen at once, so comparing output means alternating between tabs** — Watching a log while typing on another host is the ordinary case for this audience, and a tab-only client makes it impossible rather than merely awkward. → §QS48
 - 📋 **QS49** (deps: QS48, QS6 ✅) **Each pane would open its own graphics device, so four panes cost four times the driver's attention** — The device, the atlas and the shaders are process-wide resources panes should share, and sharing them is a decision about ownership rather than an optimisation. → §QS49
@@ -71,7 +71,6 @@
 - 📋 **QS52** (deps: QS47) **Every action needs a chord the user memorised or a menu they have to go looking for** — A palette is how a lean interface keeps its actions reachable without growing toolbars, which is the same trade this project makes everywhere else. → §QS52
 - 📋 **QS53** (deps: QS48) **The same command on eight hosts has to be typed eight times** — Fleet work is a large part of why this audience uses a tabbed client at all, and mistyping the eighth is how that pattern fails today. → §QS53
 - 📋 **QS83** (deps: QS82 ✅, QS46 ⏳) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83
-- 🛠 **QS116** (deps: QS9 ✅) **The window's terminal is an empty rectangle, because nothing presents a swapchain into the pane's handle** — The resize in the three parts QS32 settled, and keystrokes from the window into the channel, are still unjoined. → §QS116
 - 📋 **QS126** (deps: QS121) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126
 
 ## Block H — The reason to leave the incumbent
@@ -97,7 +96,7 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- 📋 **QS81** (deps: QS80 ✅, QS116 🛠, QS126) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
+- 📋 **QS81** (deps: QS80 ✅, QS116 ✅, QS126) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
 
 ## Block K — The build and the harness — what a green run is evidence of
 
@@ -285,17 +284,6 @@
   there is none rather than inventing one. Checked by figure 2 or a figure beside it
   stating a number for the `emulate` arm, with the reasoning for that number and not
   merely the measurement it was taken from.
-
-## Done when — QS116
-
-- **The window shows what a session printed** The painter builds instances and nothing
-  draws them, so the rectangle is still empty. Checked by a running client showing a
-  host's output — the swapchain on the pane's handle, and the loop that waits on the
-  damage signal rather than on a clock.
-- **An idle window issues no draw calls once it is drawing at all** This line's own
-  falsification, and it only becomes checkable when there is a loop. QS76 proved the
-  gate refuses an idle frame in isolation; checked here against the client's real loop,
-  which is where a frame drawn on a clock would be.
 
 ## Done when — QS46
 

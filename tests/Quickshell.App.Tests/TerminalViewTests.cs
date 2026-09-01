@@ -154,6 +154,106 @@ public sealed class TerminalViewTests
     }
 
     /// <summary>
+    /// A resize reaches the swapchain and the grid, in that order, and only once.
+    ///
+    /// <para><b>QS32 settled the order and this is where the first of its three parties is.</b> The
+    /// model reflows to the grid the window turned out to hold, so the grid has to be the one the
+    /// swapchain accepted rather than the one the drag was passing through — which is why the event
+    /// is raised after the buffers have been reallocated and not when the size arrives.</para>
+    ///
+    /// <para>Ten sizes before one frame, because a drag fires continuously: every one of them that
+    /// reached the swapchain would be a buffer reallocation for a size the window has already left,
+    /// and every one that raised the event would be a reflow of somebody's scrollback.</para>
+    /// </summary>
+    [Fact]
+    public void AResizeReachesTheSwapchainOnceAndTheGridAfterIt()
+    {
+        (uint width, uint height, int columns, int rows, List<(int, int)> raised, long draws) =
+            OnPane(pane =>
+            {
+                using TerminalView view = Open(pane);
+
+                view.Renderer.Blink.Enabled = false;
+
+                Emulator emulator = new(view.Columns, view.Rows);
+
+                List<(int, int)> grids = [];
+
+                view.GridChanged += (c, r) => grids.Add((c, r));
+
+                view.DrawIfNeeded(emulator);
+
+                // A drag: ten sizes, one frame. The last is the one the window ends on.
+                for (uint step = 0; step < 10; step++)
+                {
+                    view.Resize(300 + (step * 10), 200 + (step * 10));
+                }
+
+                Assert.True(view.DrawIfNeeded(emulator), "the frame a resize owes was not drawn");
+
+                return (view.Surface.Width, view.Surface.Height, view.Columns, view.Rows, grids,
+                        view.Draws);
+            });
+
+        Assert.Equal(390u, width);
+        Assert.Equal(290u, height);
+
+        // One event for ten sizes, carrying the grid the surface ended at rather than any it passed.
+        (int, int) only = Assert.Single(raised);
+
+        Assert.Equal((columns, rows), only);
+        Assert.Equal(2, draws);
+    }
+
+    /// <summary>
+    /// Pixels that move without the grid moving redraw the window and tell nobody.
+    ///
+    /// <para>Most of a slow drag is this. A frame is owed, because the swapchain is a different size
+    /// and the picture in it is stretched or clipped until something draws — but the model holds the
+    /// same grid, and a reflow it did not need is scrollback rewrapped for nothing.</para>
+    /// </summary>
+    [Fact]
+    public void PixelsThatMoveWithoutTheGridTellNobody()
+    {
+        (int raised, long draws) = OnPane(pane =>
+        {
+            using TerminalView view = Open(pane);
+
+            view.Renderer.Blink.Enabled = false;
+
+            Emulator emulator = new(view.Columns, view.Rows);
+
+            view.DrawIfNeeded(emulator);
+
+            int told = 0;
+
+            view.GridChanged += (_, _) => told++;
+
+            // Half a cell past an exact fit, which is the same grid by construction. Not "one pixel
+            // more": a single pixel changes the grid whenever the old size sat on a cell boundary,
+            // and how much was added is not what decides it — where the boundary is, is.
+            CellMetrics box = view.Renderer.Metrics;
+
+            uint width = (uint)((view.Columns * box.Width) + (box.Width / 2));
+            uint height = (uint)((view.Rows * box.Height) + (box.Height / 2));
+
+            Assert.True(width != view.Surface.Width || height != view.Surface.Height,
+                        "the resize under test was not a resize");
+
+            view.Resize(width, height);
+
+            Assert.True(view.DrawIfNeeded(emulator), "a resized window kept its old frame");
+
+            Assert.Equal(width, view.Surface.Width);
+
+            return (told, view.Draws);
+        });
+
+        Assert.Equal(0, raised);
+        Assert.Equal(2, draws);
+    }
+
+    /// <summary>
     /// Waits for the loop to have drawn at least this many frames, and answers how many it drew.
     /// </summary>
     private static long Settled(TerminalView view, long atLeast)

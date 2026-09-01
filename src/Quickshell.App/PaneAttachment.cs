@@ -43,6 +43,9 @@ public sealed class PaneAttachment : IDisposable
         _family = family;
         _sizeInPoints = sizeInPoints;
 
+        // The model's own method, until a session replaces it. See Resized.
+        Resized = emulator.Resize;
+
         _pane.SizeChanged += Sized;
 
         // In case the pane already has both, which is the case when a caller attaches to a window
@@ -52,6 +55,17 @@ public sealed class PaneAttachment : IDisposable
 
     /// <summary>The view, once there was something to open it on. Null until then.</summary>
     public TerminalView? View { get; private set; }
+
+    /// <summary>
+    /// Who is told the grid changed size, and it is the second and third of QS32's three parties.
+    ///
+    /// <para><b>A session's <c>Resize</c> when there is a session, and this is why it is settable
+    /// rather than wired.</b> The pipeline takes a size in order with the bytes around it and tells
+    /// the far end once the drag settles; calling the model directly, as the default below does,
+    /// has neither property and is only safe because nothing is parsing into it yet. QS126 is where
+    /// a session arrives and this stops being the model's own method.</para>
+    /// </summary>
+    public Action<int, int>? Resized { get; set; }
 
     /// <summary>
     /// What went wrong opening the device, or null.
@@ -85,7 +99,28 @@ public sealed class PaneAttachment : IDisposable
         _stop.Dispose();
     }
 
-    private void Sized(object sender, SizeChangedEventArgs e) => Begin();
+    /// <summary>
+    /// The pane is a different size: open the view if it was waiting for one, otherwise pass the
+    /// new pixels to the loop.
+    /// </summary>
+    private void Sized(object sender, SizeChangedEventArgs e)
+    {
+        if (View is null)
+        {
+            Begin();
+
+            return;
+        }
+
+        DpiScale dpi = VisualTreeHelper.GetDpi(_pane);
+
+        View.Resize((uint)Math.Max(1d, _pane.ActualWidth * dpi.DpiScaleX),
+                    (uint)Math.Max(1d, _pane.ActualHeight * dpi.DpiScaleY));
+
+        // The loop sleeps on this signal, and a resize is the one change no parser ever reports.
+        // Without it a window resized while the host is silent keeps the frame it had.
+        _damage.Set();
+    }
 
     private void Begin()
     {
@@ -124,6 +159,9 @@ public sealed class PaneAttachment : IDisposable
         // debounced and nobody is told: there is no previous size to have been wrong.
         _emulator.Resize(View.Columns, View.Rows);
 
+        // Every size after this one, from the render thread once the swapchain has taken it.
+        View.GridChanged += (columns, rows) => Resized?.Invoke(columns, rows);
+
         // A screen reader reads this buffer, and the texture is unreadable to assistive technology
         // by construction — this is the only path. Set here only for a caller that did not: WPF
         // builds an element's peer once, so a pane already asked about keeps whatever it answered.
@@ -132,9 +170,5 @@ public sealed class PaneAttachment : IDisposable
         // Off the UI thread from here. Nothing else touches the device, which is what makes an
         // unsynchronised D3D11 context correct.
         _loop = Task.Run(() => View.RunAsync(_emulator, _damage, _stop.Token));
-
-        // The pane no longer needs watching for a first size; what it needs next is a resize, and
-        // that is QS32's three parties rather than this one's opening.
-        _pane.SizeChanged -= Sized;
     }
 }
