@@ -87,6 +87,7 @@
 - ✅ **QS54** **A screen reader finds nothing on the terminal surface, so the client cannot be used without sight** — The buffer is published as a text pattern with scrollback and screen as one document, the cursor as the caret, and a flood of output as one announcement.
 - ✅ **QS116** **The window's terminal is an empty rectangle, because nothing presents a swapchain into the pane's handle** — The client runs a shell on its pane: what it prints is drawn, what is typed reaches it, and a resize reaches the model, the swapchain and the program in that order.
 - ✅ **QS148** **The client exits the moment anything asks its terminal about accessibility** — The child window declines the accessibility question instead of dying on it, and the terminal is still published where a reader looks.
+- ✅ **QS47** **Every session needs its own window, so working across four hosts means four windows to arrange** — A tab owns its session, so a window holds several: the keyboard, the selection and the find follow whichever is on screen, and a live one asks before it closes.
 
 ## Block H — The reason to leave the incumbent
 

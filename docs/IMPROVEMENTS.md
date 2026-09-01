@@ -1074,32 +1074,6 @@ Falsified when a hundred connects through the proxy all receive a well-formed re
 
 ## Block G — The clean interface, defended
 
-### §QS47 Tabs, and the title the remote host is writing
-
-A tab owns a session, its terminal state and its lifetime. Create, close, reorder by
-drag, and detach into a new window — and a detached tab keeps its connection rather than
-reconnecting, which is the observable consequence of the session living in the tab and
-not in the window.
-
-The title comes from three places in priority order: a name the user set, the title the
-remote host is writing through OSC, and the session's host name. That middle source is
-why tabs are worth building on top of the OSC work: a shell reporting its working
-directory or its running command turns the tab strip into information rather than a row
-of identical host names.
-
-Closing a tab with a live session asks, unless the session already ended by itself. A
-tab whose session died stays open showing why, with a reconnect — a tab that vanishes
-takes the error message with it, which is the one thing the user needed.
-
-Keyboard navigation is next, previous, by index, and most-recently-used. Those chords
-are reserved from the remote program, and that cost is stated in the keybinding
-reference rather than discovered.
-
-A tab shows activity: output arrived while it was hidden, or the session dropped. A dot,
-not a badge with a count, because a terminal has no meaningful unit to count.
-
-Falsified when detaching a tab reconnects its session.
-
 ### §QS48 A tree of panes, and who owns the focus
 
 A tab holds a tree rather than a session: each node is a horizontal or vertical split,

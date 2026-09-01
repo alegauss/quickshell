@@ -22,6 +22,11 @@
 
   "cases": [
     {
+      // QS47 kept this exactly as it was, and that was the decision rather than the default. Naming
+      // the window for the session it shows was tried first and reverted: cmd writes its own full
+      // path through OSC within half a second of starting, so the title became a string the machine
+      // decides and this case could no longer be written at all. The gap that leaves — a host's
+      // title has nowhere to appear while the strip is hidden — is QS161 rather than a silence.
       "name": "a default installation puts a window named quickshell on the desk",
       "catches": "an application that builds its window correctly and then shows something else, or nothing at all — which every test running inside the process would pass",
       "filed": "QS147",

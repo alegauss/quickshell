@@ -1,0 +1,57 @@
+{
+  // QS47, read through the accessibility tree rather than photographed. The strip is WPF chrome, so
+  // unlike the terminal beside it there is something here worth reading: a TabControl publishes its
+  // items and their names, which is exactly the claim a tab makes.
+  //
+  // `--tabs` and not Ctrl+Shift+T, for the reason the import case gives: `press` spells Tab and the
+  // arrows and not a modifier chord (WW317, filed against the engine). The flag is not a test hook —
+  // a client with no menu has the command line as a real surface, and it is the only one another
+  // program can reach.
+
+  "fixtures": [
+    {
+      // Two tabs, because one is the state that hides the strip. The whole claim here is about what
+      // appears when there is a choice to make.
+      "name": "a window with two tabs",
+      "arguments": ["--tabs", "2"],
+      "shareable": true
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "a second tab brings the strip up carrying both of them",
+      "catches": "a client that opens two sessions and shows one, or shows a strip with nothing selectable in it — which every test running inside the process would pass",
+      "filed": "QS47",
+      "tags": ["smoke", "window", "tabs"],
+      "fixture": "a window with two tabs",
+
+      "steps": [
+        {
+          // Both ends of the strip, which is how two items are read without a word for "how many":
+          // a left and a right that both resolve is a strip with at least two things in it, and one
+          // tab publishes no strip at all.
+          //
+          // Read for which one is selected and not for a name, deliberately. The name is the title
+          // ranked from three sources, and the middle one is the host's — cmd writes its own full
+          // path through OSC within half a second, so what a tab is called is a string this machine
+          // decides and not one this repository does. Which tab is on screen is this client's
+          // answer in every case, and it is the more interesting half: a strip that came up showing
+          // the tab the user did not just open would pass a check that only counted them.
+          "locator": "TabItem[order=left]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "not selected",
+          "named": "the first tab is there and is not the one on screen"
+        },
+        {
+          "locator": "TabItem[order=right]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "and the second is, because it was opened last"
+        }
+      ]
+    }
+  ]
+}

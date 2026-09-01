@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 
 // Both namespaces name a Key. Here the window's is meant every time: these are chords a person
 // presses, not sequences a host is sent.
@@ -32,7 +33,21 @@ namespace Quickshell.App;
 /// </summary>
 public sealed class MainWindow : Window
 {
-    private readonly ContentControl _terminal = new();
+    /// <summary>
+    /// Where the panes live, all of them, with one visible.
+    ///
+    /// <para><b>Every pane stays in the tree and only one is shown, and that is not an
+    /// optimisation.</b> A <see cref="TerminalPane"/> is an <c>HwndHost</c>: taking it out of the
+    /// tree destroys its child window, and the swapchain a device is presenting into goes with it.
+    /// So switching tabs is a visibility change and never a reparent.</para>
+    ///
+    /// <para><b>Hidden rather than collapsed</b>, for the same kind of reason. A collapsed element
+    /// measures zero, so a background tab would resize its grid to one cell and tell the program on
+    /// the far end that its terminal is one column wide. Hidden keeps the size it had.</para>
+    /// </summary>
+    private readonly Grid _terminal = new();
+
+    private readonly List<TerminalTab> _open = [];
     private readonly TabControl _tabs = new();
     private readonly DockPanel _find = new() { Margin = new Thickness(8, 6, 8, 6) };
     private readonly TextBox _needle = new() { MinWidth = 220 };
@@ -43,6 +58,8 @@ public sealed class MainWindow : Window
     };
 
     private bool _recording;
+    private int _active = -1;
+    private DispatcherTimer? _watching;
 
     /// <summary>Builds the window. Reads no file, opens no connection, and paints immediately.</summary>
     /// <param name="appearance">How it looks; <see cref="Appearance.Default"/> when null.</param>
@@ -122,6 +139,30 @@ public sealed class MainWindow : Window
 
         InputBindings.Add(new KeyBinding(new Scroll(this, up: false), Key.PageDown,
                                          ModifierKeys.Shift));
+
+        // Tabs. Ctrl+Shift+T and Ctrl+Shift+W for opening and closing, which are the two chords
+        // every tabbed application on this platform uses and which a terminal program does not.
+        InputBindings.Add(new KeyBinding(new Opening(this), Key.T,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        InputBindings.Add(new KeyBinding(new Shutting(this), Key.W,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        // Next and previous. Ctrl+Tab is the one chord here that a full-screen program might
+        // plausibly want, and it is taken anyway: a client where the user cannot leave the tab they
+        // are in has no tabs. That cost is what the keybinding reference is for.
+        InputBindings.Add(new KeyBinding(new Step(this, by: 1), Key.Tab, ModifierKeys.Control));
+
+        InputBindings.Add(new KeyBinding(new Step(this, by: -1), Key.Tab,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        // By index, on Alt rather than Ctrl: Ctrl with a digit is a control sequence a host has
+        // meanings for, and Alt with one is not.
+        for (int index = 1; index <= 9; index++)
+        {
+            InputBindings.Add(new KeyBinding(new Reach(this, index - 1),
+                                             Key.D0 + index, ModifierKeys.Alt));
+        }
     }
 
     /// <summary>How this window looks. The palette here is the terminal's and not the chrome's.</summary>
@@ -132,6 +173,50 @@ public sealed class MainWindow : Window
 
     /// <summary>How many tabs are open, which is what decides whether the strip is visible.</summary>
     public int Tabs => Math.Max(1, _tabs.Items.Count);
+
+    /// <summary>The tabs this window holds, in the order they appear.</summary>
+    public IReadOnlyList<TerminalTab> Held => _open;
+
+    /// <summary>
+    /// Which tab is on screen, or -1 while there are none.
+    ///
+    /// <para>Setting it is what a keyboard chord and a click on the strip both do, so everything
+    /// that follows from switching — the visible pane, the window's title, the activity mark and
+    /// which session the copy, paste, find and scroll surfaces answer for — follows from here and
+    /// from nowhere else.</para>
+    /// </summary>
+    public int Active
+    {
+        get => _active;
+
+        set
+        {
+            if (_open.Count == 0)
+            {
+                _active = -1;
+
+                return;
+            }
+
+            // Wrapped rather than clamped, because next-from-the-last is the first: a chord that
+            // stopped at the end would be one the user presses twice and then reaches for the mouse.
+            int at = ((value % _open.Count) + _open.Count) % _open.Count;
+
+            _active = at;
+            _tabs.SelectedIndex = at;
+
+            for (int tab = 0; tab < _open.Count; tab++)
+            {
+                _open[tab].Pane.Visibility = tab == at ? Visibility.Visible : Visibility.Hidden;
+                _open[tab].Showing(tab == at);
+            }
+
+            Retitle();
+        }
+    }
+
+    /// <summary>The tab on screen, or null while there are none.</summary>
+    public TerminalTab? Current => _active >= 0 && _active < _open.Count ? _open[_active] : null;
 
     /// <summary>
     /// Whether this window is recording a session's output, shown in the title.
@@ -152,7 +237,8 @@ public sealed class MainWindow : Window
         set
         {
             _recording = value;
-            Title = value ? "● recording — quickshell" : "quickshell";
+
+            Retitle();
         }
     }
 
@@ -229,7 +315,7 @@ public sealed class MainWindow : Window
     /// window procedure does nothing at all, deliberately, so that input arrives through WPF and
     /// pixels arrive through the swapchain. This is the WPF half of that sentence.</para>
     /// </summary>
-    public Typist? Typing { get; set; }
+    public Typist? Typing => Current?.Typist;
 
     /// <summary>
     /// A key the window did not claim goes to the host.
@@ -323,27 +409,138 @@ public sealed class MainWindow : Window
     {
         ArgumentNullException.ThrowIfNull(pane);
 
-        _terminal.Content = pane;
+        _terminal.Children.Add(pane);
     }
 
-    /// <summary>Adds a tab, and shows the strip once there is something to choose between.</summary>
-    public void AddTab(string title)
+    /// <summary>
+    /// Puts a tab in this window and brings it forward.
+    ///
+    /// <para>The pane goes into the tree here and stays in it for the tab's whole life — see
+    /// <see cref="_terminal"/> for why taking it out again is not an option.</para>
+    /// </summary>
+    /// <returns>Where it landed, which is what a caller switches back to.</returns>
+    public int Add(TerminalTab tab)
     {
-        _tabs.Items.Add(new TabItem { Header = title });
+        ArgumentNullException.ThrowIfNull(tab);
 
-        _tabs.Visibility = _tabs.Items.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        _open.Add(tab);
+        _terminal.Children.Add(tab.Pane);
+        _tabs.Items.Add(new TabItem { Header = tab.Title });
+
+        Strip();
+        Watch();
+
+        Active = _open.Count - 1;
+
+        return _active;
     }
 
-    /// <summary>Removes a tab, and hides the strip again when one is left.</summary>
-    public void RemoveTab()
+    /// <summary>
+    /// Keeps the strip and the window's name current, at a rate nobody can see.
+    ///
+    /// <para><b>Polled, and there is no event that would do instead.</b> Both things it reads are
+    /// written by the parser stage — the title a host sets through OSC, and the generation that says
+    /// output arrived — and that stage owns the model on a thread this window may not be touched
+    /// from. There is nothing to subscribe to and nowhere safe to raise it.</para>
+    ///
+    /// <para>It costs nothing when nothing changed: a header is only assigned where the string
+    /// actually differs, so an idle window issues no layout and no draw. Two hertz, because this is
+    /// a tab strip and not an animation.</para>
+    /// </summary>
+    private void Watch()
     {
-        if (_tabs.Items.Count > 0)
+        if (_watching is not null)
         {
-            _tabs.Items.RemoveAt(_tabs.Items.Count - 1);
+            return;
         }
 
-        _tabs.Visibility = _tabs.Items.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        _watching = new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Background,
+                                        (_, _) => Retitle(), Dispatcher);
+
+        _watching.Start();
     }
+
+    /// <summary>
+    /// Takes a tab out of the window and hands it back for the caller to end.
+    ///
+    /// <para><b>It is not disposed here.</b> Closing a tab and detaching one remove it identically;
+    /// what differs is what happens next, and a window that ended the session would have decided
+    /// that for both.</para>
+    /// </summary>
+    /// <returns>The tab that was removed, or null where the index named none.</returns>
+    public TerminalTab? Remove(int at)
+    {
+        if (at < 0 || at >= _open.Count)
+        {
+            return null;
+        }
+
+        TerminalTab going = _open[at];
+
+        _open.RemoveAt(at);
+        _terminal.Children.Remove(going.Pane);
+        _tabs.Items.RemoveAt(at);
+
+        // The window's closing question names what is open, and a tab is what open means.
+        Sessions.Closed(going.Host);
+
+        Strip();
+
+        if (_open.Count == 0)
+        {
+            _watching?.Stop();
+            _watching = null;
+        }
+
+        // The one after it, which is where every editor leaves the cursor — and the one before it
+        // when the last tab went, because there is no one after.
+        Active = Math.Min(at, _open.Count - 1);
+
+        return going;
+    }
+
+    /// <summary>
+    /// Rereads every tab's title, which changes without anything telling this window.
+    ///
+    /// <para>The host writes it through OSC while the parser is running, so there is no event to
+    /// hang this on and no thread it would arrive on. It is asked for instead, on the same wake-up
+    /// that redraws — cheap, and never wrong for longer than a frame.</para>
+    /// </summary>
+    public void Retitle()
+    {
+        for (int tab = 0; tab < _open.Count && tab < _tabs.Items.Count; tab++)
+        {
+            if (_tabs.Items[tab] is not TabItem item)
+            {
+                continue;
+            }
+
+            // The name is the title and only the title. A marker put into the header string lands
+            // in the element's accessibility name too — so a screen reader would read the dot out,
+            // and every case reading a tab would have to know about it. What activity gets instead
+            // is weight, which is a property of how the tab is drawn and not of what it is called.
+            if (!Equals(item.Header, _open[tab].Title))
+            {
+                item.Header = _open[tab].Title;
+            }
+
+            item.FontWeight = _open[tab].HasActivity ? FontWeights.Bold : FontWeights.Normal;
+        }
+
+        // The window keeps the client's name and does not take the session's.
+        //
+        // <b>Which means with one tab the title a host writes appears nowhere</b>, because QS46's
+        // default installation hides the strip — and that is a real gap rather than an oversight.
+        // It is QS161. What settled it here is that the alternative made the whole title a string
+        // the machine decides: cmd writes its own full path through OSC within half a second, so a
+        // window named for its session reads differently on every desk and is a thing no case can
+        // check.
+        Title = _recording ? "● recording — quickshell" : "quickshell";
+    }
+
+    /// <summary>Shows the strip once there is a choice to make, and hides it again when there is not.</summary>
+    private void Strip() =>
+        _tabs.Visibility = _tabs.Items.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>
     /// What happens once a bundle is written. A dialog naming the file, unless a caller says
@@ -984,6 +1181,136 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public void Execute(object? parameter) => window.WriteDiagnostics();
+    }
+
+    /// <summary>
+    /// Who opens a tab when the user asks for one, or null while nothing can.
+    ///
+    /// <para>A delegate, because opening one means a device, a shell and a font size — all of which
+    /// belong to whatever composed this client and none of which a window should know.</para>
+    /// </summary>
+    public Action? Opens { get; set; }
+
+    /// <summary>
+    /// Who ends a tab this window has finished with. Null leaves it to the garbage collector, which
+    /// is what a test wants and what a client must never do.
+    /// </summary>
+    public Action<TerminalTab>? Ends { get; set; }
+
+    /// <summary>
+    /// Closes the tab on screen, asking first where its session is still live.
+    ///
+    /// <para><b>A session that already ended is closed without a question.</b> Asking about a tab
+    /// whose shell exited is asking permission to tidy up, and a client that does that is one whose
+    /// questions stop being read — which is the same argument <see cref="CloseGuard"/> makes about
+    /// the window.</para>
+    /// </summary>
+    /// <returns>Whether the tab went.</returns>
+    public bool CloseTab()
+    {
+        if (Current is not { } going)
+        {
+            return false;
+        }
+
+        if (going.IsLive
+            && Guard?.Ask([going.Title]) is { } question
+            && !(AskingToClose ?? AskedToClose)(question).Close)
+        {
+            return false;
+        }
+
+        Ends?.Invoke(going);
+        Remove(_active);
+
+        // The last tab going closes the window, because a window with no terminal in it is not
+        // something this client has a name for.
+        if (_open.Count == 0)
+        {
+            Close();
+        }
+
+        return true;
+    }
+
+    /// <summary>The tab-opening binding's command.</summary>
+    private sealed class Opening(MainWindow window) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.Opens?.Invoke();
+    }
+
+    /// <summary>The tab-closing binding's command.</summary>
+    private sealed class Shutting(MainWindow window) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.CloseTab();
+    }
+
+    /// <summary>Next and previous, which wrap.</summary>
+    private sealed class Step(MainWindow window, int by) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.Active += by;
+    }
+
+    /// <summary>
+    /// One tab by its position.
+    ///
+    /// <para>An index past the last does nothing rather than wrapping, which is the one place the
+    /// wrapping above would be wrong: Alt+7 in a window with three tabs is a mistake, and landing on
+    /// the first would look like the chord did something else.</para>
+    /// </summary>
+    private sealed class Reach(MainWindow window, int at) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter)
+        {
+            if (at < window.Held.Count)
+            {
+                window.Active = at;
+            }
+        }
     }
 
     /// <summary>The find binding's command: opens the bar, or closes one already open.</summary>

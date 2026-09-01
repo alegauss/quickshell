@@ -64,59 +64,41 @@ public static class Entry
         window.Apply(settings);
         window.PlaceAt(WindowPlacements.ReadFrom(Placements()).For(Screens()));
 
+        // Every surface this window has, pointed at whichever tab is on screen rather than at one
+        // that was current when the window was built. Asked afresh each time for exactly that
+        // reason: switching tabs is the only place a client with tabs goes wrong quietly, and it
+        // goes wrong by answering for the tab before.
+        window.Opens = () => Opened(window, settings);
+
+        // Not awaited: the tab is already out of the window and nothing references it, and a shell
+        // given its two seconds to leave is two seconds this thread would spend not repainting.
+        window.Ends = tab => _ = tab.DisposeAsync().AsTask();
+
+        window.Input.Placing = composing => Placed(window, composing);
+        window.Selected = () => window.Current?.Terminal.Selected() ?? string.Empty;
+        window.Bracketed = () => window.Current?.Emulator.BracketedPaste ?? false;
+        window.Scrolling = lines => window.Current?.Terminal.ScrollBy(lines);
+        window.Finding = (needle, forward, exactly) =>
+            window.Current?.Terminal.Find(needle, forward, exactly)?.Cells;
+
         // The terminal itself, and it is deliberately the last thing: opening a device, compiling
         // two shaders and rasterising a font are the most expensive things this process does, and
         // none of them is between the user and their first sight of the window.
-        //
-        // The size is a placeholder for one layout pass. The pane decides the real grid, and the
-        // model is resized to it before a frame is drawn.
-        Emulator emulator = new(80, 25, settings.Scrollback);
-        TerminalPane pane = new() { Reading = emulator.Buffer };
+        Opened(window, settings);
 
-        // One signal for the loop and for the session behind it. The loop is opened here and the
-        // session several statements later, so the thing they share is created before either.
-        DamageSignal damage = new();
+        terminal = window.Current?.Terminal;
 
-        terminal = TerminalView.Attach(pane, emulator, damage,
-                                       settings.FontFamily, (float)settings.FontSize);
-
-        // Keys go to the model, which knows what its modes make them mean. Where they go after that
-        // is the session's, and Opening below is where it is told.
-        Typist typist = new(emulator);
-
-        window.Typing = typist;
-
-        // Before the pane is shown, and the order is the whole of it: WPF builds an element's
-        // automation peer once and keeps it, so a pane shown without a buffer publishes a terminal
-        // with no text in it for the life of the window.
-        window.Show(pane);
-
-        // Where the input method draws. Asked afresh every time a composition moves rather than set
-        // once, because every number in it changes while the client runs: the cursor with what the
-        // host prints, the cell size with the font, and the pane's own origin with the tab strip.
-        window.Input.Placing = composing => Placed(window, pane, terminal, emulator, composing);
-
-        // Copying reads what the drag selected; whether a paste has to be shown first is the
-        // program's answer and not this client's, so the mode is asked afresh at the moment of the
-        // paste rather than remembered from whenever the window was built.
-        window.Selected = terminal.Selected;
-        window.Bracketed = () => emulator.BracketedPaste;
-
-        // Reading back through the history, and finding something in it. Both answer through the
-        // attachment because the viewport belongs to the view, which does not exist until the pane
-        // has been laid out — and this window is up before any of that.
-        window.Scrolling = lines => terminal.ScrollBy(lines);
-        window.Finding = (needle, forward, exactly) =>
-            terminal.Find(needle, forward, exactly)?.Cells;
-
-        // Typing means the reading is finished, so a window scrolled back follows the newest output
-        // again. Output arriving does not do this, which is the other half of the same rule.
-        typist.Typed = terminal.ToBottom;
-
-        // The shell, and it is the last thing for the same reason the pane was: creating a
-        // pseudo-console and starting a process are not on the way to the user's first sight of the
-        // window. Not awaited here — this is the thread the window is drawn on.
-        Task<LocalSession?> opening = Opening(window, emulator, damage, terminal, typist);
+        // `--tabs <n>` opens that many, which is what Ctrl+Shift+T opens n times. A real surface and
+        // not a test hook, for the same reason `--import` is one: this client has no menu, so the
+        // command line is the only way another program can ask it for anything — and it is what
+        // lets a UI case read a strip that a chord cannot yet be spelled to open.
+        if (Asked(arguments, "--tabs") is { } more)
+        {
+            for (int tab = 1; tab < Math.Clamp(more, 1, 16); tab++)
+            {
+                Opened(window, settings);
+            }
+        }
 
         // `--import` opens what Ctrl+Shift+I opens, and after the window is up rather than before:
         // the preview is a dialog over a window, and a modal with nothing behind it is a client that
@@ -128,11 +110,13 @@ public static class Entry
 
         application.Run(window);
 
-        // The loop is stopped before the window's position is written, so nothing is drawing into a
-        // handle that is on its way out.
-        terminal.Dispose();
-
-        Close(opening);
+        // Every tab, and the loops before the sessions, so nothing is drawing into a handle that is
+        // on its way out. Waited for here and only here: the process is leaving, and a pseudo-console
+        // still holding a child is a shell that outlives the window that opened it.
+        foreach (TerminalTab tab in window.Held.ToArray())
+        {
+            Close(tab);
+        }
 
         WindowPlacements.ReadFrom(Placements()).Remember(Screens(), window.Where());
 
@@ -151,16 +135,15 @@ public static class Entry
     /// <para>Null before the pane has a device: there is no cell size then, and a position invented
     /// without one is a number this client made up.</para>
     /// </summary>
-    private static CandidateSpot? Placed(MainWindow window, TerminalPane pane,
-                                         PaneAttachment terminal, Emulator emulator,
-                                         Composition composing)
+    private static CandidateSpot? Placed(MainWindow window, Composition composing)
     {
-        if (terminal.View is not { } view)
+        if (window.Current is not { } tab || tab.Terminal.View is not { } view)
         {
             return null;
         }
 
-        Damage where = emulator.Damage;
+        TerminalPane pane = tab.Pane;
+        Damage where = tab.Emulator.Damage;
 
         CandidatePlacement at = composing.Candidate(where.CursorColumn, where.CursorRow,
                                                     Math.Max(1, view.Columns));
@@ -177,76 +160,69 @@ public static class Entry
     }
 
     /// <summary>
-    /// Opens the shell and joins it to the window, or says on the terminal why it could not.
+    /// Opens a tab, puts it on screen, and starts a shell behind it.
     ///
-    /// <para><b>Nothing here is on the way to the first frame</b>, which is why it is a task the
-    /// caller does not await. The pane already has a device, a loop and a keyboard by the time this
-    /// runs; what it gains is somebody to talk to.</para>
+    /// <para><b>The shell is started afterwards and not awaited</b>, which is why the tab appears at
+    /// once. Creating a pseudo-console and a process is not on the way to a user seeing the terminal
+    /// they asked for, and this is the thread the window is drawn on.</para>
+    ///
+    /// <para>The tab is registered as an open session in the same breath, because the window's
+    /// closing question names what is open and a tab is what "open" now means.</para>
     /// </summary>
-    private static async Task<LocalSession?> Opening(MainWindow window, Emulator emulator,
-                                                     DamageSignal damage, PaneAttachment terminal,
-                                                     Typist typist)
+    private static void Opened(MainWindow window, Settings settings)
     {
-        try
-        {
-            LocalSession session = await LocalSession
-                .OpenAsync(emulator, damage, emulator.Buffer.Columns, emulator.Buffer.Rows)
-                .ConfigureAwait(false);
+        string host = Path.GetFileName(LocalSession.Shell);
+        TerminalTab tab = TerminalTab.Open(settings, host);
 
-            typist.Sending = bytes => session.Pipeline.TypeAsync(bytes);
-            terminal.Resized = session.Pipeline.Resize;
+        window.Add(tab);
+        window.Sessions.Open(host, another: true);
 
-            // A paste goes down the keystroke path and not the parser's, which is what makes it
-            // arrive in order with what the user is typing around it.
-            window.Pasting = text => session.Pipeline.TypeAsync(Encoding.UTF8.GetBytes(text));
+        // A paste goes down the keystroke path and not the parser's, which is what makes it arrive
+        // in order with what the user is typing around it — and it goes to whichever tab is on
+        // screen when the paste happens, never to the one that was current when it was wired.
+        window.Pasting = text => window.Current is { Typist: { } typist }
+            ? Sent(typist, text)
+            : ValueTask.CompletedTask;
 
-            // The program's name and not its path, because this string is read back to the user in
-            // the closing question and nowhere else. Registered once the shell is actually running:
-            // a window asking about a session that failed to start would be asking about nothing.
-            window.Dispatcher.Invoke(
-                () => window.Sessions.Open(Path.GetFileName(LocalSession.Shell)));
-
-            // The grid the pane settled on while this was starting, which arrived when there was no
-            // session to hear it. Sent once rather than assumed: a program wrong about its own width
-            // draws a screen for a terminal nobody has.
-            session.Pipeline.Resize(emulator.Buffer.Columns, emulator.Buffer.Rows);
-
-            return session;
-        }
-        catch (Exception failed)
-        {
-            Refused(emulator, damage, failed);
-
-            return null;
-        }
+        _ = tab.ConnectAsync();
     }
 
     /// <summary>
-    /// Says on the terminal that the shell did not start, and what Windows said about it.
+    /// The number a flag was given, or null where it was absent or not a number.
     ///
-    /// <para>Written into the model, because that is where the user is already looking and there is
-    /// no session to have carried it anywhere else. It is safe to write from here for the one reason
-    /// that matters: the pipeline never started, so this is the only writer the render loop has.</para>
+    /// <para>Not an error either way. A command line is a surface a person types, and a client that
+    /// refused to start over a mistyped count would be one they never reach at all.</para>
     /// </summary>
-    private static void Refused(Emulator emulator, DamageSignal damage, Exception failed)
+    private static int? Asked(string[] arguments, string flag)
     {
-        emulator.Feed(Encoding.UTF8.GetBytes(
-            $"quickshell could not start {LocalSession.Shell}\r\n{failed.Message}\r\n"));
+        int at = Array.IndexOf(arguments, flag);
 
-        damage.Set();
+        return at >= 0 && at + 1 < arguments.Length
+               && int.TryParse(arguments[at + 1], System.Globalization.NumberStyles.None,
+                               System.Globalization.CultureInfo.InvariantCulture, out int how)
+            ? how
+            : null;
+    }
+
+    /// <summary>A paste, down the same route a keystroke takes.</summary>
+    private static ValueTask Sent(Typist typist, string text)
+    {
+        typist.Type(text, System.Windows.Input.ModifierKeys.None);
+
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    /// Ends the session, and waits for it.
+    /// Ends one tab, and waits for it.
     ///
     /// <para>Blocking, on the way out rather than on the way in: a pseudo-console still holding a
     /// child is a shell that outlives the window that opened it.</para>
     /// </summary>
-    private static void Close(Task<LocalSession?> opening)
+    private static void Close(TerminalTab tab)
     {
         try
         {
-            opening.GetAwaiter().GetResult()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            tab.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
         catch (Exception)
         {

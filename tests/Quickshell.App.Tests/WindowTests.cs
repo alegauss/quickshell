@@ -78,19 +78,19 @@ public sealed class WindowTests : IDisposable
         {
             MainWindow window = new();
 
+            bool none = window.TabStripShowing;
+
+            window.Add(TerminalTab.Open(Settings.Default, "first"));
+
             bool one = window.TabStripShowing;
 
-            window.AddTab("first");
-
-            bool stillOne = window.TabStripShowing;
-
-            window.AddTab("second");
+            window.Add(TerminalTab.Open(Settings.Default, "second"));
 
             bool two = window.TabStripShowing;
 
-            window.RemoveTab();
+            window.Remove(1);
 
-            return new[] { one, stillOne, two, window.TabStripShowing };
+            return new[] { none, one, two, window.TabStripShowing };
         });
 
         Assert.False(showing[0]);
