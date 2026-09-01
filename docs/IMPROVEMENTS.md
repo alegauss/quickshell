@@ -1992,3 +1992,26 @@ the task works, and it says the wrong thing.
 
 Falsified when a session reads the shipping discipline and still reaches for a
 screenshot as evidence.
+
+### §QS167 The allocation that was there once
+
+`KeyTests.EncodingAKeyAllocatesNothing` failed in the guest during QS166's run, passed
+on this machine immediately afterwards, and passed on the guest's very next run of the
+same tree. Nothing between those three runs changed a byte of what it tests.
+
+An allocation assertion is a measurement, and this one is being read as an assertion.
+`GC.GetAllocatedBytesForCurrentThread` counts everything the thread allocated, which on
+a first call through a path includes whatever the runtime did on the way — a
+tiered-compilation rejit, a lazily built static, a resized thread-local buffer. On a
+warm machine that is nothing; on a cold guest under a full suite it is sometimes not.
+
+What the test means to say is that the encoding path allocates nothing per call, and
+there are ways to say that which do not depend on when the JIT got round to things: warm
+the path first and measure the second run of it, or measure many calls and divide, or
+assert against a small ceiling rather than zero and say in the message what the ceiling
+is for.
+
+What must not happen is the ceiling quietly becoming a budget. Zero is the claim; the
+noise is the runtime's, and the fix is to stop measuring the runtime.
+
+Falsified when the same tree gives two verdicts on two runs of the same machine.

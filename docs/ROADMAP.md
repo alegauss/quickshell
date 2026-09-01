@@ -112,6 +112,7 @@
 - 📋 **QS138** (deps: —) **Eight minutes of the suite is one helper waiting out a timeout it then ignores** — A test that passes by timing out would pass if the command never ran, and it costs the run more than every other test put together. → §QS138
 - 📋 **QS149** (deps: —) **A tool that rewrites a source file can mangle its punctuation and every check stays green** — The hygiene test bans control bytes and says nothing about text that decoded through the wrong codepage on its way back to disk. → §QS149
 - 📋 **QS159** (deps: QS147 ✅) **The shipping discipline tells an agent to screenshot a UI task, and this repository's evidence rule forbids that** — A session followed the skill, spent an hour driving the operator's desk with synthetic keystrokes, and never found the winwright cases already here. → §QS159
+- 📋 **QS167** (deps: QS95 ✅) **An allocation assertion fails about once in two guest runs on a tree nothing touched** — Block K asks that no test fail intermittently, and this one was watched doing it: red in the guest, green on the host and green on the guest's next run. → §QS167
 
 ## Done when — Block A
 
