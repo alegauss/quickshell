@@ -34,7 +34,26 @@
 
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Deterministic>true</Deterministic>
-    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- Off, and QS154 is why: with it on, this client cannot show a text box.
+
+         WPF builds a CultureInfo in two places a terminal cannot avoid. The font cache asks for
+         "en" when a typeface is named, and the text input stack asks for the user's own keyboard
+         layout the moment a TextBox draws a caret. In invariant mode both throw, so the paste
+         preview killed the client on open and the find bar killed it again for a different reason.
+         Neither is a mistake a rule could have caught: a client with a settings surface and a
+         search box has text boxes in it.
+
+         It was on for the footprint, and there it buys nothing on Windows - .NET uses the icu.dll
+         the operating system already ships. Published: 9,373,193 bytes with it, 9,373,134 without,
+         which is the property leaving runtimeconfig.json and nothing else.
+
+         It is not free, and the cost is in the parse path. Replayed corpus, this machine:
+         grapheme segmentation falls from 181 to 82 MB/s on cat-log and 83 to 59 on ls-color-r,
+         because StringInfo's cluster breaking calls into ICU instead of the runtime's own simple
+         one. The whole emulate stage falls about a sixth, 18 to 16 MB/s, which is still far above
+         anything a session produces. QS156 is recovering it. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
 

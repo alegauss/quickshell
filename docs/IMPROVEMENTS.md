@@ -1708,30 +1708,6 @@ Nothing here is new work in the render layer: the counters exist and are public.
 
 Falsified by a bundle naming an adapter the client is not drawing on.
 
-### §QS154 The culture WPF builds and this process refuses
-
-`Directory.Build.props` sets `InvariantGlobalization` for every project. WPF's font
-stack does not survive it. Setting `FontFamily` on the paste dialog's `TextBlock`
-reached `Typeface.CheckFastPathNominalGlyphs`, which reaches
-`MS.Internal.FontCache.MajorLanguages`, whose static constructor is `new
-CultureInfo("en")` — and in this mode that throws `CultureNotFoundException`. The crash
-guard caught it and wrote a report; the client still went. Reproduced twice, fixed by
-dropping the typeface, and the report is in `%AppData%\quickshell\crashes`.
-
-What is not known is the boundary. Every dialog shipped so far renders text and none of
-them had crashed, so the trigger is narrower than "text" — it is whichever path asks a
-typeface about its typography, and nothing in this repository says which those are. That
-is the finding: a client one careless `FontFamily` from exiting, with no test that would
-catch the next one.
-
-Two ways out and they are not equal. Turning the setting off for the client project
-costs the ICU payload, which is Block H's number to defend and is measurable rather than
-arguable. Keeping it means never naming a typeface in WPF chrome, which is a rule no
-compiler enforces — so it needs a test that scans for one, the way the seam is scanned
-for a library.
-
-Falsified when a shipped dialog names a typeface and the client survives being opened.
-
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ### §QS81 The document the non-goals were written for

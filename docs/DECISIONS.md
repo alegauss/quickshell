@@ -66,6 +66,8 @@
 
 ## Block I — An error a user can act on
 
+- ✅ **QS154** **Naming a typeface on any WPF text kills the client, because invariant globalization refuses the culture WPF builds** — Invariant globalization stays off: WPF builds a CultureInfo for any named typeface and for every text caret, so a client with a settings surface cannot have it on.
+
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of

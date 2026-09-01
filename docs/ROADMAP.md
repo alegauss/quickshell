@@ -21,7 +21,7 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- ⏳ **QS31** (deps: QS15 ✅, QS26 ✅, QS46 ✅) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The wheel, the scrollbar and the search box that drive them, which need a window. → §QS31
+- 🛠 **QS31** (deps: QS15 ✅, QS26 ✅, QS46 ✅) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The wheel, the scrollbar and the search box that drive them, which need a window. → §QS31
 - 🛠 **QS33** (deps: QS17 ✅, QS18 ✅, QS20 ✅, QS21 ✅, QS25 ✅, QS93) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — vttest's verdict is a person looking at the screen, so automating it needs something to compare against rather than a way to press its keys. → §QS33
 - 📋 **QS91** (deps: —) **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — Text that arrives decomposed is ordinary on macOS and in Git output, and a client that silently drops the accent is one that shows the wrong filename. → §QS91
 - 📋 **QS92** (deps: —) **The golden suite has run on two rasterisers and none of the three vendor drivers its matrix names** — A driver bug is by definition the thing the machine that wrote the code cannot see, so a suite that has only ever run here is one nobody has tested yet. → §QS92
@@ -94,7 +94,6 @@
 - 📋 **QS133** (deps: QS73 ✅) **A recording has no bound and will fill a disk if it is left running** — The log rotates against a fixed total and a recording does not, so the one that writes every byte a host sends is the one with nothing stopping it. → §QS133
 - 📋 **QS134** (deps: QS73 ✅, QS129) **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The recorder and the title's indication both work, and the only caller that can begin one is a test, so the feature reaches no user. → §QS134
 - 📋 **QS150** (deps: —) **A defect report about a black window says what an adapter probe found, not what the window did** — The bundle opens its own probe because nothing at that level held a device, and now the client holds one that has been drawing. → §QS150
-- 📋 **QS154** (deps: QS30 ✅) **Naming a typeface on any WPF text kills the client, because invariant globalization refuses the culture WPF builds** — A one-line dialog took the client down with a CultureNotFoundException, and nothing says which of the remaining WPF text is one edit from the same. → §QS154
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
