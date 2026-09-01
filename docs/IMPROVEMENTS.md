@@ -1382,29 +1382,6 @@ a graphics driver.
 
 Falsified when a client with sixteen panes open holds sixteen devices.
 
-### §QS165 The counter that stopped being one pane's
-
-`TerminalView.Draws` returns `CellRenderer.Draws`, and since QS49 the renderer is
-shared. So the number is the whole client's, and a window with four panes reports each
-of them as having drawn what all four did.
-
-Nothing is wrong today, and that is the part worth writing down. Every case that reads
-it opens a share of its own, so the sum happens to be that pane's — `TerminalViewTests`
-is four cases each with one pane. The reading is right for the wrong reason, and it
-stays right only while nobody writes the case that would catch this: two panes, one
-idle, asserting the idle one drew nothing.
-
-That case is exactly Block C's criterion — *an idle window issues no draw calls* — read
-against a client that now has more than one pane. It cannot be written against this
-counter.
-
-`Frames` is already per pane, because `RedrawGate` is. The difference between them is
-real and worth keeping: a gate counts frames a pane was owed, a renderer counts draw
-calls issued. What is missing is the second one per pane, which is a counter on the view
-incremented where it calls the renderer.
-
-Falsified when a pane with nothing to draw reports draw calls another pane made.
-
 ### §QS166 The frames drawn for a pane nobody can see
 
 QS49's design is explicit: *an invisible pane — another tab, a minimised window, an

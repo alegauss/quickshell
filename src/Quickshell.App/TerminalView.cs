@@ -39,6 +39,7 @@ public sealed class TerminalView : IDisposable
 
     private CellInstance[] _cells;
     private long _wanted;
+    private long _draws;
 
     private TerminalView(GraphicsDevice device, GlyphAtlas atlas, PresentSurface surface,
                          CellRenderer renderer, Palette palette)
@@ -75,8 +76,21 @@ public sealed class TerminalView : IDisposable
     /// <summary>Wake-ups that found nothing to draw.</summary>
     public long Skipped => _gate.Skipped;
 
-    /// <summary>Draw calls the renderer has issued into this surface.</summary>
-    public long Draws => _renderer.Draws;
+    /// <summary>
+    /// Draw calls issued into this surface, and no other's.
+    ///
+    /// <para><b>Counted here rather than read off the renderer, and QS165 is why.</b> Since QS49 the
+    /// renderer is every pane's, so its own counter is the whole client's — a window with four panes
+    /// reported each of them as having drawn what all four did. That was right in every case that
+    /// read it, because each opened a share of its own, and it would have been wrong the first time
+    /// anybody wrote the case worth writing: two panes, one idle, asserting the idle one drew
+    /// nothing.</para>
+    ///
+    /// <para>Kept beside <see cref="Frames"/> rather than folded into it, because they are two
+    /// different claims: the gate counts frames this pane was owed, and this counts draw calls it
+    /// actually issued. A gap between them would be a frame claimed and never drawn.</para>
+    /// </summary>
+    public long Draws => _draws;
 
     /// <summary>
     /// What the cursor is drawn as.
@@ -286,6 +300,8 @@ public sealed class TerminalView : IDisposable
 
         _renderer.Draw(_surface, _cells.AsSpan(0, _painter.Painted), buffer.Columns);
         _surface.Present();
+
+        _draws++;
 
         return true;
     }

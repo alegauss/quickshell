@@ -104,6 +104,48 @@ public sealed class TerminalShareTests
     }
 
     /// <summary>
+    /// Block C's criterion, read against a client that has more than one pane: an idle pane issues
+    /// no draw calls, however busy the pane beside it is.
+    ///
+    /// <para><b>This is the case QS165 existed to make writable.</b> Before it, every pane reported
+    /// the shared renderer's total, so a pane that drew nothing answered with what its neighbour
+    /// drew — and the assertion below would have failed on a client that was behaving perfectly.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void AnIdlePaneIssuesNoDrawCallsWhileTheOneBesideItIsBusy()
+    {
+        (long busy, long idle) = OnPanes(2, (share, tab, views) =>
+        {
+            foreach (TerminalView view in views)
+            {
+                view.Renderer.Blink.Enabled = false;
+            }
+
+            // Both owe a first frame; after this pass neither owes anything.
+            share.DrawOnce();
+
+            long before = views[1].Draws;
+
+            // One host prints, twenty times over, and the loop is asked twenty times.
+            for (int said = 0; said < 20; said++)
+            {
+                tab.Leaves[0].Emulator.Feed(Encoding.UTF8.GetBytes($"line {said}\r\n"));
+
+                share.DrawOnce();
+            }
+
+            return (views[0].Draws, views[1].Draws - before);
+        });
+
+        // The busy one drew its first frame and one per batch after it.
+        Assert.Equal(21, busy);
+
+        // And the idle one drew nothing at all, which is the claim.
+        Assert.Equal(0, idle);
+    }
+
+    /// <summary>
     /// Builds a window with that many panes in it, opens a view on each, and hands them to the work.
     ///
     /// <para>Shown, because <c>HwndHost</c> builds its child window during layout and there is no
