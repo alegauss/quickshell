@@ -62,7 +62,7 @@
 
 ## Block G — The clean interface, defended
 
-- ⏳ **QS46** (deps: QS4 ✅, QS9 ✅, QS116 🛠) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The pane holds a handle and nothing presents into it, so the terminal in that window is an empty rectangle rather than a session. → §QS46
+- ⏳ **QS46** (deps: QS4 ✅, QS9 ✅, QS116 🛠) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The pane now has a swapchain and a loop, so what is left is a terminal with no session behind it: QS126's connection, not this line's chrome. → §QS46
 - 📋 **QS47** (deps: QS46 ⏳, QS26 ✅) **Every session needs its own window, so working across four hosts means four windows to arrange** — A tab is what makes several sessions one workspace, and it is the surface the window title, the session tree and the layout all attach to. → §QS47
 - 📋 **QS48** (deps: QS47) **Two sessions cannot be seen at once, so comparing output means alternating between tabs** — Watching a log while typing on another host is the ordinary case for this audience, and a tab-only client makes it impossible rather than merely awkward. → §QS48
 - 📋 **QS49** (deps: QS48, QS6 ✅) **Each pane would open its own graphics device, so four panes cost four times the driver's attention** — The device, the atlas and the shaders are process-wide resources panes should share, and sharing them is a decision about ownership rather than an optimisation. → §QS49
@@ -93,6 +93,7 @@
 - 📋 **QS132** (deps: QS72 ✅) **A crash report cannot name the GPU, on the failures most likely to be about one** — The adapter line reads "no device is held at this level" because nothing above the pane holds one, so a driver report arrives without the driver. → §QS132
 - 📋 **QS133** (deps: QS73 ✅) **A recording has no bound and will fill a disk if it is left running** — The log rotates against a fixed total and a recording does not, so the one that writes every byte a host sends is the one with nothing stopping it. → §QS133
 - 📋 **QS134** (deps: QS73 ✅, QS129) **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The recorder and the title's indication both work, and the only caller that can begin one is a test, so the feature reaches no user. → §QS134
+- 📋 **QS150** (deps: —) **A defect report about a black window says what an adapter probe found, not what the window did** — The bundle opens its own probe because nothing at that level held a device, and now the client holds one that has been drawing. → §QS150
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
@@ -106,6 +107,7 @@
 - 📋 **QS102** (deps: QS24 ✅) **The parser is fuzzed only by the suite's own mutator, which stops when the build does** — A bounded run at a fixed seed explores the same inputs for ever, so coverage-guided fuzzing needs a harness that runs for hours outside the suite. → §QS102
 - 📋 **QS136** (deps: —) **A run with a hundred tests skipped prints the same "Passed" as one with none** — The fixture stops on its own and the summary line does not change, so the green that proves nothing looks exactly like the green that proves everything. → §QS136
 - 📋 **QS138** (deps: —) **Eight minutes of the suite is one helper waiting out a timeout it then ignores** — A test that passes by timing out would pass if the command never ran, and it costs the run more than every other test put together. → §QS138
+- 📋 **QS149** (deps: —) **A tool that rewrites a source file can mangle its punctuation and every check stays green** — The hygiene test bans control bytes and says nothing about text that decoded through the wrong codepage on its way back to disk. → §QS149
 
 ## Done when — Block A
 

@@ -1691,6 +1691,30 @@ somebody starts by accident.
 Falsified when a user who has just hit a terminal defect has no way to record the
 session that shows it.
 
+### §QS150 The device that is now in the room
+
+`DiagnosticBundle` answers the adapter question by opening a fresh `DxgiAdapterProbe`
+and asking what the chain would choose. That was the only honest answer available when
+it was written: nothing in the composing layer held a device, so the bundle described a
+hypothetical one.
+
+Since QS116 the client holds a real one, and it has been drawing. The difference matters
+for the report this feature exists to produce. "The terminal is black" is answered by
+frames drawn, presents that reached the glass, presents DXGI answered
+`DXGI_STATUS_OCCLUDED` to, and how deep the present queue got — none of which a probe
+can know, and all of which `PresentSurface` and `RedrawGate` already count. A probe can
+also disagree with the running device outright: it chooses again, and a client that fell
+back to WARP after a device was lost would be reported on the adapter it did not end up
+using.
+
+So the bundle should take the live view where there is one and keep the probe for where
+there is not — a client that crashed before its pane was laid out, which is a state
+worth naming rather than papering over.
+
+Nothing here is new work in the render layer: the counters exist and are public.
+
+Falsified by a bundle naming an adapter the client is not drawing on.
+
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ### §QS81 The document the non-goals were written for
@@ -1870,3 +1894,25 @@ falls out of that for free.
 
 Falsified when a run of the suite spends more time waiting for markers than transferring
 files.
+
+### §QS149 The other invisible byte
+
+A source file was rewritten by a shell one-liner that read it as one encoding and wrote
+it as another. Every em dash in it turned to mojibake, in prose that had been correct
+for months and in a comment written minutes earlier. It compiled, the tests passed, and
+nothing anywhere reported it: `git diff --stat` showing far more changed lines than the
+edit accounted for is what caught it, and only because someone looked.
+
+This is the same failure `SourceHygieneTests` already exists for, one codepage along. A
+raw ESC byte is invisible in a diff; mojibake is visible but only to a reader already
+looking at that line for another reason, and a review of a large diff is exactly where
+nobody is. Both survive a compile, both survive a test run, and whether either happens
+at all is a property of the tool that wrote the file rather than of the file.
+
+So the same test should refuse it: the byte sequences a UTF-8 file acquires when it has
+been decoded as Windows-1252 and re-encoded, none of which occurs in this repository's
+real prose in any language it is written in.
+
+Cheap, and it belongs beside the check it generalises rather than in a new file.
+
+Falsified by a file that carries mojibake through a green suite.
