@@ -22,27 +22,27 @@ public sealed class PaneAttachment : IDisposable
 {
     private readonly TerminalPane _pane;
     private readonly Emulator _emulator;
+    private readonly TerminalShare _share;
     private readonly DamageSignal _damage;
     private readonly string _family;
     private readonly float _sizeInPoints;
-    private readonly CancellationTokenSource _stop = new();
     private readonly Pointer _pointer = new();
 
-    private Task _loop = Task.CompletedTask;
     private bool _dragging;
     private bool _disposed;
 
-    internal PaneAttachment(TerminalPane pane, Emulator emulator, DamageSignal damage,
+    internal PaneAttachment(TerminalPane pane, Emulator emulator, TerminalShare share,
                             string family, float sizeInPoints)
     {
         ArgumentNullException.ThrowIfNull(pane);
         ArgumentNullException.ThrowIfNull(emulator);
-        ArgumentNullException.ThrowIfNull(damage);
+        ArgumentNullException.ThrowIfNull(share);
         ArgumentException.ThrowIfNullOrWhiteSpace(family);
 
         _pane = pane;
         _emulator = emulator;
-        _damage = damage;
+        _share = share;
+        _damage = share.Damage;
         _family = family;
         _sizeInPoints = sizeInPoints;
 
@@ -92,16 +92,16 @@ public sealed class PaneAttachment : IDisposable
         _pane.SizeChanged -= Sized;
         _pane.Mouse -= Pointed;
 
-        _stop.Cancel();
+        if (View is { } view)
+        {
+            // Taken off the loop first, so nothing is drawing into a swapchain on its way out. The
+            // loop itself keeps running: it belongs to the share and to the panes still on screen.
+            _share.Forget(view);
 
-        // Bounded, because a loop that will not stop must not hold a window open. The device is
-        // released either way: the process is leaving.
-        _loop.Wait(TimeSpan.FromSeconds(2));
+            view.Dispose();
+        }
 
-        View?.Dispose();
         View = null;
-
-        _stop.Dispose();
     }
 
     /// <summary>
@@ -455,7 +455,7 @@ public sealed class PaneAttachment : IDisposable
 
         try
         {
-            View = TerminalView.Open(
+            View = _share.View(
                 _pane.PaneHandle,
                 (uint)Math.Max(1d, _pane.ActualWidth * dpi.DpiScaleX),
                 (uint)Math.Max(1d, _pane.ActualHeight * dpi.DpiScaleY),
@@ -465,6 +465,15 @@ public sealed class PaneAttachment : IDisposable
         catch (Exception error)
         {
             Failed = error;
+
+            return;
+        }
+
+        if (View is null)
+        {
+            // The device would not open, and the share is holding what went wrong. Kept rather than
+            // thrown for the reason below: this runs on a layout callback.
+            Failed = _share.Failed;
 
             return;
         }
@@ -482,8 +491,10 @@ public sealed class PaneAttachment : IDisposable
         // builds an element's peer once, so a pane already asked about keeps whatever it answered.
         _pane.Reading ??= _emulator.Buffer;
 
-        // Off the UI thread from here. Nothing else touches the device, which is what makes an
-        // unsynchronised D3D11 context correct.
-        _loop = Task.Run(() => View.RunAsync(_emulator, _damage, _stop.Token));
+        // Off the UI thread from here, on the share's one loop rather than a thread of this pane's
+        // own. Nothing else touches the device — which is both what makes an unsynchronised D3D11
+        // context correct and why a thread per pane would not be: the immediate context is not
+        // free-threaded, so two panes drawing at once is a race rather than a speed-up.
+        _share.Draw(View, _emulator);
     }
 }

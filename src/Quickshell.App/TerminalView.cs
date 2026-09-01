@@ -32,8 +32,6 @@ namespace Quickshell.App;
 public sealed class TerminalView : IDisposable
 {
     private readonly GraphicsDevice _device;
-    private readonly GlyphRasteriser _rasteriser;
-    private readonly GlyphAtlas _atlas;
     private readonly PresentSurface _surface;
     private readonly CellRenderer _renderer;
     private readonly GridPainter _painter;
@@ -42,12 +40,10 @@ public sealed class TerminalView : IDisposable
     private CellInstance[] _cells;
     private long _wanted;
 
-    private TerminalView(GraphicsDevice device, GlyphRasteriser rasteriser, GlyphAtlas atlas,
-                         PresentSurface surface, CellRenderer renderer, Palette palette)
+    private TerminalView(GraphicsDevice device, GlyphAtlas atlas, PresentSurface surface,
+                         CellRenderer renderer, Palette palette)
     {
         _device = device;
-        _rasteriser = rasteriser;
-        _atlas = atlas;
         _surface = surface;
         _renderer = renderer;
         _painter = new GridPainter(atlas, palette);
@@ -145,33 +141,28 @@ public sealed class TerminalView : IDisposable
     /// </param>
     /// <param name="width">The pane's width in pixels.</param>
     /// <param name="height">Its height.</param>
-    /// <param name="font">What to rasterise with. Its measured cell decides the grid.</param>
     /// <param name="palette">The session's palette, resolved afresh every frame.</param>
-    public static TerminalView Open(nint window, uint width, uint height, FontSettings font,
-                                    Palette palette)
+    /// <param name="device">The one device, which this view does not own.</param>
+    /// <param name="atlas">The one atlas, likewise.</param>
+    /// <param name="renderer">The one set of shaders, likewise.</param>
+    /// <remarks>
+    /// <para><b>Only the swapchain is this view's, and QS49 is why.</b> Everything else here is
+    /// process-wide and arrives already built: a view that opened a device would be sixteen devices
+    /// in a window with sixteen panes, and sixteen copies of the same rasterised font.</para>
+    /// </remarks>
+    public static TerminalView On(GraphicsDevice device, GlyphAtlas atlas, CellRenderer renderer,
+                                  nint window, uint width, uint height, Palette palette)
     {
+        ArgumentNullException.ThrowIfNull(device);
+        ArgumentNullException.ThrowIfNull(atlas);
+        ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(palette);
         ArgumentOutOfRangeException.ThrowIfZero(window);
 
-        GraphicsDevice device = GraphicsDevice.Open(outputWindow: window);
-        GlyphRasteriser rasteriser = new();
+        PresentSurface surface = PresentSurface.For(device, window, Math.Max(1u, width),
+                                                    Math.Max(1u, height));
 
-        try
-        {
-            GlyphAtlas atlas = GlyphAtlas.For(device, font, rasteriser: rasteriser);
-            PresentSurface surface = PresentSurface.For(device, window, Math.Max(1u, width),
-                                                        Math.Max(1u, height));
-            CellRenderer renderer = CellRenderer.For(device, atlas, rasteriser.Measure(font));
-
-            return new TerminalView(device, rasteriser, atlas, surface, renderer, palette);
-        }
-        catch
-        {
-            rasteriser.Dispose();
-            device.Dispose();
-
-            throw;
-        }
+        return new TerminalView(device, atlas, surface, renderer, palette);
     }
 
     /// <summary>
@@ -300,65 +291,6 @@ public sealed class TerminalView : IDisposable
     }
 
     /// <summary>
-    /// Draws until cancelled, waking only for something that changes the picture.
-    /// </summary>
-    /// <param name="emulator">The model to draw.</param>
-    /// <param name="damage">What the pipeline sets when the parser has drained a batch.</param>
-    /// <param name="token">Stops the loop. Cancelling it is how a session ends.</param>
-    public async Task RunAsync(Emulator emulator, DamageSignal damage,
-                               CancellationToken token = default)
-    {
-        ArgumentNullException.ThrowIfNull(emulator);
-        ArgumentNullException.ThrowIfNull(damage);
-
-        // The first frame is owed unconditionally: the pane's handle is a rectangle the colour of
-        // whatever was behind it until something presents into it, and nothing has changed yet.
-        DrawIfNeeded(emulator);
-
-        // Held across iterations on purpose. A waiter abandoned when the blink deadline wins would
-        // still be in the queue, and DamageSignal takes the change when it wakes — so a discarded
-        // wait is a wake-up consumed by nobody, and the frame behind it is never drawn.
-        Task? waiting = null;
-
-        try
-        {
-            while (!token.IsCancellationRequested)
-            {
-                waiting ??= damage.WaitAsync(token);
-
-                // Null is the answer that matters: no blink, no clock, nothing that changes on its
-                // own. The loop then sleeps on the host alone, and an idle window costs nothing.
-                TimeSpan? wake = _renderer.NextCursorWake();
-
-                Task woken = wake is null
-                    ? waiting
-                    : await Task.WhenAny(waiting, Task.Delay(wake.Value, token))
-                                .ConfigureAwait(false);
-
-                if (woken == waiting)
-                {
-                    // Awaited rather than assumed complete, so a cancellation leaves by the one
-                    // exit below and the change it was carrying is not counted as drawn.
-                    await waiting.ConfigureAwait(false);
-
-                    waiting = null;
-                }
-
-                if (token.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                DrawIfNeeded(emulator);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // The end of a session, and not a fault.
-        }
-    }
-
-    /// <summary>
     /// Opens a view on a pane the moment it has both a handle and a size, and runs its loop.
     ///
     /// <para><b>Not at construction, because neither exists then.</b> A pane's handle is built during
@@ -372,13 +304,13 @@ public sealed class TerminalView : IDisposable
     /// </summary>
     /// <param name="pane">The pane to draw into.</param>
     /// <param name="emulator">The model. Resized to whatever grid the pane turns out to hold.</param>
-    /// <param name="damage">What a session sets when the parser has drained a batch.</param>
+    /// <param name="share">The one device, atlas and render loop every pane in the process uses.</param>
     /// <param name="family">The font family, from the user's settings.</param>
     /// <param name="sizeInPoints">Its size.</param>
     /// <returns>The attachment, which stops the loop and releases the device when disposed.</returns>
-    public static PaneAttachment Attach(TerminalPane pane, Emulator emulator, DamageSignal damage,
+    public static PaneAttachment Attach(TerminalPane pane, Emulator emulator, TerminalShare share,
                                         string family, float sizeInPoints) =>
-        new(pane, emulator, damage, family, sizeInPoints);
+        new(pane, emulator, share, family, sizeInPoints);
 
     /// <summary>
     /// Forgets the last frame, so the next wake-up draws.
@@ -388,13 +320,12 @@ public sealed class TerminalView : IDisposable
     /// </summary>
     public void Invalidate() => _gate.Invalidate();
 
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        _renderer.Dispose();
-        _surface.Dispose();
-        _atlas.Dispose();
-        _rasteriser.Dispose();
-        _device.Dispose();
-    }
+    /// <summary>
+    /// Releases the swapchain, and nothing else.
+    ///
+    /// <para>The device, the atlas and the shaders belong to <see cref="TerminalShare"/> and outlive
+    /// every pane that drew with them — a view that released them would take the other panes' render
+    /// path with it the first time one was closed.</para>
+    /// </summary>
+    public void Dispose() => _surface.Dispose();
 }

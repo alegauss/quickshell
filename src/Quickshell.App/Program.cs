@@ -44,6 +44,11 @@ public static class Entry
         MainWindow? window = null;
         PaneAttachment? terminal = null;
 
+        // One device, one atlas, one set of shaders and one render thread for every pane this
+        // process opens — QS49. It holds nothing yet: the device is opened by the first pane that
+        // has a handle, because which adapter to use is decided by the window the output goes to.
+        using TerminalShare share = new();
+
         // Armed before the window, because a failure while building one is a failure the user would
         // otherwise see as nothing happening at all. It reads no file and opens nothing, so it does
         // not spend the cold start this order exists to protect.
@@ -68,7 +73,7 @@ public static class Entry
         // one that was current when the window was built. Asked afresh each time for exactly that
         // reason: switching tabs and moving between panes are the two places a client like this goes
         // wrong quietly, and it goes wrong by answering for the one before.
-        window.Opens = () => Opened(window, settings);
+        window.Opens = () => Opened(window, settings, share);
         window.Connects = leaf => _ = leaf.ConnectAsync();
 
         // Not awaited: what is being ended is already out of the window and nothing references it,
@@ -87,7 +92,7 @@ public static class Entry
         // The terminal itself, and it is deliberately the last thing: opening a device, compiling
         // two shaders and rasterising a font are the most expensive things this process does, and
         // none of them is between the user and their first sight of the window.
-        Opened(window, settings);
+        Opened(window, settings, share);
 
         terminal = Pane(window)?.Terminal;
 
@@ -99,7 +104,7 @@ public static class Entry
         {
             for (int tab = 1; tab < Math.Clamp(more, 1, 16); tab++)
             {
-                Opened(window, settings);
+                Opened(window, settings, share);
             }
         }
 
@@ -183,10 +188,10 @@ public static class Entry
     /// <para>The tab is registered as an open session in the same breath, because the window's
     /// closing question names what is open and a tab is what "open" now means.</para>
     /// </summary>
-    private static void Opened(MainWindow window, Settings settings)
+    private static void Opened(MainWindow window, Settings settings, TerminalShare share)
     {
         string host = Path.GetFileName(LocalSession.Shell);
-        TerminalTab tab = TerminalTab.Open(settings, host);
+        TerminalTab tab = TerminalTab.Open(settings, share, host);
 
         window.Add(tab);
         window.Sessions.Open(host, another: true);

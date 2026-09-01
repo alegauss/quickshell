@@ -19,6 +19,9 @@ namespace Quickshell.App.Tests;
 /// </summary>
 public sealed class WindowTests : IDisposable
 {
+    /// <summary>The one device, atlas and render loop these tabs draw with. See QS49.</summary>
+    private static readonly TerminalShare Shared = new();
+
     private readonly string _directory =
         Path.Combine(Path.GetTempPath(), $"quickshell-window-{Guid.NewGuid():N}");
 
@@ -80,11 +83,11 @@ public sealed class WindowTests : IDisposable
 
             bool none = window.TabStripShowing;
 
-            window.Add(TerminalTab.Open(Settings.Default, "first"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "first"));
 
             bool one = window.TabStripShowing;
 
-            window.Add(TerminalTab.Open(Settings.Default, "second"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "second"));
 
             bool two = window.TabStripShowing;
 

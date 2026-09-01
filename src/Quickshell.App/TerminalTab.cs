@@ -20,13 +20,15 @@ public sealed class TerminalTab : IAsyncDisposable
 {
     private readonly Dictionary<int, TerminalLeaf> _leaves = [];
     private readonly Settings _settings;
+    private readonly TerminalShare _share;
 
     private int _focused;
     private bool _disposed;
 
-    private TerminalTab(Settings settings, string host, TerminalLeaf first)
+    private TerminalTab(Settings settings, string host, TerminalShare share, TerminalLeaf first)
     {
         _settings = settings;
+        _share = share;
 
         Host = host;
 
@@ -76,12 +78,13 @@ public sealed class TerminalTab : IAsyncDisposable
     public bool HasActivity => _leaves.Values.Any(leaf => leaf.HasActivity);
 
     /// <summary>Builds a tab with one pane in it, with a device and a loop but no session yet.</summary>
-    public static TerminalTab Open(Settings settings, string host)
+    public static TerminalTab Open(Settings settings, TerminalShare share, string host)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
+        ArgumentNullException.ThrowIfNull(share);
 
-        return new TerminalTab(settings, host, TerminalLeaf.Open(settings, host));
+        return new TerminalTab(settings, host, share, TerminalLeaf.Open(settings, host, share));
     }
 
     /// <summary>Starts a shell behind the pane that has the keyboard.</summary>
@@ -106,7 +109,7 @@ public sealed class TerminalTab : IAsyncDisposable
             return null;
         }
 
-        TerminalLeaf leaf = TerminalLeaf.Open(_settings, Host);
+        TerminalLeaf leaf = TerminalLeaf.Open(_settings, Host, _share);
 
         _leaves[made] = leaf;
         _focused = made;

@@ -32,18 +32,19 @@ public sealed class TerminalLeaf : IAsyncDisposable
     private long _seen;
     private bool _disposed;
 
-    private TerminalLeaf(Emulator emulator, TerminalPane pane, DamageSignal damage,
-                        Settings settings, string host)
+    private TerminalLeaf(Emulator emulator, TerminalPane pane, TerminalShare share,
+                         Settings settings, string host)
     {
         Emulator = emulator;
         Pane = pane;
         Host = host;
 
-        _damage = damage;
+        // The one signal every pane in the process sets, because there is one loop reading it.
+        _damage = share.Damage;
 
         Typist = new Typist(emulator);
 
-        Terminal = TerminalView.Attach(pane, emulator, damage,
+        Terminal = TerminalView.Attach(pane, emulator, share,
                                        settings.FontFamily, (float)settings.FontSize);
     }
 
@@ -111,17 +112,19 @@ public sealed class TerminalLeaf : IAsyncDisposable
     /// </summary>
     /// <param name="settings">The font, its size and how much scrollback to keep.</param>
     /// <param name="host">What it will be connected to, for the title of last resort.</param>
-    public static TerminalLeaf Open(Settings settings, string host)
+    /// <param name="share">The one device, atlas and render loop every pane in the process uses.</param>
+    public static TerminalLeaf Open(Settings settings, string host, TerminalShare share)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
+        ArgumentNullException.ThrowIfNull(share);
 
         // The size is a placeholder for one layout pass. The pane decides the real grid, and the
         // model is resized to it before a frame is drawn.
         Emulator emulator = new(80, 25, settings.Scrollback);
 
         return new TerminalLeaf(emulator, new TerminalPane { Reading = emulator.Buffer },
-                               new DamageSignal(), settings, host);
+                                share, settings, host);
     }
 
     /// <summary>

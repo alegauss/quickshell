@@ -1074,31 +1074,6 @@ Falsified when a hundred connects through the proxy all receive a well-formed re
 
 ## Block G — The clean interface, defended
 
-### §QS49 One device, many surfaces, one atlas
-
-Panes multiply, and the naive arrangement multiplies everything along with them. The
-device, the shaders, the constant buffers and — above all — the glyph atlas are
-process-wide. Only the swapchain and the instance buffer are per pane.
-
-The atlas is why this matters. Sixteen panes at the same font share one atlas and one
-copy of every glyph; sixteen atlases would be sixteen copies of the same texture memory
-and sixteen rasterisation passes over the same characters. Panes at different sizes
-share it too, since size is already part of the cache key.
-
-Rendering is one thread for all panes rather than a thread each. It waits on whichever
-pane has damage, draws only those, presents only those. A thread per pane would multiply
-both the context switching and the number of things contending for the device's
-immediate context, which is not free-threaded and will serialise them anyway.
-
-An invisible pane — another tab, a minimised window, an occluded one — draws nothing at
-all. `DXGI_STATUS_OCCLUDED` from a present is the signal to stop; damage is what resumes
-it.
-
-Device loss now takes every pane at once, so recovery is process-wide, and each pane
-rebuilds from terminal state that never touched the GPU.
-
-Falsified when atlas memory in use scales with the number of open panes.
-
 ### §QS50 A good default beats a checkbox
 
 The rule this surface is built on: prefer a good default to an option. Every setting is

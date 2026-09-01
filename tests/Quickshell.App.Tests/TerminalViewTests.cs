@@ -41,7 +41,9 @@ public sealed class TerminalViewTests
     {
         (long draws, long frames, uint width, uint height, int columns, int rows) = OnPane(pane =>
         {
-            using TerminalView view = Open(pane);
+            using TerminalShare share = new();
+
+            TerminalView view = Open(share, pane);
 
             Emulator emulator = new(view.Columns, view.Rows);
 
@@ -78,7 +80,9 @@ public sealed class TerminalViewTests
     {
         (long first, long after) = OnPane(pane =>
         {
-            using TerminalView view = Open(pane);
+            using TerminalShare share = new();
+
+            TerminalView view = Open(share, pane);
 
             view.Renderer.Blink.Enabled = false;
 
@@ -116,22 +120,23 @@ public sealed class TerminalViewTests
     {
         (long afterFirst, long afterPrint, long afterSilence) = OnPane(pane =>
         {
-            using TerminalView view = Open(pane);
+            // The share owns the loop since QS49, so this is the client's own arrangement rather
+            // than one built for the test: one thread, one signal, and a view registered on it.
+            using TerminalShare share = new();
+
+            TerminalView view = Open(share, pane);
 
             view.Renderer.Blink.Enabled = false;
 
             Emulator emulator = new(view.Columns, view.Rows);
-            DamageSignal damage = new();
 
-            using CancellationTokenSource stop = new();
-
-            Task loop = Task.Run(() => view.RunAsync(emulator, damage, stop.Token));
+            share.Draw(view, emulator);
 
             long first = Settled(view, atLeast: 1);
 
             // What a pipeline does: parse a batch, then say so once.
             emulator.Feed(Encoding.UTF8.GetBytes("the host said something"));
-            damage.Set();
+            share.Damage.Set();
 
             long printed = Settled(view, atLeast: first + 1);
 
@@ -139,13 +144,7 @@ public sealed class TerminalViewTests
             // than any wake-up a clock-driven loop would take.
             Thread.Sleep(500);
 
-            long silent = view.Draws;
-
-            stop.Cancel();
-
-            Assert.True(loop.Wait(Patience), "the loop did not stop when it was cancelled");
-
-            return (first, printed, silent);
+            return (first, printed, view.Draws);
         });
 
         Assert.Equal(1, afterFirst);
@@ -171,7 +170,9 @@ public sealed class TerminalViewTests
         (uint width, uint height, int columns, int rows, List<(int, int)> raised, long draws) =
             OnPane(pane =>
             {
-                using TerminalView view = Open(pane);
+                using TerminalShare share = new();
+
+            TerminalView view = Open(share, pane);
 
                 view.Renderer.Blink.Enabled = false;
 
@@ -217,7 +218,9 @@ public sealed class TerminalViewTests
     {
         (int raised, long draws) = OnPane(pane =>
         {
-            using TerminalView view = Open(pane);
+            using TerminalShare share = new();
+
+            TerminalView view = Open(share, pane);
 
             view.Renderer.Blink.Enabled = false;
 
@@ -271,13 +274,21 @@ public sealed class TerminalViewTests
         return view.Draws;
     }
 
-    /// <summary>Opens a view on the pane at the pane's own size, in the client's own font.</summary>
-    private static TerminalView Open(TerminalPane pane) =>
-        TerminalView.Open(pane.PaneHandle,
-                          (uint)Math.Max(1d, pane.ActualWidth),
-                          (uint)Math.Max(1d, pane.ActualHeight),
-                          new FontSettings("Consolas", 16f, 96f),
-                          new Palette());
+    /// <summary>
+    /// Opens a view on the pane at the pane's own size, in the client's own font.
+    ///
+    /// <para>Through a share since QS49, because that is the only way there is: a view holds a
+    /// swapchain and borrows everything else. A case that wants its own device makes its own share,
+    /// which is one line and is what the client does too.</para>
+    /// </summary>
+    private static TerminalView Open(TerminalShare share, TerminalPane pane) =>
+        share.View(pane.PaneHandle,
+                   (uint)Math.Max(1d, pane.ActualWidth),
+                   (uint)Math.Max(1d, pane.ActualHeight),
+                   new FontSettings("Consolas", 16f, 96f),
+                   new Palette())
+        ?? throw new InvalidOperationException(
+            $"no graphics device opened on this desk: {share.Failed?.Message}");
 
     /// <summary>
     /// Builds the client's window with a pane in it, and hands the pane to the work.

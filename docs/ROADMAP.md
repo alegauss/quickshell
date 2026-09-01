@@ -63,7 +63,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS49** (deps: QS48 ✅, QS6 ✅) **Each pane would open its own graphics device, so four panes cost four times the driver's attention** — The device, the atlas and the shaders are process-wide resources panes should share, and sharing them is a decision about ownership rather than an optimisation. → §QS49
 - 📋 **QS50** (deps: QS46 ✅) **Nothing can be configured, so the font, the colours and the keybindings are whatever the code says** — A settings surface is where a lean client most easily becomes a bloated one, so what is offered and what is simply decided are both chosen here. → §QS50
 - 📋 **QS51** (deps: QS50) **A user's chosen colour scheme has to be entered as twenty colours by hand** — Schemes already circulate in two formats everybody shares, so reading them is a small piece of work standing between a user and a familiar terminal. → §QS51
 - 📋 **QS52** (deps: QS47 ✅) **Every action needs a chord the user memorised or a menu they have to go looking for** — A palette is how a lean interface keeps its actions reachable without growing toolbars, which is the same trade this project makes everywhere else. → §QS52

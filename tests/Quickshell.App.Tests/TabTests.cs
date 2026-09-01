@@ -23,6 +23,15 @@ namespace Quickshell.App.Tests;
 /// </summary>
 public sealed class TabTests
 {
+    /// <summary>
+    /// The one device, atlas and render loop these tabs draw with, which is QS49's whole claim.
+    ///
+    /// <para>Static because it is process-wide in the client too, and never disposed here: a share
+    /// opens nothing until a pane with a handle asks it to, and no pane in this file ever gets one.
+    /// </para>
+    /// </summary>
+    private static readonly TerminalShare Shared = new();
+
     /// <summary>Three tabs, because two cannot tell a wrap from a clamp.</summary>
     private static readonly string[] Three = ["a", "b", "c"];
 
@@ -34,8 +43,8 @@ public sealed class TabTests
         {
             MainWindow window = new();
 
-            TerminalTab one = TerminalTab.Open(Settings.Default, "one");
-            TerminalTab two = TerminalTab.Open(Settings.Default, "two");
+            TerminalTab one = TerminalTab.Open(Settings.Default, Shared, "one");
+            TerminalTab two = TerminalTab.Open(Settings.Default, Shared, "two");
 
             window.Add(one);
             window.Add(two);
@@ -73,7 +82,7 @@ public sealed class TabTests
 
             foreach (string host in Three)
             {
-                window.Add(TerminalTab.Open(Settings.Default, host));
+                window.Add(TerminalTab.Open(Settings.Default, Shared, host));
             }
 
             List<int> at = [];
@@ -126,7 +135,7 @@ public sealed class TabTests
     /// <summary>The three sources in turn, on the thread a pane can be built on.</summary>
     private static (string Connected, string Written, string Named) Ranked()
     {
-        TerminalTab tab = TerminalTab.Open(Settings.Default, "cmd.exe");
+        TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "cmd.exe");
 
         // Nothing said yet, so what it is connected to.
         string connected = tab.Title;
@@ -152,10 +161,10 @@ public sealed class TabTests
         {
             MainWindow window = new();
 
-            TerminalTab background = TerminalTab.Open(Settings.Default, "background");
+            TerminalTab background = TerminalTab.Open(Settings.Default, Shared, "background");
 
             window.Add(background);
-            window.Add(TerminalTab.Open(Settings.Default, "foreground"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "foreground"));
 
             bool before = background.HasActivity;
 
@@ -272,7 +281,7 @@ public sealed class TabTests
     /// </summary>
     private static TerminalTab Connected(Settings settings, string host, string? commandLine)
     {
-        TerminalTab tab = TerminalTab.Open(settings, host);
+        TerminalTab tab = TerminalTab.Open(settings, Shared, host);
 
         tab.ConnectAsync(commandLine).GetAwaiter().GetResult();
 
@@ -294,7 +303,7 @@ public sealed class TabTests
         {
             MainWindow window = new();
 
-            TerminalTab tab = TerminalTab.Open(Settings.Default, "cmd.exe");
+            TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "cmd.exe");
 
             window.Add(tab);
 
@@ -335,7 +344,7 @@ public sealed class TabTests
         {
             MainWindow window = new();
 
-            TerminalTab tab = TerminalTab.Open(Settings.Default, "cmd.exe");
+            TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "cmd.exe");
 
             window.Add(tab);
 
