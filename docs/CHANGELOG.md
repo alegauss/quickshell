@@ -94,6 +94,7 @@
 - ✅ **QS166** **A pane behind another tab keeps drawing, so a client with eight tabs presents seven frames nobody sees** — A pane behind another tab draws nothing and forgets its frame when it comes forward, and a window something covered asks DXGI rather than presenting to find out.
 - ✅ **QS50** **Nothing can be configured, so the font, the colours and the keybindings are whatever the code says** — Eight settings apply live from a file that keeps the notes a user writes in it, and a test refuses any key the reference does not document or documents and this build has not.
 - ✅ **QS169** **The settings file is read once at start-up, so editing it while the client runs changes nothing** — Saving the settings file applies it, including the rename an editor really saves by, and Ctrl+Shift+R rereads it where a watch could not be armed.
+- ✅ **QS162** **This client now takes thirteen chords from the remote program and tells nobody which** — Every chord this client takes from the remote program is named in docs/KEYS.md, held there by a test reading the real window's bindings in both directions.
 
 ## Block H — The reason to leave the incumbent
 

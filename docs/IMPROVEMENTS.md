@@ -1291,28 +1291,6 @@ the strip should always show, which is a decision rather than a fix.
 
 Falsified when a shell reports its working directory and nothing on screen changes.
 
-### §QS162 The chords this client takes, written down once
-
-Counted after QS47: Ctrl+Shift+F1, Ctrl+Shift+I, Ctrl+Shift+C, Ctrl+Shift+V,
-Ctrl+Shift+F, Ctrl+Shift+T, Ctrl+Shift+W, Ctrl+Tab, Ctrl+Shift+Tab, Shift+PageUp,
-Shift+PageDown and Alt+1 through Alt+9. Every one of them is a chord the program on the
-far side will never see.
-
-Each was argued for where it was taken, and the arguments are good: two modifiers keep a
-chord away from anything a terminal program binds, Ctrl+C is deliberately not among them
-because it is how a person stops something, and Ctrl+Tab was taken anyway because a
-client the user cannot leave a tab in has no tabs. None of that reaches a user. QS47's
-own design named the remedy — *those chords are reserved from the remote program, and
-that cost is stated in the keybinding reference rather than discovered* — and there is
-no keybinding reference in this repository to state it in.
-
-What is wanted is the list, and the list has to be one thing rather than a comment
-beside each binding, because the question a user asks is "what does this client take"
-and not "what does Ctrl+Shift+W do". The natural second reader is the palette QS52
-builds, which needs the same list for a different reason.
-
-Falsified when a chord is reserved and the list does not name it.
-
 ### §QS163 The divider that is a gap between two child windows
 
 `PaneLayout.Share` takes a proportion, clamps it so neither side can be dragged away,

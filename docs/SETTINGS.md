@@ -115,7 +115,7 @@ Control characters are stripped from a paste either way. That is not a setting.
   task is.
 - **The reported terminal type.** It is `xterm-256color`, and a client that let you change it would be
   a client that lets you tell a host something untrue about what it is talking to.
-- **Keybindings.** Not yet configurable, and the chords this client takes from the remote program are
-  not written down anywhere either — QS162.
+- **Keybindings.** Not yet configurable. The chords this client takes from the remote program are
+  written down in [the keys reference](KEYS.md), which is what that page is for.
 - **The colour scheme.** A terminal palette is a setting; reading the two formats everybody already
   shares is QS51, and this key arrives with it rather than before it.
