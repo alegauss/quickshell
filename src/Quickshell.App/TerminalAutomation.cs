@@ -18,6 +18,13 @@ namespace Quickshell.App;
 /// <para><b>Announcements are throttled, and that decides whether any of it works.</b> A reader
 /// handed one notification per row during a <c>cat</c> is still working through the first second of
 /// output a minute later. <see cref="TextChanges"/> is where that is decided; this only asks it.</para>
+///
+/// <para><b>It is reached through WPF's tree and never through the child window.</b> The pane hosts
+/// an HWND, and a hosted window answers <c>WM_GETOBJECT</c> down a path that produces no provider
+/// for a peer of this kind and then hands the nothing to UIA, which throws inside the message pump
+/// and takes the process with it — see <see cref="TerminalPane"/>, which is where that message stops
+/// now. This peer is published the ordinary way, as the peer of an element in a window's tree, and
+/// that is the path assistive technology actually walks. QS148.</para>
 /// </summary>
 public sealed class TerminalAutomationPeer : FrameworkElementAutomationPeer, ITextProvider
 {

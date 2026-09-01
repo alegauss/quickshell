@@ -58,6 +58,39 @@ public sealed class TerminalPane : HwndHost
         return Automation;
     }
 
+    /// <summary>
+    /// WM_GETOBJECT: what Windows sends a window when something wants its accessibility.
+    /// </summary>
+    private const int WmGetObject = 0x003D;
+
+    /// <summary>
+    /// Answers the child window's own accessibility question with "nothing", which is the truth.
+    ///
+    /// <para><b>This override is a crash fix and QS148 is the whole of it.</b> Left to
+    /// <see cref="HwndHost"/>, this message goes down a path that expects a peer of a type internal
+    /// to WPF; the peer this pane publishes is not one, so the path produces no provider, hands the
+    /// nothing to UIA, and the exception that follows comes out inside the message pump — which
+    /// means the client exits. Any accessibility client asking once was enough: a screen reader, a
+    /// UI case, or Windows itself.</para>
+    ///
+    /// <para><b>Nothing is lost by answering nothing.</b> This window is a texture a swapchain
+    /// presents into; it has no controls and no text of its own, and MSAA falls back to the default
+    /// provider for a window that declines. What a reader is meant to find is
+    /// <see cref="TerminalAutomationPeer"/>, and that is published as the peer of this element in
+    /// WPF's tree — a different path, which this message was never on.</para>
+    /// </summary>
+    protected override nint WndProc(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
+    {
+        if (msg == WmGetObject)
+        {
+            handled = true;
+
+            return nint.Zero;
+        }
+
+        return base.WndProc(hwnd, msg, wParam, lParam, ref handled);
+    }
+
     /// <inheritdoc/>
     protected override HandleRef BuildWindowCore(HandleRef hwndParent)
     {

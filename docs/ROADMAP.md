@@ -62,7 +62,7 @@
 
 ## Block G — The clean interface, defended
 
-- ⏳ **QS46** (deps: QS4 ✅, QS9 ✅, QS116 ⏳) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The pane holds a handle and nothing presents into it, so the terminal in that window is an empty rectangle rather than a session. → §QS46
+- ⏳ **QS46** (deps: QS4 ✅, QS9 ✅, QS116 🛠) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The pane holds a handle and nothing presents into it, so the terminal in that window is an empty rectangle rather than a session. → §QS46
 - 📋 **QS47** (deps: QS46 ⏳, QS26 ✅) **Every session needs its own window, so working across four hosts means four windows to arrange** — A tab is what makes several sessions one workspace, and it is the surface the window title, the session tree and the layout all attach to. → §QS47
 - 📋 **QS48** (deps: QS47) **Two sessions cannot be seen at once, so comparing output means alternating between tabs** — Watching a log while typing on another host is the ordinary case for this audience, and a tab-only client makes it impossible rather than merely awkward. → §QS48
 - 📋 **QS49** (deps: QS48, QS6 ✅) **Each pane would open its own graphics device, so four panes cost four times the driver's attention** — The device, the atlas and the shaders are process-wide resources panes should share, and sharing them is a decision about ownership rather than an optimisation. → §QS49
@@ -71,7 +71,7 @@
 - 📋 **QS52** (deps: QS47) **Every action needs a chord the user memorised or a menu they have to go looking for** — A palette is how a lean interface keeps its actions reachable without growing toolbars, which is the same trade this project makes everywhere else. → §QS52
 - 📋 **QS53** (deps: QS48) **The same command on eight hosts has to be typed eight times** — Fleet work is a large part of why this audience uses a tabbed client at all, and mistyping the eighth is how that pattern fails today. → §QS53
 - 📋 **QS83** (deps: QS82 ✅, QS46 ⏳) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83
-- ⏳ **QS116** (deps: QS9 ✅) **The window's terminal is an empty rectangle, because nothing presents a swapchain into the pane's handle** — A swapchain on the pane's handle, a loop waiting on the damage signal, the resize in three parts and keystrokes are still unjoined. → §QS116
+- 🛠 **QS116** (deps: QS9 ✅) **The window's terminal is an empty rectangle, because nothing presents a swapchain into the pane's handle** — A swapchain on the pane's handle, a loop waiting on the damage signal, the resize in three parts and keystrokes are still unjoined. → §QS116
 - 📋 **QS126** (deps: QS121) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126
 
 ## Block H — The reason to leave the incumbent
@@ -96,7 +96,7 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- 📋 **QS81** (deps: QS80 ✅, QS116 ⏳, QS126) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
+- 📋 **QS81** (deps: QS80 ✅, QS116 🛠, QS126) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
 
 ## Block K — The build and the harness — what a green run is evidence of
 
@@ -294,6 +294,48 @@
   falsification, and it only becomes checkable when there is a loop. QS76 proved the
   gate refuses an idle frame in isolation; checked here against the client's real loop,
   which is where a frame drawn on a clock would be.
+
+## Done when — QS46
+
+- **The terminal in the window is a session and not an empty rectangle** The chrome
+  landed and is checked: default, theme, placement, closing. What is left is the one
+  element the whole argument is about, and it is QS116's swapchain, loop, resize and
+  keystrokes rather than anything this line still owes on its own.
+
+## Done when — QS29
+
+- **The candidate window appears at the cursor's cell** This line's own falsification,
+  and it needs a window for the IME's messages to arrive at. The width the placement
+  must be measured against is already checked; so is the committed text's path to the
+  host, once there is one.
+
+## Done when — QS30
+
+- **A wrapped line copies as one line, and a risky paste is shown before it is sent**
+  The buffer knows which rows are continuations and that half is checked. What is left
+  is a gesture, a clipboard and a dialogue, none of which exists without a window.
+
+## Done when — QS31
+
+- **A match spanning a wrapped line is found, and reading is not interrupted** The ring
+  holds the history and the search runs over logical lines, both checked. What is left
+  is the wheel, the scrollbar and the box that drive them, and the rule that new output
+  must not steal a viewport somebody is reading.
+
+## Done when — QS38
+
+- **A peer that stopped answering is noticed in seconds, not in the OS's own time**
+  Reconnect landed with its backoff and its honesty about what a new shell cannot
+  restore. This is the third failure of the three, the one where the socket stays open,
+  and the library's keepalive answers a different question: QS111 is where that is
+  measured.
+
+## Done when — QS43
+
+- **A key on a token authenticates a session, whichever agent holds it** The named pipe
+  half landed, which is the Windows OpenSSH agent and Pageant from 0.78 on. What is left
+  is the shared-memory transport older Pageants speak, and a token-backed key is the
+  case with no other route at all.
 
 ## Non-goals
 
