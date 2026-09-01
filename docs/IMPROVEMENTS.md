@@ -1958,3 +1958,26 @@ do.
 
 Falsified when the same tree gives two verdicts on two machines and neither is
 explained.
+
+### §QS159 Two instructions about evidence, and the wrong one is louder
+
+`.claude/skills/roadmap-docs/SKILL.md` says a UI task is not done without the picture,
+capture the window, and names the `/run` skill as the way to launch the client for it.
+`agents.md` says the opposite and says why: for UI the evidence is the accessibility
+tree, because a capture needs foreground granted and a desk somebody is at, and this one
+refused foreground twenty-five times running.
+
+The skill is what an agent reads when it is about to ship something. So a session
+shipping QS30 and QS31 followed it: it granted foreground, sent synthetic keystrokes,
+moved the operator's windows, clicked into their editor twice, lost keystrokes to focus
+changes, and read screenshots of a desktop somebody was working at. It never opened
+`cases/`, never ran `run-tests-vm.cmd`, and did not know `Quickshell.Cases` existed
+until the operator said so.
+
+Nothing here was missing. The engine is adopted, the cases directory exists,
+`winwright.json` is written, and the guest is configured. What was missing is that the
+document telling an agent when a task may ship is also the one telling it how to prove
+the task works, and it says the wrong thing.
+
+Falsified when a session reads the shipping discipline and still reaches for a
+screenshot as evidence.
