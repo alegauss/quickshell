@@ -18,6 +18,19 @@ public readonly record struct ClosingQuestion(IReadOnlyList<string> Open)
             : $"Close {Open.Count} sessions?";
 }
 
+/// <summary>What a user answered when asked about closing with sessions open.</summary>
+/// <param name="Close">Whether to close. False leaves the window exactly as it was.</param>
+/// <param name="NeverAgain">
+/// Whether to stop asking. Carried separately from <paramref name="Close"/> on purpose: somebody who
+/// says "yes, and stop asking" and somebody who says "no, and stop asking" have both switched the
+/// question off, and a shape that could only record the first would keep asking the second.
+/// </param>
+public readonly record struct ClosingAnswer(bool Close, bool NeverAgain)
+{
+    /// <summary>Stay open, and keep asking. What a dismissed dialog means.</summary>
+    public static ClosingAnswer Stay => new(Close: false, NeverAgain: false);
+}
+
 /// <summary>
 /// Whether to ask before closing, and how to stop being asked.
 ///

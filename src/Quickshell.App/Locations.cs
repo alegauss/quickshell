@@ -60,6 +60,17 @@ public sealed class Locations
     /// <summary>Where the window was last time, per arrangement of screens.</summary>
     public string Windows => Path.Combine(Root, "windows.json");
 
+    /// <summary>
+    /// The marker that says this user asked not to be warned about closing open sessions.
+    ///
+    /// <para>Its presence is the whole answer, which is why it is a file rather than a settings key:
+    /// a key lives in a file a user may hand-edit into something unreadable, and
+    /// <see cref="SettingsFile"/> answers that by falling back to the defaults. Falling back to the
+    /// default here would bring back a dialog somebody switched off, which is the one outcome
+    /// <see cref="CloseGuard"/> exists to prevent.</para>
+    /// </summary>
+    public string CloseSilently => Path.Combine(Root, "close-without-asking");
+
     /// <summary>The session log's folder.</summary>
     public string Logs => Path.Combine(Root, "logs");
 

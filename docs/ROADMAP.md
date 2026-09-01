@@ -15,15 +15,15 @@
 
 - ⏳ **QS43** (deps: QS41 ✅, QS114) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — Pageant older than 0.78 speaks over shared memory rather than a pipe, and that transport is the half of it this does not reach. → §QS43
 - 📋 **QS45** (deps: QS43 ⏳) **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — Forwarding hands a remote machine the ability to authenticate as the user everywhere, so it is decided per host rather than by a checkbox set once. → §QS45
-- 📋 **QS113** (deps: QS41 ✅, QS46 ⏳) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — Partial success is a normal state of the protocol and nothing in this client reports it, so the one moment a user most wants progress is the one with none. → §QS113
+- 📋 **QS113** (deps: QS41 ✅, QS46 ✅) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — Partial success is a normal state of the protocol and nothing in this client reports it, so the one moment a user most wants progress is the one with none. → §QS113
 - 📋 **QS114** (deps: QS41 ✅) **A PuTTY user on Pageant older than 0.78 has an agent this client cannot reach at all** — That version carries the same requests over shared memory and a window message, and this client speaks only the named pipe the newer one added. → §QS114
 - 📋 **QS115** (deps: QS44 ✅) **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — The framework ships no memory-hard derivation, so the choice was a third-party dependency where a mistake is unrecoverable, or the strongest thing it has. → §QS115
 
 ## Block C — Emulation that does not lie about the remote
 
-- ⏳ **QS29** (deps: QS28 ✅, QS46 ⏳) **Typing Japanese or Chinese shows no composition and commits nothing** — The input method's own messages, and the call that places the candidate window, both of which need a window to arrive at. → §QS29
-- ⏳ **QS30** (deps: QS26 ✅, QS21 ✅, QS46 ⏳) **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — The gestures that drive it, the clipboard it copies to, and the dialogue a paste raises, all of which need a window. → §QS30
-- ⏳ **QS31** (deps: QS15 ✅, QS26 ✅, QS46 ⏳) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The wheel, the scrollbar and the search box that drive them, which need a window. → §QS31
+- ⏳ **QS29** (deps: QS28 ✅, QS46 ✅) **Typing Japanese or Chinese shows no composition and commits nothing** — The input method's own messages, and the call that places the candidate window, both of which need a window to arrive at. → §QS29
+- ⏳ **QS30** (deps: QS26 ✅, QS21 ✅, QS46 ✅) **Text on screen cannot be selected or copied, and a paste arrives as keystrokes the host may run** — The gestures that drive it, the clipboard it copies to, and the dialogue a paste raises, all of which need a window. → §QS30
+- ⏳ **QS31** (deps: QS15 ✅, QS26 ✅, QS46 ✅) **Output that scrolled past cannot be scrolled back to, and nothing in it can be found** — The wheel, the scrollbar and the search box that drive them, which need a window. → §QS31
 - 🛠 **QS33** (deps: QS17 ✅, QS18 ✅, QS20 ✅, QS21 ✅, QS25 ✅, QS93) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — vttest's verdict is a person looking at the screen, so automating it needs something to compare against rather than a way to press its keys. → §QS33
 - 📋 **QS91** (deps: —) **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — Text that arrives decomposed is ordinary on macOS and in Git output, and a client that silently drops the accent is one that shows the wrong filename. → §QS91
 - 📋 **QS92** (deps: —) **The golden suite has run on two rasterisers and none of the three vendor drivers its matrix names** — A driver bug is by definition the thing the machine that wrote the code cannot see, so a suite that has only ever run here is one nobody has tested yet. → §QS92
@@ -46,7 +46,7 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-- 📋 **QS60** (deps: QS59 ✅, QS46 ⏳) **There is no way to see what is on the remote host without running a command** — Browsing is what turns a transfer tool into something a person operates, and it is where the incumbent's users spend a large share of their time. → §QS60
+- 📋 **QS60** (deps: QS59 ✅, QS46 ✅) **There is no way to see what is on the remote host without running a command** — Browsing is what turns a transfer tool into something a person operates, and it is where the incumbent's users spend a large share of their time. → §QS60
 - 📋 **QS64** (deps: QS60) **A file can only be transferred through the browser, so dragging one from Explorer does nothing** — Dragging a file onto a session is the shortest path a user has to moving it, and it is the interaction they try first without being told it exists. → §QS64
 - 📋 **QS122** (deps: QS59 ✅) **The shared-session trick rests on six SSH.NET members reached by name, and only a live server proves it holds** — A library upgrade can break it, and the test that would notice needs a container running, so an upgrade on a machine without one looks clean. → §QS122
 - 📋 **QS123** (deps: QS62 ✅) **A symbolic link on the server cannot be copied, because nothing here can read where it points** — A tree copied down loses every link in it, which for a source checkout or a set of config files is a copy that does not work at the far end. → §QS123
@@ -62,22 +62,21 @@
 
 ## Block G — The clean interface, defended
 
-- ⏳ **QS46** (deps: QS4 ✅, QS9 ✅, QS116 ✅) **There is no window, only a render surface, so nothing can be opened, themed or closed** — The pane now has a swapchain and a loop, so what is left is a terminal with no session behind it: QS126's connection, not this line's chrome. → §QS46
-- 📋 **QS47** (deps: QS46 ⏳, QS26 ✅) **Every session needs its own window, so working across four hosts means four windows to arrange** — A tab is what makes several sessions one workspace, and it is the surface the window title, the session tree and the layout all attach to. → §QS47
+- 📋 **QS47** (deps: QS46 ✅, QS26 ✅) **Every session needs its own window, so working across four hosts means four windows to arrange** — A tab is what makes several sessions one workspace, and it is the surface the window title, the session tree and the layout all attach to. → §QS47
 - 📋 **QS48** (deps: QS47) **Two sessions cannot be seen at once, so comparing output means alternating between tabs** — Watching a log while typing on another host is the ordinary case for this audience, and a tab-only client makes it impossible rather than merely awkward. → §QS48
 - 📋 **QS49** (deps: QS48, QS6 ✅) **Each pane would open its own graphics device, so four panes cost four times the driver's attention** — The device, the atlas and the shaders are process-wide resources panes should share, and sharing them is a decision about ownership rather than an optimisation. → §QS49
-- 📋 **QS50** (deps: QS46 ⏳) **Nothing can be configured, so the font, the colours and the keybindings are whatever the code says** — A settings surface is where a lean client most easily becomes a bloated one, so what is offered and what is simply decided are both chosen here. → §QS50
+- 📋 **QS50** (deps: QS46 ✅) **Nothing can be configured, so the font, the colours and the keybindings are whatever the code says** — A settings surface is where a lean client most easily becomes a bloated one, so what is offered and what is simply decided are both chosen here. → §QS50
 - 📋 **QS51** (deps: QS50) **A user's chosen colour scheme has to be entered as twenty colours by hand** — Schemes already circulate in two formats everybody shares, so reading them is a small piece of work standing between a user and a familiar terminal. → §QS51
 - 📋 **QS52** (deps: QS47) **Every action needs a chord the user memorised or a menu they have to go looking for** — A palette is how a lean interface keeps its actions reachable without growing toolbars, which is the same trade this project makes everywhere else. → §QS52
 - 📋 **QS53** (deps: QS48) **The same command on eight hosts has to be typed eight times** — Fleet work is a large part of why this audience uses a tabbed client at all, and mistyping the eighth is how that pattern fails today. → §QS53
-- 📋 **QS83** (deps: QS82 ✅, QS46 ⏳) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83
+- 📋 **QS83** (deps: QS82 ✅, QS46 ✅) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83
 - 📋 **QS126** (deps: QS121) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126
 - 📋 **QS151** (deps: QS116 ✅) **A reconnecting session makes a new damage signal per connection, so a pane asleep on the first never repaints** — QS126 wires this up and inherits a window frozen at whatever frame it drew first. → §QS151
 - 📋 **QS152** (deps: QS116 ✅) **A shell that exits leaves the window holding its last frame, with nothing saying the session ended** — Typing exit is the ordinary way a session ends, and the client that answers it with a frozen picture reads as hung. → §QS152
 
 ## Block H — The reason to leave the incumbent
 
-- 📋 **QS75** (deps: QS2 ✅, QS46 ⏳) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
+- 📋 **QS75** (deps: QS2 ✅, QS46 ✅) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
 - 📋 **QS77** (deps: QS75) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
 - ⏳ **QS78** (deps: QS139) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - 📋 **QS79** (deps: QS3 ✅, QS75) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
@@ -286,13 +285,6 @@
   there is none rather than inventing one. Checked by figure 2 or a figure beside it
   stating a number for the `emulate` arm, with the reasoning for that number and not
   merely the measurement it was taken from.
-
-## Done when — QS46
-
-- **The terminal in the window is a session and not an empty rectangle** The chrome
-  landed and is checked: default, theme, placement, closing. What is left is the one
-  element the whole argument is about, and it is QS116's swapchain, loop, resize and
-  keystrokes rather than anything this line still owes on its own.
 
 ## Done when — QS29
 

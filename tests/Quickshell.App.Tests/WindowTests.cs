@@ -292,6 +292,143 @@ public sealed class WindowTests : IDisposable
         Assert.Null(CloseGuard.ReadFrom(file).Ask(["prod-db"]));
     }
 
+    /// <summary>
+    /// Closing a window that holds a session asks, names it, and stays open when the answer is no.
+    ///
+    /// <para><b>Driven by closing a real window</b>, because the guard and the list were each built
+    /// and asserted above while nothing called either — a model that answers correctly and is wired
+    /// to nothing is a question no user is ever asked. What this adds is the wiring.</para>
+    /// </summary>
+    [Fact]
+    public void ClosingAWindowWithASessionAsksBeforeItGoes()
+    {
+        (ClosingQuestion? asked, bool openAfterNo, bool goneAfterYes) = OnStaThread(() =>
+        {
+            ClosingQuestion? put = null;
+
+            MainWindow window = new()
+            {
+                Guard = CloseGuard.Asking(),
+                AskingToClose = question =>
+                {
+                    put = question;
+
+                    return ClosingAnswer.Stay;
+                },
+            };
+
+            window.Sessions.Open("prod-db");
+            window.Show();
+
+            window.Close();
+
+            bool stillOpen = window.IsVisible;
+
+            window.AskingToClose = _ => new ClosingAnswer(Close: true, NeverAgain: false);
+
+            window.Close();
+
+            return (put, stillOpen, !window.IsVisible);
+        });
+
+        Assert.NotNull(asked);
+        Assert.Equal(["prod-db"], asked.Value.Open);
+        Assert.Contains("prod-db", asked.Value.Asking, StringComparison.Ordinal);
+
+        Assert.True(openAfterNo, "the window closed after the user said not to");
+        Assert.True(goneAfterYes, "the window stayed open after the user agreed to close it");
+    }
+
+    /// <summary>
+    /// Never again is written down at the moment the window closes, not only when it stays.
+    ///
+    /// <para>The path that matters and the one easiest to miss: a user who ticks the box and then
+    /// closes has switched the question off, and recording it after the close would record it on the
+    /// only path where the close did not happen. The next launch reads the file and nothing else.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void NeverAgainSurvivesTheCloseThatSetIt()
+    {
+        string file = Path.Combine(_directory, "close-without-asking");
+
+        int asked = OnStaThread(() =>
+        {
+            int times = 0;
+
+            MainWindow window = new()
+            {
+                Guard = CloseGuard.ReadFrom(file),
+                AskingToClose = _ =>
+                {
+                    times++;
+
+                    return new ClosingAnswer(Close: true, NeverAgain: true);
+                },
+            };
+
+            window.Sessions.Open("prod-db");
+            window.Show();
+            window.Close();
+
+            return times;
+        });
+
+        Assert.Equal(1, asked);
+
+        // The next launch, which knows only what the close wrote down.
+        Assert.True(CloseGuard.ReadFrom(file).Silenced,
+                    "the never-again ticked on the way out was not written down");
+    }
+
+    /// <summary>
+    /// A window with nothing open closes without a dialog, and so does one with no guard.
+    ///
+    /// <para>The second half is what every other test in this file depends on: a window built for a
+    /// test has no guard, so nothing it does can put a modal in front of a test host.</para>
+    /// </summary>
+    [Fact]
+    public void AWindowWithNothingOpenClosesWithoutAsking()
+    {
+        int asked = OnStaThread(() =>
+        {
+            int times = 0;
+
+            MainWindow empty = new()
+            {
+                Guard = CloseGuard.Asking(),
+                AskingToClose = _ =>
+                {
+                    times++;
+
+                    return ClosingAnswer.Stay;
+                },
+            };
+
+            empty.Show();
+            empty.Close();
+
+            // And one holding a session but no guard at all, which is what a test builds.
+            MainWindow unguarded = new()
+            {
+                AskingToClose = _ =>
+                {
+                    times++;
+
+                    return ClosingAnswer.Stay;
+                },
+            };
+
+            unguarded.Sessions.Open("prod-db");
+            unguarded.Show();
+            unguarded.Close();
+
+            return times;
+        });
+
+        Assert.Equal(0, asked);
+    }
+
     // ---- Start-up: the first paint waits on nothing ----
 
     /// <summary>

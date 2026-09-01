@@ -52,10 +52,13 @@ public static class Entry
 
         window.Show();
 
-        // Only now, with something on screen. Both of these are corrections to a window that is
-        // already up: the settings file decides the theme, and neither read is on the way to the
-        // first paint.
+        // Only now, with something on screen. All of these are corrections to a window that is
+        // already up: the settings file decides the theme, and no read here is on the way to the
+        // first paint. The guard is one of them — it is a file whose presence says this user asked
+        // not to be warned, and it is needed when the window closes rather than when it opens.
         Settings settings = SettingsFile.ReadFrom(Locations.Current.Settings);
+
+        window.Guard = CloseGuard.ReadFrom(Locations.Current.CloseSilently);
 
         window.Apply(settings);
         window.PlaceAt(WindowPlacements.ReadFrom(Placements()).For(Screens()));
@@ -90,7 +93,7 @@ public static class Entry
         // The shell, and it is the last thing for the same reason the pane was: creating a
         // pseudo-console and starting a process are not on the way to the user's first sight of the
         // window. Not awaited here — this is the thread the window is drawn on.
-        Task<LocalSession?> opening = Opening(emulator, damage, terminal, typist);
+        Task<LocalSession?> opening = Opening(window, emulator, damage, terminal, typist);
 
         // `--import` opens what Ctrl+Shift+I opens, and after the window is up rather than before:
         // the preview is a dialog over a window, and a modal with nothing behind it is a client that
@@ -120,8 +123,9 @@ public static class Entry
     /// caller does not await. The pane already has a device, a loop and a keyboard by the time this
     /// runs; what it gains is somebody to talk to.</para>
     /// </summary>
-    private static async Task<LocalSession?> Opening(Emulator emulator, DamageSignal damage,
-                                                     PaneAttachment terminal, Typist typist)
+    private static async Task<LocalSession?> Opening(MainWindow window, Emulator emulator,
+                                                     DamageSignal damage, PaneAttachment terminal,
+                                                     Typist typist)
     {
         try
         {
@@ -131,6 +135,12 @@ public static class Entry
 
             typist.Sending = bytes => session.Pipeline.TypeAsync(bytes);
             terminal.Resized = session.Pipeline.Resize;
+
+            // The program's name and not its path, because this string is read back to the user in
+            // the closing question and nowhere else. Registered once the shell is actually running:
+            // a window asking about a session that failed to start would be asking about nothing.
+            window.Dispatcher.Invoke(
+                () => window.Sessions.Open(Path.GetFileName(LocalSession.Shell)));
 
             // The grid the pane settled on while this was starting, which arrived when there was no
             // session to hear it. Sent once rather than assumed: a program wrong about its own width

@@ -83,7 +83,7 @@
 ## Block G — The clean interface, defended
 
 - ✅ **QS4** **No decision records which window host can present a swapchain without adding frames of latency** — WPF with a child HWND per pane won on a click-to-pixel floor of 13.8 ms, the only host of three to answer within one refresh interval (design §QS4 recorded in `docs/measurements/host-probe.md`).
-- ✅ **QS46 (the shell)** **There is no window, only a render surface, so nothing can be opened, themed or closed** — A window that opens onto a title bar and a terminal, follows the system theme while running, and comes back where it was on this arrangement of screens.
+- ✅ **QS46** **There is no window, only a render surface, so nothing can be opened, themed or closed** — The window holds a live session, and closing one asks first, naming what is open, with a never-again that is written down before the window goes.
 - ✅ **QS54** **A screen reader finds nothing on the terminal surface, so the client cannot be used without sight** — The buffer is published as a text pattern with scrollback and screen as one document, the cursor as the caret, and a flood of output as one announcement.
 - ✅ **QS116** **The window's terminal is an empty rectangle, because nothing presents a swapchain into the pane's handle** — The client runs a shell on its pane: what it prints is drawn, what is typed reaches it, and a resize reaches the model, the swapchain and the program in that order.
 - ✅ **QS148** **The client exits the moment anything asks its terminal about accessibility** — The child window declines the accessibility question instead of dying on it, and the terminal is still published where a reader looks.

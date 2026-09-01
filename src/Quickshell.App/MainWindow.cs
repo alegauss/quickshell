@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -117,6 +118,30 @@ public sealed class MainWindow : Window
     public bool TabStripShowing => _tabs.Visibility == Visibility.Visible;
 
     /// <summary>
+    /// What this window has open, which is what the closing question names.
+    ///
+    /// <para>Held here rather than derived from the tabs, because a session and a tab are not the
+    /// same thing the moment QS48 splits a tab into panes — and what a user is deciding about when
+    /// they close is hosts, not rectangles.</para>
+    /// </summary>
+    public OpenSessions Sessions { get; } = new();
+
+    /// <summary>
+    /// Whether to ask before closing with sessions open, or null to close without asking.
+    ///
+    /// <para>Null is what a test gets by default, because every window built in a test is one that
+    /// has to close without a modal in front of it. The client sets one that remembers the answer
+    /// across runs.</para>
+    /// </summary>
+    public CloseGuard? Guard { get; set; }
+
+    /// <summary>
+    /// How the closing question is put. A dialog naming what is open, unless a caller says
+    /// otherwise — the same shape as <see cref="Importing"/>, and for the same reason.
+    /// </summary>
+    public Func<ClosingQuestion, ClosingAnswer>? AskingToClose { get; set; }
+
+    /// <summary>
     /// Who this window's keystrokes belong to, or null while nothing is listening.
     ///
     /// <para>On the window rather than on the pane, and QS4 is why: the pane is a child HWND whose
@@ -171,6 +196,40 @@ public sealed class MainWindow : Window
         {
             e.Handled = true;
         }
+    }
+
+    /// <summary>
+    /// Asks about the sessions still open, once, and honours never again.
+    ///
+    /// <para><b>The answer is written down before the window goes.</b> There is no "afterwards" on
+    /// the path where the close actually happens, so a never-again recorded after the fact would be
+    /// recorded only on the path where the user stayed — and a checkbox that works when you cancel
+    /// and not when you close is worse than none, which is <see cref="CloseGuard"/>'s whole
+    /// argument.</para>
+    ///
+    /// <para>Nothing is asked when nothing is open, when the user has switched the question off, or
+    /// when something else has already cancelled the close: two dialogs about one close is the kind
+    /// of client this one is arguing with.</para>
+    /// </summary>
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        base.OnClosing(e);
+
+        ArgumentNullException.ThrowIfNull(e);
+
+        if (e.Cancel || Guard is not { } guard || guard.Ask(Sessions.Closing()) is not { } question)
+        {
+            return;
+        }
+
+        ClosingAnswer answer = (AskingToClose ?? AskedToClose)(question);
+
+        if (answer.NeverAgain)
+        {
+            guard.NeverAgain();
+        }
+
+        e.Cancel = !answer.Close;
     }
 
     /// <summary>
@@ -400,6 +459,100 @@ public sealed class MainWindow : Window
 
         return MessageBox.Show(said.ToString(), "Import sessions", MessageBoxButton.YesNo,
                                MessageBoxImage.Question) == MessageBoxResult.Yes;
+    }
+
+    /// <summary>
+    /// The default asking about closing: what is open, named, and a checkbox that means it.
+    ///
+    /// <para><b>A window and not a <c>MessageBox</c>, for one reason.</b> Every other dialog here is
+    /// a message box, which is the right answer while a dialog only needs buttons. This one needs a
+    /// checkbox — "never again" is half of what the design asks for — and a message box has none, so
+    /// the alternative was a third button meaning "close and stop asking", which puts the setting
+    /// inside the decision and offers no way to switch the question off while saying no.</para>
+    ///
+    /// <para>Owned by the window it is asked about and modal to it, so the terminal underneath is
+    /// visible while the question is on screen: what somebody wants to look at before answering
+    /// <em>is</em> the session it is asking about.</para>
+    /// </summary>
+    private ClosingAnswer AskedToClose(ClosingQuestion question)
+    {
+        CheckBox never = new()
+        {
+            Content = "Don't ask again",
+            Margin = new Thickness(0, 16, 0, 0),
+        };
+
+        StackPanel body = new() { Margin = new Thickness(20) };
+
+        body.Children.Add(new TextBlock
+        {
+            Text = question.Asking,
+            FontSize = 15,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 0, 10),
+        });
+
+        // Named, and every one of them. A count is what the user already knows from the title bar;
+        // the names are what stops somebody closing the one window they meant to keep.
+        body.Children.Add(new TextBlock
+        {
+            Text = string.Join(Environment.NewLine, question.Open.Select(open => "• " + open)),
+            TextWrapping = TextWrapping.Wrap,
+        });
+
+        body.Children.Add(never);
+
+        StackPanel buttons = new()
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 20, 0, 0),
+        };
+
+        Button stay = new() { Content = "Cancel", MinWidth = 88, IsCancel = true };
+        Button close = new() { Content = "Close", MinWidth = 88, Margin = new Thickness(8, 0, 0, 0) };
+
+        buttons.Children.Add(stay);
+        buttons.Children.Add(close);
+        body.Children.Add(buttons);
+
+        Window asking = new()
+        {
+            Title = "quickshell",
+            Content = body,
+            Owner = this,
+            ThemeMode = ThemeMode,
+
+            // A width, and only the height from the content. Sizing to both is what a dialog like
+            // this normally does and it is wrong here: the list wraps, so its desired width depends
+            // on the width it is given, and a measure with no answer settles at whatever WPF's
+            // fallback is — which was a window with the buttons off the bottom of it.
+            Width = 380,
+            SizeToContent = SizeToContent.Height,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+
+        // Cancel is the default, so Enter and Escape both leave the sessions alone. Closing is the
+        // irreversible half of this question and is never one keypress away from a person who was
+        // reading rather than answering.
+        stay.IsDefault = true;
+
+        bool closing = false;
+
+        close.Click += (_, _) =>
+        {
+            closing = true;
+            asking.DialogResult = true;
+        };
+
+        asking.ShowDialog();
+
+        // The checkbox is read whichever button was pressed, and even where the dialog was dismissed:
+        // a user who ticked it has switched the question off, and what they then decided about this
+        // one close is a separate answer.
+        return new ClosingAnswer(closing, never.IsChecked == true);
     }
 
     /// <summary>A count with its noun, pluralised, because "1 sessions" reads as a bug.</summary>

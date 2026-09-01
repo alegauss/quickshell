@@ -1057,33 +1057,6 @@ Falsified when a hundred connects through the proxy all receive a well-formed re
 
 ## Block G — The clean interface, defended
 
-### §QS46 What is on screen by default, and what is not
-
-The window is the first argument this project makes. The incumbent opens onto a toolbar,
-a sidebar, a status bar and an advertisement. quickshell opens onto a terminal.
-
-So the default is a title bar, a tab strip that hides itself while there is one tab, and
-the terminal. No toolbar, no status bar, no sidebar until a user opens one. Every
-element added later is spending a budget this line is what establishes.
-
-Theme is light, dark, or follow the system — and following the system means reacting
-while running, not reading it once at start-up. The terminal's own colour scheme is a
-separate thing from the application chrome's theme, because a user with a favourite
-scheme wants it under either chrome; conflating the two is a common and irritating
-mistake.
-
-The window remembers position, size and maximised state per monitor configuration, so
-plugging in a dock does not scatter it across a screen it can no longer see.
-
-Start-up sits on the critical path for the cold-start figure, so the window appears and
-is interactive before any session work begins, and the first paint waits on neither
-configuration parsing nor a network call.
-
-Closing with sessions open asks once, listing what is open, with a way to say never
-again — and then honouring it.
-
-Falsified when a default installation shows chrome beyond a title bar and a terminal.
-
 ### §QS47 Tabs, and the title the remote host is writing
 
 A tab owns a session, its terminal state and its lifetime. Create, close, reorder by
