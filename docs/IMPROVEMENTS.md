@@ -1319,6 +1319,73 @@ not with this line.
 Falsified when a shell exits and the window is indistinguishable from one that has
 stopped responding.
 
+### §QS160 Moving a tab, and the connection that must not notice
+
+`TerminalTab` owns a model, a pane, a device, a loop, a keyboard and a shell, and
+`MainWindow.Remove` hands one back alive rather than ending it — which was written that
+way for this. What is missing is the two gestures that use it.
+
+Reordering is the smaller half: a drag on the strip, and three lists moved in step,
+since the tabs, their headers and the panes are held separately.
+
+Detaching is the one with the claim in it, and it is QS47's own falsification:
+*falsified when detaching a tab reconnects its session*. A tab moved to a new window
+keeps its connection, and it can only do that because the connection was never the
+window's. The obstacle is not the session but the pane: it is an `HwndHost`, and taking
+one out of a visual tree destroys the child window a swapchain is presenting into. So a
+detach is either a reparent WPF has no supported spelling for, or a new device on a new
+pane with the same session behind it — and only the first satisfies the falsification
+without qualification.
+
+Most-recently-used order is the third gesture, and the cheapest: a list the active
+setter appends to.
+
+Falsified when detaching a tab reconnects its session.
+
+### §QS161 The title with one tab and nowhere to be
+
+`Emulator.Title` is parsed, `TerminalTab.Title` ranks it above what the tab is connected
+to, and the strip shows it. With one tab the strip is hidden — QS46's default
+installation is a title bar and a terminal — so a shell reporting its directory or its
+running command reaches nobody.
+
+Putting it in the window's title was tried during QS47 and reverted the same hour. It
+works for a person and destroys every case that reads the window: cmd writes its own
+full path through OSC within half a second of starting, so `quickshell` becomes
+`C:\WINDOWS\system32\cmd.exe — quickshell` on this machine and something else on the
+next, and QS147's smoke case could no longer be written at all. The revert is in the
+case file beside the reason.
+
+So the question is where it goes, and it is a chrome question rather than a plumbing
+one. Showing the strip with one tab spends QS46's claim. A window title that carries it
+needs a case that can read a name only partly this client's — which the engine has no
+matcher for and is WW-shaped. A third answer is that one tab is the wrong default and
+the strip should always show, which is a decision rather than a fix.
+
+Falsified when a shell reports its working directory and nothing on screen changes.
+
+### §QS162 The chords this client takes, written down once
+
+Counted after QS47: Ctrl+Shift+F1, Ctrl+Shift+I, Ctrl+Shift+C, Ctrl+Shift+V,
+Ctrl+Shift+F, Ctrl+Shift+T, Ctrl+Shift+W, Ctrl+Tab, Ctrl+Shift+Tab, Shift+PageUp,
+Shift+PageDown and Alt+1 through Alt+9. Every one of them is a chord the program on the
+far side will never see.
+
+Each was argued for where it was taken, and the arguments are good: two modifiers keep a
+chord away from anything a terminal program binds, Ctrl+C is deliberately not among them
+because it is how a person stops something, and Ctrl+Tab was taken anyway because a
+client the user cannot leave a tab in has no tabs. None of that reaches a user. QS47's
+own design named the remedy — *those chords are reserved from the remote program, and
+that cost is stated in the keybinding reference rather than discovered* — and there is
+no keybinding reference in this repository to state it in.
+
+What is wanted is the list, and the list has to be one thing rather than a comment
+beside each binding, because the question a user asks is "what does this client take"
+and not "what does Ctrl+Shift+W do". The natural second reader is the palette QS52
+builds, which needs the same list for a different reason.
+
+Falsified when a chord is reserved and the list does not name it.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
@@ -1909,26 +1976,26 @@ Falsified by a file that carries mojibake through a green suite.
 
 ### §QS157 The verdict that depends on the desk
 
-Found running the suite in the VMware guest after QS154. `ProxyCommandTests` reports
-three failures there and none here, on the same working tree, minutes apart. The one
-read in full was `WhatTheProgramPrintedSurvivesIntoTheFailure`: it runs `cmd /c "echo
-the vpn is not up 1>&2 & exit 1"` and asserts the program's own stderr survives into the
-failure, and in the guest that substring is not there.
+Found running the suite in the VMware guest after QS154. Three cases fail there and none
+here, on the same working tree, minutes apart:
+`WhatTheProgramPrintedSurvivesIntoTheFailure`, `AFailureAtTheFirstHopNamesTheFirstHop`
+and `APortWithNothingBehindItFailsAsRefused`.
 
-Nothing about it is obviously environmental. It starts a child process and reads what
-the child printed — no network, no fixture, no GPU, and the two skipped cases beside it
-already declare the fixture they need. So either the guest runs the child differently,
-or the assertion depends on something nobody wrote down.
+They have one thing in common, and it is the lead. Each asserts a substring of a
+*failure message*. QS154 turned invariant globalization off, so a framework exception
+now answers in whatever language the runtime has resources for — and a guest with a
+different .NET install answers in one this machine does not. The first of them reads
+back what a child process printed, which is not a framework string at all, so the lead
+does not cover all three and is a lead rather than an answer.
 
-What makes it worth a line rather than a shrug is what QS95 bought. A guest run is the
-quiet desk *and* the second environment in QS12's matrix, and both of those are worth
-only what the verdict is worth. Three cases that disagree by machine turn every future
-guest run into a judgement about which failures to believe, which is how a suite stops
-being read.
+What makes it worth a line is what QS95 bought. A guest run is the quiet desk *and* the
+second environment in QS12's matrix, and both are worth only what the verdict is worth:
+three cases that disagree by machine turn every guest run into a judgement about which
+failures to believe.
 
-The work is to find out which desk is telling the truth, and then either fix the client
-or say in the case what it needs — the way the fixture-dependent cases beside it already
-do.
+If the lead holds, the fix is not a tolerance. An assertion about wording is an
+assertion about a resource file, and the sentence worth checking is the one this client
+composed rather than the one it quoted.
 
 Falsified when the same tree gives two verdicts on two machines and neither is
 explained.

@@ -73,6 +73,9 @@
 - 📋 **QS126** (deps: QS121) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126
 - 📋 **QS151** (deps: QS116 ✅) **A reconnecting session makes a new damage signal per connection, so a pane asleep on the first never repaints** — QS126 wires this up and inherits a window frozen at whatever frame it drew first. → §QS151
 - 📋 **QS152** (deps: QS116 ✅) **A shell that exits leaves the window holding its last frame, with nothing saying the session ended** — Typing exit is the ordinary way a session ends, and the client that answers it with a frozen picture reads as hung. → §QS152
+- 📋 **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — QS47 put the session in the tab and stopped there, so the one thing that arrangement was for is the one thing that cannot be done. → §QS160
+- 📋 **QS161** (deps: QS47 ✅) **A title the host writes appears nowhere while there is one tab, because the strip that would carry it is hidden** — QS47 ranked the host's title first and then had nowhere to put it, so the reading a shell reports is parsed and discarded. → §QS161
+- 📋 **QS162** (deps: QS47 ✅) **This client now takes thirteen chords from the remote program and tells nobody which** — Every one was reserved with a comment arguing it was worth taking, and the user who loses one finds out by pressing it. → §QS162
 
 ## Block H — The reason to leave the incumbent
 
