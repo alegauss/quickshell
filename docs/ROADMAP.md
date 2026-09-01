@@ -75,6 +75,8 @@
 - 📋 **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — QS47 put the session in the tab and stopped there, so the one thing that arrangement was for is the one thing that cannot be done. → §QS160
 - 📋 **QS161** (deps: QS47 ✅) **A title the host writes appears nowhere while there is one tab, because the strip that would carry it is hidden** — QS47 ranked the host's title first and then had nowhere to put it, so the reading a shell reports is parsed and discarded. → §QS161
 - 📋 **QS162** (deps: QS47 ✅) **This client now takes thirteen chords from the remote program and tells nobody which** — Every one was reserved with a comment arguing it was worth taking, and the user who loses one finds out by pressing it. → §QS162
+- 📋 **QS163** (deps: QS48 ✅) **A divider cannot be dragged, so the only sizes a split has are the halves it was created with** — QS48 gave the layout a share to set and left every way of setting it to a chord, so the gesture a person reaches for first does nothing. → §QS163
+- 📋 **QS164** (deps: QS48 ✅) **Four panes open four graphics devices, and nothing in the client stops a user opening sixteen** — QS48 made splitting one chord away and QS49 has not landed, so the cost the block's own criterion bounds is now reachable by holding a key. → §QS164
 
 ## Block H — The reason to leave the incumbent
 

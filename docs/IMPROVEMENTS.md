@@ -1363,6 +1363,50 @@ builds, which needs the same list for a different reason.
 
 Falsified when a chord is reserved and the list does not name it.
 
+### §QS163 The divider that is a gap between two child windows
+
+`PaneLayout.Share` takes a proportion, clamps it so neither side can be dragged away,
+and is called by nothing but the equalise chord. What is missing is the drag, and the
+obstacle is the same one that runs through every pane in this client: they are child
+windows.
+
+A `GridSplitter` needs a WPF element between two WPF elements. Between two `HwndHost`
+panes there is no such thing — the panes are positioned on a canvas by proportion, and
+what lies between them is a few pixels of nothing that receives no WPF mouse input
+because the child windows either side take it first. So the divider has to be either a
+real element placed over the gap and given a cursor and a drag, or a pointer captured by
+whichever pane the press landed near the edge of.
+
+The second is tempting because the mouse plumbing already exists and would need no new
+element, and it is wrong: a drag that starts inside a terminal is a selection, and
+deciding between the two by how close to an edge the press was is a rule a user will
+lose against.
+
+Worth having beside it: a chord that nudges a divider, which needs none of this and is
+what somebody without a mouse has.
+
+Falsified when a pane can be resized only by closing it and splitting again.
+
+### §QS164 The device per pane that splitting made cheap to ask for
+
+`TerminalLeaf.Open` attaches a view, and a view opens a `GraphicsDevice`, a
+`GlyphAtlas`, two shaders and a swapchain. Before QS48 a client had one. Now it has one
+per pane, and a pane is Ctrl+Shift+backslash away.
+
+Block G's criterion says sixteen open panes share one glyph atlas, and QS49 is the line
+that makes them. What changed is not the plan but the exposure: the criterion was a
+claim about a future with splits in it, and the splits arrived first. Sixteen panes
+today is sixteen devices, sixteen atlases and sixteen copies of the same rasterised
+font, and nothing between a user and that but their patience.
+
+Two things follow and only one of them is QS49. The sharing is QS49's. The other is that
+this client has no ceiling anywhere: `--panes` clamps at sixteen because a command line
+is a surface a script drives, and the chord clamps at nothing at all. A ceiling is not a
+substitute for the sharing, but it is what stops a held key from being a way to exhaust
+a graphics driver.
+
+Falsified when a client with sixteen panes open holds sixteen devices.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
