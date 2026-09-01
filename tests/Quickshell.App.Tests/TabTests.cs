@@ -41,12 +41,12 @@ public sealed class TabTests
             window.Add(two);
 
             // The second is on screen because it was added last.
-            bool onSecond = ReferenceEquals(window.Typing, two.Typist);
+            bool onSecond = ReferenceEquals(window.Typing, two.Focused.Typist);
             string named = window.Current!.Title;
 
             window.Active = 0;
 
-            bool onFirst = ReferenceEquals(window.Typing, one.Typist);
+            bool onFirst = ReferenceEquals(window.Typing, one.Focused.Typist);
 
             return (onFirst, onSecond, window.Current!.Title, named);
         });
@@ -132,7 +132,7 @@ public sealed class TabTests
         string connected = tab.Title;
 
         // The host writes one through OSC, which outranks that.
-        tab.Emulator.Feed(Encoding.UTF8.GetBytes("\u001b]0;~/work\u0007"));
+        tab.Focused.Emulator.Feed(Encoding.UTF8.GetBytes("\u001b]0;~/work\u0007"));
 
         string written = tab.Title;
 
@@ -159,7 +159,7 @@ public sealed class TabTests
 
             bool before = background.HasActivity;
 
-            background.Emulator.Feed(Encoding.UTF8.GetBytes("something happened\r\n"));
+            background.Focused.Emulator.Feed(Encoding.UTF8.GetBytes("something happened\r\n"));
 
             bool after = background.HasActivity;
 
@@ -195,7 +195,7 @@ public sealed class TabTests
                                          "no-such-program-at-all");
 
             Assert.False(dead.IsLive);
-            Assert.NotNull(dead.Ended);
+            Assert.NotNull(dead.Focused.Ended);
 
             int times = 0;
 
@@ -249,10 +249,10 @@ public sealed class TabTests
             TerminalTab tab = Connected(Settings.Default, "no-such-program-at-all",
                                         "no-such-program-at-all");
 
-            Assert.NotNull(tab.Ended);
+            Assert.NotNull(tab.Focused.Ended);
             Assert.False(tab.IsLive);
 
-            string said = Screen(tab.Emulator);
+            string said = Screen(tab.Focused.Emulator);
 
             tab.DisposeAsync().AsTask().GetAwaiter().GetResult();
 
@@ -277,6 +277,88 @@ public sealed class TabTests
         tab.ConnectAsync(commandLine).GetAwaiter().GetResult();
 
         return tab;
+    }
+
+    /// <summary>
+    /// Splitting a pane gives the new one the keyboard, and every surface follows it.
+    ///
+    /// <para>Somebody who splits a pane is about to type in the new one. A client that left the
+    /// focus behind would make them reach for the mouse to finish a gesture they made with the
+    /// keyboard — and, worse, the next thing they typed would go to the session they just left.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void SplittingGivesTheNewPaneTheKeyboard()
+    {
+        (int panes, bool moved, bool back) = OnStaThread(() =>
+        {
+            MainWindow window = new();
+
+            TerminalTab tab = TerminalTab.Open(Settings.Default, "cmd.exe");
+
+            window.Add(tab);
+
+            TerminalLeaf first = tab.Focused;
+
+            Step(window, Key.Oem5, ModifierKeys.Control | ModifierKeys.Shift);
+
+            bool onTheNew = !ReferenceEquals(window.Typing, first.Typist)
+                            && ReferenceEquals(window.Typing, tab.Focused.Typist);
+
+            // And moving left goes back to the one it was split out of, by where it is on screen.
+            Step(window, Key.Left, ModifierKeys.Alt | ModifierKeys.Shift);
+
+            bool onTheFirst = ReferenceEquals(window.Typing, first.Typist);
+
+            int held = tab.Layout.Count;
+
+            window.Remove(0);
+
+            return (held, onTheNew, onTheFirst);
+        });
+
+        Assert.Equal(2, panes);
+        Assert.True(moved, "splitting left the keyboard on the pane that was split");
+        Assert.True(back, "moving left did not reach the pane the split came out of");
+    }
+
+    /// <summary>
+    /// A zoomed pane fills the tab and the arrangement comes back exactly as it was.
+    ///
+    /// <para>The cheapest genuinely useful thing here, and the reason it is a flag rather than a
+    /// rewrite of the tree: what has to come back is what was never touched.</para>
+    /// </summary>
+    [Fact]
+    public void ZoomingFillsTheTabAndRestoresTheArrangement()
+    {
+        (double before, int zoomed, double after) = OnStaThread(() =>
+        {
+            MainWindow window = new();
+
+            TerminalTab tab = TerminalTab.Open(Settings.Default, "cmd.exe");
+
+            window.Add(tab);
+
+            Step(window, Key.Oem5, ModifierKeys.Control | ModifierKeys.Shift);
+
+            double was = tab.Layout.Portions[tab.FocusedPane].Width;
+
+            Step(window, Key.Z, ModifierKeys.Control | ModifierKeys.Shift);
+
+            int filling = tab.Zoomed;
+
+            Step(window, Key.Z, ModifierKeys.Control | ModifierKeys.Shift);
+
+            double now = tab.Layout.Portions[tab.FocusedPane].Width;
+
+            window.Remove(0);
+
+            return (was, filling, now);
+        });
+
+        Assert.Equal(0.5, before, 9);
+        Assert.True(zoomed >= 0, "the zoom chord zoomed nothing");
+        Assert.Equal(0.5, after, 9);
     }
 
     /// <summary>Presses a chord through the binding the window actually carries.</summary>

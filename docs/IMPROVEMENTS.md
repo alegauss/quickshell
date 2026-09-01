@@ -1074,29 +1074,6 @@ Falsified when a hundred connects through the proxy all receive a well-formed re
 
 ## Block G — The clean interface, defended
 
-### §QS48 A tree of panes, and who owns the focus
-
-A tab holds a tree rather than a session: each node is a horizontal or vertical split,
-each leaf is a session. Recursive, so any pane can be split again — the only model that
-does not run out at some arbitrary depth chosen by whoever wrote it.
-
-Sizing is proportional, so resizing the window preserves the arrangement's shape.
-Dragging a divider sets the proportion; a chord equalises. A pane can be zoomed to fill
-the tab temporarily and restored, which is the cheapest genuinely useful feature here:
-it turns a cramped four-way split into a workable one without disturbing the layout.
-
-Focus follows click and moves by direction from the keyboard, and directional movement
-over a tree needs geometry rather than tree order — moving right means the pane whose
-rectangle lies to the right, which is often not the sibling.
-
-Closing a pane collapses its parent and gives the space to the remaining sibling.
-
-Each pane is a full terminal with its own scrollback, size and title, so each resizes
-independently and each notifies its own host. The resize path is now exercised several
-times per window drag, which makes the debounce there load-bearing rather than tidy.
-
-Falsified when directional focus movement follows tree order instead of screen position.
-
 ### §QS49 One device, many surfaces, one atlas
 
 Panes multiply, and the naive arrangement multiplies everything along with them. The

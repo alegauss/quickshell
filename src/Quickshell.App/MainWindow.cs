@@ -44,8 +44,13 @@ public sealed class MainWindow : Window
     /// <para><b>Hidden rather than collapsed</b>, for the same kind of reason. A collapsed element
     /// measures zero, so a background tab would resize its grid to one cell and tell the program on
     /// the far end that its terminal is one column wide. Hidden keeps the size it had.</para>
+    ///
+    /// <para><b>A canvas since QS48, because a tab holds a tree.</b> Every pane's place is a
+    /// proportion of the tab and the pixels are worked out from the canvas each time it is laid out,
+    /// so an arbitrarily deep arrangement needs no nested panels — one loop over the leaves puts
+    /// each one where the tree says it goes.</para>
     /// </summary>
-    private readonly Grid _terminal = new();
+    private readonly Canvas _terminal = new() { ClipToBounds = true };
 
     private readonly List<TerminalTab> _open = [];
     private readonly TabControl _tabs = new();
@@ -60,6 +65,7 @@ public sealed class MainWindow : Window
     private bool _recording;
     private int _active = -1;
     private DispatcherTimer? _watching;
+    private TerminalPane? _showing;
 
     /// <summary>Builds the window. Reads no file, opens no connection, and paints immediately.</summary>
     /// <param name="appearance">How it looks; <see cref="Appearance.Default"/> when null.</param>
@@ -163,6 +169,40 @@ public sealed class MainWindow : Window
             InputBindings.Add(new KeyBinding(new Reach(this, index - 1),
                                              Key.D0 + index, ModifierKeys.Alt));
         }
+
+        // Splitting, on the two chords tmux and every terminal that copied it use — the characters
+        // are the picture: a vertical bar divides side by side, a minus divides one above the other.
+        InputBindings.Add(new KeyBinding(new Splitting(this, Divide.Beside), Key.OemBackslash,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        InputBindings.Add(new KeyBinding(new Splitting(this, Divide.Beside), Key.Oem5,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        InputBindings.Add(new KeyBinding(new Splitting(this, Divide.Below), Key.OemMinus,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        // The focus, by direction and on the arrows, because the gesture is about where things are
+        // on screen and an arrow is the only key that says a direction.
+        foreach ((Key key, Toward way) in new[]
+                 {
+                     (Key.Left, Toward.Left), (Key.Right, Toward.Right),
+                     (Key.Up, Toward.Up), (Key.Down, Toward.Down),
+                 })
+        {
+            InputBindings.Add(new KeyBinding(new Facing(this, way), key,
+                                             ModifierKeys.Alt | ModifierKeys.Shift));
+        }
+
+        // Zoom and equalise, which are the two gestures that make a cramped split workable.
+        InputBindings.Add(new KeyBinding(new Zooming(this), Key.Z,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        InputBindings.Add(new KeyBinding(new Equalising(this), Key.E,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
+        // they are proportions of changes.
+        _terminal.SizeChanged += (_, _) => Arrange();
     }
 
     /// <summary>How this window looks. The palette here is the terminal's and not the chrome's.</summary>
@@ -207,11 +247,78 @@ public sealed class MainWindow : Window
 
             for (int tab = 0; tab < _open.Count; tab++)
             {
-                _open[tab].Pane.Visibility = tab == at ? Visibility.Visible : Visibility.Hidden;
                 _open[tab].Showing(tab == at);
             }
 
+            Arrange();
             Retitle();
+        }
+    }
+
+    /// <summary>
+    /// Puts every pane where its tab's tree says it goes, in the canvas's own pixels.
+    ///
+    /// <para><b>Every pane of every tab stays in the canvas and only the active tab's are shown.</b>
+    /// A <see cref="TerminalPane"/> is an <c>HwndHost</c>: taking one out of the tree destroys the
+    /// child window a swapchain is presenting into, so a tab switch and a split are both a matter of
+    /// where things are and never of what is in the tree.</para>
+    ///
+    /// <para>A zoomed pane takes the whole tab and the others are hidden rather than resized — the
+    /// arrangement has to come back exactly as it was, and the only way to be sure of that is not to
+    /// have touched it.</para>
+    /// </summary>
+    public void Arrange()
+    {
+        double width = _terminal.ActualWidth;
+        double height = _terminal.ActualHeight;
+
+        if (width < 1d || height < 1d)
+        {
+            return;
+        }
+
+        // A pane put here by Show rather than by a tab fills the canvas. A canvas gives its children
+        // no size of their own, and a pane with no size never gets a handle worth a swapchain — so
+        // this is not tidiness, it is the difference between a terminal and a nothing.
+        if (_showing is { } alone)
+        {
+            Canvas.SetLeft(alone, 0);
+            Canvas.SetTop(alone, 0);
+
+            alone.Width = width;
+            alone.Height = height;
+        }
+
+        foreach (TerminalTab tab in _open)
+        {
+            bool showing = ReferenceEquals(tab, Current);
+
+            foreach (int pane in tab.Layout.Panes)
+            {
+                if (tab.In(pane) is not { } leaf)
+                {
+                    continue;
+                }
+
+                Portion at = tab.Zoomed >= 0
+                    ? new Portion(0, 0, 1, 1)
+                    : tab.Layout.Portions[pane];
+
+                bool visible = showing && (tab.Zoomed < 0 || tab.Zoomed == pane);
+
+                leaf.Pane.Visibility = visible ? Visibility.Visible : Visibility.Hidden;
+
+                // Rounded to whole pixels, and the far edge rounded rather than the width: two panes
+                // sharing a divider must not leave a one-pixel seam of whatever is behind them.
+                double left = Math.Floor(at.X * width);
+                double top = Math.Floor(at.Y * height);
+
+                Canvas.SetLeft(leaf.Pane, left);
+                Canvas.SetTop(leaf.Pane, top);
+
+                leaf.Pane.Width = Math.Max(1d, Math.Floor(at.Right * width) - left);
+                leaf.Pane.Height = Math.Max(1d, Math.Floor(at.Bottom * height) - top);
+            }
         }
     }
 
@@ -315,7 +422,7 @@ public sealed class MainWindow : Window
     /// window procedure does nothing at all, deliberately, so that input arrives through WPF and
     /// pixels arrive through the swapchain. This is the WPF half of that sentence.</para>
     /// </summary>
-    public Typist? Typing => Current?.Typist;
+    public Typist? Typing => Current?.Focused.Typist;
 
     /// <summary>
     /// A key the window did not claim goes to the host.
@@ -409,7 +516,118 @@ public sealed class MainWindow : Window
     {
         ArgumentNullException.ThrowIfNull(pane);
 
+        _showing = pane;
+
         _terminal.Children.Add(pane);
+
+        Arrange();
+    }
+
+    /// <summary>
+    /// Puts a pane in the canvas and gives it the keyboard when it is clicked.
+    ///
+    /// <para>The click is the pane's own message rather than a WPF event, for the reason the whole
+    /// mouse path is: this is a child window, and WPF never sees what happens in it.</para>
+    /// </summary>
+    private void Hold(TerminalLeaf leaf)
+    {
+        _terminal.Children.Add(leaf.Pane);
+
+        leaf.Pane.Mouse += mouse =>
+        {
+            if (mouse.Kind != PaneMouseKind.Pressed || Current is not { } tab)
+            {
+                return;
+            }
+
+            int pane = tab.PaneOf(leaf);
+
+            if (pane >= 0 && pane != tab.FocusedPane)
+            {
+                tab.Focus(pane);
+                Retitle();
+            }
+        };
+    }
+
+    /// <summary>Who gives a freshly split pane a session, or null while nothing can.</summary>
+    public Action<TerminalLeaf>? Connects { get; set; }
+
+    /// <summary>Splits the pane that has the keyboard, and gives the new one a session.</summary>
+    public void SplitPane(Divide how)
+    {
+        if (Current?.Split(how) is not { } made)
+        {
+            return;
+        }
+
+        Hold(made);
+        Arrange();
+        Retitle();
+
+        Connects?.Invoke(made);
+    }
+
+    /// <summary>
+    /// Closes the pane that has the keyboard, asking first where its session is still live.
+    ///
+    /// <para>The last pane of a tab is the tab, so closing it closes that instead — which is what a
+    /// user means either way, and saves them learning which chord applies.</para>
+    /// </summary>
+    public void ClosePane()
+    {
+        if (Current is not { } tab)
+        {
+            return;
+        }
+
+        if (tab.Layout.Count <= 1)
+        {
+            CloseTab();
+
+            return;
+        }
+
+        if (tab.Focused.IsLive
+            && Guard?.Ask([tab.Focused.Title]) is { } question
+            && !(AskingToClose ?? AskedToClose)(question).Close)
+        {
+            return;
+        }
+
+        if (tab.ClosePane() is { } went)
+        {
+            _terminal.Children.Remove(went.Pane);
+            EndsPane?.Invoke(went);
+        }
+
+        Arrange();
+        Retitle();
+    }
+
+    /// <summary>Moves the keyboard to the pane in a direction, by where it is on screen.</summary>
+    public void FocusPane(Toward direction)
+    {
+        if (Current?.Focus(direction) == true)
+        {
+            Retitle();
+        }
+    }
+
+    /// <summary>Fills the tab with one pane, or gives the others their space back.</summary>
+    public void ZoomPane()
+    {
+        Current?.Zoom();
+
+        Arrange();
+    }
+
+    /// <summary>Gives every divider in this tab an even share again.</summary>
+    public void EqualisePanes()
+    {
+        Current?.Layout.Equalise();
+
+        Arrange();
     }
 
     /// <summary>
@@ -424,8 +642,12 @@ public sealed class MainWindow : Window
         ArgumentNullException.ThrowIfNull(tab);
 
         _open.Add(tab);
-        _terminal.Children.Add(tab.Pane);
         _tabs.Items.Add(new TabItem { Header = tab.Title });
+
+        foreach (TerminalLeaf leaf in tab.Leaves)
+        {
+            Hold(leaf);
+        }
 
         Strip();
         Watch();
@@ -478,8 +700,12 @@ public sealed class MainWindow : Window
         TerminalTab going = _open[at];
 
         _open.RemoveAt(at);
-        _terminal.Children.Remove(going.Pane);
         _tabs.Items.RemoveAt(at);
+
+        foreach (TerminalLeaf leaf in going.Leaves)
+        {
+            _terminal.Children.Remove(leaf.Pane);
+        }
 
         // The window's closing question names what is open, and a tab is what open means.
         Sessions.Closed(going.Host);
@@ -1197,6 +1423,9 @@ public sealed class MainWindow : Window
     /// </summary>
     public Action<TerminalTab>? Ends { get; set; }
 
+    /// <summary>The same, for one pane of a tab that is staying.</summary>
+    public Action<TerminalLeaf>? EndsPane { get; set; }
+
     /// <summary>
     /// Closes the tab on screen, asking first where its session is still live.
     ///
@@ -1311,6 +1540,74 @@ public sealed class MainWindow : Window
                 window.Active = at;
             }
         }
+    }
+
+    /// <summary>The splitting bindings' command.</summary>
+    private sealed class Splitting(MainWindow window, Divide how) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.SplitPane(how);
+    }
+
+    /// <summary>The directional focus bindings' command.</summary>
+    private sealed class Facing(MainWindow window, Toward way) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.FocusPane(way);
+    }
+
+    /// <summary>The zoom binding's command.</summary>
+    private sealed class Zooming(MainWindow window) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.ZoomPane();
+    }
+
+    /// <summary>The equalise binding's command.</summary>
+    private sealed class Equalising(MainWindow window) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.EqualisePanes();
     }
 
     /// <summary>The find binding's command: opens the bar, or closes one already open.</summary>

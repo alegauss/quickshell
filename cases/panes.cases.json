@@ -1,0 +1,48 @@
+{
+  // QS48, read through the accessibility tree. A split is the one arrangement in this client where
+  // a WPF-side check could pass while the window shows one terminal: the panes are child windows,
+  // and only the tree says how many the client actually put on the desk.
+  //
+  // `--panes` and not the chord, for the reason the import and tabs cases give: `press` spells Tab
+  // and the arrows and not Ctrl+Shift+\ (WW317, filed against the engine). It is a real surface, the
+  // same standing as `--tabs`: this client has no menu, so the command line is the only way another
+  // program can ask it for anything.
+
+  "fixtures": [
+    {
+      "name": "a tab split in two",
+      "arguments": ["--panes", "2"],
+      "shareable": true
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "a split tab puts two terminals on the desk at once",
+      "catches": "a client that builds the tree correctly and then shows one pane, or draws the second one on top of the first - which every test running inside the process would pass",
+      "filed": "QS48",
+      "tags": ["smoke", "window", "panes"],
+      "fixture": "a tab split in two",
+
+      "steps": [
+        {
+          // Both ends, which is how two are read without a word for how many. Each is a terminal
+          // this client published for a screen reader, so an element at each end is two panes that
+          // both got as far as having a buffer behind them.
+          "locator": "Document[class=\"Terminal\"][order=left]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Terminal output",
+          "named": "the pane on the left is a terminal with a buffer behind it"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"][order=right]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Terminal output",
+          "named": "and so is the one beside it"
+        }
+      ]
+    }
+  ]
+}

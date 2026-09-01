@@ -64,29 +64,32 @@ public static class Entry
         window.Apply(settings);
         window.PlaceAt(WindowPlacements.ReadFrom(Placements()).For(Screens()));
 
-        // Every surface this window has, pointed at whichever tab is on screen rather than at one
-        // that was current when the window was built. Asked afresh each time for exactly that
-        // reason: switching tabs is the only place a client with tabs goes wrong quietly, and it
-        // goes wrong by answering for the tab before.
+        // Every surface this window has, pointed at whichever pane has the keyboard rather than at
+        // one that was current when the window was built. Asked afresh each time for exactly that
+        // reason: switching tabs and moving between panes are the two places a client like this goes
+        // wrong quietly, and it goes wrong by answering for the one before.
         window.Opens = () => Opened(window, settings);
+        window.Connects = leaf => _ = leaf.ConnectAsync();
 
-        // Not awaited: the tab is already out of the window and nothing references it, and a shell
-        // given its two seconds to leave is two seconds this thread would spend not repainting.
+        // Not awaited: what is being ended is already out of the window and nothing references it,
+        // and a shell given its two seconds to leave is two seconds this thread would spend not
+        // repainting.
         window.Ends = tab => _ = tab.DisposeAsync().AsTask();
+        window.EndsPane = leaf => _ = leaf.DisposeAsync().AsTask();
 
         window.Input.Placing = composing => Placed(window, composing);
-        window.Selected = () => window.Current?.Terminal.Selected() ?? string.Empty;
-        window.Bracketed = () => window.Current?.Emulator.BracketedPaste ?? false;
-        window.Scrolling = lines => window.Current?.Terminal.ScrollBy(lines);
+        window.Selected = () => Pane(window)?.Terminal.Selected() ?? string.Empty;
+        window.Bracketed = () => Pane(window)?.Emulator.BracketedPaste ?? false;
+        window.Scrolling = lines => Pane(window)?.Terminal.ScrollBy(lines);
         window.Finding = (needle, forward, exactly) =>
-            window.Current?.Terminal.Find(needle, forward, exactly)?.Cells;
+            Pane(window)?.Terminal.Find(needle, forward, exactly)?.Cells;
 
         // The terminal itself, and it is deliberately the last thing: opening a device, compiling
         // two shaders and rasterising a font are the most expensive things this process does, and
         // none of them is between the user and their first sight of the window.
         Opened(window, settings);
 
-        terminal = window.Current?.Terminal;
+        terminal = Pane(window)?.Terminal;
 
         // `--tabs <n>` opens that many, which is what Ctrl+Shift+T opens n times. A real surface and
         // not a test hook, for the same reason `--import` is one: this client has no menu, so the
@@ -97,6 +100,17 @@ public static class Entry
             for (int tab = 1; tab < Math.Clamp(more, 1, 16); tab++)
             {
                 Opened(window, settings);
+            }
+        }
+
+        // `--panes <n>` splits the tab that many ways, which is what Ctrl+Shift+\ does n-1 times.
+        // Same standing as `--tabs`, and the same reason: it is how another program asks, and how a
+        // UI case reads an arrangement no chord can yet be spelled to make.
+        if (Asked(arguments, "--panes") is { } across)
+        {
+            for (int pane = 1; pane < Math.Clamp(across, 1, 16); pane++)
+            {
+                window.SplitPane(Divide.Beside);
             }
         }
 
@@ -137,13 +151,13 @@ public static class Entry
     /// </summary>
     private static CandidateSpot? Placed(MainWindow window, Composition composing)
     {
-        if (window.Current is not { } tab || tab.Terminal.View is not { } view)
+        if (Pane(window) is not { } leaf || leaf.Terminal.View is not { } view)
         {
             return null;
         }
 
-        TerminalPane pane = tab.Pane;
-        Damage where = tab.Emulator.Damage;
+        TerminalPane pane = leaf.Pane;
+        Damage where = leaf.Emulator.Damage;
 
         CandidatePlacement at = composing.Candidate(where.CursorColumn, where.CursorRow,
                                                     Math.Max(1, view.Columns));
@@ -178,14 +192,23 @@ public static class Entry
         window.Sessions.Open(host, another: true);
 
         // A paste goes down the keystroke path and not the parser's, which is what makes it arrive
-        // in order with what the user is typing around it — and it goes to whichever tab is on
-        // screen when the paste happens, never to the one that was current when it was wired.
-        window.Pasting = text => window.Current is { Typist: { } typist }
-            ? Sent(typist, text)
+        // in order with what the user is typing around it — and it goes to whichever pane has the
+        // keyboard when the paste happens, never to the one that had it when this was wired.
+        window.Pasting = text => Pane(window) is { } leaf
+            ? Sent(leaf.Typist, text)
             : ValueTask.CompletedTask;
 
         _ = tab.ConnectAsync();
     }
+
+    /// <summary>
+    /// The pane with the keyboard, or null while there is none.
+    ///
+    /// <para>Two hops rather than one, and both of them matter: the tab on screen, and the pane
+    /// inside it that the user is typing into. A surface that stopped at the first would answer for
+    /// a session sitting beside the one they are looking at.</para>
+    /// </summary>
+    private static TerminalLeaf? Pane(MainWindow window) => window.Current?.Focused;
 
     /// <summary>
     /// The number a flag was given, or null where it was absent or not a number.
