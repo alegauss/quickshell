@@ -11,6 +11,14 @@ the values in place, so your comments, your blank lines and your spacing survive
 A key you leave out is that key at its default. A key this build has never heard of is carried
 through untouched, so a newer build's settings survive being opened by an older one.
 
+**Saving it is enough.** The client watches the file and applies what you saved — no restart, and no
+button. It waits a moment for the file to stop moving first, because one save arrives as several
+writes and reading between them would find a file that is half there.
+
+If nothing happens, **Ctrl+Shift+R** rereads it. That is worth knowing about rather than a fallback
+nobody should need: a settings file on a network share is one this client may not be able to watch,
+and the chord works whether the watch armed or not.
+
 ```jsonc
 {
   "schema": 1,

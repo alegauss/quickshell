@@ -69,6 +69,14 @@ public static class Entry
         window.Apply(settings);
         window.PlaceAt(WindowPlacements.ReadFrom(Placements()).For(Screens()));
 
+        // And every time the file changes after this. The read happens on a thread pool thread, so
+        // what it found is handed to the window's own — every pane it touches is WPF's.
+        using SettingsWatch watching = SettingsWatch.On(
+            Locations.Current.Settings,
+            read => window.Dispatcher.BeginInvoke(() => window.Apply(read)));
+
+        window.Reloads = () => watching.Reload();
+
         // Every surface this window has, pointed at whichever pane has the keyboard rather than at
         // one that was current when the window was built. Asked afresh each time for exactly that
         // reason: switching tabs and moving between panes are the two places a client like this goes

@@ -1377,29 +1377,6 @@ for a window drag — so this is a new reason for a path that exists.
 
 Falsified when a font size changed in the file needs a restart to be seen.
 
-### §QS169 The file nobody is watching
-
-`SettingsFile.ReadFrom` is called once, on the way up, and `MainWindow.Apply` pushes
-what it read into every pane. Change the file afterwards and nothing happens until the
-next launch.
-
-That is most of QS50's live-apply undone by omission. The design's whole argument for
-exposing a font size is that somebody will try three of them in a minute, and a client
-they have to restart between each is one they try once.
-
-What it needs is a watch on the one file, and the two things that go wrong with file
-watchers are both known in advance. An editor writes by renaming a temporary file over
-the original, so a watcher listening only for `Changed` hears nothing — `Renamed` and
-`Created` are part of the answer. And a save often arrives as several events, so the
-read has to be debounced or the client reads a half-written file and falls back to the
-defaults, which looks exactly like the settings being wiped.
-
-There is a reload already worth having beside it: a chord that rereads the file. It
-costs nothing, it works when a watcher does not, and it is what somebody reaches for
-when they have just edited the file in another window.
-
-Falsified when a saved settings file needs a restart to take effect.
-
 ### §QS170 A window over the file, and the file still in charge
 
 QS50's design asks for both halves: *settings are a file the user can edit and a UI over

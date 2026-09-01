@@ -137,6 +137,12 @@ public sealed class MainWindow : Window
         InputBindings.Add(new KeyBinding(new Find(this), Key.F,
                                          ModifierKeys.Control | ModifierKeys.Shift));
 
+        // Rereading the settings file. Beside the watch and not instead of it: a watch can fail to
+        // arm — a network share, a directory it cannot open — and this is what somebody reaches for
+        // when they have just edited the file in another window and nothing happened.
+        InputBindings.Add(new KeyBinding(new Rereading(this), Key.R,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
         // Reading back through it. Shift and not a bare page key, because an unmodified PageUp is
         // the program's — a pager and an editor both bind it, and taking it would mean the terminal
         // scrolled while the thing on screen did not.
@@ -1637,6 +1643,26 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public void Execute(object? parameter) => window.EqualisePanes();
+    }
+
+    /// <summary>Who rereads the settings file when the user asks, or null while nothing can.</summary>
+    public Action? Reloads { get; set; }
+
+    /// <summary>The reread binding's command.</summary>
+    private sealed class Rereading(MainWindow window) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.Reloads?.Invoke();
     }
 
     /// <summary>The find binding's command: opens the bar, or closes one already open.</summary>

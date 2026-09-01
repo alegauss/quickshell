@@ -93,6 +93,7 @@
 - ✅ **QS165** **A pane reports the whole client's draw calls as its own, so a per-pane frame count is the sum of every pane's** — A pane counts the draw calls it issued and no other pane's, so Block C's idle criterion can be read against a client that has more than one.
 - ✅ **QS166** **A pane behind another tab keeps drawing, so a client with eight tabs presents seven frames nobody sees** — A pane behind another tab draws nothing and forgets its frame when it comes forward, and a window something covered asks DXGI rather than presenting to find out.
 - ✅ **QS50** **Nothing can be configured, so the font, the colours and the keybindings are whatever the code says** — Eight settings apply live from a file that keeps the notes a user writes in it, and a test refuses any key the reference does not document or documents and this build has not.
+- ✅ **QS169** **The settings file is read once at start-up, so editing it while the client runs changes nothing** — Saving the settings file applies it, including the rename an editor really saves by, and Ctrl+Shift+R rereads it where a watch could not be armed.
 
 ## Block H — The reason to leave the incumbent
 
