@@ -1397,6 +1397,31 @@ help system is not, and would be the surface Block G exists to refuse.
 
 Falsified when a user presses the help chord and is shown something that is not help.
 
+### §QS174 The difference between broken and misconfigured
+
+Three things in the settings path fail quietly by design, and each design is right on
+its own. A file that will not parse loads as the defaults, because overwriting what
+somebody was editing is worse. A scheme path leading nowhere is the built-in scheme,
+because refusing to start over a typo is unusable. A scheme with unreadable colours
+loads as written, because that is the user's choice.
+
+Together they add up to a client that answers every mistake by looking normal. Somebody
+who sets `colourScheme` to a path with a typo in it sees the colours they had before,
+and has no way to tell whether the client read their file, read it and failed, or
+ignored the key entirely. The one reading available to them is that the feature does not
+work.
+
+What is wanted is small and is not a dialog. The settings read already knows what it
+could not use — unrecognised keys are kept, and scheme resolution already returns
+nothing on failure — so the missing piece is somewhere for those to go. The diagnostic
+report is where they go today, which is the right place for the detail and the wrong
+place for the first hint, since nobody opens it before they already suspect something.
+
+Not a notification system. One line, in one place, that a user looking for it can find.
+
+Falsified when a settings value this client could not use leaves no trace a user can
+find.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
@@ -2030,3 +2055,29 @@ What must not happen is the ceiling quietly becoming a budget. Zero is the claim
 noise is the runtime's, and the fix is to stop measuring the runtime.
 
 Falsified when the same tree gives two verdicts on two runs of the same machine.
+
+### §QS173 A desk to look at the window on
+
+`run-tests-vm.cmd` exists because the render tests put real topmost windows on screen,
+and a machine somebody is using is one where a dragged window corrupts the measurement.
+It solves that for tests. It solves nothing for the other half of the evidence this
+project asks for, which is somebody looking at the client and saying what it shows.
+
+So every task that changes what a window looks like ends the same way: the picture is
+taken on the user's own desktop — stealing the foreground, moving their windows, typing
+into whatever had focus — or it is not taken at all and the task ships on its tests.
+Neither is what the discipline says. The first is worse, because it interrupts the
+person the work is for.
+
+The machinery is already there. The guest boots, the tree is copied to it, a session
+runs there and results come back. What is missing is the verb: start the client on the
+guest, drive it, bring back what it showed. winwright already reads an accessibility
+tree over that connection for `Quickshell.Cases`, so this is a launcher rather than an
+invention.
+
+The second reader is QS159, which filed the contradiction between two documents about
+whether a screenshot is evidence at all. That is easier to settle once taking one costs
+nothing and interrupts nobody.
+
+Falsified when a UI task's evidence has to be gathered on the machine the user is
+working on.

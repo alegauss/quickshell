@@ -77,6 +77,7 @@
 - 📋 **QS170** (deps: QS50 ✅) **Every setting has to be found and typed by hand, because the surface over the file was never built** — QS50 shipped the file and its reference and left the half a user meets first, so discovering a setting means reading a document about a file. → §QS170
 - 📋 **QS171** (deps: —) **Splitting a pane is bound to one Oem key, and which character that is depends on the layout** — Splitting beside was bound twice because the backslash moves between layouts; splitting below was bound once, and nothing tested the keyboards it moves on. → §QS171
 - 📋 **QS172** (deps: —) **A user looking for help presses Ctrl+Shift+F1 and gets a defect report** — F1 is where a person looks for help, this client binds it to collecting a diagnostic bundle, and the keys reference it should open is a file in the repository. → §QS172
+- 📋 **QS174** (deps: —) **A settings value the client could not use is not mentioned anywhere the user will look** — A mistyped scheme path, an unreadable scheme file and a settings file that will not parse all load as the defaults in silence, and the client looks broken rather than misconfigured. → §QS174
 
 ## Block H — The reason to leave the incumbent
 
@@ -114,6 +115,7 @@
 - 📋 **QS149** (deps: —) **A tool that rewrites a source file can mangle its punctuation and every check stays green** — The hygiene test bans control bytes and says nothing about text that decoded through the wrong codepage on its way back to disk. → §QS149
 - 📋 **QS159** (deps: QS147 ✅) **The shipping discipline tells an agent to screenshot a UI task, and this repository's evidence rule forbids that** — A session followed the skill, spent an hour driving the operator's desk with synthetic keystrokes, and never found the winwright cases already here. → §QS159
 - 📋 **QS167** (deps: QS95 ✅) **An allocation assertion fails about once in two guest runs on a tree nothing touched** — Block K asks that no test fail intermittently, and this one was watched doing it: red in the guest, green on the host and green on the guest's next run. → §QS167
+- 📋 **QS173** (deps: —) **The guest runs the suite but cannot run the client, so looking at a window still means taking over the user's desk** — run-tests-vm.cmd carries the working tree to a machine nobody is using, and there is no equivalent that launches the client on it. → §QS173
 
 ## Done when — Block A
 
