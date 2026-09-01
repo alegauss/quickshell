@@ -684,6 +684,26 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
+### §QS155 The mouse the host asked for, and the wheel
+
+Counted while wiring QS30's selection: `src/Quickshell.App/*.cs` names neither
+`MouseReporting`, nor the encoder QS21 shipped, nor `Viewport` at all. So a program that
+turns mouse tracking on gets nothing — no click, no drag, no wheel — and the scrollback
+exists in the ring with nothing able to look back into it.
+
+QS30 already made the decision this depends on, and made it the way every terminal does:
+the host owns the pointer once it asks for it, and shift takes it back for selection.
+What is missing is only the other half of that sentence. A press, a release, a move
+while a button is down and a wheel notch each become the sequence `Emulator.Encode`
+already produces, and go out through the same `TypeAsync` a keystroke does.
+
+The wheel is the piece with a decision in it, and `Viewport.Wheel` has already made that
+too: back through the history on the ordinary screen, to the program where it asked for
+the mouse, and as arrow keys under a full-screen program that did not — which is what
+makes a wheel work inside a pager that never heard of one.
+
+Falsified when a program with mouse tracking on cannot tell a click from silence.
+
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine
@@ -1687,6 +1707,30 @@ worth naming rather than papering over.
 Nothing here is new work in the render layer: the counters exist and are public.
 
 Falsified by a bundle naming an adapter the client is not drawing on.
+
+### §QS154 The culture WPF builds and this process refuses
+
+`Directory.Build.props` sets `InvariantGlobalization` for every project. WPF's font
+stack does not survive it. Setting `FontFamily` on the paste dialog's `TextBlock`
+reached `Typeface.CheckFastPathNominalGlyphs`, which reaches
+`MS.Internal.FontCache.MajorLanguages`, whose static constructor is `new
+CultureInfo("en")` — and in this mode that throws `CultureNotFoundException`. The crash
+guard caught it and wrote a report; the client still went. Reproduced twice, fixed by
+dropping the typeface, and the report is in `%AppData%\quickshell\crashes`.
+
+What is not known is the boundary. Every dialog shipped so far renders text and none of
+them had crashed, so the trigger is narrower than "text" — it is whichever path asks a
+typeface about its typography, and nothing in this repository says which those are. That
+is the finding: a client one careless `FontFamily` from exiting, with no test that would
+catch the next one.
+
+Two ways out and they are not equal. Turning the setting off for the client project
+costs the ICU payload, which is Block H's number to defend and is measurable rather than
+arguable. Keeping it means never naming a typeface in WPF chrome, which is a rule no
+compiler enforces — so it needs a test that scans for one, the way the seam is scanned
+for a library.
+
+Falsified when a shipped dialog names a typeface and the client survives being opened.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 

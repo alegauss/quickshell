@@ -36,6 +36,7 @@
 - 📋 **QS140** (deps: —) **The reply buffer exceeds the maximum its own constant states** — The cap is checked before an answer is appended rather than after, so a hostile host reaches 4098 bytes against a stated 4096 and the constant is not the bound. → §QS140
 - ⏳ **QS141** (deps: QS139) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
 - 📋 **QS153** (deps: QS29 ✅) **The text being composed is a box the input method draws over the grid, not underlined text inside it** — QS29 placed that box on the cursor and stopped there, so a phrase being typed sits on top of the line it belongs in. → §QS153
+- 📋 **QS155** (deps: QS21 ✅, QS30 ✅) **A program that asks for the mouse never gets one, and the wheel scrolls nothing at all** — QS21's encoder and QS22's viewport are named by no code in the client, so both shipped features are unreachable from the running program. → §QS155
 
 ## Block D — The tree a user organises work in
 
@@ -93,6 +94,7 @@
 - 📋 **QS133** (deps: QS73 ✅) **A recording has no bound and will fill a disk if it is left running** — The log rotates against a fixed total and a recording does not, so the one that writes every byte a host sends is the one with nothing stopping it. → §QS133
 - 📋 **QS134** (deps: QS73 ✅, QS129) **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The recorder and the title's indication both work, and the only caller that can begin one is a test, so the feature reaches no user. → §QS134
 - 📋 **QS150** (deps: —) **A defect report about a black window says what an adapter probe found, not what the window did** — The bundle opens its own probe because nothing at that level held a device, and now the client holds one that has been drawing. → §QS150
+- 📋 **QS154** (deps: QS30 ✅) **Naming a typeface on any WPF text kills the client, because invariant globalization refuses the culture WPF builds** — A one-line dialog took the client down with a CultureNotFoundException, and nothing says which of the remaining WPF text is one edit from the same. → §QS154
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
