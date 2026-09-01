@@ -22,11 +22,11 @@
 
   "cases": [
     {
-      // QS47 kept this exactly as it was, and that was the decision rather than the default. Naming
-      // the window for the session it shows was tried first and reverted: cmd writes its own full
-      // path through OSC within half a second of starting, so the title became a string the machine
-      // decides and this case could no longer be written at all. The gap that leaves — a host's
-      // title has nowhere to appear while the strip is hidden — is QS161 rather than a silence.
+      // QS161 named the window for the session it shows, which QS47 had tried and reverted: cmd
+      // writes its own full path through OSC within half a second of starting, so the title is a
+      // string the machine decides and no case could assert it. `matches` is what makes it
+      // assertable — the claim is that the title ENDS in this client's name, whatever the host put
+      // in front of it, which is the part of the title this project actually decides.
       "name": "a default installation puts a window named quickshell on the desk",
       "catches": "an application that builds its window correctly and then shows something else, or nothing at all — which every test running inside the process would pass",
       "filed": "QS147",
@@ -38,9 +38,9 @@
           // Selected by kind and read for its name, so the locator does not fix the reading.
           "locator": "TitleBar",
           "act": "read",
-          "expect": "quickshell",
+          "matches": "quickshell$",
           "reads": "name",
-          "named": "the title bar carries the application's own name"
+          "named": "the title bar ends in the application's own name"
         }
       ]
     },

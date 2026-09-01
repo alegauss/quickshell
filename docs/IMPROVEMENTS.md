@@ -1242,28 +1242,6 @@ setter appends to.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS161 The title with one tab and nowhere to be
-
-`Emulator.Title` is parsed, `TerminalTab.Title` ranks it above what the tab is connected
-to, and the strip shows it. With one tab the strip is hidden — QS46's default
-installation is a title bar and a terminal — so a shell reporting its directory or its
-running command reaches nobody.
-
-Putting it in the window's title was tried during QS47 and reverted the same hour. It
-works for a person and destroys every case that reads the window: cmd writes its own
-full path through OSC within half a second of starting, so `quickshell` becomes
-`C:\WINDOWS\system32\cmd.exe — quickshell` on this machine and something else on the
-next, and QS147's smoke case could no longer be written at all. The revert is in the
-case file beside the reason.
-
-So the question is where it goes, and it is a chrome question rather than a plumbing
-one. Showing the strip with one tab spends QS46's claim. A window title that carries it
-needs a case that can read a name only partly this client's — which the engine has no
-matcher for and is WW-shaped. A third answer is that one tab is the wrong default and
-the strip should always show, which is a decision rather than a fix.
-
-Falsified when a shell reports its working directory and nothing on screen changes.
-
 ### §QS163 The divider that is a gap between two child windows
 
 `PaneLayout.Share` takes a proportion, clamps it so neither side can be dragged away,

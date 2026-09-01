@@ -766,15 +766,43 @@ public sealed class MainWindow : Window
             item.FontWeight = _open[tab].HasActivity ? FontWeights.Bold : FontWeights.Normal;
         }
 
-        // The window keeps the client's name and does not take the session's.
-        //
-        // <b>Which means with one tab the title a host writes appears nowhere</b>, because QS46's
-        // default installation hides the strip — and that is a real gap rather than an oversight.
-        // It is QS161. What settled it here is that the alternative made the whole title a string
-        // the machine decides: cmd writes its own full path through OSC within half a second, so a
-        // window named for its session reads differently on every desk and is a thing no case can
-        // check.
-        Title = _recording ? "● recording — quickshell" : "quickshell";
+        Title = Naming(_recording, Current?.Title);
+    }
+
+    /// <summary>The name this client answers to, which every title ends in.</summary>
+    private const string Client = "quickshell";
+
+    /// <summary>
+    /// The window's title: what the session is called, then whose window it is.
+    ///
+    /// <para><b>QS161, and the answer changed rather than the argument.</b> QS47 tried this and
+    /// reverted it the same hour, because cmd writes its own full path through OSC within half a
+    /// second of starting — so the title becomes a string the machine decides, and the smoke case
+    /// asserting the window is named <c>quickshell</c> could no longer be written. That was true of
+    /// an engine that could only check a reading for equality. winwright grew <c>contains</c>, the
+    /// case now claims the title <em>holds</em> this client's name, and the blocker is gone.</para>
+    ///
+    /// <para><b>It is the focused pane's title and not the window's own idea of one.</b> A window
+    /// showing four panes is showing four sessions, and the one being typed into is the one the
+    /// title is about. Where the user has named the tab, that outranks the host — the same ranking
+    /// the strip uses, because a title that disagreed with the tab under it would be worse than
+    /// either.</para>
+    ///
+    /// <para>The client's name comes last, so a taskbar that has room for four words shows the
+    /// four that tell one window from another.</para>
+    /// </summary>
+    /// <param name="recording">Whether a session recording is running, which outranks everything.</param>
+    /// <param name="said">What the focused session is called, or null where there is none.</param>
+    public static string Naming(bool recording, string? said)
+    {
+        string name = said?.Trim() is { Length: > 0 } written
+                      && !string.Equals(written, Client, StringComparison.Ordinal)
+                          ? $"{written} — {Client}"
+                          : Client;
+
+        // First and not last. A recording is the one thing about this window a user must not have
+        // to look for, and a taskbar shows the front of a title.
+        return recording ? $"● recording — {name}" : name;
     }
 
     /// <summary>Shows the strip once there is a choice to make, and hides it again when there is not.</summary>

@@ -96,6 +96,7 @@
 - ✅ **QS169** **The settings file is read once at start-up, so editing it while the client runs changes nothing** — Saving the settings file applies it, including the rename an editor really saves by, and Ctrl+Shift+R rereads it where a watch could not be armed.
 - ✅ **QS162** **This client now takes thirteen chords from the remote program and tells nobody which** — Every chord this client takes from the remote program is named in docs/KEYS.md, held there by a test reading the real window's bindings in both directions.
 - ✅ **QS51** **A user's chosen colour scheme has to be entered as twenty colours by hand** — A scheme in either format everybody already shares is read from a path beside the settings file, repaints the scrollback with it, and has its unreadable pairs named rather than refused.
+- ✅ **QS161** **A title the host writes appears nowhere while there is one tab, because the strip that would carry it is hidden** — The window is named for the session it shows and then for this client, so a shell reporting its directory reaches the one place a single-tab window has.
 
 ## Block H — The reason to leave the incumbent
 

@@ -22,6 +22,9 @@ public sealed class WindowTests : IDisposable
     /// <summary>The one device, atlas and render loop these tabs draw with. See QS49.</summary>
     private static readonly TerminalShare Shared = new();
 
+    /// <summary>The escape, written as its code point because this repository holds no raw ones.</summary>
+    private const char Esc = (char)0x1b;
+
     private readonly string _directory =
         Path.Combine(Path.GetTempPath(), $"quickshell-window-{Guid.NewGuid():N}");
 
@@ -496,6 +499,106 @@ public sealed class WindowTests : IDisposable
         Assert.Equal("quickshell", after);
     }
 
+    // ---- QS161: the title a host writes, with one tab and no strip ----
+
+    /// <summary>
+    /// QS161's falsification: <em>falsified when a shell reports its working directory and nothing
+    /// on screen changes</em>.
+    ///
+    /// <para>One tab, so the strip that would otherwise carry this is hidden — which is the whole of
+    /// the gap. The host writes a title through OSC and the window takes it.</para>
+    /// </summary>
+    [Fact]
+    public void AHostThatNamesItselfIsNamedInTheTitleWithOneTab()
+    {
+        (bool strip, string before, string after) = OnStaThread(() =>
+        {
+            MainWindow window = new();
+
+            TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "local");
+
+            window.Add(tab);
+            window.Retitle();
+
+            string quiet = window.Title;
+
+            // What a shell does on its first prompt, byte for byte.
+            tab.Focused.Emulator.Feed(
+                System.Text.Encoding.UTF8.GetBytes($"{Esc}]0;C:\\Users\\someone\\work{Esc}\\"));
+
+            window.Retitle();
+
+            return (window.TabStripShowing, quiet, window.Title);
+        });
+
+        Assert.False(strip, "the strip was showing, so this is not the case QS161 is about");
+
+        // Before the host says anything, the title of last resort: what this tab is connected to.
+        // The same ranking the strip uses, and the reason a window is never called nothing.
+        Assert.Equal("local — quickshell", before);
+
+        Assert.Contains("C:\\Users\\someone\\work", after, StringComparison.Ordinal);
+        Assert.EndsWith("quickshell", after, StringComparison.Ordinal);
+        Assert.NotEqual(before, after);
+    }
+
+    /// <summary>
+    /// A name the user gave the tab outranks the host, in the title as in the strip.
+    ///
+    /// <para>A window title that disagreed with the tab under it would be worse than either.</para>
+    /// </summary>
+    [Fact]
+    public void ANameTheUserGaveOutranksWhatTheHostSays()
+    {
+        string titled = OnStaThread(() =>
+        {
+            MainWindow window = new();
+
+            TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "local");
+
+            window.Add(tab);
+
+            tab.Focused.Emulator.Feed(
+                System.Text.Encoding.UTF8.GetBytes($"{Esc}]0;whatever the host thinks{Esc}\\"));
+
+            tab.Focused.Named = "the build box";
+
+            window.Retitle();
+
+            return window.Title;
+        });
+
+        Assert.Equal("the build box — quickshell", titled);
+    }
+
+    /// <summary>
+    /// The pieces of a title, without a window, so every case is stated rather than reachable.
+    ///
+    /// <para>A host that says nothing, one that says exactly this client's own name, and one that
+    /// says only spaces all mean the same thing: there is nothing to add.</para>
+    /// </summary>
+    [Theory]
+    [InlineData(null, "quickshell")]
+    [InlineData("", "quickshell")]
+    [InlineData("   ", "quickshell")]
+    [InlineData("quickshell", "quickshell")]
+    [InlineData("vim", "vim — quickshell")]
+    public void ATitleIsWhatTheSessionIsCalledThenWhoseWindowItIs(string? said, string expected)
+    {
+        Assert.Equal(expected, MainWindow.Naming(recording: false, said));
+    }
+
+    /// <summary>A recording still leads, whatever the host has called itself.</summary>
+    [Fact]
+    public void ARecordingLeadsEvenWhenTheHostHasNamedItself()
+    {
+        string titled = MainWindow.Naming(recording: true, "C:\\WINDOWS\\system32\\cmd.exe");
+
+        Assert.StartsWith("●", titled, StringComparison.Ordinal);
+        Assert.Contains("cmd.exe", titled, StringComparison.Ordinal);
+        Assert.EndsWith("quickshell", titled, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Ctrl+Shift+F1 writes the bundle. Asserted through the binding the window actually carries,
     /// since a method nothing is bound to is a feature no user can reach.
@@ -607,6 +710,14 @@ public sealed class WindowTests : IDisposable
             catch (Exception error)
             {
                 failed = error;
+            }
+            finally
+            {
+                // Building a Window on a thread gives that thread a dispatcher, and a dispatcher
+                // that was never told to stop keeps the frame it is on alive. The runner answers a
+                // thread still running at the end with a FATAL and a non-zero exit on a suite where
+                // every test passed — a red that says nothing about the code.
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
             }
         });
 
