@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using Quickshell.Terminal;
 
 namespace Quickshell.App;
 
@@ -36,6 +38,31 @@ public sealed record Settings
     public int Scrollback { get; init; } = 10_000;
 
     /// <summary>
+    /// Whether the font's ligatures are formed.
+    ///
+    /// <para>On the list of things worth exposing for one reason and it is not taste in typography:
+    /// users are sincerely divided about what <c>!=</c> should look like, and neither answer is
+    /// wrong enough to decide for them.</para>
+    /// </summary>
+    public bool Ligatures { get; init; } = true;
+
+    /// <summary>What the cursor is drawn as.</summary>
+    public CursorShape Cursor { get; init; } = CursorShape.Block;
+
+    /// <summary>Whether it blinks. Off is what a window with no clock in it sleeps on.</summary>
+    public bool CursorBlink { get; init; } = true;
+
+    /// <summary>
+    /// Whether a paste carrying a newline is shown before it is sent.
+    ///
+    /// <para>Exposed because it is host-dependent rather than a matter of taste: a program that has
+    /// turned bracketed paste on is deciding for itself and this never fires, and somebody who works
+    /// entirely inside such programs is being asked a question that is already answered. Turning it
+    /// off is a decision about the hosts you use, and the reference says what it costs.</para>
+    /// </summary>
+    public bool WarnOnPaste { get; init; } = true;
+
+    /// <summary>
     /// Every key this build did not recognise, kept exactly as it was read so it can be written back
     /// unchanged.
     /// </summary>
@@ -69,10 +96,17 @@ public static class SettingsFile
 
     /// <summary>
     /// The keys this build knows. Everything else in the file is kept and written back untouched.
+    ///
+    /// <para><b>Public because it is what the reference is checked against.</b> QS50's falsification
+    /// is that a setting exists which no reference documents, and the only way to hold that is for
+    /// something to compare this list against <c>docs/SETTINGS.md</c> — which a test does, in both
+    /// directions, so a key added here without a paragraph fails and a paragraph about a key that
+    /// does not exist fails too.</para>
     /// </summary>
-    private static readonly string[] Known =
+    public static readonly string[] Known =
     [
-        Version, "theme", "fontFamily", "fontSize", "scrollback",
+        Version, "theme", "fontFamily", "fontSize", "scrollback", "ligatures", "cursor",
+        "cursorBlink", "warnOnPaste",
     ];
 
     /// <summary>
@@ -93,7 +127,17 @@ public static class SettingsFile
 
         try
         {
-            using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(path));
+            // Comments and a trailing comma are allowed, because this is a file a person edits and
+            // the reference invites them to write notes in it. A reader that refused them would
+            // answer with the defaults for a file whose every value the user had set — silently,
+            // which is the worst way for a settings file to be wrong.
+            using JsonDocument document = JsonDocument.Parse(
+                File.ReadAllBytes(path),
+                new JsonDocumentOptions
+                {
+                    CommentHandling = JsonCommentHandling.Skip,
+                    AllowTrailingCommas = true,
+                });
 
             if (document.RootElement.ValueKind != JsonValueKind.Object)
             {
@@ -125,6 +169,17 @@ public static class SettingsFile
     /// <summary>
     /// Writes the file, stamped with this build's schema and carrying back every key it did not
     /// recognise.
+    ///
+    /// <para><b>An existing file is edited rather than rewritten, and QS50 is why.</b> The design's
+    /// sentence is that a settings surface writes the file back preserving comments or is not worth
+    /// having: a user who wrote a note beside a setting and lost it the first time they moved a
+    /// slider has learnt that the file is the client's and not theirs. So the values this build
+    /// knows are spliced into the bytes that are there, and every comment, every blank line and
+    /// every choice of spacing survives untouched.</para>
+    ///
+    /// <para>A file that is not there, or is not something this can edit, is written whole. That is
+    /// the only path that invents formatting, and there is nothing of the user's in it to lose.
+    /// </para>
     /// </summary>
     public static void WriteTo(string path, Settings settings)
     {
@@ -134,6 +189,13 @@ public static class SettingsFile
         if (Path.GetDirectoryName(path) is { Length: > 0 } directory)
         {
             Directory.CreateDirectory(directory);
+        }
+
+        if (File.Exists(path) && Spliced(File.ReadAllText(path), settings) is { } edited)
+        {
+            File.WriteAllText(path, edited);
+
+            return;
         }
 
         using MemoryStream into = new();
@@ -149,6 +211,10 @@ public static class SettingsFile
             writer.WriteString("fontFamily", settings.FontFamily);
             writer.WriteNumber("fontSize", settings.FontSize);
             writer.WriteNumber("scrollback", settings.Scrollback);
+            writer.WriteBoolean("ligatures", settings.Ligatures);
+            writer.WriteString("cursor", settings.Cursor.ToString());
+            writer.WriteBoolean("cursorBlink", settings.CursorBlink);
+            writer.WriteBoolean("warnOnPaste", settings.WarnOnPaste);
 
             foreach ((string name, JsonElement value) in settings.Unrecognised)
             {
@@ -163,6 +229,107 @@ public static class SettingsFile
 
         File.WriteAllBytes(path, into.ToArray());
     }
+
+    /// <summary>
+    /// The file with this build's values put back where they already were, or null where it could
+    /// not be edited and has to be written whole.
+    ///
+    /// <para><b>Byte positions and not a rewrite.</b> <see cref="Utf8JsonReader"/> gives the span of
+    /// every value it reads, so a value can be replaced where it sits and everything around it —
+    /// comments, blank lines, the user's own spacing, and any key this build has never heard of —
+    /// is carried through untouched because it is never looked at.</para>
+    ///
+    /// <para>Only keys already present are replaced. Adding one would mean inventing where it goes
+    /// and how it is indented, which is the client deciding what somebody's file looks like; a
+    /// setting the file does not mention is a setting at its default, and writing it down would say
+    /// otherwise.</para>
+    /// </summary>
+    private static string? Spliced(string text, Settings settings)
+    {
+        Dictionary<string, string> writing = new(StringComparer.Ordinal)
+        {
+            [Version] = Settings.Schema.ToString(CultureInfo.InvariantCulture),
+            ["theme"] = Quoted(settings.Theme.ToString()),
+            ["fontFamily"] = Quoted(settings.FontFamily),
+            ["fontSize"] = settings.FontSize.ToString(CultureInfo.InvariantCulture),
+            ["scrollback"] = settings.Scrollback.ToString(CultureInfo.InvariantCulture),
+            ["ligatures"] = settings.Ligatures ? "true" : "false",
+            ["cursor"] = Quoted(settings.Cursor.ToString()),
+            ["cursorBlink"] = settings.CursorBlink ? "true" : "false",
+            ["warnOnPaste"] = settings.WarnOnPaste ? "true" : "false",
+        };
+
+        List<(int At, int Length, string Value)> edits = [];
+
+        try
+        {
+            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(text);
+            Utf8JsonReader reader = new(bytes, new JsonReaderOptions
+            {
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
+            });
+
+            string? name = null;
+            int depth = 0;
+
+            while (reader.Read())
+            {
+                switch (reader.TokenType)
+                {
+                    case JsonTokenType.StartObject or JsonTokenType.StartArray:
+                        depth++;
+                        break;
+
+                    case JsonTokenType.EndObject or JsonTokenType.EndArray:
+                        depth--;
+                        break;
+
+                    case JsonTokenType.PropertyName:
+                        name = depth == 1 ? reader.GetString() : null;
+                        break;
+
+                    default:
+                        if (name is not null && writing.Remove(name, out string? value))
+                        {
+                            // The span DOES include the quotes on a string, which is why the
+                            // replacements above carry their own.
+                            int at = (int)reader.TokenStartIndex;
+                            int end = (int)(reader.BytesConsumed);
+
+                            edits.Add((at, end - at, value));
+                        }
+
+                        name = null;
+                        break;
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // Not something this can edit. The caller writes it whole, which is also what it does
+            // for a file that was never there.
+            return null;
+        }
+
+        if (edits.Count == 0)
+        {
+            return null;
+        }
+
+        // Backwards, so an earlier edit's positions are still the ones that were measured.
+        System.Text.StringBuilder edited = new(text);
+
+        foreach ((int at, int length, string value) in edits.OrderByDescending(one => one.At))
+        {
+            edited.Remove(at, length).Insert(at, value);
+        }
+
+        return edited.ToString();
+    }
+
+    /// <summary>A JSON string, with what a settings value can carry escaped.</summary>
+    private static string Quoted(string value) => JsonSerializer.Serialize(value);
 
     /// <summary>The file as this build reads it, with everything else set aside.</summary>
     private static Settings Read(JsonElement root, int schema)
@@ -184,6 +351,10 @@ public static class SettingsFile
             FontFamily = Text(root, "fontFamily") ?? Settings.Default.FontFamily,
             FontSize = Number(root, "fontSize") ?? Settings.Default.FontSize,
             Scrollback = (int?)Number(root, "scrollback") ?? Settings.Default.Scrollback,
+            Ligatures = Yes(root, "ligatures") ?? Settings.Default.Ligatures,
+            Cursor = Shape(root) ?? Settings.Default.Cursor,
+            CursorBlink = Yes(root, "cursorBlink") ?? Settings.Default.CursorBlink,
+            WarnOnPaste = Yes(root, "warnOnPaste") ?? Settings.Default.WarnOnPaste,
             Unrecognised = unrecognised,
         };
     }
@@ -239,6 +410,21 @@ public static class SettingsFile
             // below is forward-only and additive, which is what makes this survivable.
         }
     }
+
+    /// <summary>A flag, or null where the file did not carry one this build could read.</summary>
+    private static bool? Yes(JsonElement root, string name) =>
+        root.TryGetProperty(name, out JsonElement value)
+        && value.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? value.GetBoolean()
+            : null;
+
+    /// <summary>The cursor's shape by name, or null where it is not one this build draws.</summary>
+    private static CursorShape? Shape(JsonElement root) =>
+        Text(root, "cursor") is { } named
+        && Enum.TryParse(named, ignoreCase: true, out CursorShape shape)
+        && shape != CursorShape.None
+            ? shape
+            : null;
 
     private static ChromeTheme Theme(JsonElement root) =>
         Text(root, "theme") is { } named && Enum.TryParse(named, ignoreCase: true, out ChromeTheme theme)

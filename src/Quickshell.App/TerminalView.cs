@@ -399,9 +399,10 @@ public sealed class TerminalView : IDisposable
     /// <param name="family">The font family, from the user's settings.</param>
     /// <param name="sizeInPoints">Its size.</param>
     /// <returns>The attachment, which stops the loop and releases the device when disposed.</returns>
+    /// <param name="ligatures">Whether the font's ligatures are formed, which users are divided on.</param>
     public static PaneAttachment Attach(TerminalPane pane, Emulator emulator, TerminalShare share,
-                                        string family, float sizeInPoints) =>
-        new(pane, emulator, share, family, sizeInPoints);
+                                        string family, float sizeInPoints, bool ligatures = true) =>
+        new(pane, emulator, share, family, sizeInPoints, ligatures);
 
     /// <summary>
     /// Forgets the last frame, so the next wake-up draws.

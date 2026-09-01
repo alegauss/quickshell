@@ -26,13 +26,14 @@ public sealed class PaneAttachment : IDisposable
     private readonly DamageSignal _damage;
     private readonly string _family;
     private readonly float _sizeInPoints;
+    private readonly bool _ligatures;
     private readonly Pointer _pointer = new();
 
     private bool _dragging;
     private bool _disposed;
 
     internal PaneAttachment(TerminalPane pane, Emulator emulator, TerminalShare share,
-                            string family, float sizeInPoints)
+                            string family, float sizeInPoints, bool ligatures = true)
     {
         ArgumentNullException.ThrowIfNull(pane);
         ArgumentNullException.ThrowIfNull(emulator);
@@ -45,6 +46,7 @@ public sealed class PaneAttachment : IDisposable
         _damage = share.Damage;
         _family = family;
         _sizeInPoints = sizeInPoints;
+        _ligatures = ligatures;
 
         // The model's own method, until a session replaces it. See Resized.
         Resized = emulator.Resize;
@@ -459,7 +461,10 @@ public sealed class PaneAttachment : IDisposable
                 _pane.PaneHandle,
                 (uint)Math.Max(1d, _pane.ActualWidth * dpi.DpiScaleX),
                 (uint)Math.Max(1d, _pane.ActualHeight * dpi.DpiScaleY),
-                new FontSettings(_family, _sizeInPoints, (float)dpi.PixelsPerInchX),
+                new FontSettings(_family, _sizeInPoints, (float)dpi.PixelsPerInchX)
+                {
+                    Ligatures = _ligatures,
+                },
                 _emulator.Palette);
         }
         catch (Exception error)

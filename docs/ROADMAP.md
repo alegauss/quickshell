@@ -63,8 +63,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS50** (deps: QS46 ✅) **Nothing can be configured, so the font, the colours and the keybindings are whatever the code says** — A settings surface is where a lean client most easily becomes a bloated one, so what is offered and what is simply decided are both chosen here. → §QS50
-- 📋 **QS51** (deps: QS50) **A user's chosen colour scheme has to be entered as twenty colours by hand** — Schemes already circulate in two formats everybody shares, so reading them is a small piece of work standing between a user and a familiar terminal. → §QS51
+- 📋 **QS51** (deps: QS50 ✅) **A user's chosen colour scheme has to be entered as twenty colours by hand** — Schemes already circulate in two formats everybody shares, so reading them is a small piece of work standing between a user and a familiar terminal. → §QS51
 - 📋 **QS52** (deps: QS47 ✅) **Every action needs a chord the user memorised or a menu they have to go looking for** — A palette is how a lean interface keeps its actions reachable without growing toolbars, which is the same trade this project makes everywhere else. → §QS52
 - 📋 **QS53** (deps: QS48 ✅) **The same command on eight hosts has to be typed eight times** — Fleet work is a large part of why this audience uses a tabbed client at all, and mistyping the eighth is how that pattern fails today. → §QS53
 - 📋 **QS83** (deps: QS82 ✅, QS46 ✅) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83

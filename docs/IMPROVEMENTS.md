@@ -1074,31 +1074,6 @@ Falsified when a hundred connects through the proxy all receive a well-formed re
 
 ## Block G — The clean interface, defended
 
-### §QS50 A good default beats a checkbox
-
-The rule this surface is built on: prefer a good default to an option. Every setting is
-a permanent compatibility contract, a line in a reference nobody reads, and one more
-state combination a bug report can arrive in.
-
-What is genuinely worth exposing: font family, size and fallback chain; the ligature
-setting, since users are sincerely divided on it; the colour scheme; cursor shape and
-blink; scrollback capacity; keybindings; and the terminal behaviours that are
-host-dependent rather than a matter of taste — the paste warning, clipboard access from
-the remote side, and the reported terminal type.
-
-Settings are a file the user can edit *and* a UI over that same file, with the file as
-the source of truth. That way it goes under version control, and support can ask for it.
-The UI writes it back preserving comments, or the UI is not worth having.
-
-Changes apply live. A font size that needs a restart is a font size nobody experiments
-with, and experimenting is the entire reason to expose it.
-
-Anything not on the list above needs an argument rather than a preference, and the
-argument is a user's task and never a feature comparison — which is the parity non-goal
-applied to the one surface where it is hardest to hold the line.
-
-Falsified when a setting exists that no reference documents.
-
 ### §QS51 Reading the two formats that already exist
 
 Nobody types twenty colours. Schemes circulate as files, in two formats that between

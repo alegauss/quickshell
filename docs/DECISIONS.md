@@ -59,6 +59,7 @@
 
 - ✅ **QS4** **No decision records which window host can present a swapchain without adding frames of latency** — The window host is WPF with a child HWND per pane: measured over three passes it is the only one of the three whose click-to-pixel floor is a single refresh interval.
 - ✅ **QS49** **Each pane would open its own graphics device, so four panes cost four times the driver's attention** — One render thread for every pane, because they share a device: D3D11's immediate context is not free-threaded, so a thread per pane is a race rather than a speed-up.
+- ✅ **QS50** **Nothing can be configured, so the font, the colours and the keybindings are whatever the code says** — A setting exists only where a reference documents it, held by a test reading docs/SETTINGS.md against the keys this build knows, in both directions.
 
 ## Block H — The reason to leave the incumbent
 

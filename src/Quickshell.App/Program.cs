@@ -73,7 +73,9 @@ public static class Entry
         // one that was current when the window was built. Asked afresh each time for exactly that
         // reason: switching tabs and moving between panes are the two places a client like this goes
         // wrong quietly, and it goes wrong by answering for the one before.
-        window.Opens = () => Opened(window, settings, share);
+        // The window's own copy and not the one read at start-up, so a tab opened after the
+        // settings changed opens at what they are now rather than at what they were.
+        window.Opens = () => Opened(window, window.Settings, share);
         window.Connects = leaf => _ = leaf.ConnectAsync();
 
         // Not awaited: what is being ended is already out of the window and nothing references it,
@@ -192,6 +194,9 @@ public static class Entry
     {
         string host = Path.GetFileName(LocalSession.Shell);
         TerminalTab tab = TerminalTab.Open(settings, share, host);
+
+        // Everything a pane reads live, applied to the one just opened as well as to the rest.
+        window.Apply(settings);
 
         window.Add(tab);
         window.Sessions.Open(host, another: true);

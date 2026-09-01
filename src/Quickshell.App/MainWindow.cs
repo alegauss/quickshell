@@ -820,13 +820,34 @@ public sealed class MainWindow : Window
     {
         ArgumentNullException.ThrowIfNull(settings);
 
+        Settings = settings;
+
         ThemeMode = settings.Theme switch
         {
             ChromeTheme.Light => ThemeMode.Light,
             ChromeTheme.Dark => ThemeMode.Dark,
             _ => ThemeMode.System,
         };
+
+        // Every pane that is already open, and not only the ones opened after this. A font size that
+        // needs a restart is a font size nobody experiments with, and experimenting is the entire
+        // reason to expose one.
+        foreach (TerminalTab tab in _open)
+        {
+            foreach (TerminalLeaf leaf in tab.Leaves)
+            {
+                leaf.Apply(settings);
+            }
+        }
     }
+
+    /// <summary>
+    /// What the user has configured, which a pane opened later starts from.
+    ///
+    /// <para>Held here because the window outlives every tab in it, and a tab opened an hour after
+    /// the settings changed must not open at the size they were when the client started.</para>
+    /// </summary>
+    public Settings Settings { get; private set; } = Settings.Default;
 
     /// <summary>
     /// What happens once an import has been previewed. A dialog that shows what would be created and
@@ -1078,7 +1099,8 @@ public sealed class MainWindow : Window
 
         // Shown before it is sent, and the dialog carries the text itself rather than a count: a
         // user asked whether to paste "4 lines" has been told nothing they can act on.
-        if (Paste.NeedsConfirming(text, bracketed) && !(AskingToPaste ?? AskedToPaste)(text))
+        if (Settings.WarnOnPaste && Paste.NeedsConfirming(text, bracketed)
+            && !(AskingToPaste ?? AskedToPaste)(text))
         {
             return string.Empty;
         }

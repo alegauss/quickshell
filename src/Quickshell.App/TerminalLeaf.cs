@@ -44,8 +44,8 @@ public sealed class TerminalLeaf : IAsyncDisposable
 
         Typist = new Typist(emulator);
 
-        Terminal = TerminalView.Attach(pane, emulator, share,
-                                       settings.FontFamily, (float)settings.FontSize);
+        Terminal = TerminalView.Attach(pane, emulator, share, settings.FontFamily,
+                                       (float)settings.FontSize, settings.Ligatures);
     }
 
     /// <summary>The model this tab's session is parsed into.</summary>
@@ -169,6 +169,34 @@ public sealed class TerminalLeaf : IAsyncDisposable
 
             _damage.Set();
         }
+    }
+
+    /// <summary>
+    /// Takes settings that have changed, on a pane that is already open and drawing.
+    ///
+    /// <para><b>The cursor and the blink reach the glass at once</b>, because both are read by the
+    /// loop every frame and neither is built into anything. The font is the one that cannot be: the
+    /// atlas rasterised at a size and the grid was measured from it, so changing it is a new atlas
+    /// and a new grid for every pane at once — QS168, and it is the share's to do rather than a
+    /// pane's.</para>
+    /// </summary>
+    public void Apply(Settings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        if (Terminal.View is not { } view)
+        {
+            return;
+        }
+
+        view.Cursor = settings.Cursor;
+        view.Renderer.Blink.Enabled = settings.CursorBlink;
+
+        // The picture is wrong and the terminal does not know: nothing was printed, so the gate
+        // would answer that the frame on the glass is still current.
+        view.Moved();
+
+        _damage.Set();
     }
 
     /// <summary>
