@@ -23,8 +23,11 @@ namespace Quickshell.App;
 /// it is why a resize cannot be applied where it arrives. The UI thread's job is to hand this the
 /// handle and then leave it alone.</para>
 ///
-/// <para>What is still unjoined: the resize in the three parts QS32 settled, and keystrokes. Both
-/// have to cross the same thread boundary this one does, and neither is here yet.</para>
+/// <para><b>The resize and the keystrokes are joined here too, and each crosses this boundary its
+/// own way.</b> A resize is recorded by <see cref="Resize"/> and applied by the loop, because the
+/// context belongs to the loop; a keystroke never touches this class at all, because
+/// <see cref="Typist"/> writes to the channel and the frame it eventually causes arrives as damage
+/// like any other.</para>
 /// </summary>
 public sealed class TerminalView : IDisposable
 {
