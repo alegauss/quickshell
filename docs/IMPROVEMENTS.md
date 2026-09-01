@@ -1305,6 +1305,56 @@ This line exists to hold the count and the rule until those are opened.
 
 Falsified when a component ships with no line naming what will reach it.
 
+### §QS151 A signal nothing is sleeping on
+
+`SessionPipeline` raises a `DamageSignal` when the parser has changed the model, and the
+pane's render loop sleeps on one. QS116 found that those have to be the same object and
+gave `Start` a parameter for it: `LocalSession` hands in the pane's, and
+`LocalSessionTests` asserts the identity rather than the text, because a session parsing
+correctly into the model while setting a signal of its own passes every assertion about
+what the screen says and is still a window that draws one frame and stops.
+
+`RemoteSession.LiveAsync` calls `SessionPipeline.Start(channel, _emulator)` with no
+signal, once per connection, and exposes none. So the same fault is already written down
+in the file QS126 will reach for, and it is worse there than it was here: a reconnect
+replaces the pipeline, so even a client that found the first signal and slept on it
+would be sleeping on a dead one from the second connection onwards. The reconnect is the
+whole point of that class, the scrollback survives it, and a window that goes blank on
+the first reconnect is the failure a user reports as losing their session.
+
+What it needs is the shape `LocalSession` already has: the signal belongs to the pane,
+is passed in once, and every pipeline the session opens over its life is given that one.
+Which is also the smaller claim to test, because it is an identity and not a wait.
+
+Falsified when a session survives a reconnect and the window still shows what the second
+connection printed.
+
+### §QS152 The session that ended and did not say so
+
+`IPtyChannel.Closed` completes with a `PtyExit` carrying the code the program left with,
+and `ConPtyChannel` fills it in. Nothing in the client waits on it. QS116 opened a shell
+on the pane and joined every path that carries bytes; the one path that carries an
+ending was not among them, because a session that has ended sends nothing and nothing is
+what the pane keeps drawing.
+
+So the client a user actually meets does this: they type `exit`, the shell goes, the
+pipeline's loops finish, and the window sits on the last frame the shell printed, cursor
+still blinking. Every keystroke after that is taken by `Typist` and dropped, which is
+correct for a window with no session and indistinguishable from a window that has
+stopped responding. The client is not hung and the user has no way to tell.
+
+What it needs is small and it is a user-facing decision rather than a mechanism: the
+window has to say the session ended and what it ended with, in the terminal itself,
+where the person is already looking. `RemoteSession` already words this for the remote
+case, and its sentence distinguishes a shell that exited from a link that dropped, which
+is the distinction worth keeping here too.
+
+Whether the window then offers a new session is the second half and belongs with tabs,
+not with this line.
+
+Falsified when a shell exits and the window is indistinguishable from one that has
+stopped responding.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
