@@ -63,7 +63,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS52** (deps: QS47 ✅) **Every action needs a chord the user memorised or a menu they have to go looking for** — A palette is how a lean interface keeps its actions reachable without growing toolbars, which is the same trade this project makes everywhere else. → §QS52
 - 📋 **QS53** (deps: QS48 ✅) **The same command on eight hosts has to be typed eight times** — Fleet work is a large part of why this audience uses a tabbed client at all, and mistyping the eighth is how that pattern fails today. → §QS53
 - 📋 **QS83** (deps: QS82 ✅, QS46 ✅) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83
 - 📋 **QS126** (deps: QS121) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126

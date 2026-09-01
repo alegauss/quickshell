@@ -137,6 +137,12 @@ public sealed class MainWindow : Window
         InputBindings.Add(new KeyBinding(new Find(this), Key.F,
                                          ModifierKeys.Control | ModifierKeys.Shift));
 
+        // Everything this client does, by typing part of its name. Ctrl+Shift+P because that is the
+        // chord a palette has on this platform, and a user who has met one before should not have to
+        // find out that this client spells it differently.
+        InputBindings.Add(new KeyBinding(new Listing(this), Key.P,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
         // Rereading the settings file. Beside the watch and not instead of it: a watch can fail to
         // arm — a network share, a directory it cannot open — and this is what somebody reaches for
         // when they have just edited the file in another window and nothing happened.
@@ -1455,9 +1461,22 @@ public sealed class MainWindow : Window
     private static string Count(int how, string what) =>
         how.ToString(CultureInfo.InvariantCulture) + " " + what + (how == 1 ? string.Empty : "s");
 
-    /// <summary>The binding's command, which is the whole of what a command is here.</summary>
-    private sealed class Diagnose(MainWindow window) : ICommand
+    /// <summary>
+    /// One thing this client can do: a binding's command and a palette entry, which are the same
+    /// object rather than two that have to agree.
+    ///
+    /// <para><b>The base class exists so <see cref="Name"/> cannot be forgotten.</b> QS52's list is
+    /// generated from these, so an action added without a name would be an action the palette cannot
+    /// reach — and the compiler is a better place to catch that than a review.</para>
+    /// </summary>
+    private abstract class Doing(MainWindow window) : INamedCommand
     {
+        /// <summary>The window this acts on.</summary>
+        protected MainWindow Window { get; } = window;
+
+        /// <inheritdoc/>
+        public abstract string Name { get; }
+
         /// <inheritdoc/>
         public event EventHandler? CanExecuteChanged
         {
@@ -1466,10 +1485,20 @@ public sealed class MainWindow : Window
         }
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
+        public virtual bool CanExecute(object? parameter) => true;
 
         /// <inheritdoc/>
-        public void Execute(object? parameter) => window.WriteDiagnostics();
+        public abstract void Execute(object? parameter);
+    }
+
+    /// <summary>The binding's command, which is the whole of what a command is here.</summary>
+    private sealed class Diagnose(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Write a diagnostic report";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.WriteDiagnostics();
     }
 
     /// <summary>
@@ -1526,54 +1555,36 @@ public sealed class MainWindow : Window
     }
 
     /// <summary>The tab-opening binding's command.</summary>
-    private sealed class Opening(MainWindow window) : ICommand
+    private sealed class Opening(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name => "New tab";
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.Opens?.Invoke();
+        public override void Execute(object? parameter) => Window.Opens?.Invoke();
     }
 
     /// <summary>The tab-closing binding's command.</summary>
-    private sealed class Shutting(MainWindow window) : ICommand
+    private sealed class Shutting(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name => "Close tab";
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.CloseTab();
+        public override void Execute(object? parameter) => Window.CloseTab();
     }
 
     /// <summary>Next and previous, which wrap.</summary>
-    private sealed class Step(MainWindow window, int by) : ICommand
+    private sealed class Step(MainWindow window, int by) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name => by > 0 ? "Next tab" : "Previous tab";
+
+        /// <summary>Nowhere to step to with one tab, which is when this window has no strip.</summary>
+        public override bool CanExecute(object? parameter) => Window.Held.Count > 1;
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.Active += by;
+        public override void Execute(object? parameter) => Window.Active += by;
     }
 
     /// <summary>
@@ -1583,148 +1594,119 @@ public sealed class MainWindow : Window
     /// wrapping above would be wrong: Alt+7 in a window with three tabs is a mistake, and landing on
     /// the first would look like the chord did something else.</para>
     /// </summary>
-    private sealed class Reach(MainWindow window, int at) : ICommand
+    private sealed class Reach(MainWindow window, int at) : Doing(window)
     {
-        /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
+        /// <summary>
+        /// The position and what is in it, which is how the palette lists tabs to switch to.
+        ///
+        /// <para>The title and not only the number, because a user looking for their build log is
+        /// looking for the word and not for where it happens to sit today.</para>
+        /// </summary>
+        public override string Name
         {
-            add { }
-            remove { }
+            get
+            {
+                string position = $"Go to tab {(at + 1).ToString(CultureInfo.InvariantCulture)}";
+
+                return at < Window.Held.Count && Window.Held[at].Title is { Length: > 0 } called
+                           ? $"{position} — {called}"
+                           : position;
+            }
         }
 
-        /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
+        /// <summary>A tab that is not open is not an action. See <see cref="Commands.From"/>.</summary>
+        public override bool CanExecute(object? parameter) => at < Window.Held.Count;
 
         /// <inheritdoc/>
-        public void Execute(object? parameter)
+        public override void Execute(object? parameter)
         {
-            if (at < window.Held.Count)
+            if (at < Window.Held.Count)
             {
-                window.Active = at;
+                Window.Active = at;
             }
         }
     }
 
     /// <summary>The splitting bindings' command.</summary>
-    private sealed class Splitting(MainWindow window, Divide how) : ICommand
+    private sealed class Splitting(MainWindow window, Divide how) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name =>
+            how == Divide.Beside ? "Split pane right" : "Split pane down";
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.SplitPane(how);
+        public override void Execute(object? parameter) => Window.SplitPane(how);
     }
 
     /// <summary>The directional focus bindings' command.</summary>
-    private sealed class Facing(MainWindow window, Toward way) : ICommand
+    private sealed class Facing(MainWindow window, Toward way) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
+        public override string Name => way switch
         {
-            add { }
-            remove { }
-        }
+            Toward.Left => "Focus pane left",
+            Toward.Right => "Focus pane right",
+            Toward.Up => "Focus pane up",
+            _ => "Focus pane down",
+        };
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.FocusPane(way);
+        public override void Execute(object? parameter) => Window.FocusPane(way);
     }
 
     /// <summary>The zoom binding's command.</summary>
-    private sealed class Zooming(MainWindow window) : ICommand
+    private sealed class Zooming(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name => "Zoom pane";
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.ZoomPane();
+        public override void Execute(object? parameter) => Window.ZoomPane();
     }
 
     /// <summary>The equalise binding's command.</summary>
-    private sealed class Equalising(MainWindow window) : ICommand
+    private sealed class Equalising(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name => "Equalise panes";
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.EqualisePanes();
+        public override void Execute(object? parameter) => Window.EqualisePanes();
     }
 
     /// <summary>Who rereads the settings file when the user asks, or null while nothing can.</summary>
     public Action? Reloads { get; set; }
 
     /// <summary>The reread binding's command.</summary>
-    private sealed class Rereading(MainWindow window) : ICommand
+    private sealed class Rereading(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name => "Reload the settings file";
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.Reloads?.Invoke();
+        public override void Execute(object? parameter) => Window.Reloads?.Invoke();
     }
 
     /// <summary>The find binding's command: opens the bar, or closes one already open.</summary>
-    private sealed class Find(MainWindow window) : ICommand
+    private sealed class Find(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name => "Find in the scrollback";
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.ShowFindBar(!window.FindBarShowing);
+        public override void Execute(object? parameter) =>
+            Window.ShowFindBar(!Window.FindBarShowing);
     }
 
     /// <summary>The scrollback bindings' command, one screenful at a time.</summary>
-    private sealed class Scroll(MainWindow window, bool up) : ICommand
+    private sealed class Scroll(MainWindow window, bool up) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name => up ? "Scroll back a page" : "Scroll forward a page";
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.Scrolling?.Invoke(up ? -Page : Page);
+        public override void Execute(object? parameter) =>
+            Window.Scrolling?.Invoke(up ? -Page : Page);
 
         /// <summary>
         /// How far a page key moves.
@@ -1738,54 +1720,120 @@ public sealed class MainWindow : Window
     }
 
     /// <summary>The copy binding's command.</summary>
-    private sealed class Copy(MainWindow window) : ICommand
+    private sealed class Copy(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name => "Copy the selection";
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.CopySelection();
+        public override void Execute(object? parameter) => Window.CopySelection();
     }
 
     /// <summary>The paste binding's command.</summary>
-    private sealed class PasteIn(MainWindow window) : ICommand
+    private sealed class PasteIn(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
-        {
-            add { }
-            remove { }
-        }
+        public override string Name => "Paste";
 
         /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
-
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.PasteFromClipboard();
+        public override void Execute(object? parameter) => Window.PasteFromClipboard();
     }
 
     /// <summary>The import binding's command.</summary>
-    private sealed class Import(MainWindow window) : ICommand
+    private sealed class Import(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public event EventHandler? CanExecuteChanged
+        public override string Name => "Import sessions from another client";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.ImportSessions();
+    }
+
+    /// <summary>
+    /// The palette's own command, which is in the palette like everything else.
+    ///
+    /// <para>Not an exception to the rule, and it costs nothing to keep it inside: a user who has
+    /// found the palette once does not need to find it again, and a list with a hole in it is a list
+    /// somebody has to remember the shape of.</para>
+    /// </summary>
+    private sealed class Listing(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Show all commands";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.ShowPalette();
+    }
+
+    /// <summary>
+    /// What has been run from the palette, newest first, for as long as this window is open.
+    ///
+    /// <para><b>In memory and not in the settings file.</b> What a user wanted five minutes ago is
+    /// worth ranking on; what they wanted last Tuesday is a fact about a session that has ended, and
+    /// keeping it would mean a settings file that changes on its own.</para>
+    /// </summary>
+    private readonly List<string> _recent = [];
+
+    /// <summary>How many names that keeps. Enough to be useful, short enough to still be ranking.</summary>
+    private const int Remembered = 12;
+
+    /// <summary>
+    /// Every action this client can perform right now, which is what the palette offers.
+    ///
+    /// <para>Read off the bindings rather than listed here — QS52's whole discipline, and the reason
+    /// an action cannot exist that the palette cannot reach.</para>
+    /// </summary>
+    public IReadOnlyList<Command> Actions => Commands.From(InputBindings.OfType<InputBinding>());
+
+    /// <summary>The names most recently run, newest first.</summary>
+    public IReadOnlyList<string> Recent => _recent;
+
+    /// <summary>
+    /// Who asks the user to pick a command. Null opens the real palette, which is what a client
+    /// does and what a test cannot have.
+    /// </summary>
+    public Func<IReadOnlyList<Command>, IReadOnlyList<string>, Command?>? Choosing { get; set; }
+
+    /// <summary>
+    /// Opens the palette, and runs what was picked.
+    ///
+    /// <para>The entry runs the same <see cref="ICommand"/> the key binding does, so a command
+    /// reached two ways cannot behave two ways.</para>
+    /// </summary>
+    public void ShowPalette()
+    {
+        if ((Choosing ?? Asked)(Actions, _recent) is not { } picked)
         {
-            add { }
-            remove { }
+            return;
         }
 
-        /// <inheritdoc/>
-        public bool CanExecute(object? parameter) => true;
+        Remember(picked.Name);
 
-        /// <inheritdoc/>
-        public void Execute(object? parameter) => window.ImportSessions();
+        picked.Run();
+    }
+
+    /// <summary>Puts a name at the front of what was run recently, without letting it grow.</summary>
+    private void Remember(string name)
+    {
+        _recent.Remove(name);
+        _recent.Insert(0, name);
+
+        if (_recent.Count > Remembered)
+        {
+            _recent.RemoveRange(Remembered, _recent.Count - Remembered);
+        }
+    }
+
+    /// <summary>The real palette, which is a window and therefore not what a test asks.</summary>
+    private Command? Asked(IReadOnlyList<Command> all, IReadOnlyList<string> recent)
+    {
+        CommandPalette palette = new(all, recent)
+        {
+            Owner = this,
+            ThemeMode = ThemeMode,
+        };
+
+        return palette.ShowDialog() == true ? palette.Chosen : null;
     }
 
     /// <summary>Where this window is now, for remembering.</summary>

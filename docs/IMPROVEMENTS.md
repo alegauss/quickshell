@@ -1074,30 +1074,6 @@ Falsified when a hundred connects through the proxy all receive a well-formed re
 
 ## Block G — The clean interface, defended
 
-### §QS52 The surface that lets the other surfaces stay small
-
-A palette is the mechanism that makes the non-goal about toolbars affordable. Every
-action the client can perform is reachable by typing part of its name, so an action does
-not need a button in order to be findable, and the interface stays as empty as the
-window line promised it would.
-
-It lists sessions to connect to, tabs and panes to switch to, settings to change, and
-the client's own commands. Fuzzy matching over the name, ranked with recency, because
-what a user wants is usually what they wanted recently.
-
-Each entry shows its keybinding where it has one, which turns the palette into how
-chords are discovered rather than something a user has to read a reference to learn.
-
-It opens on a chord, closes on escape, and never takes focus without being asked. It has
-no configuration of its own.
-
-The discipline that keeps it useful is that the action list is generated from the
-actions themselves rather than maintained alongside them. A hand-maintained list drifts,
-and a palette missing a third of the actions is worse than no palette, because the user
-stops trusting it and never comes back.
-
-Falsified when an action exists that the palette cannot reach.
-
 ### §QS53 Typing once into several hosts, visibly
 
 Input broadcast sends what is typed to several panes at once. It is one of the few

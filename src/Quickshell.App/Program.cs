@@ -137,6 +137,19 @@ public static class Entry
             window.Dispatcher.BeginInvoke(() => window.ImportSessions());
         }
 
+        // `--palette` opens what Ctrl+Shift+P opens, and for the same reason as `--import`: after
+        // the window rather than before it, because a modal with nothing behind it looks like a
+        // client that failed to start.
+        //
+        // The chord would be the better route for a case to take and the engine cannot spell it
+        // yet — `press` in the pinned winwright takes Tab and the arrows and no modifier chord. It
+        // can in the engine's own source, where WW317 shipped; the package this repository restores
+        // is older than that, which is QS176.
+        if (arguments.Contains("--palette", StringComparer.Ordinal))
+        {
+            window.Dispatcher.BeginInvoke(() => window.ShowPalette());
+        }
+
         application.Run(window);
 
         // Every tab, and the loops before the sessions, so nothing is drawing into a handle that is

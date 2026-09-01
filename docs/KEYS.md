@@ -4,6 +4,10 @@
 having them, and it is the reason this page exists: a user who loses a chord to their client should
 read about it here rather than discover it by pressing it and watching nothing happen.
 
+**You do not have to learn any of them.** `Ctrl+Shift+P` opens the command palette, which lists
+everything this client does and shows each one's chord beside it. This page is the reference; the
+palette is how you find something without one.
+
 Nothing here is configurable yet. When it becomes configurable this page becomes the defaults.
 
 ## Tabs
@@ -48,6 +52,7 @@ typing `exit` has always meant.
 
 | Chord | What it does |
 |---|---|
+| `Ctrl+Shift+P` | The command palette: everything this client does, found by typing part of its name. Each entry shows its chord, so this is also how you learn them. |
 | `Ctrl+Shift+R` | Rereads [the settings file](SETTINGS.md). Saving it is normally enough; this is what to press when it was not. |
 | `Ctrl+Shift+I` | Imports sessions from another client. |
 | `Ctrl+Shift+F1` | Collects a diagnostic report. |

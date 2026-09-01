@@ -1,0 +1,101 @@
+{
+  // QS52. Opened by `--palette` and not by Ctrl+Shift+P, which is the route a user actually takes.
+  //
+  // The chord was tried first and refused: `press` in the winwright this repository restores takes
+  // Tab and the arrows and no modifier chord. WW317 shipped that in the engine's own source, so the
+  // gap is a package this project is behind on rather than an engine that cannot do it — QS176. The
+  // step is one line away when the version moves.
+  //
+  // The flag is not a test hook. A client with no menu has the command line as a real surface, and
+  // it is the only one another program can reach — the same argument tabs.cases.json and
+  // import.cases.json make.
+  //
+  // Every claim here is made by typing and then reading what rose to the top. That shape is forced:
+  // the engine refuses a step whose locator already matched on the property it goes on to read, so
+  // `ListItem[name="…"]` cannot assert its own name. It is the better case for it. Addressing an
+  // entry by position and reading what landed there is the whole of what a palette does, and a case
+  // that named the entry it wanted would have proved only that the entry exists.
+
+  "fixtures": [
+    {
+      // Two tabs, so the list has the tab entries in it and the stepping commands can run. One tab
+      // is a smaller palette and a less interesting one.
+      //
+      // Named for what it is for and not for what it holds: a fixture name is global across every
+      // case file here, so "a window with two tabs" is already taken by tabs.cases.json — and two
+      // declarations of one name are two launches a case naming it cannot choose between.
+      "name": "a window to open the palette over",
+      "arguments": ["--tabs", "2", "--palette"],
+      "shareable": true
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "the palette lists what this client can do, and initials find it",
+      "catches": "a palette whose list is built from a second, hand-maintained list of actions — which drifts, and which no test inside the process would notice because it would be asking the same list",
+      "filed": "QS52",
+      "tags": ["smoke", "palette"],
+      "fixture": "a window to open the palette over",
+
+      "steps": [
+        {
+          // The palette's own box. `set value` and not synthesised keystrokes: the pattern is the
+          // act, and a keystroke would need the foreground this whole exercise exists to stop
+          // needing.
+          "locator": "Edit",
+          "act": "set value",
+          "with": "sac",
+          "expect": "sac",
+          "reads": "value",
+          "named": "three initials, in the order somebody would type them"
+        },
+        {
+          // Addressed by where it is and read for what it says, which is the only shape that can
+          // claim anything: no substring of "Show all commands" reads "sac".
+          //
+          // That the palette lists itself is the deliberate half. A list with a hole in it is a
+          // list somebody has to remember the shape of.
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Show all commands",
+          "named": "the palette is up and lists itself"
+        },
+        {
+          "locator": "Edit",
+          "act": "set value",
+          "with": "spr",
+          "expect": "spr",
+          "reads": "value",
+          "named": "and again, for a command with no other route but a chord"
+        },
+        {
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Split pane right",
+          "named": "initials find the phrase, which is why this is worth opening"
+        },
+        {
+          "locator": "Edit",
+          "act": "set value",
+          "with": "eqp",
+          "expect": "eqp",
+          "reads": "value",
+          "named": "an action a user would never find without this"
+        },
+        {
+          // Equalising panes is reachable by Ctrl+Shift+E and by nothing else in the window. If the
+          // list were maintained beside the bindings rather than derived from them, this is the
+          // entry somebody would have forgotten.
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Equalise panes",
+          "named": "and it is here, without anybody having added it to a second list"
+        }
+      ]
+    }
+  ]
+}
