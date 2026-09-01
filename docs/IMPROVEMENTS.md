@@ -2033,28 +2033,3 @@ What must not happen is the ceiling quietly becoming a budget. Zero is the claim
 noise is the runtime's, and the fix is to stop measuring the runtime.
 
 Falsified when the same tree gives two verdicts on two runs of the same machine.
-
-### §QS175 The red that happened once and left no name
-
-During QS161 one run of `Quickshell.App.Tests` reported `com falha: 1` out of 300. The
-run before it and the seven after it were clean, on the host and in the guest, and the
-output that would have named the test was filtered away before anybody looked. So what
-is known is a count and nothing else.
-
-The circumstance worth recording is that the red run was the one launched in the same
-command as a `dotnet build`. Several tests in that assembly are timing-sensitive by
-construction: `SettingsWatchTests` waits on a real `FileSystemWatcher`,
-`TerminalShareTests` waits on a draw. A machine still finishing a build is exactly the
-load that would push one of those past its patience — which would make this a test that
-is too tight rather than a client that is wrong, and the two are repaired differently.
-
-The block's own criterion says no test fails intermittently on an unchanged tree, so
-this is already a claim this project has made. What is missing to keep it is not a fix
-but evidence: the runner's per-test output has to survive into a file rather than into a
-pipe somebody filtered, so the next occurrence names itself.
-
-That is the first move here, and it is cheap. `run-tests.cmd` already writes to the
-console and the guest already captures the console to a log; what neither does is keep
-the host's.
-
-Falsified when a red run cannot say which test was red.

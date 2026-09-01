@@ -232,6 +232,13 @@ exits 5 while all of it passes, so a green from that command is not evidence of 
 script, with `Release` as its one argument. Output lands in `bin\<Configuration>\` and nowhere else,
 so there is no second tree holding an older binary to run by accident.
 
+**A red run names its tests, so never report only a count.** Every assembly writes a TRX to
+`TestResults\reports\`, and a failing run prints the failed test names and their first two assertion
+lines after the summary — on the host and, out of the artefacts it brings back, for the guest too.
+So a red you cannot explain is a red whose report you have not read, and `TestResults\reports\` is
+still there tomorrow when the console is gone. Never pipe a run through a filter and then report
+what survived it.
+
 **`.\run-app-vm.cmd` is the client itself on that same desk** — see the picture rule below. It
 shares its guest plumbing with the suite runner through `tools\vm-guest.ps1`, so both reach the VM
 the same way and neither has an opinion of its own about it.

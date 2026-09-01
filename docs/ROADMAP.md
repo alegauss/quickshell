@@ -114,7 +114,6 @@
 - 📋 **QS149** (deps: —) **A tool that rewrites a source file can mangle its punctuation and every check stays green** — The hygiene test bans control bytes and says nothing about text that decoded through the wrong codepage on its way back to disk. → §QS149
 - 📋 **QS159** (deps: QS147 ✅) **The shipping discipline tells an agent to screenshot a UI task, and this repository's evidence rule forbids that** — A session followed the skill, spent an hour driving the operator's desk with synthetic keystrokes, and never found the winwright cases already here. → §QS159
 - 📋 **QS167** (deps: QS95 ✅) **An allocation assertion fails about once in two guest runs on a tree nothing touched** — Block K asks that no test fail intermittently, and this one was watched doing it: red in the guest, green on the host and green on the guest's next run. → §QS167
-- 📋 **QS175** (deps: —) **One App.Tests run went red once and named nothing, and seven runs since have not reproduced it** — A suite that fails once in eight teaches the reader to rerun rather than to look, which costs the next real red its credibility. → §QS175
 
 ## Done when — Block A
 

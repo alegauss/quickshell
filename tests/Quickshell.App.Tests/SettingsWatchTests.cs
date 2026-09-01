@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using Quickshell.App;
 using Quickshell.Terminal;
@@ -95,19 +96,31 @@ public sealed class SettingsWatchTests : IDisposable
 
         using SettingsWatch watch = OnFile(file, seen);
 
+        long started = Stopwatch.GetTimestamp();
+
         for (int size = 13; size <= 22; size++)
         {
             File.WriteAllText(file, $$"""{ "fontSize": {{size}} }""");
         }
 
+        TimeSpan burst = Stopwatch.GetElapsedTime(started);
+
         Settings read = Until(seen, one => one.FontSize == 22);
 
         Assert.Equal(22d, read.FontSize);
 
-        // Ten writes, and far fewer reads than writes — the debounce collapsing a burst is the whole
-        // claim, and the exact number is the file system's business rather than this test's.
-        Assert.True(watch.Reloads < 10,
-                    $"ten writes in a burst caused {watch.Reloads} reads");
+        // Only where the writes really were a burst. QS175: ten writes that took longer than the
+        // quiet period are ten separate saves as far as the watch is concerned, and reading each
+        // one is the debounce being right rather than wrong — so a machine loaded enough to space
+        // them out would fail this for doing the correct thing. That is a test too tight, not a
+        // client misbehaving, and the premise is checked rather than assumed.
+        if (burst < SettingsWatch.Quiet)
+        {
+            // Far fewer reads than writes. The exact number is the file system's business rather
+            // than this test's.
+            Assert.True(watch.Reloads < 10,
+                        $"ten writes in {burst.TotalMilliseconds:F0}ms caused {watch.Reloads} reads");
+        }
     }
 
     /// <summary>

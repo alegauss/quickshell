@@ -157,8 +157,29 @@ $null = Invoke-VmRun -Guest -Arguments @('copyFileFromGuestToHost', $vmxPath, "$
 # Only chased on a red run: the archive exists only when a golden scene wrote its difference images,
 # and asking for it on a green run reports a missing file that was never due.
 if ($code -ne 0) {
-    $archiveBack = Invoke-VmRun -Guest -Arguments @('copyFileFromGuestToHost', $vmxPath, "$script:GuestSync\results.zip", (Join-Path $results 'results.zip'))
-    if ($archiveBack.Ok) { Write-Host "  artefacts   $(Join-Path $results 'results.zip')" }
+    $archive = Join-Path $results 'results.zip'
+    $archiveBack = Invoke-VmRun -Guest -Arguments @('copyFileFromGuestToHost', $vmxPath, "$script:GuestSync\results.zip", $archive)
+
+    if ($archiveBack.Ok) {
+        Write-Host "  artefacts   $archive"
+
+        # QS175. The archive carries the guest's own TRX reports, so a red run there names its
+        # tests here - the console this run wrote lives on a machine nobody is looking at, and the
+        # log copied back is whatever survived a pipe.
+        $unpacked = Join-Path $results 'guest'
+        if (Test-Path -LiteralPath $unpacked) { Remove-Item -LiteralPath $unpacked -Recurse -Force }
+
+        try {
+            Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+            [IO.Compression.ZipFile]::ExtractToDirectory($archive, $unpacked)
+
+            Write-Host ''
+            & (Join-Path $PSScriptRoot 'name-the-red.ps1') -From (Join-Path $unpacked 'reports')
+        }
+        catch {
+            Write-Host "  the artefacts would not unpack: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
 }
 
 if (Test-Path -LiteralPath $logFile) {
