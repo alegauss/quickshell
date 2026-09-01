@@ -85,7 +85,7 @@
 - ✅ **QS4** **No decision records which window host can present a swapchain without adding frames of latency** — WPF with a child HWND per pane won on a click-to-pixel floor of 13.8 ms, the only host of three to answer within one refresh interval (design §QS4 recorded in `docs/measurements/host-probe.md`).
 - ✅ **QS46 (the shell)** **There is no window, only a render surface, so nothing can be opened, themed or closed** — A window that opens onto a title bar and a terminal, follows the system theme while running, and comes back where it was on this arrangement of screens.
 - ✅ **QS54** **A screen reader finds nothing on the terminal surface, so the client cannot be used without sight** — The buffer is published as a text pattern with scrollback and screen as one document, the cursor as the caret, and a flood of output as one announcement.
-- ✅ **QS116 (cells from a real buffer)** **The window's terminal is an empty rectangle, because nothing presents a swapchain into the pane's handle** — A real screen becomes the instances a draw call takes, allocation-free — and the glyph advance stopped allocating an array per cell on the way.
+- ✅ **QS116 (a real screen, a swapchain and the loop)** **The window's terminal is an empty rectangle, because nothing presents a swapchain into the pane's handle** — The client opens a device on its pane and draws what a session printed, waking on the parser and on nothing else.
 - ✅ **QS148** **The client exits the moment anything asks its terminal about accessibility** — The child window declines the accessibility question instead of dying on it, and the terminal is still published where a reader looks.
 
 ## Block H — The reason to leave the incumbent

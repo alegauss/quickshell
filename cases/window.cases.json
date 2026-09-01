@@ -38,6 +38,32 @@
           "named": "the title bar carries the application's own name"
         }
       ]
+    },
+
+    {
+      // QS116, and the only check of it that runs against the shipped client rather than against
+      // its parts. The terminal is a texture, so there is nothing in this tree that could report a
+      // pixel — but the element only exists at all once the pane has been given a buffer to
+      // publish, and the pane is given one on the same path that opens the device and starts the
+      // loop. An element here is a client that got as far as having a terminal.
+      "name": "the terminal in the window is a real one with a buffer behind it",
+      "catches": "a client that opens a window and then fails to build a terminal in it — which is exactly what it did before the swapchain, and what it would look like again if the device failed to open",
+      "filed": "QS116",
+      "tags": ["smoke", "window", "terminal"],
+      "fixture": "the window a default installation opens",
+
+      "steps": [
+        {
+          // By class, because the control type is Document and a window may hold more than one
+          // thing that is a document. What is read is the name, which the peer answers and the
+          // locator does not.
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "read",
+          "expect": "Terminal output",
+          "reads": "name",
+          "named": "the pane publishes a terminal for a screen reader to find"
+        }
+      ]
     }
   ]
 }

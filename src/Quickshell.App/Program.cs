@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Quickshell.App;
+using Quickshell.Terminal;
 
 namespace Quickshell.App;
 
@@ -39,11 +40,12 @@ public static class Entry
 
         Application application = new() { ShutdownMode = ShutdownMode.OnMainWindowClose };
         MainWindow? window = null;
+        PaneAttachment? terminal = null;
 
         // Armed before the window, because a failure while building one is a failure the user would
         // otherwise see as nothing happening at all. It reads no file and opens nothing, so it does
         // not spend the cold start this order exists to protect.
-        using CrashGuard guard = CrashGuard.Arm(application, () => Doing(window));
+        using CrashGuard guard = CrashGuard.Arm(application, () => Doing(window, terminal));
 
         window = new MainWindow();
 
@@ -52,8 +54,27 @@ public static class Entry
         // Only now, with something on screen. Both of these are corrections to a window that is
         // already up: the settings file decides the theme, and neither read is on the way to the
         // first paint.
-        window.Apply(SettingsFile.ReadFrom(Locations.Current.Settings));
+        Settings settings = SettingsFile.ReadFrom(Locations.Current.Settings);
+
+        window.Apply(settings);
         window.PlaceAt(WindowPlacements.ReadFrom(Placements()).For(Screens()));
+
+        // The terminal itself, and it is deliberately the last thing: opening a device, compiling
+        // two shaders and rasterising a font are the most expensive things this process does, and
+        // none of them is between the user and their first sight of the window.
+        //
+        // The size is a placeholder for one layout pass. The pane decides the real grid, and the
+        // model is resized to it before a frame is drawn.
+        Emulator emulator = new(80, 25, settings.Scrollback);
+        TerminalPane pane = new() { Reading = emulator.Buffer };
+
+        terminal = TerminalView.Attach(pane, emulator, new DamageSignal(),
+                                       settings.FontFamily, (float)settings.FontSize);
+
+        // Before the pane is shown, and the order is the whole of it: WPF builds an element's
+        // automation peer once and keeps it, so a pane shown without a buffer publishes a terminal
+        // with no text in it for the life of the window.
+        window.Show(pane);
 
         // `--import` opens what Ctrl+Shift+I opens, and after the window is up rather than before:
         // the preview is a dialog over a window, and a modal with nothing behind it is a client that
@@ -65,6 +86,10 @@ public static class Entry
 
         application.Run(window);
 
+        // The loop is stopped before the window's position is written, so nothing is drawing into a
+        // handle that is on its way out.
+        terminal.Dispose();
+
         WindowPlacements.ReadFrom(Placements()).Remember(Screens(), window.Where());
 
         return 0;
@@ -74,14 +99,15 @@ public static class Entry
     /// What the client was doing, for a report written after it stopped doing it.
     ///
     /// <para>Every field here is one this composing layer can actually answer today. The adapter is
-    /// not: the render layer opens its device inside a pane and nothing at this level holds one, so
-    /// the report says there is no device rather than inventing a name for one. That line becomes
-    /// real when the pane is wired to a <c>GraphicsDevice</c>, and until then it is honest.</para>
+    /// one of them now: QS116 gave the pane a device, so a report from a machine that quietly fell
+    /// back to WARP says so — which was the whole reason <c>AdapterChoice</c> carries what it
+    /// skipped. Before the pane is laid out there is still no device, and the report says that
+    /// instead of naming one.</para>
     /// </summary>
-    private static CrashContext Doing(MainWindow? window) =>
+    private static CrashContext Doing(MainWindow? window, PaneAttachment? terminal) =>
         new(CrashContext.Build(),
             Environment.OSVersion.VersionString,
-            "no device is held at this level",
+            terminal?.View?.Device.Adapter.ToString() ?? "no device is held at this level",
             0,
             // Before the window exists there is nothing open, which is itself worth knowing: it says
             // the client stopped on the way up.
