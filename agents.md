@@ -37,6 +37,14 @@ constraint, changed only by a commit that argues for the change.
 ## Evidence
 
 A claim is proven by a run. For UI that means the accessibility tree rather than a
-screenshot — a capture needs foreground granted and a desk somebody is at, and this one
-refused foreground twenty-five times running while unattended. A picture is still worth
-taking for a human to look at. It should not be the evidence.
+screenshot — a screenshot says a window was there, not what it contained, and a capture on
+this machine needs foreground granted by a desk somebody is at, which refused twenty-five
+times running while unattended. A picture is still worth taking for a human to look at. It
+should not be the evidence.
+
+**The desk to take it on is the guest, never this one.** `run-app-vm.cmd` starts the client
+in the VM, lets it draw, and brings back `TestResults\vm\app-desk.png`; `-Settings` places a
+settings file first, which is how a scheme or a font is looked at. `run-tests-vm.cmd` runs
+the suite there. Neither touches the operator's screen — driving this desktop with synthetic
+input steals the foreground from the person the work is for, and is not a fallback when the
+guest is inconvenient.

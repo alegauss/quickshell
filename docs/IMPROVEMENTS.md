@@ -2055,29 +2055,3 @@ What must not happen is the ceiling quietly becoming a budget. Zero is the claim
 noise is the runtime's, and the fix is to stop measuring the runtime.
 
 Falsified when the same tree gives two verdicts on two runs of the same machine.
-
-### §QS173 A desk to look at the window on
-
-`run-tests-vm.cmd` exists because the render tests put real topmost windows on screen,
-and a machine somebody is using is one where a dragged window corrupts the measurement.
-It solves that for tests. It solves nothing for the other half of the evidence this
-project asks for, which is somebody looking at the client and saying what it shows.
-
-So every task that changes what a window looks like ends the same way: the picture is
-taken on the user's own desktop — stealing the foreground, moving their windows, typing
-into whatever had focus — or it is not taken at all and the task ships on its tests.
-Neither is what the discipline says. The first is worse, because it interrupts the
-person the work is for.
-
-The machinery is already there. The guest boots, the tree is copied to it, a session
-runs there and results come back. What is missing is the verb: start the client on the
-guest, drive it, bring back what it showed. winwright already reads an accessibility
-tree over that connection for `Quickshell.Cases`, so this is a launcher rather than an
-invention.
-
-The second reader is QS159, which filed the contradiction between two documents about
-whether a screenshot is evidence at all. That is easier to settle once taking one costs
-nothing and interrupts nobody.
-
-Falsified when a UI task's evidence has to be gathered on the machine the user is
-working on.

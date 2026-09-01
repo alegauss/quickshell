@@ -232,6 +232,10 @@ exits 5 while all of it passes, so a green from that command is not evidence of 
 script, with `Release` as its one argument. Output lands in `bin\<Configuration>\` and nowhere else,
 so there is no second tree holding an older binary to run by accident.
 
+**`.\run-app-vm.cmd` is the client itself on that same desk** — see the picture rule below. It
+shares its guest plumbing with the suite runner through `tools\vm-guest.ps1`, so both reach the VM
+the same way and neither has an opinion of its own about it.
+
 **`.\run-tests-vm.cmd` is the same suite on a desk that is not yours.** The render tests put real
 topmost windows on screen for twenty-five seconds — and a window dragged across one makes DXGI
 answer `DXGI_STATUS_OCCLUDED`, which corrupts the frame-queue measurement. Reach for it when the
@@ -245,8 +249,15 @@ A terminal client is judged on behaviour under a real connection, so its own tas
 - **A claim is proven by a run, against a real endpoint** — a live sshd, a container, a jump host,
   a port that is genuinely in use — and not by a unit test asserting the shape of a request. Tests
   are still written; they are not the evidence that the feature works.
-- **A UI task is not done without the picture.** Capture the window and say what it shows. The `/run`
-  skill is the way to launch the app for it.
+- **A UI task is not done without the picture.** Capture the window and say what it shows.
+  **`.\run-app-vm.cmd` is how the app is launched for it** — it builds and starts the client in the
+  guest, lets it draw, and writes `TestResults\vm\app-desk.png`. `-Arguments "--tabs 3 --panes 2"`
+  shapes what is on screen, `-Settings <path>` places a settings file first (which is how a scheme
+  or a font is looked at), and `-Keep` leaves it running for a longer look. Not the `/run` skill and
+  never this desktop: driving the operator's own screen takes the foreground from the person the
+  work is for. See also `agents.md`, which holds that the picture is for a human and the
+  accessibility tree is the evidence — QS159 is the open question of which of these two documents
+  is right.
 - **A footprint claim is a number or it is nothing.** "Faster" and "lighter" are Block H's whole
   reason to exist; measure cold start and memory the same way each time and say which machine.
 - **Never report a pass that skipped a check.** A summary saying it works while the reconnect path
