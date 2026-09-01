@@ -1357,6 +1357,71 @@ a graphics driver.
 
 Falsified when a client with sixteen panes open holds sixteen devices.
 
+### §QS168 The font that is built into an atlas and a grid
+
+QS50's design says changes apply live, and gives the reason in the same breath: *a font
+size that needs a restart is a font size nobody experiments with, and experimenting is
+the entire reason to expose it.* The cursor and the blink do apply live, because the
+loop reads both every frame. The font does not.
+
+It cannot yet, and QS49 is why rather than an oversight. The atlas was rasterised at a
+size, the cell was measured from it, and every pane's grid came out of that measurement
+— so a new font is a new atlas, a new set of metrics, and a resize of every pane in the
+process at once. All three belong to the share, which is exactly the right place for
+them and exactly why a leaf cannot do it alone.
+
+What the work is: the share rebuilds its atlas and its renderer, every view takes the
+new metrics and recomputes its grid, and each grid change goes to its model and out to
+its far end the way QS32 settled. The last part is already built — `GridChanged` does it
+for a window drag — so this is a new reason for a path that exists.
+
+Falsified when a font size changed in the file needs a restart to be seen.
+
+### §QS169 The file nobody is watching
+
+`SettingsFile.ReadFrom` is called once, on the way up, and `MainWindow.Apply` pushes
+what it read into every pane. Change the file afterwards and nothing happens until the
+next launch.
+
+That is most of QS50's live-apply undone by omission. The design's whole argument for
+exposing a font size is that somebody will try three of them in a minute, and a client
+they have to restart between each is one they try once.
+
+What it needs is a watch on the one file, and the two things that go wrong with file
+watchers are both known in advance. An editor writes by renaming a temporary file over
+the original, so a watcher listening only for `Changed` hears nothing — `Renamed` and
+`Created` are part of the answer. And a save often arrives as several events, so the
+read has to be debounced or the client reads a half-written file and falls back to the
+defaults, which looks exactly like the settings being wiped.
+
+There is a reload already worth having beside it: a chord that rereads the file. It
+costs nothing, it works when a watcher does not, and it is what somebody reaches for
+when they have just edited the file in another window.
+
+Falsified when a saved settings file needs a restart to take effect.
+
+### §QS170 A window over the file, and the file still in charge
+
+QS50's design asks for both halves: *settings are a file the user can edit and a UI over
+that same file, with the file as the source of truth.* The file landed, documented,
+applying live and keeping the notes a user writes in it. The window did not.
+
+The hard prerequisite is done and it is the one that made the sentence conditional —
+*the UI writes it back preserving comments, or the UI is not worth having.*
+`SettingsFile.WriteTo` edits values where they sit, so a window over it inherits that
+for free.
+
+What is left is the window, and it is small if it stays small: one dialog on a chord,
+one control per documented key, and a write on each change rather than an OK button —
+because the file is the truth and a dialog holding unsaved state is a second copy of it.
+It also has an obligation the file does not: every control has to say what the key
+means, which is `docs/SETTINGS.md`'s sentences and not new prose, or the two drift.
+
+What it must not become is the place new settings appear. A control is cheaper to add
+than a key, which is exactly why the reference test is on the key.
+
+Falsified when a setting can be changed in the window and not in the file.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
