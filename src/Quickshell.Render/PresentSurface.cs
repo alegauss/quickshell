@@ -141,6 +141,20 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
     }
 
     /// <summary>
+    /// Whether this window is covered, asked without drawing or presenting anything.
+    ///
+    /// <para><b>A test present, which is what DXGI offers for exactly this question.</b> It goes
+    /// through the same path a present does and reaches the same answer, and it costs no frame: a
+    /// caller that had to present to find out would be presenting the frames it is trying not to.
+    /// </para>
+    ///
+    /// <para>Not counted as an occlusion. <see cref="Occlusions"/> is frames that went nowhere, and
+    /// this is not a frame.</para>
+    /// </summary>
+    public bool Covered() =>
+        _swapChain is not null && _swapChain.Present(0u, PresentFlags.Test).Code == DxgiStatusOccluded;
+
+    /// <summary>
     /// Puts the frame on the glass. With <paramref name="vsync"/> off and tearing available the
     /// tearing flag goes with it, which is the whole point of asking for the capability.
     /// </summary>

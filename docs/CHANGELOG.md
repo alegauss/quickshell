@@ -91,6 +91,7 @@
 - ✅ **QS48** **Two sessions cannot be seen at once, so comparing output means alternating between tabs** — A tab holds a tree of terminals, so two hosts are on screen at once, and moving the focus goes to the pane that is really in that direction rather than the next one in the tree.
 - ✅ **QS49** **Each pane would open its own graphics device, so four panes cost four times the driver's attention** — Every pane borrows one device, one atlas and one set of shaders and owns only its swapchain, so four panes drawing the same text rasterise it once between them.
 - ✅ **QS165** **A pane reports the whole client's draw calls as its own, so a per-pane frame count is the sum of every pane's** — A pane counts the draw calls it issued and no other pane's, so Block C's idle criterion can be read against a client that has more than one.
+- ✅ **QS166** **A pane behind another tab keeps drawing, so a client with eight tabs presents seven frames nobody sees** — A pane behind another tab draws nothing and forgets its frame when it comes forward, and a window something covered asks DXGI rather than presenting to find out.
 
 ## Block H — The reason to leave the incumbent
 

@@ -40,6 +40,8 @@ public sealed class TerminalView : IDisposable
     private CellInstance[] _cells;
     private long _wanted;
     private long _draws;
+    private bool _showing = true;
+    private bool _covered;
 
     private TerminalView(GraphicsDevice device, GlyphAtlas atlas, PresentSurface surface,
                          CellRenderer renderer, Palette palette)
@@ -133,6 +135,36 @@ public sealed class TerminalView : IDisposable
     /// it hundreds of times a second.</para>
     /// </summary>
     public void Moved() => _gate.Invalidate();
+
+    /// <summary>
+    /// Whether anybody can see this pane, which is false for one behind another tab.
+    ///
+    /// <para><b>QS166: a pane nobody can see draws nothing at all.</b> A client with eight tabs of
+    /// busy hosts would otherwise draw eight panes and show one, and seven of those presents are a
+    /// queue slot and a copy for a window that is not on screen.</para>
+    ///
+    /// <para>Coming back forgets the frame on the glass, because the picture in a swapchain nobody
+    /// has been drawing into is however stale the host left it.</para>
+    /// </summary>
+    public bool Showing
+    {
+        get => _showing;
+
+        set
+        {
+            if (_showing == value)
+            {
+                return;
+            }
+
+            _showing = value;
+
+            if (value)
+            {
+                _gate.Invalidate();
+            }
+        }
+    }
 
     /// <summary>
     /// The swapchain on the pane's handle, for what a diagnostic bundle asks it: how deep the
@@ -248,6 +280,35 @@ public sealed class TerminalView : IDisposable
     }
 
     /// <summary>
+    /// Whether something is over this window, asked only of a pane that has already been covered.
+    ///
+    /// <para><b>The test costs no frame, and asking it every time would still cost a call.</b> So it
+    /// is asked only once a present has come back occluded — a window nobody has covered never pays
+    /// for the question at all, and a covered one pays a test rather than a frame.</para>
+    ///
+    /// <para>Coming out from under forgets the frame on the glass: DXGI kept whatever was last
+    /// presented, and what the terminal has been doing since is not in it.</para>
+    /// </summary>
+    private bool Hidden()
+    {
+        if (!_covered)
+        {
+            return false;
+        }
+
+        if (_surface.Covered())
+        {
+            return true;
+        }
+
+        _covered = false;
+
+        _gate.Invalidate();
+
+        return false;
+    }
+
+    /// <summary>
     /// Draws one frame if the screen is not the one already on the glass.
     ///
     /// <para>The gate is asked once and the answer is acted on, which is the contract it documents:
@@ -265,6 +326,14 @@ public sealed class TerminalView : IDisposable
         // about to be reflowed to. Asking the model for its damage first would read a grid that is
         // one size behind the window.
         ApplyResize();
+
+        // Before the gate, and deliberately: the gate is about whether the picture changed, and this
+        // is about whether anybody could see it. A pane behind another tab is not asked either
+        // question again until it comes forward — QS166.
+        if (!_showing || Hidden())
+        {
+            return false;
+        }
 
         Damage damage = emulator.Damage;
 
@@ -298,10 +367,16 @@ public sealed class TerminalView : IDisposable
         // wake-up with nothing to draw should not be parked on the swapchain.
         _surface.WaitForNextFrame();
 
+        long occluded = _surface.Occlusions;
+
         _renderer.Draw(_surface, _cells.AsSpan(0, _painter.Painted), buffer.Columns);
         _surface.Present();
 
         _draws++;
+
+        // The frame went nowhere: something is over this window. Remembered so the next wake-up asks
+        // DXGI whether it still is, rather than drawing another frame to find out.
+        _covered = _surface.Occlusions != occluded;
 
         return true;
     }

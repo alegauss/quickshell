@@ -1382,29 +1382,6 @@ a graphics driver.
 
 Falsified when a client with sixteen panes open holds sixteen devices.
 
-### §QS166 The frames drawn for a pane nobody can see
-
-QS49's design is explicit: *an invisible pane — another tab, a minimised window, an
-occluded one — draws nothing at all. `DXGI_STATUS_OCCLUDED` from a present is the signal
-to stop; damage is what resumes it.* The loop that shipped does the first half of the
-arrangement and none of this.
-
-So a client with eight tabs of busy hosts draws eight panes and shows one. The cost is
-real and it is the one Block H exists to defend: a present is a queue slot and a copy,
-and seven of every eight are for a window hidden behind another.
-
-The signal is already there and already read. `PresentSurface` knows what `Present`
-returned, and QS12's frame-queue work is what taught this repository what
-`DXGI_STATUS_OCCLUDED` means. What is missing is the loop asking, and a pane that stops
-needing to be told to start again — which is what makes damage the resume rather than a
-timer.
-
-The tab-switch half is cheaper still and does not need DXGI at all: the window already
-hides a pane that is not on screen, and `Hidden` is a thing the loop could be told
-rather than left to discover from a present.
-
-Falsified when a window showing one tab presents a frame for another.
-
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go

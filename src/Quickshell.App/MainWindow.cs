@@ -308,6 +308,13 @@ public sealed class MainWindow : Window
 
                 leaf.Pane.Visibility = visible ? Visibility.Visible : Visibility.Hidden;
 
+                // And the loop is told, because it cannot see a WPF visibility — QS166. A pane
+                // behind another tab is not drawn at all rather than drawn and hidden.
+                if (leaf.Terminal.View is { } view)
+                {
+                    view.Showing = visible;
+                }
+
                 // Rounded to whole pixels, and the far edge rounded rather than the width: two panes
                 // sharing a divider must not leave a one-pixel seam of whatever is behind them.
                 double left = Math.Floor(at.X * width);

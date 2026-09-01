@@ -146,6 +146,101 @@ public sealed class TerminalShareTests
     }
 
     /// <summary>
+    /// QS166's falsification: a window showing one tab presents no frame for another.
+    ///
+    /// <para>Eight tabs of busy hosts would otherwise be eight panes drawn and one shown, and seven
+    /// of those presents are a queue slot and a copy for a window nobody can see. What resumes a
+    /// pane is coming forward, and it forgets the frame on the glass when it does — a swapchain
+    /// nobody has drawn into holds whatever the host left there.</para>
+    /// </summary>
+    [Fact]
+    public void APaneBehindAnotherTabIsNotDrawnAtAll()
+    {
+        (long hidden, long shown) = OnTwoTabs((share, background, front) =>
+        {
+            share.DrawOnce();
+
+            long before = background.Focused.Terminal.View!.Draws;
+
+            // The tab nobody is looking at prints, twenty times over.
+            for (int said = 0; said < 20; said++)
+            {
+                background.Focused.Emulator.Feed(Encoding.UTF8.GetBytes($"line {said}\r\n"));
+
+                share.DrawOnce();
+            }
+
+            long whileHidden = background.Focused.Terminal.View!.Draws - before;
+
+            // And it comes forward, which is what resumes it.
+            front.Active = 0;
+
+            share.DrawOnce();
+
+            return (whileHidden, background.Focused.Terminal.View!.Draws - before);
+        });
+
+        Assert.Equal(0, hidden);
+
+        // One frame, drawn when it came forward, carrying everything that arrived while it was away.
+        Assert.Equal(1, shown);
+    }
+
+    /// <summary>Builds a window with two tabs and hands the first one and the window to the work.</summary>
+    private static T OnTwoTabs<T>(Func<TerminalShare, TerminalTab, MainWindow, T> work)
+    {
+        T result = default!;
+        Exception? failed = null;
+
+        Thread thread = new(() =>
+        {
+            MainWindow? client = null;
+            TerminalShare share = new() { Looping = false };
+
+            try
+            {
+                client = new MainWindow();
+
+                TerminalTab first = TerminalTab.Open(Settings.Default, share, "cmd.exe");
+
+                client.Add(first);
+                client.Show();
+                client.UpdateLayout();
+
+                client.Add(TerminalTab.Open(Settings.Default, share, "cmd.exe"));
+                client.UpdateLayout();
+
+                Assert.NotNull(first.Focused.Terminal.View);
+
+                result = work(share, first, client);
+            }
+            catch (Exception error)
+            {
+                failed = error;
+            }
+            finally
+            {
+                client?.Close();
+                share.Dispose();
+
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
+            }
+        });
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.IsBackground = true;
+        thread.Start();
+        thread.Join();
+
+        if (failed is not null)
+        {
+            throw new InvalidOperationException("the work on the STA thread failed", failed);
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Builds a window with that many panes in it, opens a view on each, and hands them to the work.
     ///
     /// <para>Shown, because <c>HwndHost</c> builds its child window during layout and there is no
