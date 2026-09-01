@@ -34,6 +34,13 @@ public sealed class MainWindow : Window
 {
     private readonly ContentControl _terminal = new();
     private readonly TabControl _tabs = new();
+    private readonly DockPanel _find = new() { Margin = new Thickness(8, 6, 8, 6) };
+    private readonly TextBox _needle = new() { MinWidth = 220 };
+    private readonly TextBlock _found = new()
+    {
+        Margin = new Thickness(10, 0, 0, 0),
+        VerticalAlignment = VerticalAlignment.Center,
+    };
 
     private bool _recording;
 
@@ -59,16 +66,22 @@ public sealed class MainWindow : Window
         };
 
         _tabs.Visibility = Visibility.Collapsed;
+        _find.Visibility = Visibility.Collapsed;
+
+        BuildFindBar();
 
         Grid layout = new();
 
         layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         Grid.SetRow(_tabs, 0);
-        Grid.SetRow(_terminal, 1);
+        Grid.SetRow(_find, 1);
+        Grid.SetRow(_terminal, 2);
 
         layout.Children.Add(_tabs);
+        layout.Children.Add(_find);
         layout.Children.Add(_terminal);
 
         Content = layout;
@@ -96,6 +109,19 @@ public sealed class MainWindow : Window
 
         InputBindings.Add(new KeyBinding(new PasteIn(this), Key.V,
                                          ModifierKeys.Control | ModifierKeys.Shift));
+
+        // Finding something in the scrollback.
+        InputBindings.Add(new KeyBinding(new Find(this), Key.F,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        // Reading back through it. Shift and not a bare page key, because an unmodified PageUp is
+        // the program's — a pager and an editor both bind it, and taking it would mean the terminal
+        // scrolled while the thing on screen did not.
+        InputBindings.Add(new KeyBinding(new Scroll(this, up: true), Key.PageUp,
+                                         ModifierKeys.Shift));
+
+        InputBindings.Add(new KeyBinding(new Scroll(this, up: false), Key.PageDown,
+                                         ModifierKeys.Shift));
     }
 
     /// <summary>How this window looks. The palette here is the terminal's and not the chrome's.</summary>
@@ -411,6 +437,119 @@ public sealed class MainWindow : Window
         SessionTree.Of(preview.Tree()).WriteTo(into);
 
         return into;
+    }
+
+    /// <summary>
+    /// Who is asked to find something, or null while there is no terminal to search.
+    ///
+    /// <para>The needle, which way to look, and whether capitals matter; the answer is how many
+    /// cells were matched, or null for nothing found.</para>
+    /// </summary>
+    public Func<string, bool, bool, int?>? Finding { get; set; }
+
+    /// <summary>Who is asked to scroll, in lines. Negative goes back through the history.</summary>
+    public Action<int>? Scrolling { get; set; }
+
+    /// <summary>Whether the find bar is on screen, which only a user's chord makes true.</summary>
+    public bool FindBarShowing => _find.Visibility == Visibility.Visible;
+
+    /// <summary>What the find bar currently says, for a test and for nothing else.</summary>
+    public string FoundSaying => _found.Text;
+
+    /// <summary>
+    /// Opens the find bar and puts the caret in it, or closes it and gives the keyboard back.
+    ///
+    /// <para><b>Closing hands focus back to the window</b>, and that is not tidiness: while a
+    /// <see cref="TextBox"/> has focus every keystroke is the box's, so a find bar left open with
+    /// the caret in it is a terminal that has stopped accepting typing.</para>
+    /// </summary>
+    public void ShowFindBar(bool showing)
+    {
+        _find.Visibility = showing ? Visibility.Visible : Visibility.Collapsed;
+
+        if (showing)
+        {
+            _needle.Focus();
+            _needle.SelectAll();
+
+            return;
+        }
+
+        _found.Text = string.Empty;
+
+        Keyboard.ClearFocus();
+        Focus();
+    }
+
+    /// <summary>
+    /// Looks for what the find bar holds, and says what happened where the user can read it.
+    /// </summary>
+    /// <param name="forward">Which way to look from the last match.</param>
+    /// <returns>Whether anything was found.</returns>
+    public bool FindNext(bool forward = true)
+    {
+        string needle = _needle.Text;
+
+        if (needle.Length == 0)
+        {
+            _found.Text = string.Empty;
+
+            return false;
+        }
+
+        // Capitals matter only where the user typed one, which is what every editor does and what
+        // nobody has to be told: somebody hunting an error message is not thinking about case until
+        // the moment they type a capital on purpose.
+        bool exactly = needle.Any(char.IsUpper);
+
+        if (Finding?.Invoke(needle, forward, exactly) is not { } cells)
+        {
+            _found.Text = "not found";
+
+            return false;
+        }
+
+        _found.Text = Count(cells, "cell") + " matched";
+
+        return true;
+    }
+
+    /// <summary>The find bar's own controls, built once and shown when somebody asks for them.</summary>
+    private void BuildFindBar()
+    {
+        Button previous = new() { Content = "Previous", Margin = new Thickness(8, 0, 0, 0) };
+        Button next = new() { Content = "Next", Margin = new Thickness(8, 0, 0, 0) };
+        Button close = new() { Content = "Close", Margin = new Thickness(8, 0, 0, 0) };
+
+        previous.Click += (_, _) => FindNext(forward: false);
+        next.Click += (_, _) => FindNext();
+        close.Click += (_, _) => ShowFindBar(showing: false);
+
+        // Enter walks the matches and escape puts the keyboard back where a terminal expects it.
+        // Handled on the box itself, because while it has focus nothing else is going to see them.
+        _needle.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter)
+            {
+                FindNext(forward: (Keyboard.Modifiers & ModifierKeys.Shift) == 0);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                ShowFindBar(showing: false);
+                e.Handled = true;
+            }
+        };
+
+        DockPanel.SetDock(close, Dock.Right);
+        DockPanel.SetDock(next, Dock.Right);
+        DockPanel.SetDock(previous, Dock.Right);
+
+        _find.Children.Add(close);
+        _find.Children.Add(next);
+        _find.Children.Add(previous);
+        _find.Children.Add(_needle);
+        _find.Children.Add(_found);
     }
 
     /// <summary>
@@ -845,6 +984,50 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public void Execute(object? parameter) => window.WriteDiagnostics();
+    }
+
+    /// <summary>The find binding's command: opens the bar, or closes one already open.</summary>
+    private sealed class Find(MainWindow window) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.ShowFindBar(!window.FindBarShowing);
+    }
+
+    /// <summary>The scrollback bindings' command, one screenful at a time.</summary>
+    private sealed class Scroll(MainWindow window, bool up) : ICommand
+    {
+        /// <inheritdoc/>
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        /// <inheritdoc/>
+        public bool CanExecute(object? parameter) => true;
+
+        /// <inheritdoc/>
+        public void Execute(object? parameter) => window.Scrolling?.Invoke(up ? -Page : Page);
+
+        /// <summary>
+        /// How far a page key moves.
+        ///
+        /// <para>A fixed number rather than the screen's height, because this window does not know
+        /// how many rows the pane holds — the grid is the view's and the view is behind a delegate.
+        /// Twenty-four is the height a terminal has meant since before either of us, and it is close
+        /// enough to a screen that nobody counts.</para>
+        /// </summary>
+        private const int Page = 24;
     }
 
     /// <summary>The copy binding's command.</summary>

@@ -16,13 +16,19 @@ public enum PaneMouseKind
 
     /// <summary>It came up, or the capture went to somebody else. Either ends the drag.</summary>
     Released,
+
+    /// <summary>The wheel turned, and <c>Notches</c> says how far and which way.</summary>
+    Wheeled,
 }
 
 /// <summary>One mouse event, in the pane's own pixels.</summary>
 /// <param name="Kind">What happened.</param>
 /// <param name="X">Pixels from the pane's left edge. Negative while a drag is off the left of it.</param>
 /// <param name="Y">Pixels from its top, and negative above it for the same reason.</param>
-public readonly record struct PaneMouse(PaneMouseKind Kind, int X, int Y);
+/// <param name="Notches">
+/// Wheel detents, positive away from the user. Zero for everything that is not a wheel.
+/// </param>
+public readonly record struct PaneMouse(PaneMouseKind Kind, int X, int Y, int Notches = 0);
 
 /// <summary>
 /// The terminal's own window, hosted inside WPF's.
@@ -90,6 +96,10 @@ public sealed class TerminalPane : HwndHost
     private const int ButtonUp = 0x0202;
     private const int Moved = 0x0200;
     private const int CaptureLost = 0x0215;
+    private const int Wheel = 0x020A;
+
+    /// <summary>One detent, which is what Windows divides a wheel's delta by.</summary>
+    private const int PerNotch = 120;
 
     /// <summary>
     /// The mouse, in this pane's own pixels.
@@ -145,6 +155,15 @@ public sealed class TerminalPane : HwndHost
             case ButtonUp:
                 ReleaseCapture();
                 Raise(PaneMouseKind.Released, lParam);
+
+                return nint.Zero;
+
+            case Wheel:
+                // The only message here whose coordinates are the screen's rather than this
+                // window's, and they are dropped: what a notch does depends on what the program has
+                // asked for, never on where the pointer was when it turned.
+                Mouse?.Invoke(new PaneMouse(PaneMouseKind.Wheeled, 0, 0,
+                                            (short)((wParam >> 16) & 0xFFFF) / PerNotch));
 
                 return nint.Zero;
 

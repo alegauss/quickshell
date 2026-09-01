@@ -20,6 +20,14 @@ public enum ChromeElement
 
     /// <summary>A panel down the side. Not shown unless a user opens one.</summary>
     Sidebar,
+
+    /// <summary>
+    /// The find bar. Not shown unless a user opens one, and gone again on escape.
+    ///
+    /// <para>The one element here that a user summons rather than configures, which is what keeps it
+    /// out of <see cref="Chrome.Default"/>: a default installation has never seen it.</para>
+    /// </summary>
+    FindBar,
 }
 
 /// <summary>
@@ -48,6 +56,9 @@ public sealed record Chrome
     /// <summary>Whether a sidebar is open.</summary>
     public bool Sidebar { get; init; }
 
+    /// <summary>Whether the find bar is open, which only a user's chord makes true.</summary>
+    public bool FindBar { get; init; }
+
     /// <summary>
     /// What is on screen with this many tabs open, in the order it appears from the top.
     ///
@@ -74,6 +85,11 @@ public sealed record Chrome
         if (Sidebar)
         {
             showing.Add(ChromeElement.Sidebar);
+        }
+
+        if (FindBar)
+        {
+            showing.Add(ChromeElement.FindBar);
         }
 
         showing.Add(ChromeElement.Terminal);

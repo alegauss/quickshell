@@ -61,9 +61,17 @@ public sealed class GridPainter
     /// <para>Asked per cell by absolute line, because a selection outlives the scrolling underneath
     /// it — that is what QS22's line identities were for.</para>
     /// </param>
+    /// <param name="viewport">
+    /// Which part of the history is on screen, or null for the live screen.
+    ///
+    /// <para>Everything else here is in rows and the viewport is in absolute lines, so this is where
+    /// the two meet: the top row is whatever line the viewport is anchored to, and the cursor is
+    /// drawn only where the line it sits on is one of the lines being shown. A cursor kept at its
+    /// row number would be a caret blinking in the middle of somebody's scrollback.</para>
+    /// </param>
     public void Paint(TerminalBuffer buffer, Span<CellInstance> into, int cursorRow,
                       int cursorColumn, CursorShape cursor, CellMetrics metrics,
-                      Selection? selection = null)
+                      Selection? selection = null, Viewport? viewport = null)
     {
         ArgumentNullException.ThrowIfNull(buffer);
 
@@ -76,10 +84,23 @@ public sealed class GridPainter
 
         bool selecting = selection is { IsActive: true };
 
+        // The first line on screen, and the first the ring still holds. A row is drawn from the
+        // retained index between them, which for a viewport at the bottom is the screen's own.
+        long top = viewport?.Top(buffer) ?? buffer.TopLine;
+        long oldest = buffer.TopLine - buffer.ScrollbackLines;
+
+        // The cursor's row within what is on screen, which is its own row only while the viewport is
+        // at the bottom. Anywhere else it is off-screen and there is no caret to draw.
+        int caret = cursorRow < 0 ? -1 : (int)(buffer.AbsoluteLine(cursorRow) - top);
+
         for (int row = 0; row < rows; row++)
         {
-            ReadOnlySpan<Cell> line = buffer.Screen(row);
-            long absolute = selecting ? buffer.AbsoluteLine(row) : 0;
+            long absolute = top + row;
+            int retained = (int)(absolute - oldest);
+
+            ReadOnlySpan<Cell> line = retained >= 0 && retained < buffer.LineCount
+                ? buffer.Line(retained)
+                : default;
 
             for (int column = 0; column < columns; column++)
             {
@@ -106,7 +127,7 @@ public sealed class GridPainter
 
                 into[Painted++] = CellInstance.For(
                     glyph, foreground, background, cell.Flags, Math.Max(1, span), cell.Underline,
-                    row == cursorRow && column == cursorColumn ? cursor : CursorShape.None);
+                    row == caret && column == cursorColumn ? cursor : CursorShape.None);
             }
         }
     }

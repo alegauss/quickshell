@@ -297,30 +297,6 @@ Falsified when the derivation changes without a way to read what the old one wro
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS31 A viewport onto the ring, and finding something in it
-
-The ring already holds the history, so scrolling back is a viewport offset rather than a
-data structure. Wheel, scrollbar, shift-PageUp and a configurable line-wise chord all
-move that same offset.
-
-Two behaviours decide whether this feels right. New output arriving while the user is
-scrolled back does *not* yank the viewport to the bottom — somebody reading does not
-want the screen stolen — though the scrollbar shows that output arrived. Typing does
-return to the bottom, because typing means the reading is finished.
-
-Under the alternate screen there is no scrollback at all, and the wheel is instead
-translated into arrow keys or mouse events for the program. That is what makes scrolling
-inside `less` and `man` behave the way users expect, rather than scrolling the terminal
-out from under a full-screen program.
-
-Search runs over logical lines and not physical rows, so a match spanning a wrap is
-found. Case-insensitive by default with a case-sensitive option, regular expressions
-optional, matches highlighted in place and navigable, and the count shown. Searching a
-large scrollback must not stall the parser, so it runs against a consistent snapshot
-instead of holding a lock across the whole scan.
-
-Falsified when a match spanning a wrapped line is not found.
-
 ### §QS33 Judged by somebody else's tests
 
 Two external suites, run against the headless model with a pseudo-console driving them

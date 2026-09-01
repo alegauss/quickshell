@@ -157,6 +157,180 @@ public sealed class PaneAttachment : IDisposable
     }
 
     /// <summary>
+    /// How many lines one wheel notch moves.
+    ///
+    /// <para>Three, which is what Windows itself reports as the system default and what every other
+    /// terminal on this platform does. Read once rather than per notch: a user changing it mid-drag
+    /// is not a case, and a system call per wheel event is a call in the path of the one gesture
+    /// people do fastest.</para>
+    /// </summary>
+    public const int LinesPerNotch = 3;
+
+    /// <summary>
+    /// Moves the view back through the history, or forward towards the bottom.
+    /// </summary>
+    /// <returns>Whether anything moved, which is false at either end.</returns>
+    public bool ScrollBy(int lines)
+    {
+        if (View is not { } view || !view.Viewport.ScrollBy(_emulator.Buffer, lines))
+        {
+            return false;
+        }
+
+        Redraw(view);
+
+        return true;
+    }
+
+    /// <summary>Returns to the newest output and follows it again.</summary>
+    public void ToBottom()
+    {
+        if (View is not { } view || view.Viewport.IsAtBottom)
+        {
+            return;
+        }
+
+        view.Viewport.ToBottom();
+        Redraw(view);
+    }
+
+    /// <summary>
+    /// How far back the view is, and whether output arrived while it was there.
+    /// </summary>
+    public (long Depth, long Held, bool Unseen) Where() =>
+        View is { } view
+            ? (view.Viewport.Depth(_emulator.Buffer), _emulator.Buffer.LineCount,
+               view.Viewport.HasUnseenOutput)
+            : (0, 0, false);
+
+    /// <summary>
+    /// Finds text in the history and brings it on screen, selected.
+    ///
+    /// <para><b>The match becomes the selection</b>, which is not a shortcut: a found line has to be
+    /// highlighted, and this client already has exactly one way of highlighting cells. It also means
+    /// what was found can be copied without being selected again.</para>
+    ///
+    /// <para>Searching runs over logical lines, so a match the wrap fell inside is found — which is
+    /// this line's falsification and is <see cref="Search"/>'s to keep.</para>
+    /// </summary>
+    /// <param name="needle">What to look for. Empty clears the selection and finds nothing.</param>
+    /// <param name="forward">Which way to look from where the last match was.</param>
+    /// <param name="caseSensitive">Whether capitals matter.</param>
+    /// <returns>Where it was found, or null.</returns>
+    public Match? Find(string needle, bool forward = true, bool caseSensitive = false)
+    {
+        if (View is not { } view)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(needle))
+        {
+            view.Selection.Clear();
+            Redraw(view);
+
+            return null;
+        }
+
+        TerminalBuffer buffer = _emulator.Buffer;
+
+        // From just past the last match, so pressing again walks rather than finding the same line
+        // for ever. With nothing found yet, from the bottom backwards and the top forwards.
+        (long line, int column) = Resume(view, buffer, forward);
+
+        if (!Search.TryFind(buffer, needle, line, column, forward, caseSensitive, out Match match))
+        {
+            return null;
+        }
+
+        view.Selection.Begin(buffer, new SelectionPoint(match.Line, match.Column),
+                             SelectionMode.Character);
+
+        view.Selection.Extend(buffer, After(buffer, match));
+
+        Show(view, buffer, match.Line);
+        Redraw(view);
+
+        return match;
+    }
+
+    /// <summary>
+    /// The cell just past a match, following it onto the next row where the wrap fell inside it.
+    ///
+    /// <para><b>A match found across a wrap has to be highlighted across it too.</b> Search runs
+    /// over logical lines and a row is one line of the ring, so a match that begins near the right
+    /// edge ends on the row below — and an end point left on the first row highlights the half the
+    /// user can already see and not the half that proves it was found.</para>
+    /// </summary>
+    private static SelectionPoint After(TerminalBuffer buffer, Match match)
+    {
+        long line = match.Line;
+        int column = match.Column + match.Cells;
+
+        while (column > buffer.Columns)
+        {
+            column -= buffer.Columns;
+            line++;
+        }
+
+        return new SelectionPoint(line, column);
+    }
+
+    /// <summary>
+    /// Where the next search starts from, which is one column past the match before it.
+    ///
+    /// <para>Without this, searching forward finds the same match every time and the user concludes
+    /// there is only one.</para>
+    /// </summary>
+    private static (long Line, int Column) Resume(TerminalView view, TerminalBuffer buffer,
+                                                  bool forward)
+    {
+        if (!view.Selection.IsActive)
+        {
+            return forward
+                ? (buffer.TopLine - buffer.ScrollbackLines, 0)
+                : (buffer.TopLine + buffer.Rows, buffer.Columns);
+        }
+
+        SelectionPoint from = view.Selection.Start;
+
+        return forward ? (from.Line, from.Column + 1) : (from.Line, from.Column - 1);
+    }
+
+    /// <summary>
+    /// Brings a line on screen, and leaves the view alone where it already is.
+    ///
+    /// <para>A match already visible must not scroll: somebody stepping through matches on one
+    /// screenful should see the highlight move, not the text.</para>
+    /// </summary>
+    private static void Show(TerminalView view, TerminalBuffer buffer, long line)
+    {
+        long top = view.Viewport.Top(buffer);
+
+        if (line >= top && line < top + buffer.Rows)
+        {
+            return;
+        }
+
+        // A third of a screen above it, so what was found has context above rather than sitting on
+        // the top edge with the reason for it off-screen.
+        view.Viewport.ScrollBy(buffer, (int)(line - top) - (buffer.Rows / 3));
+    }
+
+    /// <summary>
+    /// The picture changed and the terminal does not know.
+    ///
+    /// <para>Both calls, always: one forgets the frame on the glass, the other wakes a loop that
+    /// would otherwise be asleep on a silent host. Either alone is a window that updates only when
+    /// the host next prints something.</para>
+    /// </summary>
+    private void Redraw(TerminalView view)
+    {
+        view.Moved();
+        _damage.Set();
+    }
+
+    /// <summary>
     /// The mouse on the pane, in the client's own gestures rather than the host's.
     ///
     /// <para><b>The host gets the mouse the moment it asks for it, and shift takes it back.</b> That
@@ -174,6 +348,13 @@ public sealed class PaneAttachment : IDisposable
         }
 
         ModifierKeys held = Keyboard.Modifiers;
+
+        if (mouse.Kind == PaneMouseKind.Wheeled)
+        {
+            Wheeled(mouse.Notches);
+
+            return;
+        }
 
         if (_emulator.MouseReporting != MouseTracking.Off && (held & ModifierKeys.Shift) == 0)
         {
@@ -206,6 +387,28 @@ public sealed class PaneAttachment : IDisposable
         // the loop that would otherwise be asleep on a silent host.
         view.Moved();
         _damage.Set();
+    }
+
+    /// <summary>
+    /// A wheel notch, which does not always mean the scrollback.
+    ///
+    /// <para><b><see cref="Viewport.Wheel"/> decides and this only carries out one of its three
+    /// answers.</b> Under a full-screen program there is no scrollback to move into, so the notch
+    /// belongs to the program — as a mouse event where it asked for the mouse and as arrow keys
+    /// where it did not, which is what makes a wheel work inside a pager that never heard of one.
+    /// Neither of those is reachable from this client yet and both are QS155's; until then a notch
+    /// under the alternate screen does nothing, which is honest and is not the terminal scrolling
+    /// out from under a program that owns the screen.</para>
+    /// </summary>
+    private void Wheeled(int notches)
+    {
+        if (notches == 0 || Viewport.Wheel(_emulator) != WheelGoes.ToScrollback)
+        {
+            return;
+        }
+
+        // Away from the user is back through the history, which is the opposite sign.
+        ScrollBy(-notches * LinesPerNotch);
     }
 
     /// <summary>

@@ -42,6 +42,14 @@ public sealed class Typist
     /// </summary>
     public Func<ReadOnlyMemory<byte>, ValueTask>? Sending { get; set; }
 
+    /// <summary>
+    /// Something was typed, which is how a view scrolled back learns the reading is finished.
+    ///
+    /// <para>Raised for a key the terminal took, whether or not there was a session to give it to:
+    /// a person typing into a window that has not connected has still stopped reading.</para>
+    /// </summary>
+    public Action? Typed { get; set; }
+
     /// <summary>How many keystrokes have been encoded to something and sent.</summary>
     public long Sent { get; private set; }
 
@@ -105,6 +113,8 @@ public sealed class Typist
         {
             return false;
         }
+
+        Typed?.Invoke();
 
         Func<ReadOnlyMemory<byte>, ValueTask>? sending = Sending;
 

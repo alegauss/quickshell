@@ -102,6 +102,17 @@ public static class Entry
         window.Selected = terminal.Selected;
         window.Bracketed = () => emulator.BracketedPaste;
 
+        // Reading back through the history, and finding something in it. Both answer through the
+        // attachment because the viewport belongs to the view, which does not exist until the pane
+        // has been laid out — and this window is up before any of that.
+        window.Scrolling = lines => terminal.ScrollBy(lines);
+        window.Finding = (needle, forward, exactly) =>
+            terminal.Find(needle, forward, exactly)?.Cells;
+
+        // Typing means the reading is finished, so a window scrolled back follows the newest output
+        // again. Output arriving does not do this, which is the other half of the same rule.
+        typist.Typed = terminal.ToBottom;
+
         // The shell, and it is the last thing for the same reason the pane was: creating a
         // pseudo-console and starting a process are not on the way to the user's first sight of the
         // window. Not awaited here — this is the thread the window is drawn on.

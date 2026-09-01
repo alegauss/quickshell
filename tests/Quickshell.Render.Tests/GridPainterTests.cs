@@ -107,6 +107,68 @@ public sealed class GridPainterTests
     }
 
     /// <summary>
+    /// A viewport scrolled back paints the history, and the cursor is not drawn in it.
+    ///
+    /// <para><b>The cursor is the half that would ship broken.</b> It is a row number on the live
+    /// screen, and a painter that kept using it while showing lines from an hour ago would blink a
+    /// caret in the middle of somebody's scrollback — on a line the user is reading, at a column
+    /// nothing is being typed into.</para>
+    /// </summary>
+    [Fact]
+    public void AViewportScrolledBackPaintsTheHistoryAndNoCursor()
+    {
+        using Harness harness = new();
+
+        Emulator emulator = new(20, 4);
+
+        // Ten lines through a four-row screen, so six of them are history.
+        for (int line = 0; line < 10; line++)
+        {
+            emulator.Feed(Encoding.UTF8.GetBytes($"line{line}\r\n"));
+        }
+
+        GridPainter painter = new(harness.Atlas, emulator.Palette);
+        Viewport viewport = new();
+
+        CellInstance[] bottom = new CellInstance[20 * 4];
+        CellInstance[] back = new CellInstance[20 * 4];
+
+        painter.Paint(emulator.Buffer, bottom, emulator.Buffer.CursorRow,
+                      emulator.Buffer.CursorColumn, CursorShape.Block, Box, null, viewport);
+
+        Assert.True(viewport.ScrollBy(emulator.Buffer, -4), "there was no history to scroll into");
+
+        painter.Paint(emulator.Buffer, back, emulator.Buffer.CursorRow,
+                      emulator.Buffer.CursorColumn, CursorShape.Block, Box, null, viewport);
+
+        Assert.NotEqual(bottom, back);
+
+        // The top row now holds a line that was four lines above the screen.
+        long top = viewport.Top(emulator.Buffer);
+        int retained = (int)(top - (emulator.Buffer.TopLine - emulator.Buffer.ScrollbackLines));
+
+        Assert.Equal(Instance(harness, emulator, emulator.Buffer.Line(retained)[0]), back[0]);
+
+        // And no cell differs from the same screen painted with no cursor at all, because the
+        // cursor's line is not one of the lines on screen.
+        CellInstance[] plain = new CellInstance[20 * 4];
+
+        painter.Paint(emulator.Buffer, plain, -1, -1, CursorShape.None, Box, null, viewport);
+
+        Assert.Equal(plain, back);
+    }
+
+    /// <summary>The instance the painter should build for one cell of a line.</summary>
+    private static CellInstance Instance(Harness harness, Emulator emulator, Cell cell) =>
+        CellInstance.For(
+            cell.Width == 0 || cell.Codepoint == ' '
+                ? GlyphPlacement.Empty
+                : harness.Atlas.Cache(cell.Codepoint, maximumAdvance: Box.Width * Math.Max(1, cell.Width)),
+            emulator.Palette.Resolve(cell.Foreground),
+            emulator.Palette.Resolve(cell.Background, background: true),
+            cell.Flags, Math.Max(1, cell.Width), cell.Underline, CursorShape.None);
+
+    /// <summary>
     /// Painting a frame allocates nothing, which is Block C's criterion where a frame is built.
     /// </summary>
     [Fact]

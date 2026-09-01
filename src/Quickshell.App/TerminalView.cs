@@ -106,6 +106,15 @@ public sealed class TerminalView : IDisposable
     public Selection Selection { get; } = new();
 
     /// <summary>
+    /// Which part of the history is on screen.
+    ///
+    /// <para>Anchored to an absolute line, so output arriving while somebody is reading moves
+    /// nothing: the paragraph they are halfway through stays where it is. That is
+    /// <see cref="Viewport"/>'s whole design and this is where it reaches the glass.</para>
+    /// </summary>
+    public Viewport Viewport { get; } = new();
+
+    /// <summary>
     /// The selection changed, so the picture is wrong even though the model is not.
     ///
     /// <para>A selection is invisible to the terminal: nothing was printed and no damage was raised,
@@ -273,8 +282,12 @@ public sealed class TerminalView : IDisposable
         // cursor at all rather than drawn and then hidden: the instance is the frame.
         bool caret = damage.CursorVisible && _renderer.CursorShowing;
 
+        // Told before the frame is built, so a scrollbar can say output arrived. It moves nothing:
+        // the viewport is anchored to a line and this only records that the bottom has grown.
+        Viewport.Produced();
+
         _painter.Paint(buffer, _cells, caret ? damage.CursorRow : -1, damage.CursorColumn,
-                       caret ? Cursor : CursorShape.None, _renderer.Metrics, Selection);
+                       caret ? Cursor : CursorShape.None, _renderer.Metrics, Selection, Viewport);
 
         // Waited for here and not at the top of the loop: the wait is for a queue slot, and a
         // wake-up with nothing to draw should not be parked on the swapchain.
