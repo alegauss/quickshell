@@ -86,7 +86,7 @@
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS75** (deps: QS2 ✅, QS46 ✅, the incumbent closed on the reference desk) **Nothing has been measured starting, so the cold start figure is an aspiration** — The incumbent has not been started beside it on the same machine, so the comparison the figure exists for is not made. → §QS75
-- 📋 **QS77** (deps: —) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
+- ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS78** (deps: QS139) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - 📋 **QS79** (deps: QS3 ✅) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
 - 📋 **QS86** (deps: QS7 ✅, QS9 ✅) **Input to photon is the first figure in the budget and the only one nothing has ever measured** — The present path was built to bound it and the one workload that exists cannot run ahead of the display, so the flags remain an argument rather than a number. → §QS86
@@ -323,6 +323,21 @@
   Settled by MobaXterm's process start to its first window, and to a local shell where
   it can be read, timed on the same desk the same day as tools/Quickshell.Startup's run
   and recorded in startup-h.md.
+
+## Done when — QS77
+
+- **The release archive is signed with a certificate a clean Windows trusts** Settled by
+  release.cmd -Certificate producing an archive whose quickshell.exe and Quickshell
+  assemblies verify Valid under Get-AuthenticodeSignature on the guest, timestamped,
+  with no -unsigned in its name.
+- **An update is offered, declinable, and verified against a pinned key** Settled on the
+  guest against a local static file: an older copy finds a newer release on its schedule
+  and never at start-up, a decline leaves it alone, nothing installs while a session is
+  open, and a payload with a bad signature is refused.
+- **The machine-wide install and uninstall have run elevated** Settled by
+  run-install-vm's checks repeated with --all-users from an elevated prompt: Program
+  Files, every user's Start menu and the HKLM entry written, the installed copy started,
+  then all three removed.
 
 ## Non-goals
 

@@ -226,6 +226,11 @@ public sealed class MainWindow : Window
         // is spent too early.
         InputBindings.Add(new InputBinding(new Browsing(this), new PaletteOnly()));
 
+        // Installing the copy that is running, for the person running it. From the palette alone: it
+        // is done once, by somebody who started a copy out of the archive and wants it in the Start
+        // menu, and a chord for it would be spent on nobody afterwards.
+        InputBindings.Add(new InputBinding(new Installing(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
@@ -1965,6 +1970,25 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.BrowseFiles();
+    }
+
+    /// <summary>
+    /// Who installs the running copy for its user, or null where nothing should — which is also the
+    /// answer where the running copy is the installed one.
+    /// </summary>
+    public Action? Installs { get; set; }
+
+    /// <summary>The install's palette entry, offered only where there is somewhere to install from.</summary>
+    private sealed class Installing(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Install quickshell for this user";
+
+        /// <inheritdoc/>
+        public override bool CanExecute(object? parameter) => Window.Installs is not null;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.Installs?.Invoke();
     }
 
     /// <summary>The import binding's command.</summary>

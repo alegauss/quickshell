@@ -251,6 +251,16 @@ working tree, not just HEAD. Note that the guest is a **different environment**,
 of this one: it has VMware's virtual GPU, so a golden scene may legitimately differ there — that is
 QS12's matrix widening, and it is a finding to file rather than a tolerance to raise.
 
+**`.\release.cmd` builds what a release ships, and `.\run-install-vm.cmd` installs it where Windows
+looks.** The first publishes the client self-contained and ReadyToRun — the build QS75 measured —
+signs it with `-Certificate <thumbprint>`, and zips it as one portable archive, with
+`SHA256SUMS.txt` beside it, into `artifacts\release\`. Without a certificate it refuses unless
+`-Unsigned` is given, and then the archive's own name says so. The second carries that archive to
+the guest, installs it under the guest user's own token, reads back the folder, the Start menu
+shortcut and the uninstall entry, starts the installed copy, and removes it through the entry's own
+command. An install on this machine is an app in its owner's list, so an installer change is proven
+there and not here.
+
 A terminal client is judged on behaviour under a real connection, so its own tasks are held to that:
 
 - **A claim is proven by a run, against a real endpoint** — a live sshd, a container, a jump host,

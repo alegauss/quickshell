@@ -115,6 +115,7 @@
 - ✅ **QS76** **A window nobody is typing into has never been measured, so the low-idle claim is untested** — Ten minutes idle costs 0 ms of core time and raises no system timer, against the incumbent's 3,625 ms on the same desk, and an idle render loop presents nothing to the GPU.
 - ✅ **QS78 (the harness)** **Nothing has run for longer than a working session, so a slow leak would reach users first** — Twenty sessions in six roles soak against a real sshd, and every watched counter carries a slope extrapolated over three weeks rather than a bound it sits under.
 - ✅ **QS75 (this client's own start)** **Nothing has been measured starting, so the cold start figure is an aspiration** — Timed starts on the reference machine reach the prompt in 647 ms warm for the self-contained ReadyToRun publish, 230 of them in the window's constructor, per startup-h.md.
+- ✅ **QS77 (install and the portable archive)** **There is no way to install this client, so it can only be run from a build directory** — The release archive runs portable or installs itself for one user with no administrator prompt and uninstalls keeping settings, proven on a guest by run-install-vm.cmd.
 
 ## Block I — An error a user can act on
 

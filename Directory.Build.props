@@ -35,6 +35,11 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Deterministic>true</Deterministic>
 
+    <!-- What a release is called: the archive carries it in its name, and the list of installed apps
+         shows it. One number for every assembly, so a release is one edit here and not one per
+         project. -->
+    <Version>0.1.0</Version>
+
     <!-- Off, and QS154 is why: with it on, this client cannot show a text box.
 
          WPF builds a CultureInfo in two places a terminal cannot avoid. The font cache asks for

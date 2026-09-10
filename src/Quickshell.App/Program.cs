@@ -40,6 +40,14 @@ public static class Entry
     {
         ArgumentNullException.ThrowIfNull(arguments);
 
+        // `--install` and `--uninstall` are this copy putting itself somewhere or taking itself away,
+        // and neither opens a window: the list of installed apps runs the second, and a deployment
+        // runs the first with nobody watching.
+        if (Setup.Asked(arguments))
+        {
+            return Setup.Run(arguments);
+        }
+
         // `--startup-report <file>` times this start and writes the milestones there once the shell
         // is on screen — QS75's instrument, and first so that it sees everything after the runtime.
         if (Given(arguments, "--startup-report") is { } report)
@@ -101,6 +109,13 @@ public static class Entry
         // settings changed opens at what they are now rather than at what they were.
         window.Opens = () => Opened(window, window.Settings, share);
         window.Connects = leaf => _ = leaf.ConnectAsync();
+
+        // Only a copy that is not the installed one offers to install itself: the installed copy
+        // installing itself would be a copy of a folder onto the same folder.
+        if (Installation.Of(AppContext.BaseDirectory) is null)
+        {
+            window.Installs = () => _ = Setup.InstallForUserAsync(window);
+        }
 
         // Not awaited: what is being ended is already out of the window and nothing references it,
         // and a shell given its two seconds to leave is two seconds this thread would spend not
