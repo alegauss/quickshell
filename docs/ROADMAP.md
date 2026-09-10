@@ -125,6 +125,7 @@
 - 📋 **QS181** (deps: —) **The import preview case missed its dialog in one full run and found it alone, so its five-second wait is a guess** — Block K rules out a test that fails on an unchanged tree, and when this one did its refusing step invoked the main window's Close button instead. → §QS181
 - 📋 **QS182** (deps: —) **A resumed guest can hold run-app-vm past its own deadline and then yield an all-black picture reported as a success** — The host suite needs the guest suspended, so every picture after the first resumes it, and both halves of that cycle failed while QS53 shipped. → §QS182
 - 📋 **QS193** (deps: —) **The release archive is built only by hand, so a change that breaks the self-contained publish passes CI** — CI builds the framework-dependent tree and runs the suite, while ReadyToRun, the runtime packs and the publish itself are exercised only by release.cmd. → §QS193
+- 📋 **QS195** (deps: —) **Each test class carries its own copy of the fixture plumbing, so a fault in one copy is a fault in all of them** — QS138 was one fault in two copies of one helper, and the STA runner, the fixture's trust and skip, and the repository walk are each copied sixteen to twenty-one times. → §QS195
 
 ## Done when — Block A
 

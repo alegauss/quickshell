@@ -2286,3 +2286,27 @@ pipeline may hold it is a question QS77's remainder settles; until then the arch
 named for what it is, which is the guard `release.cmd` already has.
 
 Falsified when a change that breaks `release.cmd -Unsigned` passes CI.
+
+### §QS195 Plumbing written once per test assembly
+
+Found shipping QS138, whose fault was one mistake in two copies of one helper: the SCP
+and the remote-forward tests each carried their own way of running a command on the
+server, both looked for a bare newline where a pseudo-terminal sends CRLF, and nothing
+could have fixed one and reached the other. Moving both onto a shared `RemoteShell` was
+most of the fix.
+
+The rest of the plumbing is copied the same way. Counted on the tree today: sixteen App
+test classes carry their own STA runner, sixteen transport classes their own
+host-key-trusting callback, seventeen their own skip for a fixture that is not up, and
+twenty-one files their own walk up to the repository root. Each copy is a place a fix
+has to be remembered, and QS138 is what happens when it is not: the copies agreed on the
+fault and differed on the timer.
+
+The move is one small internal file per test assembly for what every class there needs
+- the STA runner, the fixture's key, trust and skip, the repository root - and the
+classes calling it. No framework and no base class: a test that reads as a sequence of
+calls keeps reading that way. Done as one sweep rather than piecemeal, so the diff is
+one mechanical change a reviewer can check by reading it once.
+
+Falsified when a fix to how a test reaches the fixture or builds a window has to be made
+in more than one file.
