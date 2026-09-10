@@ -217,6 +217,10 @@ public sealed class MainWindow : Window
         InputBindings.Add(new KeyBinding(new Broadcasting(this), Key.B,
                                          ModifierKeys.Control | ModifierKeys.Shift));
 
+        // Leaving one pane out of it, from the palette and from no key: it is done once when the
+        // fleet is chosen, and a chord for it would be one more taken from the far side for that.
+        InputBindings.Add(new InputBinding(new Selecting(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
@@ -1816,6 +1820,24 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.Broadcast();
+    }
+
+    /// <summary>
+    /// Leaving the focused pane out of broadcast typing, or bringing it back — named for which of
+    /// the two it will do, for the reason <see cref="Broadcasting"/> gives.
+    /// </summary>
+    private sealed class Selecting(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => Window.Current?.Focused.Receiving == true
+            ? "Leave this pane out of broadcast typing"
+            : "Include this pane in broadcast typing";
+
+        /// <summary>A selection is taken from a broadcast, so there is none to make without one.</summary>
+        public override bool CanExecute(object? parameter) => Window.Current?.Broadcasting == true;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.Current?.Choose();
     }
 
     /// <summary>Who rereads the settings file when the user asks, or null while nothing can.</summary>

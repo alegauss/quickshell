@@ -203,7 +203,116 @@ public sealed class BroadcastTests
         Assert.False(alone, "a tab of one pane turned broadcasting on");
         Assert.Empty(single);
         Assert.Equal(["Broadcast typing to every pane in this tab"], split);
-        Assert.Equal(["Stop broadcasting typing"], running);
+        Assert.Equal(["Stop broadcasting typing", "Leave this pane out of broadcast typing"], running);
+    }
+
+    /// <summary>
+    /// QS53's own criterion: a pane left out hears nothing typed into the others and carries no mark,
+    /// and the two still in hear the keystroke and are marked.
+    /// </summary>
+    [Fact]
+    public void APaneLeftOutHearsNothingTypedIntoTheOthersAndIsNotMarked()
+    {
+        Pane[] panes = OnStaThread(() =>
+        {
+            (MainWindow window, TerminalTab tab) = Split(3);
+            Dictionary<TerminalLeaf, StringBuilder> heard = Listen(tab);
+
+            Step(window, Key.B, Both);
+
+            tab.Focus(tab.Layout.Panes[0]);
+            Run(window, "Leave this pane out of broadcast typing");
+
+            tab.Focus(tab.Layout.Panes[1]);
+            window.Type("uptime", ModifierKeys.None);
+
+            return Read(tab, heard);
+        });
+
+        Assert.Equal(string.Empty, panes[0].Heard);
+        Assert.False(panes[0].Marked, "a pane left out of the broadcast kept its edge");
+        Assert.Equal(string.Empty, panes[0].Told);
+
+        foreach (Pane pane in panes[1..])
+        {
+            Assert.Equal("uptime", pane.Heard);
+            Assert.True(pane.Marked, "a pane still in the broadcast lost its edge");
+            Assert.Equal(TerminalLeaf.ReceivingSays, pane.Told);
+        }
+    }
+
+    /// <summary>
+    /// Typing into the pane that was left out reaches it and nothing else, and bringing it back makes
+    /// it one of them again.
+    ///
+    /// <para>What leaving a pane out is for: checking one host on its own without ending the mode for
+    /// the rest. A left-out pane that went deaf instead would be a pane the user types into and
+    /// watches nothing happen in, while the keystrokes land somewhere else.</para>
+    /// </summary>
+    [Fact]
+    public void APaneLeftOutIsPrivateUntilItIsBroughtBack()
+    {
+        (Pane[] apart, Pane[] back) = OnStaThread(() =>
+        {
+            (MainWindow window, TerminalTab tab) = Split(2);
+            Dictionary<TerminalLeaf, StringBuilder> heard = Listen(tab);
+
+            Step(window, Key.B, Both);
+
+            tab.Focus(tab.Layout.Panes[0]);
+            Run(window, "Leave this pane out of broadcast typing");
+            window.Type("a", ModifierKeys.None);
+
+            Pane[] first = Read(tab, heard);
+
+            Run(window, "Include this pane in broadcast typing");
+            window.Type("b", ModifierKeys.None);
+
+            return (first, Read(tab, heard));
+        });
+
+        Assert.Equal("a", apart[0].Heard);
+        Assert.Equal(string.Empty, apart[1].Heard);
+        Assert.False(apart[0].Marked, "the pane left out is still marked");
+        Assert.True(apart[1].Marked, "the pane still in lost its mark");
+
+        Assert.Equal("ab", back[0].Heard);
+        Assert.Equal("b", back[1].Heard);
+        Assert.All(back, pane => Assert.True(pane.Marked, "a pane brought back is not marked"));
+    }
+
+    /// <summary>
+    /// Leaving every pane out ends the mode, which is what a broadcast to nobody is — and the choice
+    /// is offered only while there is a broadcast to choose from, named for what it will do.
+    /// </summary>
+    [Fact]
+    public void LeavingEveryPaneOutEndsItAndTheChoiceIsOfferedOnlyWhileItRuns()
+    {
+        (string[] before, string[] during, string[] apart, bool ended) = OnStaThread(() =>
+        {
+            (MainWindow window, TerminalTab tab) = Split(2);
+
+            string[] none = Choices(window);
+
+            Step(window, Key.B, Both);
+
+            string[] offered = Choices(window);
+
+            tab.Focus(tab.Layout.Panes[0]);
+            Run(window, "Leave this pane out of broadcast typing");
+
+            string[] left = Choices(window);
+
+            tab.Focus(tab.Layout.Panes[1]);
+            Run(window, "Leave this pane out of broadcast typing");
+
+            return (none, offered, left, Quiet(tab));
+        });
+
+        Assert.Empty(before);
+        Assert.Equal(["Leave this pane out of broadcast typing"], during);
+        Assert.Equal(["Include this pane in broadcast typing"], apart);
+        Assert.True(ended, "leaving every pane out left the tab broadcasting, or a pane marked");
     }
 
     /// <summary>
@@ -248,6 +357,11 @@ public sealed class BroadcastTests
             }
 
             tab.Leaves[1].Emulator.Feed("\e[?2004h"u8);
+
+            // Put back and read back before the second paste as before the first: something on a
+            // working desk opens the clipboard after every write, and a paste that lands while it
+            // holds it reads nothing. QS180 is that, and this narrows it rather than fixing it.
+            Clipboard("echo hi\n");
             window.PasteFromClipboard();
 
             string[] twice = [.. tab.Leaves.Select(leaf => heard[leaf].ToString())];
@@ -327,6 +441,18 @@ public sealed class BroadcastTests
     private static string[] Offered(MainWindow window) =>
         [.. window.Actions.Select(action => action.Name)
                           .Where(name => name.Contains("broadcast", StringComparison.OrdinalIgnoreCase))];
+
+    /// <summary>What the palette offers about one pane's place in the broadcast, right now.</summary>
+    private static string[] Choices(MainWindow window) =>
+        [.. window.Actions.Select(action => action.Name)
+                          .Where(name => name.Contains("this pane", StringComparison.Ordinal))];
+
+    /// <summary>
+    /// Runs a palette entry by its name, down the same path picking it in the palette takes — which
+    /// is the only path an action bound to no key has.
+    /// </summary>
+    private static void Run(MainWindow window, string name) =>
+        window.Actions.Single(action => action.Name == name).Run();
 
     /// <summary>Presses a chord through the binding the window actually carries.</summary>
     private static void Step(MainWindow window, Key key, ModifierKeys modifiers) =>

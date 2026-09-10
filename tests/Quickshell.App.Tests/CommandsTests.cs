@@ -39,8 +39,10 @@ public sealed class CommandsTests
             window.Add(TerminalTab.Open(Settings.Default, Shared, "first"));
             window.Add(TerminalTab.Open(Settings.Default, Shared, "second"));
 
+            // Every binding and not only the keys: an action bound to PaletteOnly has no chord and
+            // is still one of the things this client does.
             string[] names = [.. window.InputBindings
-                                       .OfType<KeyBinding>()
+                                       .OfType<InputBinding>()
                                        .Select(one => one.Command)
                                        .OfType<INamedCommand>()
                                        .Where(one => one.CanExecute(null))

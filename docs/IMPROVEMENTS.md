@@ -1116,29 +1116,6 @@ Falsified when a hundred connects through the proxy all receive a well-formed re
 
 ## Block G — The clean interface, defended
 
-### §QS53 Typing once into several hosts, visibly
-
-Input broadcast sends what is typed to several panes at once. It is one of the few
-incumbent features that earns its place unarguably, because the alternative is a person
-typing the same command eight times and getting the seventh one wrong.
-
-The target set is explicit: the panes in this tab, a selection the user made, or a saved
-group. Never all sessions everywhere — the mistake this feature enables is precisely a
-command reaching a host the user did not have in mind.
-
-While it is on, the client says so unmistakably: the panes receiving input are outlined,
-and the state is visible without hunting for it. This is a mode, and an invisible mode
-that sends keystrokes to production hosts is the worst kind of mode there is.
-
-Each pane keeps its own output, which is the point. Eight hosts answering differently is
-the information the user was after.
-
-It ends when the tab loses focus or the user turns it off, and it never survives a
-restart, because a mode restored from a previous session is a mode nobody remembers
-enabling.
-
-Falsified when broadcast is on and any receiving pane is not visibly marked.
-
 ### §QS83 Borrowing a design system rather than rediscovering one
 
 Two shipped clients in this family have already answered this, and what they share is a

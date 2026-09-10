@@ -78,7 +78,8 @@ public sealed class TerminalTab : IAsyncDisposable
     public bool HasActivity => _leaves.Values.Any(leaf => leaf.HasActivity);
 
     /// <summary>
-    /// Whether what is typed goes to every pane in this tab rather than to the focused one — QS53.
+    /// Whether what is typed goes to the marked panes of this tab rather than to the focused one
+    /// alone — every pane when it starts, fewer once some are left out. QS53.
     ///
     /// <para><b>The target is this tab and never anything wider.</b> The mistake this mode makes
     /// possible is a command reaching a host the user did not have in mind, so what it reaches is
@@ -92,15 +93,21 @@ public sealed class TerminalTab : IAsyncDisposable
     public bool Broadcasting { get; private set; }
 
     /// <summary>
-    /// The panes a keystroke goes to: the focused one, or every pane while broadcasting.
+    /// The panes a keystroke goes to: every marked pane when it is typed into one of them, and the
+    /// focused pane alone otherwise.
+    ///
+    /// <para><b>A pane left out is a private pane, not a deaf one.</b> Typing into it reaches it and
+    /// nothing else, which is what leaving it out was for — checking one host without turning the
+    /// mode off. Typing into a marked pane reaches every marked pane and no other. Either way the
+    /// panes that receive what was typed into another are exactly the panes with an edge.</para>
     ///
     /// <para>The focused pane first, because it is the one being watched, and a keystroke that
     /// reached the others before it would be one the user sees arrive last where they are looking.
     /// </para>
     /// </summary>
     public IReadOnlyList<TerminalLeaf> Receivers =>
-        Broadcasting
-            ? [Focused, .. Leaves.Where(leaf => !ReferenceEquals(leaf, Focused))]
+        Broadcasting && Focused.Receiving
+            ? [Focused, .. Leaves.Where(leaf => leaf.Receiving && !ReferenceEquals(leaf, Focused))]
             : [Focused];
 
     /// <summary>
@@ -137,6 +144,30 @@ public sealed class TerminalTab : IAsyncDisposable
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Leaves the focused pane out of broadcast typing, or brings it back in — the selection half of
+    /// QS53, for a tab holding one host the command must not reach.
+    ///
+    /// <para><b>Only while broadcasting</b>, because the mode starts from every pane in the tab and a
+    /// selection is what is taken away from that; there is no second way to start it. The mark comes
+    /// off with the membership, since they are one property on the pane.</para>
+    ///
+    /// <para>Leaving the last pane out ends the mode, which is what a broadcast to nobody is.</para>
+    /// </summary>
+    /// <returns>Whether the focused pane receives broadcast typing now.</returns>
+    public bool Choose()
+    {
+        if (!Broadcasting)
+        {
+            return false;
+        }
+
+        Focused.Receiving = !Focused.Receiving;
+        Broadcasting = _leaves.Values.Any(leaf => leaf.Receiving);
+
+        return Focused.Receiving;
     }
 
     /// <summary>

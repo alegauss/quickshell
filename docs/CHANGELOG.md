@@ -98,7 +98,7 @@
 - ✅ **QS51** **A user's chosen colour scheme has to be entered as twenty colours by hand** — A scheme in either format everybody already shares is read from a path beside the settings file, repaints the scrollback with it, and has its unreadable pairs named rather than refused.
 - ✅ **QS161** **A title the host writes appears nowhere while there is one tab, because the strip that would carry it is hidden** — The window is named for the session it shows and then for this client, so a shell reporting its directory reaches the one place a single-tab window has.
 - ✅ **QS52** **Every action needs a chord the user memorised or a menu they have to go looking for** — Ctrl+Shift+P lists every action this client has, each beside the chord that also does it, and the list is read off the bindings so one cannot exist that it does not offer.
-- ✅ **QS53 (the panes in this tab)** **The same command on eight hosts has to be typed eight times** — Ctrl+Shift+B types and pastes into every pane of the tab at once, each receiving pane wears an orange edge and says so to a screen reader, and a tab switch, split, zoom or close ends it.
+- ✅ **QS53** **The same command on eight hosts has to be typed eight times** — Ctrl+Shift+B types and pastes into every pane of the tab at once, the palette leaves any pane out, and only panes wearing an orange edge receive, until a switch, split, zoom or close ends it.
 
 ## Block H — The reason to leave the incumbent
 

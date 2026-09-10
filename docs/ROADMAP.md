@@ -65,7 +65,6 @@
 
 ## Block G — The clean interface, defended
 
-- ⏳ **QS53** (deps: QS48 ✅) **The same command on eight hosts has to be typed eight times** — A selection of panes cannot be the target yet, so a tab holding one host the command must not reach cannot broadcast at all. → §QS53
 - 📋 **QS83** (deps: QS82 ✅, QS46 ✅) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83
 - 📋 **QS126** (deps: QS121) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126
 - 📋 **QS151** (deps: QS116 ✅) **A reconnecting session makes a new damage signal per connection, so a pane asleep on the first never repaints** — QS126 wires this up and inherits a window frozen at whatever frame it drew first. → §QS151
@@ -311,13 +310,6 @@
   half landed, which is the Windows OpenSSH agent and Pageant from 0.78 on. What is left
   is the shared-memory transport older Pageants speak, and a token-backed key is the
   case with no other route at all.
-
-## Done when — QS53
-
-- **A pane can be left out of broadcast typing, and only the panes in it are marked**
-  Settled by a BroadcastTests case that leaves one of three panes out, types once, and
-  finds the keystroke in exactly the two marked panes — edge and help text both — and
-  nothing in the third.
 
 ## Non-goals
 

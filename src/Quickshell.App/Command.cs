@@ -18,6 +18,21 @@ public interface INamedCommand : ICommand
 }
 
 /// <summary>
+/// The gesture of an action the palette reaches and no key does.
+///
+/// <para><b>A binding with no chord is still a binding</b>, which is what keeps QS52's rule whole:
+/// the palette reads its list off the window's bindings, so an action that deserves no chord of its
+/// own is bound to this rather than listed somewhere else. It matches no input at all. Every chord
+/// is one taken from the program on the far side, and an action somebody reaches for once in a
+/// session is not worth one.</para>
+/// </summary>
+public sealed class PaletteOnly : InputGesture
+{
+    /// <summary>Nothing a keyboard or a mouse does is this gesture.</summary>
+    public override bool Matches(object targetElement, InputEventArgs inputEventArgs) => false;
+}
+
+/// <summary>
 /// One entry in the palette: what it is called, what it is bound to, and the thing itself.
 /// </summary>
 /// <param name="Name">What the action is called.</param>
