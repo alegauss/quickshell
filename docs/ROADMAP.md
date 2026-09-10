@@ -38,12 +38,14 @@
 - 📋 **QS155** (deps: QS21 ✅, QS30 ✅) **A program that asks for the mouse never gets one, and the wheel scrolls nothing at all** — QS21's encoder and QS22's viewport are named by no code in the client, so both shipped features are unreachable from the running program. → §QS155
 - 📋 **QS156** (deps: QS154 ✅) **Grapheme segmentation runs at half its old rate, because every cluster now asks ICU where the boundary is** — QS154 turned invariant globalization off to keep the client alive, and StringInfo stopped using the runtime's own simple breaking. → §QS156
 - 📋 **QS158** (deps: QS31 ✅) **Nothing says how far back the view is, so a reader who scrolled has no idea where they are or that output arrived** — QS31 gave the viewport a wheel and a find and left it with no indicator, and the reading it already answers reaches nobody. → §QS158
+- 📋 **QS177** (deps: —) **The strip past the last whole cell is never painted, so every pane has a black band at its right and bottom edges** — No instance covers those pixels and nothing clears the target, so they come back black on every scheme, and on a light one the band is plain to see. → §QS177
 
 ## Block D — The tree a user organises work in
 
 - 📋 **QS117** (deps: QS55 ✅) **Comments a user wrote in the session store are gone the next time the client writes it** — Reading the file is lossless and writing it is not, so a store edited by hand and then edited through the client loses the half a person put there for themselves. → §QS117
 - 📋 **QS119** (deps: QS57 ✅) **A jump carries traffic through a local port anything running as this user can connect to** — A bastion exists to be the only way in, and a port on this machine that reaches the target unauthenticated is a second way in that the user never opened. → §QS119
 - 📋 **QS121** (deps: QS55 ✅, QS58 ✅) **Nothing owns the session store file and nothing opens the session dialog, so neither is reachable** — A store with no owner and a dialog with no way in are two finished parts that a user cannot get to, which is the same to them as neither existing. → §QS121
+- 📋 **QS179** (deps: QS121) **A fleet has no saved group to broadcast to, so the same split is rebuilt by hand before every broadcast** — QS53 built the tab as its target and left the saved group, which needs a session store the running client can read, and that is QS121. → §QS179
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -76,6 +78,7 @@
 - 📋 **QS171** (deps: —) **Splitting a pane is bound to one Oem key, and which character that is depends on the layout** — Splitting beside was bound twice because the backslash moves between layouts; splitting below was bound once, and nothing tested the keyboards it moves on. → §QS171
 - 📋 **QS172** (deps: —) **A user looking for help presses Ctrl+Shift+F1 and gets a defect report** — F1 is where a person looks for help, this client binds it to collecting a diagnostic bundle, and the keys reference it should open is a file in the repository. → §QS172
 - 📋 **QS174** (deps: —) **A settings value the client could not use is not mentioned anywhere the user will look** — A mistyped scheme path, an unreadable scheme file and a settings file that will not parse all load as the defaults in silence, and the client looks broken rather than misconfigured. → §QS174
+- 📋 **QS178** (deps: —) **Five command-line flags exist and no page names them, so a script author finds them by reading the source** — The client has no menu, so the command line is how another program asks it for anything, and a surface nobody documented is one nobody finds. → §QS178
 
 ## Block H — The reason to leave the incumbent
 
@@ -114,6 +117,8 @@
 - 📋 **QS159** (deps: QS147 ✅) **The shipping discipline tells an agent to screenshot a UI task, and this repository's evidence rule forbids that** — A session followed the skill, spent an hour driving the operator's desk with synthetic keystrokes, and never found the winwright cases already here. → §QS159
 - 📋 **QS167** (deps: QS95 ✅) **An allocation assertion fails about once in two guest runs on a tree nothing touched** — Block K asks that no test fail intermittently, and this one was watched doing it: red in the guest, green on the host and green on the guest's next run. → §QS167
 - 📋 **QS176** (deps: —) **The winwright this project restores is older than the engine beside it, so cases work around gaps that are closed** — Three case files explain why they use a flag instead of the chord a user presses, and the engine grew chords in a version this repository does not reference. → §QS176
+- 📋 **QS180** (deps: —) **The paste tests use the desk's real clipboard, so a run erases what the user copied and fails while a guest shares it** — Six tests went red together while a VMware guest was up and green once it was suspended, and every run replaces whatever the user had copied. → §QS180
+- 📋 **QS181** (deps: —) **The import preview case missed its dialog in one full run and found it alone, so its five-second wait is a guess** — Block K rules out a test that fails on an unchanged tree, and when this one did its refusing step invoked the main window's Close button instead. → §QS181
 
 ## Done when — Block A
 
@@ -306,6 +311,13 @@
   half landed, which is the Windows OpenSSH agent and Pageant from 0.78 on. What is left
   is the shared-memory transport older Pageants speak, and a token-backed key is the
   case with no other route at all.
+
+## Done when — QS53
+
+- **A pane can be left out of broadcast typing, and only the panes in it are marked**
+  Settled by a BroadcastTests case that leaves one of three panes out, types once, and
+  finds the keystroke in exactly the two marked panes — edge and help text both — and
+  nothing in the third.
 
 ## Non-goals
 

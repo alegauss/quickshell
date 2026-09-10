@@ -727,6 +727,28 @@ output moves nothing.
 
 Falsified when a reader scrolled into the history cannot tell that output arrived.
 
+### §QS177 The pixels no cell owns
+
+A pane is almost never a whole number of cells, and the pixels past the last whole
+column and the last whole row are drawn by nothing. The grid is one instance per cell
+and nothing clears the target first, so with a flip-discard swapchain those pixels come
+back black whatever the scheme says.
+
+Measured on the guest while shipping QS53: the scheme's background read (16, 18, 24)
+inside the grid and (0, 0, 0) in the strip under it, about fifteen pixels deep at that
+size. On a dark scheme it is a seam a careful eye finds; on a light scheme it is a black
+band down the right of every pane and along its bottom. Between two panes split side by
+side it is a dark gutter that looks like a divider nobody drew.
+
+The remedy is one clear to the palette's default background before the grid is drawn,
+which costs a fill of the target on a frame that is being drawn anyway and adds no frame
+to an idle window. Painting the edge cells' own background outward is the alternative
+and it is wrong: a host that coloured its last column would find the colour smeared into
+pixels it never addressed.
+
+Falsified when a pane whose size is not a whole number of cells shows any pixel outside
+its grid that is not the scheme's background.
+
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine
@@ -804,6 +826,26 @@ write does not preserve, and this decides when one happens at all.
 
 Falsified when a user can create a session, close the client, reopen it and connect to
 that session without touching a file.
+
+### §QS179 A fleet chosen once
+
+QS53's design names three targets for broadcast typing: the panes in this tab, a
+selection the user made, or a saved group. The tab shipped first because it needs
+nothing but the panes on screen. A saved group needs the one thing this client cannot
+yet do, which is read the session store from the running program, and that is QS121.
+
+A group is a named set of saved sessions. Opening it opens each as a pane in one new tab
+and turns broadcasting on for that tab, so the target is still the panes in front of the
+user and the outline QS53 draws is still what says which panes receive. What the group
+adds is that the fleet is chosen once and kept, rather than re-split by hand every
+morning.
+
+It never broadcasts across tabs and never to a session that is not on screen: the whole
+argument of QS53 is that a keystroke reaches only what is visibly marked, and a group
+does not change that.
+
+Falsified when opening a group leaves any of its sessions out of the tab, or broadcasts
+to a pane that is not one of them.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -1375,6 +1417,25 @@ Not a notification system. One line, in one place, that a user looking for it ca
 
 Falsified when a settings value this client could not use leaves no trace a user can
 find.
+
+### §QS178 A surface with no reference
+
+The client has no menu on purpose, and the command line is where that decision put
+everything a script or another program might ask of it: `--tabs`, `--panes`,
+`--broadcast`, `--import` and `--palette` today. Each is parsed where it is used in the
+entry point, and each is explained by a comment beside that line, which is the one place
+a user will never read.
+
+KEYS.md solved the same problem for chords, and the shape carries over: the flags become
+one list in code that the entry point reads rather than five separate lookups, and a
+test holds a reference page to that list in both directions, so a flag nobody documented
+fails the build and so does a flag the page describes that nothing parses.
+
+Nothing about this is a help screen. The client is a windowed program with no console to
+print one into, and a `--help` that opened a dialog would be the client choosing to put
+a window in front of a script.
+
+Falsified when the entry point acts on a flag the reference does not name.
 
 ## Block H — The reason to leave the incumbent
 
@@ -2024,7 +2085,9 @@ chord first, on the strength of the engine's changelog, and only the run said ot
 A case that opens the palette with `--palette` is checking a window this client can
 build. A case that opens it with `Ctrl+Shift+P` is checking the route a user takes, and
 for a palette — a surface whose entire purpose is the keyboard — that is the more
-interesting half by a distance. The same holds for `--tabs` and `--import`.
+interesting half by a distance. The same holds for `--tabs` and `--import`; QS53's
+broadcast case could not be written at all, this version refusing the `description`
+reading a pane's state is in.
 
 The move is to take a newer engine and delete the three workarounds with their comments.
 What makes it a task rather than a version bump is the bootstrap: `packages/` beside the
@@ -2032,3 +2095,54 @@ engine holds alpha.2, this project restores alpha.3 from somewhere else, and not
 here records which feed that is. Finding out is most of the work.
 
 Falsified when a case explains itself by an engine limitation that no longer exists.
+
+### §QS180 A suite that borrows the clipboard
+
+Every copy and paste test puts text on the system clipboard and reads it back, because
+the window reads and writes `System.Windows.Clipboard` directly and there is no other
+way in. Two things follow, and both were met while shipping QS53.
+
+The run is not hermetic. With the VMware guest up for a picture, all six clipboard tests
+went red together, each after twenty-two seconds of the clipboard refusing to hold what
+was put on it; with the guest suspended the same eighteen tests passed in one run.
+Clipboard sharing is the likeliest holder, and it is not the only program on a working
+desk that watches the clipboard.
+
+And a run is destructive. Whatever the person at the machine had copied is gone after
+the suite, replaced by `echo one` and a bracketed test string, which is a cost nobody
+agreed to pay for a green.
+
+The window's two touches of the clipboard become one seam, read and write, with the
+system clipboard as the default and an in-memory one in every test that is about what
+the window does with text. One test stays on the real clipboard, to prove the seam's
+default is the system's: it saves what was there, restores it afterwards, and reports
+that it measured nothing, rather than failing, when another process holds the clipboard
+for the whole of its wait.
+
+Falsified when a suite run leaves the clipboard holding anything other than what it held
+before.
+
+### §QS181 A dialog five seconds late
+
+While QS53 was being shipped, one full run of `run-tests.cmd` failed a single case: the
+import preview was not on the desk under its caption after sixty polls over five
+seconds, and the step that refuses it then invoked the main window's Close button
+instead, because that was the rightmost button left to find. `Quickshell.Cases` run on
+its own straight afterwards passed all six cases, and so did the next full run. Nothing
+in that commit touches the import path.
+
+So this is the intermittent red Block K's criterion rules out, and the report kept by
+QS175 is what named it. What it does not say is why. The dialog is asked for with
+`BeginInvoke` before the dispatcher starts, and it shares the window's thread with the
+first pane's layout, device and shell, all of which a desk still busy with the previous
+assembly can slow. Five seconds is the engine's resolve timeout, not a figure anybody
+measured for this dialog.
+
+The first move is the measurement: how long the preview takes to appear from launch,
+over enough runs on a loaded and an idle desk to say what the wait has to be. A longer
+timeout chosen before that is a guess that happens to be generous.
+
+The second hazard is worth closing whatever the first finds: a step that looks for a
+dialog's button must not be able to land on the window behind it.
+
+Falsified when the case fails on a tree nothing changed.
