@@ -230,63 +230,12 @@ public sealed class RemoteForwardTests : IAsyncDisposable
                    $"timeout 3 bash -c 'cat < /dev/tcp/127.0.0.1/{port}' 2>&1 || echo REFUSED"))
         .Trim();
 
-    /// <summary>Runs a command on the far side and returns what it printed.</summary>
-    private static async Task<string> Run(SshNetTransport session, string command)
-    {
-        await using IPtyChannel shell = await session.OpenShellAsync(200, 25, Stop);
-
-        string begin = $"qsB{Guid.NewGuid():N}";
-        string end = $"qsE{Guid.NewGuid():N}";
-
-        StringBuilder seen = new();
-        byte[] buffer = new byte[8 * 1024];
-
-        await shell.WriteAsync(Encoding.UTF8.GetBytes($"echo {begin}; {command}; echo {end}\n"),
-                               Stop);
-
-        using CancellationTokenSource waiting = CancellationTokenSource.CreateLinkedTokenSource(Stop);
-        waiting.CancelAfter(TimeSpan.FromSeconds(25));
-
-        try
-        {
-            while (!Closed(seen.ToString(), begin, end))
-            {
-                int read = await shell.ReadAsync(buffer, waiting.Token);
-
-                if (read == 0)
-                {
-                    break;
-                }
-
-                seen.Append(Encoding.UTF8.GetString(buffer, 0, read));
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-
-        string all = seen.ToString().Replace("\r", string.Empty, StringComparison.Ordinal);
-
-        int from = all.IndexOf($"{begin}\n", StringComparison.Ordinal);
-
-        if (from < 0)
-        {
-            return string.Empty;
-        }
-
-        from += begin.Length + 1;
-
-        int to = all.IndexOf(end, from, StringComparison.Ordinal);
-
-        return to <= from ? string.Empty : all[from..to];
-    }
-
-    private static bool Closed(string all, string begin, string end)
-    {
-        int from = all.IndexOf($"{begin}\n", StringComparison.Ordinal);
-
-        return from >= 0 && all.IndexOf(end, from + begin.Length + 1, StringComparison.Ordinal) >= 0;
-    }
+    /// <summary>
+    /// Runs a command on the far side and returns what it printed, the way every test that looks
+    /// at the server does it: see <see cref="RemoteShell"/>.
+    /// </summary>
+    private static Task<string> Run(SshNetTransport session, string command) =>
+        RemoteShell.RunAsync(session, command, Stop);
 
     private static async Task<SshNetTransport> Connected(int port)
     {

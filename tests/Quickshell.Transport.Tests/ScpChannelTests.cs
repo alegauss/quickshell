@@ -319,80 +319,11 @@ public sealed class ScpChannelTests : IDisposable
     // ---- plumbing ----
 
     /// <summary>
-    /// Runs a command on the far side and returns what it printed.
-    ///
-    /// <para>Bracketed by two markers this call invented, and the opening one is found by its
-    /// trailing newline: the shell echoes the command line back first, and in that echo the marker
-    /// is followed by a semicolon rather than by the end of a line.</para>
+    /// Runs a command on the far side and returns what it printed, the way every test that looks
+    /// at the server does it: see <see cref="RemoteShell"/>.
     /// </summary>
-    private static async Task<string> Run(SshNetTransport session, string command)
-    {
-        await using IPtyChannel shell = await session.OpenShellAsync(200, 25, Stop);
-
-        string begin = $"qsB{Guid.NewGuid():N}";
-        string end = $"qsE{Guid.NewGuid():N}";
-
-        StringBuilder seen = new();
-        byte[] buffer = new byte[8 * 1024];
-
-        await shell.WriteAsync(
-            Encoding.UTF8.GetBytes($"echo {begin}; {command}; echo {end}\n"), Stop);
-
-        using CancellationTokenSource waiting = CancellationTokenSource.CreateLinkedTokenSource(Stop);
-        waiting.CancelAfter(TimeSpan.FromSeconds(20));
-
-        try
-        {
-            // The end marker itself, not a newline before it: a command whose output has no
-            // trailing newline runs straight into the marker, and waiting for one that never comes
-            // is twenty seconds of nothing followed by an empty answer.
-            while (!seen.ToString().Contains($"{begin}\n", StringComparison.Ordinal)
-                   || !After(seen.ToString(), begin, end))
-            {
-                int read = await shell.ReadAsync(buffer, waiting.Token);
-
-                if (read == 0)
-                {
-                    break;
-                }
-
-                seen.Append(Encoding.UTF8.GetString(buffer, 0, read));
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-
-        string all = seen.ToString().Replace("\r", string.Empty, StringComparison.Ordinal);
-
-        int from = all.IndexOf($"{begin}\n", StringComparison.Ordinal);
-
-        if (from < 0)
-        {
-            return string.Empty;
-        }
-
-        from += begin.Length + 1;
-
-        int to = all.IndexOf(end, from, StringComparison.Ordinal);
-
-        if (to <= from)
-        {
-            return string.Empty;
-        }
-
-        string between = all[from..to];
-
-        return between.EndsWith('\n') ? between[..^1] : between;
-    }
-
-    /// <summary>Whether the closing marker has arrived after the opening one.</summary>
-    private static bool After(string all, string begin, string end)
-    {
-        int from = all.IndexOf($"{begin}\n", StringComparison.Ordinal);
-
-        return from >= 0 && all.IndexOf(end, from + begin.Length + 1, StringComparison.Ordinal) >= 0;
-    }
+    private static Task<string> Run(SshNetTransport session, string command) =>
+        RemoteShell.RunAsync(session, command, Stop);
 
     private string Mine()
     {
