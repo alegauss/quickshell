@@ -332,6 +332,10 @@ public sealed class BroadcastTests
             Dictionary<TerminalLeaf, StringBuilder> heard = Listen(tab);
             bool asked = false;
 
+            // A clipboard of its own, for the reason CopyPasteTests gives: this is about where the
+            // text goes, and the desk's clipboard is shared with everything else on it.
+            window.Clipboard = new HeldClipboard { Text = "echo hi\n" };
+
             window.AskingToPaste = _ =>
             {
                 asked = true;
@@ -343,7 +347,6 @@ public sealed class BroadcastTests
 
             tab.Leaves[0].Emulator.Feed("\e[?2004h"u8);
 
-            Clipboard("echo hi\n");
             window.PasteFromClipboard();
 
             bool first = asked;
@@ -358,10 +361,6 @@ public sealed class BroadcastTests
 
             tab.Leaves[1].Emulator.Feed("\e[?2004h"u8);
 
-            // Put back and read back before the second paste as before the first: something on a
-            // working desk opens the clipboard after every write, and a paste that lands while it
-            // holds it reads nothing. QS180 is that, and this narrows it rather than fixing it.
-            Clipboard("echo hi\n");
             window.PasteFromClipboard();
 
             string[] twice = [.. tab.Leaves.Select(leaf => heard[leaf].ToString())];
@@ -459,32 +458,6 @@ public sealed class BroadcastTests
         window.InputBindings.OfType<KeyBinding>()
               .Single(bound => bound.Key == key && bound.Modifiers == modifiers)
               .Command.Execute(null);
-
-    /// <summary>Puts text on the clipboard, waiting out whoever else has it open.</summary>
-    private static void Clipboard(string text)
-    {
-        for (int attempt = 0; attempt < 20; attempt++)
-        {
-            try
-            {
-                System.Windows.Clipboard.SetDataObject(text, copy: true);
-
-                if (System.Windows.Clipboard.ContainsText()
-                    && System.Windows.Clipboard.GetText() == text)
-                {
-                    return;
-                }
-            }
-            catch (Exception)
-            {
-                // Somebody else has it open. Waiting is the whole remedy.
-            }
-
-            Thread.Sleep(50);
-        }
-
-        Assert.Fail("the clipboard would not hold what this test put on it");
-    }
 
     /// <summary>Runs something on an STA thread, and shuts the dispatcher it built down after.</summary>
     private static T OnStaThread<T>(Func<T> work)

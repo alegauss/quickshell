@@ -2073,32 +2073,6 @@ here records which feed that is. Finding out is most of the work.
 
 Falsified when a case explains itself by an engine limitation that no longer exists.
 
-### §QS180 A suite that borrows the clipboard
-
-Every copy and paste test puts text on the system clipboard and reads it back, because
-the window reads and writes `System.Windows.Clipboard` directly and there is no other
-way in. Two things follow, and both were met while shipping QS53.
-
-The run is not hermetic. With the VMware guest up for a picture, all six clipboard tests
-went red together, each after twenty-two seconds of the clipboard refusing to hold what
-was put on it; with the guest suspended the same eighteen tests passed in one run.
-VMware is not the only holder: watched later, CrossDeviceService and msrdc each held it
-open just after a test wrote, and a read landing then came back empty.
-
-And a run is destructive. Whatever the person at the machine had copied is gone after
-the suite, replaced by `echo one` and a bracketed test string, which is a cost nobody
-agreed to pay for a green.
-
-The window's two touches of the clipboard become one seam, read and write, with the
-system clipboard as the default and an in-memory one in every test that is about what
-the window does with text. One test stays on the real clipboard, to prove the seam's
-default is the system's: it saves what was there, restores it afterwards, and reports
-that it measured nothing, rather than failing, when another process holds the clipboard
-for the whole of its wait.
-
-Falsified when a suite run leaves the clipboard holding anything other than what it held
-before.
-
 ### §QS181 A dialog five seconds late
 
 While QS53 was being shipped, one full run of `run-tests.cmd` failed a single case: the

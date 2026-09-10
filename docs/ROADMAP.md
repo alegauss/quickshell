@@ -2,8 +2,6 @@
 
 ## Priority
 
-- QS180
-
 ## Block A — A session that stays up, or says why it did not
 
 - ⏳ **QS38** (deps: QS37 ✅, QS111) **A link that drops for ten seconds costs the whole session and its scrollback** — A peer that stopped answering on a socket that stayed open is still invisible, because the library's keepalive keeps a NAT mapping rather than detecting a death. → §QS38
@@ -118,7 +116,6 @@
 - 📋 **QS159** (deps: QS147 ✅) **The shipping discipline tells an agent to screenshot a UI task, and this repository's evidence rule forbids that** — A session followed the skill, spent an hour driving the operator's desk with synthetic keystrokes, and never found the winwright cases already here. → §QS159
 - 📋 **QS167** (deps: QS95 ✅) **An allocation assertion fails about once in two guest runs on a tree nothing touched** — Block K asks that no test fail intermittently, and this one was watched doing it: red in the guest, green on the host and green on the guest's next run. → §QS167
 - 📋 **QS176** (deps: —) **The winwright this project restores is older than the engine beside it, so cases work around gaps that are closed** — Three case files explain why they use a flag instead of the chord a user presses, and the engine grew chords in a version this repository does not reference. → §QS176
-- 📋 **QS180** (deps: —) **The paste tests use the desk's real clipboard, so a run erases what the user copied and fails while a guest shares it** — Six tests went red together while a VMware guest was up and green once it was suspended, and every run replaces whatever the user had copied. → §QS180
 - 📋 **QS181** (deps: —) **The import preview case missed its dialog in one full run and found it alone, so its five-second wait is a guess** — Block K rules out a test that fails on an unchanged tree, and when this one did its refusing step invoked the main window's Close button instead. → §QS181
 - 📋 **QS182** (deps: —) **A resumed guest can hold run-app-vm past its own deadline and then yield an all-black picture reported as a success** — The host suite needs the guest suspended, so every picture after the first resumes it, and both halves of that cycle failed while QS53 shipped. → §QS182
 

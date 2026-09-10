@@ -1191,6 +1191,13 @@ public sealed class MainWindow : Window
     public Func<string, bool>? AskingToPaste { get; set; }
 
     /// <summary>
+    /// Where a copy puts text and a paste takes it from: the system clipboard, unless a caller says
+    /// otherwise — which is how a test asks what the window does with text without taking the one
+    /// clipboard every process on the desk shares. QS180.
+    /// </summary>
+    public IClipboard Clipboard { get; set; } = SystemClipboard.Instance;
+
+    /// <summary>
     /// Puts the selection on the clipboard.
     ///
     /// <para><b>Nothing selected puts nothing on it.</b> A client that emptied somebody's clipboard
@@ -1202,23 +1209,7 @@ public sealed class MainWindow : Window
     {
         string text = Selected?.Invoke() ?? string.Empty;
 
-        if (text.Length == 0)
-        {
-            return string.Empty;
-        }
-
-        try
-        {
-            Clipboard.SetText(text);
-        }
-        catch (Exception)
-        {
-            // Another process holds the clipboard open, which happens and passes. Losing a copy is
-            // not worth a dialog, and the selection is still on screen to try again with.
-            return string.Empty;
-        }
-
-        return text;
+        return text.Length > 0 && Clipboard.Write(text) ? text : string.Empty;
     }
 
     /// <summary>
@@ -1234,16 +1225,7 @@ public sealed class MainWindow : Window
     /// <returns>What was sent, empty where nothing was.</returns>
     public string PasteFromClipboard()
     {
-        string held;
-
-        try
-        {
-            held = Clipboard.ContainsText() ? Clipboard.GetText() : string.Empty;
-        }
-        catch (Exception)
-        {
-            return string.Empty;
-        }
+        string held = Clipboard.Read();
 
         Func<string, ValueTask>? sending = Pasting ?? (Current is null ? null : Typed);
 

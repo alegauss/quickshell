@@ -1,4 +1,5 @@
 using System.Text;
+using System.Windows;
 using System.Windows.Input;
 using Quickshell.App;
 using Quickshell.Terminal;
@@ -19,6 +20,12 @@ namespace Quickshell.App.Tests;
 /// <para><b>The paste cases are the security half of this line.</b> Pasted text runs the moment it
 /// contains a newline, so what is asserted is not that a paste works: it is that a paste with a
 /// newline in it does not leave this client until somebody has seen it.</para>
+///
+/// <para><b>On a clipboard of their own, and one test on the real one.</b> QS180: every case here
+/// used to write the desk's clipboard, which erased what the person at the machine had copied and
+/// went red whenever another process opened the clipboard between a write and a read. What these
+/// cases are about is what the window does with text, so they hand it a <see cref="HeldClipboard"/>.
+/// The last case is the one about the clipboard itself, and it puts back what it found.</para>
 /// </summary>
 public sealed class CopyPasteTests
 {
@@ -32,9 +39,10 @@ public sealed class CopyPasteTests
     [Fact]
     public void CtrlShiftCCopiesAndCtrlCIsLeftToTheHost()
     {
-        string copied = OnStaThread(() =>
+        (string copied, string held) = OnStaThread(() =>
         {
-            MainWindow window = new() { Selected = () => "what the drag covered" };
+            HeldClipboard clipboard = new();
+            MainWindow window = new() { Selected = () => "what the drag covered", Clipboard = clipboard };
 
             Assert.DoesNotContain(window.InputBindings.OfType<KeyBinding>(),
                                   bound => bound.Key == Key.C
@@ -42,10 +50,11 @@ public sealed class CopyPasteTests
 
             Binding(window, Key.C).Command.Execute(null);
 
-            return window.CopySelection();
+            return (window.CopySelection(), clipboard.Text);
         });
 
         Assert.Equal("what the drag covered", copied);
+        Assert.Equal("what the drag covered", held);
     }
 
     /// <summary>
@@ -57,14 +66,17 @@ public sealed class CopyPasteTests
     [Fact]
     public void CopyingNothingPutsNothingOnTheClipboard()
     {
-        string copied = OnStaThread(() =>
+        (string copied, string held, int writes) = OnStaThread(() =>
         {
-            MainWindow window = new() { Selected = () => string.Empty };
+            HeldClipboard clipboard = new() { Text = "what they were carrying" };
+            MainWindow window = new() { Selected = () => string.Empty, Clipboard = clipboard };
 
-            return window.CopySelection();
+            return (window.CopySelection(), clipboard.Text, clipboard.Writes);
         });
 
         Assert.Equal(string.Empty, copied);
+        Assert.Equal("what they were carrying", held);
+        Assert.Equal(0, writes);
     }
 
     /// <summary>
@@ -82,6 +94,7 @@ public sealed class CopyPasteTests
 
             MainWindow window = new()
             {
+                Clipboard = new HeldClipboard { Text = "echo one\r\necho two\n" },
                 Pasting = text =>
                 {
                     went = text;
@@ -96,8 +109,6 @@ public sealed class CopyPasteTests
                     return false;
                 },
             };
-
-            Clipboard("echo one\r\necho two\n");
 
             window.PasteFromClipboard();
 
@@ -135,6 +146,7 @@ public sealed class CopyPasteTests
 
             MainWindow window = new()
             {
+                Clipboard = new HeldClipboard { Text = "echo one\r\n" },
                 Pasting = text =>
                 {
                     went = text;
@@ -149,8 +161,6 @@ public sealed class CopyPasteTests
                     return true;
                 },
             };
-
-            Clipboard("echo one\r\n");
 
             window.PasteFromClipboard();
 
@@ -177,6 +187,8 @@ public sealed class CopyPasteTests
 
             MainWindow window = new()
             {
+                // An escape, a bell and a tab. The tab is text and survives; the other two are not.
+                Clipboard = new HeldClipboard { Text = "safe" + (char)0x1B + "[2J" + (char)0x07 + "\tend" },
                 Pasting = text =>
                 {
                     went = text;
@@ -186,9 +198,6 @@ public sealed class CopyPasteTests
                 Bracketed = () => false,
                 AskingToPaste = _ => true,
             };
-
-            // An escape, a bell and a tab. The tab is text and survives; the other two are not.
-            Clipboard("safe" + (char)0x1B + "[2J" + (char)0x07 + "\tend");
 
             window.PasteFromClipboard();
 
@@ -224,14 +233,217 @@ public sealed class CopyPasteTests
     {
         string sent = OnStaThread(() =>
         {
-            MainWindow window = new();
-
-            Clipboard("anything");
+            MainWindow window = new() { Clipboard = new HeldClipboard { Text = "anything" } };
 
             return window.PasteFromClipboard();
         });
 
         Assert.Equal(string.Empty, sent);
+    }
+
+    /// <summary>
+    /// The window's clipboard is the system's unless something says otherwise, and this test leaves
+    /// the system's holding what it held.
+    ///
+    /// <para><b>The one case on the real clipboard</b>, because it is the one about the clipboard:
+    /// every other case proves what the window does with text, and this proves the text it copies is
+    /// on the desk's clipboard and the text it pastes came from there.</para>
+    ///
+    /// <para><b>It puts back what it found, or it touches nothing.</b> Plain text is saved and
+    /// restored, and an empty clipboard is emptied again. Anything else — a picture, a file list, text
+    /// carrying its formatting — is something this test cannot put back exactly, so it measures
+    /// nothing and says so rather than destroy it. So does a clipboard another process holds open for
+    /// the whole of the wait, which on a working desk is a state and not a failure.</para>
+    /// </summary>
+    [Fact]
+    public void TheWindowUsesTheSystemClipboardAndLeavesItAsItWasFound()
+    {
+        (string? skipped, string copied, string onTheDesk, string pasted, bool restored) = OnStaThread(() =>
+        {
+            if (!Found(out string? before, out string? why))
+            {
+                return (why, string.Empty, string.Empty, string.Empty, true);
+            }
+
+            const string Probe = "quickshell clipboard probe";
+            string went = string.Empty;
+
+            MainWindow window = new()
+            {
+                Selected = () => Probe,
+                Pasting = text =>
+                {
+                    went = text;
+
+                    return ValueTask.CompletedTask;
+                },
+                Bracketed = () => false,
+                AskingToPaste = _ => true,
+            };
+
+            string copy = string.Empty;
+            string desk = string.Empty;
+            string paste = string.Empty;
+            bool back = false;
+
+            try
+            {
+                Assert.Same(SystemClipboard.Instance, window.Clipboard);
+
+                copy = Patiently(window.CopySelection);
+                desk = Patiently(() => Now() ?? string.Empty);
+                paste = Patiently(window.PasteFromClipboard);
+            }
+            finally
+            {
+                // Whatever happened above, and before anything is asserted: this is the person at
+                // the machine's clipboard, and the test is a guest in it.
+                back = Put(before);
+            }
+
+            return ((string?)null, copy, desk, paste, back);
+        });
+
+        Assert.SkipWhen(skipped is not null, skipped ?? string.Empty);
+
+        Assert.Equal("quickshell clipboard probe", copied);
+        Assert.Equal("quickshell clipboard probe", onTheDesk);
+        Assert.Equal("quickshell clipboard probe", pasted);
+
+        // What the person at the machine had, put back and read back. Read back by the write that
+        // put it there and not by a later look: something on this desk rewrites the clipboard just
+        // after it changes, and what it does afterwards is not this client's doing — QS180.
+        Assert.True(restored, "the clipboard could not be put back to what it held before this case");
+    }
+
+    /// <summary>
+    /// Reads what the desk's clipboard holds, if it is something this test can put back exactly.
+    /// </summary>
+    /// <param name="before">The plain text it holds, or null for nothing at all.</param>
+    /// <param name="why">Why this case will measure nothing, where it will not.</param>
+    private static bool Found(out string? before, out string? why)
+    {
+        before = null;
+        why = null;
+
+        for (int attempt = 0; attempt < 40; attempt++)
+        {
+            try
+            {
+                IDataObject? held = System.Windows.Clipboard.GetDataObject();
+                string[] formats = held?.GetFormats(autoConvert: false) ?? [];
+
+                if (formats.Length == 0)
+                {
+                    return true;
+                }
+
+                if (!formats.All(PlainText.Contains))
+                {
+                    why = "the clipboard holds something other than plain text ("
+                          + string.Join(", ", formats.Where(format => !PlainText.Contains(format)))
+                          + "), which this case cannot put back exactly, so it measured nothing";
+
+                    return false;
+                }
+
+                // Empty text is no text: an empty clipboard is what putting it back produces.
+                before = System.Windows.Clipboard.GetText() is { Length: > 0 } text ? text : null;
+
+                return true;
+            }
+            catch (Exception)
+            {
+                // Somebody else has it open. Waiting is the whole remedy.
+            }
+
+            Thread.Sleep(50);
+        }
+
+        why = "another process held the clipboard open for two seconds, so this case measured nothing";
+
+        return false;
+    }
+
+    /// <summary>The formats plain text arrives in, which are the only ones this case will restore.</summary>
+    private static readonly HashSet<string> PlainText = new(StringComparer.Ordinal)
+    {
+        DataFormats.Text, DataFormats.UnicodeText, DataFormats.OemText, DataFormats.Locale,
+        DataFormats.StringFormat,
+    };
+
+    /// <summary>Puts back what the real-clipboard case found: the text, or nothing at all.</summary>
+    /// <returns>Whether it read back as what was put, within two seconds of asking.</returns>
+    private static bool Put(string? before)
+    {
+        for (int attempt = 0; attempt < 40; attempt++)
+        {
+            try
+            {
+                if (before is null)
+                {
+                    System.Windows.Clipboard.Clear();
+                }
+                else
+                {
+                    System.Windows.Clipboard.SetText(before);
+                }
+
+                if (Now() == before)
+                {
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                // Held open. Try again rather than leave the probe where the user's text was.
+            }
+
+            Thread.Sleep(50);
+        }
+
+        return false;
+    }
+
+    /// <summary>What the desk's clipboard holds as text now, or null for nothing.</summary>
+    private static string? Now()
+    {
+        for (int attempt = 0; attempt < 40; attempt++)
+        {
+            try
+            {
+                return System.Windows.Clipboard.ContainsText()
+                    ? System.Windows.Clipboard.GetText()
+                    : null;
+            }
+            catch (Exception)
+            {
+                Thread.Sleep(50);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Asks until something comes back, for a little while: a read or a write that lands while
+    /// another process holds the clipboard comes back empty, and that is the desk and not the window.
+    /// </summary>
+    private static string Patiently(Func<string> asking)
+    {
+        for (int attempt = 0; attempt < 40; attempt++)
+        {
+            string answer = asking();
+
+            if (answer.Length > 0)
+            {
+                return answer;
+            }
+
+            Thread.Sleep(50);
+        }
+
+        return string.Empty;
     }
 
     /// <summary>The binding this window carries for a key, with both modifiers asserted.</summary>
@@ -244,39 +456,6 @@ public sealed class CopyPasteTests
         Assert.Equal(ModifierKeys.Control | ModifierKeys.Shift, bound.Modifiers);
 
         return bound;
-    }
-
-    /// <summary>
-    /// Puts text on the clipboard and reads it back before going on.
-    ///
-    /// <para><b>Read back, and that is not belt and braces.</b> The clipboard is one object shared
-    /// by every process on the desktop: a set can be accepted and then lost to whatever else was
-    /// reaching for it, and a test that assumed otherwise fails later, somewhere else, saying that
-    /// a paste sent nothing.</para>
-    /// </summary>
-    private static void Clipboard(string text)
-    {
-        for (int attempt = 0; attempt < 20; attempt++)
-        {
-            try
-            {
-                System.Windows.Clipboard.SetDataObject(text, copy: true);
-
-                if (System.Windows.Clipboard.ContainsText()
-                    && System.Windows.Clipboard.GetText() == text)
-                {
-                    return;
-                }
-            }
-            catch (Exception)
-            {
-                // Somebody else has it open. Waiting is the whole remedy.
-            }
-
-            Thread.Sleep(50);
-        }
-
-        Assert.Fail("the clipboard would not hold what this test put on it");
     }
 
     /// <summary>Runs something on an STA thread, which the clipboard and a window both need.</summary>
