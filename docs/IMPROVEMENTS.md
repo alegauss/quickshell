@@ -1746,6 +1746,28 @@ Measured with `tools/Quickshell.Startup` before and after, and recorded in
 Falsified when the device is still created after the first layout, or the shell still
 started after the window is shown, in a timed start of the release publish.
 
+### §QS192 Bringing a portable copy's sessions into the installed one
+
+Found while shipping QS77. Installing from a portable copy copies its program files and
+deliberately leaves the marker and `data\` behind, so the copy it came from keeps
+working. That is right for the copy and wrong for the person: the natural path through
+this client is to unzip it, try it, import the MobaXterm sessions, and install it once
+it has earned that. The installed copy then starts in `%AppData%\quickshell` with no
+sessions and no settings, and says nothing about where they went.
+
+The move is one copy, once. When the copy being installed is portable and the installed
+copy's settings folder does not exist yet, the portable `data\` is copied into it: the
+settings, the saved sessions and the window placements. Never the logs, the crash
+reports or the recordings, which describe the other copy.
+
+Where the installed copy's folder already exists, nothing is copied and nothing is
+merged. Two sets of sessions are a decision a person makes, and the finished install's
+sentence says where the portable ones are instead. Either way that sentence says which
+happened, so somebody who expected their sessions knows whether to look for them.
+
+Falsified when a portable copy holding saved sessions installs into a profile with no
+settings folder, and the installed copy starts without them.
+
 ## Block I — An error a user can act on
 
 ### §QS128 A trace that carries both sides of the negotiation
@@ -2101,28 +2123,28 @@ and is not enough: the suite has to notice. One session saw four green runs skip
 Falsified when a run that skipped the whole network suite exits 0 without saying
 so.</body>
 
-### §QS138 The eight minutes nobody had measured
+### §QS138 The sixteen minutes nobody had measured
 
-The suite takes about eighteen minutes and `Quickshell.Transport.Tests` is all of it.
-Inside that, `ScpChannelTests` is roughly eight minutes on its own — the runner's own
-`[slow] still running after 1m 00s` lines name the cases: each of the seven
-shell-metacharacter names, plus `ADirectoryGoesOverWhole`.
+The suite takes about eighteen minutes and `Quickshell.Transport.Tests` is most of it.
+Its report says where: each `ScpChannelTests` shell-metacharacter case takes 80.6
+seconds, `ADirectoryGoesOverWhole` 100.7, and four `RemoteForwardTests` 25.3 to 50.6 -
+exact multiples of the 20 and 25 second timers in the two files' `Run` helpers. About
+970 of the assembly's 1,087 seconds are those timers.
 
-The cause is in the helper rather than in the transfers. `Run` writes a bracketed
-command to a shell, waits for its end marker, and carries `CancelAfter(20s)` with an
-empty `catch (OperationCanceledException)`. When the marker is not matched the read
-waits the full twenty seconds and the method returns whatever it has. Three calls per
-case is a minute of nothing.
+The cause, found while shipping QS77, is one character. Each helper writes a bracketed
+command to a shell and reads until the closing marker follows `{begin}\n`. The shell is
+behind a pseudo-terminal, which sends CRLF, so the raw text holds `{begin}\r\n` and the
+condition is never true: the read ends when its timer does, into an empty `catch`. The
+parse after the loop strips the carriage returns first, so every test passes.
 
-Two problems, and the second is the one that matters. It is **slow**: eight minutes per
-run, every run, on the assembly every task touches. And it is **quiet about failing** —
-a helper that swallows its own timeout and returns a partial string means a case which
-never ran its command reads identically to one that did. Whatever those cases prove
-today, they would prove with the shell disconnected.
+Two problems, and the second is the one that matters. It is **slow**: most of a suite
+run, every run. And it is **quiet about failing** - a helper that swallows its own
+timeout and returns what it has means a case whose command never ran reads identically
+to one that did.
 
-So the fix is not a shorter timeout. It is a helper that distinguishes "the marker
-arrived" from "the wait ran out", and fails the test in the second case. The runtime
-falls out of that for free.
+So the fix is not a shorter timeout. The text is read without its carriage returns
+before a marker is looked for, and a helper that tells "the marker arrived" from "the
+wait ran out" fails the test in the second case. The runtime falls out of that for free.
 
 Falsified when a run of the suite spends more time waiting for markers than transferring
 files.
@@ -2247,26 +2269,46 @@ Falsified when the case fails on a tree nothing changed.
 
 ### §QS182 A picture of a desk that was not drawing
 
-The host suite has to run with the guest suspended, because a running guest holds the
-host's clipboard (QS180). So a task that takes a picture and then runs the suite
-suspends the guest in between, and the next picture resumes it.
+The host suite runs with the guest suspended, because a running guest holds the host's
+clipboard (QS180), so every picture taken after a suite resumes it.
 
-The resume did not return. `run-app-vm.ps1` printed that the guest was not running and
-that it was starting it, and then nothing for thirty-five minutes, although
-`Connect-Guest` gives the wait for VMware Tools a ten-minute deadline. The deadline
-covers the loop and not `vmrun start` before it, so a start that does not return is
-waited for without bound. Stopped by hand, a `checkToolsState` straight afterwards
-answered `running`.
+The resume does not hang; reading its output does. Found while shipping QS77: `vmrun
+start ... gui` resumed the guest and exited within seconds, but it had started the
+Workstation window, `vmware.exe --fd 1388`, and that window inherited the pipe
+`Invoke-VmRun` reads vmrun's output through. PowerShell waits for the end of that pipe,
+which comes when the window closes. So the script said it was starting the guest and
+then nothing, with vmrun gone and `checkToolsState` answering `running`. A deadline on
+the start would only turn every resume into a refusal.
 
-And the picture after it was of nothing. The next `run-app-vm` built the client, started
-it, let it draw for twelve seconds and brought back a 3838 by 1841 capture in which
-every pixel is black: the desk the guest resumed to draws nothing, most likely a display
-that went dark or a session that locked while suspended. The script reported success.
+And the picture after it was of nothing. The next `run-app-vm` built the client, let it
+draw for twelve seconds and brought back a 3838 by 1841 capture in which every pixel is
+black: the desk the guest resumed to draws nothing, most likely a display that went dark
+or a session that locked while suspended. The script reported success.
 
-Two moves. `vmrun start` gets the same deadline as the wait after it, so a stuck resume
-refuses instead of holding the run. And a capture that is one colour from edge to edge
-is refused as a picture of nothing, because a black rectangle filed as evidence is worse
-than no file.
+Two moves. `start` sends its output to a file and waits for vmrun's own exit, never
+reading through a pipe another process can inherit. And a capture that is one colour
+from edge to edge is refused as a picture of nothing, because a black rectangle filed as
+evidence is worse than no file.
 
-Falsified when a resumed guest yields a capture of a single colour and the script exits
-zero.
+Falsified when `Connect-Guest` is still waiting after vmrun has exited, or a
+single-colour capture exits zero.
+
+### §QS193 The archive built by the pipeline that gates the tree
+
+Found while shipping QS77. `release.cmd` publishes the client self-contained and
+ReadyToRun, which is the build QS75 measured and the one people download. CI never runs
+it: it builds the solution framework-dependent and runs the suite. A publish fails for
+reasons a build never meets - a runtime pack that will not restore, a ReadyToRun compile
+error, the SDK refusing a property for WPF as it refused trimming with NETSDK1168 - and
+each of those would pass CI and surface on the day of a release.
+
+The move is one step in the workflow that already gates the tree: `release.cmd
+-Unsigned` on the Windows runner after the suite, with the archive kept as a workflow
+artifact for a few days. The archive becomes something the pipeline proves on every
+push, and a reviewer can take exactly what a change would ship without building it.
+
+It stays unsigned there. The signing certificate is the maintainer's, and whether a
+pipeline may hold it is a question QS77's remainder settles; until then the archive is
+named for what it is, which is the guard `release.cmd` already has.
+
+Falsified when a change that breaks `release.cmd -Unsigned` passes CI.
