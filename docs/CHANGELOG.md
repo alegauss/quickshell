@@ -74,6 +74,7 @@
 - ✅ **QS62** **A folder cannot be copied, and a name that already exists on the far side is resolved by guessing** — A folder copies whole, empty directories included, and a cancelled overwrite leaves the file that was there complete because the bytes land beside it first.
 - ✅ **QS63** **A host too old to offer an SFTP subsystem cannot receive a file at all** — A host with no sftp subsystem moves files with scp, every path quoted for the remote shell, and the fallback says what it costs instead of being discovered.
 - ✅ **QS65** **Keeping a local and a remote directory alike means comparing them by eye** — Two trees are compared before anything moves, tolerant of the resolutions the two filesystems keep, and a mirror deletes exactly the list it showed and nothing that arrived after.
+- ✅ **QS60 (listing and navigation)** **There is no way to see what is on the remote host without running a command** — Browse files lists this computer as entries arrive; the host's pane, proven on a real server, showed 50,000 entries' first screen in 19 ms and waits on QS126 for a tab to open it.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

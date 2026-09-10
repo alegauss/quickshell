@@ -1186,7 +1186,9 @@ are two pieces of work, and only one of them has been on the roadmap.
 
 What closes it is not one task. It is a rule — a line that makes a component reachable
 is opened beside the line that builds it — plus the connecting work already outstanding.
-This line exists to hold the count and the rule until those are opened.
+This line exists to hold the count and the rule until those are opened. QS60's browser
+is the twelfth: its remote half lists over a session's file channel, and no tab holds an
+SSH session yet.
 
 Falsified when a component ships with no line naming what will reach it.
 

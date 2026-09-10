@@ -50,8 +50,8 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-- 📋 **QS60** (deps: QS59 ✅, QS46 ✅) **There is no way to see what is on the remote host without running a command** — Browsing is what turns a transfer tool into something a person operates, and it is where the incumbent's users spend a large share of their time. → §QS60
-- 📋 **QS64** (deps: QS60) **A file can only be transferred through the browser, so dragging one from Explorer does nothing** — Dragging a file onto a session is the shortest path a user has to moving it, and it is the interaction they try first without being told it exists. → §QS64
+- ⏳ **QS60** (deps: QS59 ✅, QS46 ✅) **There is no way to see what is on the remote host without running a command** — Nothing can be copied, renamed, deleted or made from the browser yet, so it shows a directory without letting anyone act on it. → §QS60
+- 📋 **QS64** (deps: QS60 ⏳) **A file can only be transferred through the browser, so dragging one from Explorer does nothing** — Dragging a file onto a session is the shortest path a user has to moving it, and it is the interaction they try first without being told it exists. → §QS64
 - 📋 **QS122** (deps: QS59 ✅) **The shared-session trick rests on six SSH.NET members reached by name, and only a live server proves it holds** — A library upgrade can break it, and the test that would notice needs a container running, so an upgrade on a machine without one looks clean. → §QS122
 - 📋 **QS123** (deps: QS62 ✅) **A symbolic link on the server cannot be copied, because nothing here can read where it points** — A tree copied down loses every link in it, which for a source checkout or a set of config files is a copy that does not work at the far end. → §QS123
 
@@ -311,6 +311,13 @@
   half landed, which is the Windows OpenSSH agent and Pageant from 0.78 on. What is left
   is the shared-memory transport older Pageants speak, and a token-backed key is the
   case with no other route at all.
+
+## Done when — QS60
+
+- **Every operation between the panes works on a real server, and a delete asks**
+  Settled by a run against the fixture that copies both ways, renames, makes a
+  directory, changes a mode and deletes, with the delete's question naming how many
+  entries and whether any is a directory.
 
 ## Non-goals
 

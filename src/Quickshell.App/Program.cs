@@ -137,6 +137,13 @@ public static class Entry
             window.Broadcast();
         }
 
+        // `--browse` opens the file browser the palette opens, after the window for the reason
+        // `--import` gives below.
+        if (arguments.Contains("--browse", StringComparer.Ordinal))
+        {
+            window.Dispatcher.BeginInvoke(() => window.BrowseFiles());
+        }
+
         // `--import` opens what Ctrl+Shift+I opens, and after the window is up rather than before:
         // the preview is a dialog over a window, and a modal with nothing behind it is a client that
         // looks like it failed to start. It still writes nothing until the answer is yes.

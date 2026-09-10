@@ -1,0 +1,56 @@
+{
+  // QS60, read through the accessibility tree. Opened by `--browse` and not from the palette, for
+  // the reason palette.cases.json gives: the engine this repository restores cannot yet type into
+  // one window and act in another (QS176), and the flag is the same real surface `--palette` is.
+  //
+  // What is asserted is what the browser is for on a tab that runs a local shell: this machine's
+  // half opens on a directory and lists it, and the other half says in words why it is empty. The
+  // listing's content belongs to the machine, so it is matched for being there and not read for what
+  // it holds; the sentence belongs to this repository, so it is read whole.
+
+  "fixtures": [
+    {
+      "name": "the file browser over a local tab",
+      "arguments": ["--browse"],
+      "shareable": true
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "the browser opens on this computer, lists it, and says why it has no remote side",
+      "catches": "a browser that opens on nothing, lists nothing until a directory finishes, or leaves its remote half blank with no word about why - each of which a test inside the process could pass while the window showed it",
+      "filed": "QS60",
+      "tags": ["browser"],
+      "fixture": "the file browser over a local tab",
+
+      "steps": [
+        {
+          // The one path box there is on a local tab, and read for its value: a directory of this
+          // machine, which is all the claim can say about a path the machine decides.
+          "locator": "Edit",
+          "act": "read",
+          "reads": "value",
+          "matches": "^[A-Za-z]:\\\\",
+          "named": "this computer's half opened on one of its directories"
+        },
+        {
+          // The first row, read for being something. A user profile that lists nothing is a pane
+          // that never listed.
+          "locator": "DataItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "matches": ".",
+          "named": "and listed what is in it"
+        },
+        {
+          "locator": "Text[order=right]",
+          "act": "read",
+          "reads": "name",
+          "expect": "This tab is a local shell, so there is no remote side to list.",
+          "named": "the other half says why it is empty"
+        }
+      ]
+    }
+  ]
+}

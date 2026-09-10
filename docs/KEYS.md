@@ -8,6 +8,11 @@ read about it here rather than discover it by pressing it and watching nothing h
 everything this client does and shows each one's chord beside it. This page is the reference; the
 palette is how you find something without one.
 
+**Some actions have no chord at all**, because a chord is taken from the program on the far side
+and they are not reached for often enough to be worth one. They are in the palette and nowhere
+else: *Browse files* opens the file browser, and *Leave this pane out of broadcast typing* is
+described under [Panes](#panes).
+
 Nothing here is configurable yet. When it becomes configurable this page becomes the defaults.
 
 ## Tabs

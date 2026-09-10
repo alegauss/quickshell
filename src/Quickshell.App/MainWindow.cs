@@ -221,6 +221,11 @@ public sealed class MainWindow : Window
         // fleet is chosen, and a chord for it would be one more taken from the far side for that.
         InputBindings.Add(new InputBinding(new Selecting(this), new PaletteOnly()));
 
+        // The file browser, from the palette. No chord yet: until a tab can hold an SSH session its
+        // remote half has nothing to list, and a chord taken from the far side for half a browser
+        // is spent too early.
+        InputBindings.Add(new InputBinding(new Browsing(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
@@ -1885,6 +1890,68 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.PasteFromClipboard();
+    }
+
+    /// <summary>
+    /// Who says what the host side of a tab is — its session's file channel — or null while no tab
+    /// can have one. Nothing in this client sets it yet: a tab runs a local shell until QS126 gives
+    /// one an SSH session, and the browser says so rather than showing an empty pane.
+    /// </summary>
+    public Func<TerminalTab, IFileSide?>? RemoteFiles { get; set; }
+
+    /// <summary>How a browser is put on screen. Shown, unless a caller says otherwise — which is how a test gets one without a window.</summary>
+    public Action<FileBrowser>? ShowsBrowser { get; set; }
+
+    private FileBrowser? _browser;
+
+    /// <summary>
+    /// Opens the file browser for the tab on screen, or brings forward the one already open.
+    ///
+    /// <para><b>One browser, not one per press.</b> A second press is somebody looking for the
+    /// browser they already opened, and a second window with the same two directories in it is a
+    /// second thing to close.</para>
+    /// </summary>
+    /// <returns>The browser on screen.</returns>
+    public FileBrowser BrowseFiles()
+    {
+        if (_browser is { } open)
+        {
+            if (open.IsVisible)
+            {
+                open.Activate();
+            }
+
+            return open;
+        }
+
+        IFileSide? remote = Current is { } tab ? RemoteFiles?.Invoke(tab) : null;
+
+        FileBrowser browser = new(new LocalFiles(), remote) { ThemeMode = ThemeMode };
+
+        // Owned, so it closes with this window and stays above it — which WPF allows only of a
+        // window that has been shown, and the client's always has by the time anybody can ask.
+        if (IsLoaded)
+        {
+            browser.Owner = this;
+        }
+
+        browser.Closed += (_, _) => _browser = null;
+
+        _browser = browser;
+
+        (ShowsBrowser ?? (shown => shown.Show()))(browser);
+
+        return browser;
+    }
+
+    /// <summary>The browser's palette entry.</summary>
+    private sealed class Browsing(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Browse files";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.BrowseFiles();
     }
 
     /// <summary>The import binding's command.</summary>
