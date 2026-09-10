@@ -76,6 +76,7 @@
 - ✅ **QS63** **A host too old to offer an SFTP subsystem cannot receive a file at all** — A host with no sftp subsystem moves files with scp, every path quoted for the remote shell, and the fallback says what it costs instead of being discovered.
 - ✅ **QS65** **Keeping a local and a remote directory alike means comparing them by eye** — Two trees are compared before anything moves, tolerant of the resolutions the two filesystems keep, and a mirror deletes exactly the list it showed and nothing that arrived after.
 - ✅ **QS60** **There is no way to see what is on the remote host without running a command** — Browse files lists as entries arrive, 50,000 remote ones first shown in 19 ms, and copies both ways, renames, makes, sets modes and deletes after asking, each proven on a real server.
+- ✅ **QS64** **A file can only be transferred through the browser, so dragging one from Explorer does nothing** — Files dragged from Explorer onto a terminal are typed as their paths, quoted for that pane's shell, and onto a browser pane are copied into the directory it shows.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

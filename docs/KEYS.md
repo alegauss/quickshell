@@ -61,6 +61,10 @@ or close a pane, and it is never on when the client starts.
 | `Ctrl+Shift+C` | Copies the selection. |
 | `Ctrl+Shift+V` | Pastes. A paste carrying a newline is shown to you first unless the host has turned bracketed paste on — see [`warnOnPaste`](SETTINGS.md#warnonpaste). |
 
+Dropping files from Explorer onto a terminal types their paths at the prompt of the pane you let
+go over, each quoted for the shell running there and followed by a space, and that pane takes the
+keyboard. Nothing is copied: a drop onto a terminal is the path as an argument.
+
 ## The client itself
 
 | Chord | What it does |
@@ -81,6 +85,9 @@ file tools on this platform have always used:
 - `F8` or `Delete` deletes, after saying how many entries and whether any is a directory.
 - `Alt+Enter` sets the mode of the selected entry, and `Ctrl+R` lists the directory again.
 - `Enter` opens a directory, `Backspace` goes up, and `Alt+Left` and `Alt+Right` go back and forward.
+
+Files dragged from Explorer onto either side are copied into the directory that side is showing,
+without a question first, since you aimed the drop; a name already there is still asked about.
 
 ## Why they all look like that
 

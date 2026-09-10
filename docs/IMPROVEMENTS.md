@@ -875,35 +875,6 @@ to a pane that is not one of them.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-### §QS64 The gesture users try before reading anything
-
-Two drop targets, and they mean different things.
-
-Dropping onto a **file browser pane** is a transfer into the directory shown, which is
-the obvious case, and it joins the existing queue like anything else.
-
-Dropping onto a **terminal pane** is not a transfer. It types the path, quoted for the
-remote shell — because what a user dropping a file onto a shell prompt wants, nine times
-in ten, is the path as an argument. A modifier turns it into a transfer to the working
-directory instead, and that difference is stated in the reference rather than left to be
-discovered.
-
-Dragging *out* of a remote pane to Explorer is a download, and it is the harder
-direction: Windows wants the data during the drop rather than afterwards. Deferred
-rendering through `CFSTR_FILECONTENTS` is the mechanism, and where a file is large
-enough that the drop would stall, it is queued and the drop completes against a
-placeholder.
-
-Dragging between two remote panes on different hosts transfers through this client, and
-it says so — the user may reasonably have assumed the two servers were talking to each
-other.
-
-Several files and directories are one operation, one group in the queue, one progress
-figure.
-
-Falsified when a path typed into a terminal by a drop is not quoted for the remote
-shell.
-
 ### §QS122 Six names holding up a security property
 
 Sharing one connection between the shell and the file browser is not offered by
@@ -1029,6 +1000,51 @@ retry is the resume.
 
 Falsified when a copy that has moved bytes for a second shows no progress in the
 browser.
+
+### §QS188 A drag that starts on the server
+
+Carried out of QS64's design, which shipped the drops into the client and left the
+direction out of it. Dragging entries out of the host's pane onto Explorer or the
+desktop is a download, and it is the harder direction: Windows asks for the data during
+the drop, not afterwards, and a server over a slow link cannot answer in the time a drop
+is allowed to take.
+
+The mechanism is deferred rendering. The pane offers a data object carrying
+`CFSTR_FILEDESCRIPTOR` — the names, sizes and times, which it already has from the
+listing — and `CFSTR_FILECONTENTS`, whose stream for each file is read from the
+session's file channel only when Explorer asks for it. A file large enough that reading
+it would stall the drop is not read there: it is queued as an ordinary download into the
+directory the drop landed in, and the drop completes against a placeholder the queue
+replaces, which is how the queue's guarantee about half-written files keeps holding.
+
+The same drag source is what dragging between two browsers needs, one per tab, on two
+hosts. That copy goes through this client, and it says so, because a user may reasonably
+have assumed the two servers were talking to each other.
+
+Falsified when dragging a file from the host's pane onto a local folder does not leave
+that file there, byte for byte.
+
+### §QS189 A drop that sends the file
+
+Carried out of QS64's design: a drop onto a terminal types the dropped paths, and a
+modifier held while dropping turns it into a transfer into the shell's working directory
+instead. The typing shipped; the transfer cannot, because it needs two things this
+client does not have yet — a tab whose session is SSH, which is QS126, and a directory
+the shell has said it is in.
+
+The directory is the emulator's reading of OSC 7, which QS184 uses for the same purpose
+and which a shell reports only when its profile asks it to. Where nothing has been
+reported, a modified drop says so in the pane rather than uploading to a guess: the
+account's home is the likeliest wrong directory there is, because it is where the file
+would land without anybody noticing.
+
+Which modifier is the one decision here. Shift is what Explorer uses to change a drop's
+meaning, and the reference says what it does on a terminal next to the plain drop,
+rather than leaving the difference to be discovered by a user who happened to be holding
+it.
+
+Falsified when a file dropped with the modifier onto an SSH tab whose shell reported its
+directory does not arrive in that directory.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

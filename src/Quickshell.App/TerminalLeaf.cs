@@ -66,6 +66,34 @@ public sealed class TerminalLeaf : IAsyncDisposable
     public string Host { get; }
 
     /// <summary>
+    /// How the shell in this pane reads a quoted word, which is what a dropped path is typed as.
+    /// Read off what the pane runs: a local tab's is Windows' command processor, and anything this
+    /// client connects to over SSH is a POSIX shell.
+    /// </summary>
+    public ShellKind Shell => ShellQuoting.Of(Host);
+
+    /// <summary>
+    /// Files dropped onto this pane, typed at the prompt as their paths — QS64.
+    ///
+    /// <para><b>Typed and not transferred</b>, because what somebody dropping a file onto a shell
+    /// wants, nine times in ten, is its path as an argument. Each path is quoted for this pane's
+    /// shell, so a name with a space, a quote or a dollar in it is one argument and nothing else.
+    /// </para>
+    ///
+    /// <para><b>Into this pane and no other</b>, even while its tab is broadcasting: a drop is
+    /// aimed at one pane by where it is let go, which is a different gesture from typing.</para>
+    /// </summary>
+    public void Drop(IReadOnlyList<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+
+        if (paths.Count > 0)
+        {
+            Typist.Type(ShellQuoting.Line(paths, Shell), System.Windows.Input.ModifierKeys.None);
+        }
+    }
+
+    /// <summary>
     /// The name the user gave this tab, which outranks everything the host has to say.
     /// </summary>
     public string? Named { get; set; }

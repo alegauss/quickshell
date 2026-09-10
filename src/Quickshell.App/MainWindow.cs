@@ -663,6 +663,19 @@ public sealed class MainWindow : Window
                 Retitle();
             }
         };
+
+        // A file let go over a pane is typed at that pane's prompt, and the pane takes the keyboard:
+        // somebody who aimed a drop at a terminal is about to finish the command line in it.
+        leaf.Pane.Dropped += paths =>
+        {
+            if (Current is { } tab && tab.PaneOf(leaf) is var pane and >= 0)
+            {
+                tab.Focus(pane);
+                Retitle();
+            }
+
+            leaf.Drop(paths);
+        };
     }
 
     /// <summary>Who gives a freshly split pane a session, or null while nothing can.</summary>

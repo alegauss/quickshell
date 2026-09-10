@@ -98,6 +98,19 @@ public sealed class TerminalPane : HwndHost
     private const int CaptureLost = 0x0215;
     private const int Wheel = 0x020A;
 
+    /// <summary>WM_DROPFILES: files let go over this window, which accepts them since QS64.</summary>
+    internal const int DropFiles = 0x0233;
+
+    /// <summary>
+    /// Files dropped onto the terminal, from Explorer or anything that drags files the way it does.
+    ///
+    /// <para><b>A child window's own message, like the mouse</b>, and for the same reason: WPF's drop
+    /// handling is registered on the top-level window and never sees what is let go over this one,
+    /// so without the pane accepting files itself a drop onto a terminal is refused at the cursor.
+    /// </para>
+    /// </summary>
+    public event Action<IReadOnlyList<string>>? Dropped;
+
     /// <summary>One detent, which is what Windows divides a wheel's delta by.</summary>
     private const int PerNotch = 120;
 
@@ -175,6 +188,20 @@ public sealed class TerminalPane : HwndHost
 
                 return nint.Zero;
 
+            case DropFiles:
+                // Read and released here whatever happens next: the handle is Windows' memory and
+                // this window is the one that must give it back.
+                IReadOnlyList<string> files = Files(wParam);
+
+                if (files.Count > 0)
+                {
+                    Dropped?.Invoke(files);
+                }
+
+                handled = true;
+
+                return nint.Zero;
+
             default:
                 return base.WndProc(hwnd, msg, wParam, lParam, ref handled);
         }
@@ -190,6 +217,52 @@ public sealed class TerminalPane : HwndHost
     private void Raise(PaneMouseKind kind, nint packed) =>
         Mouse?.Invoke(new PaneMouse(kind, (short)(packed & 0xFFFF), (short)((packed >> 16) & 0xFFFF)));
 
+    /// <summary>
+    /// The paths in a drop, in the order they were dragged, and the drop's memory given back.
+    ///
+    /// <para>Internal so a test can hand it a drop it built, which is the only way to exercise the
+    /// half of this that is Windows' without a person dragging something.</para>
+    /// </summary>
+    internal static IReadOnlyList<string> Files(nint drop)
+    {
+        if (drop == nint.Zero)
+        {
+            return [];
+        }
+
+        try
+        {
+            uint count = DragQueryFileW(drop, uint.MaxValue, null, 0);
+            List<string> paths = new((int)count);
+
+            for (uint index = 0; index < count; index++)
+            {
+                uint length = DragQueryFileW(drop, index, null, 0);
+                char[] path = new char[length + 1];
+
+                if (DragQueryFileW(drop, index, path, (uint)path.Length) == length)
+                {
+                    paths.Add(new string(path, 0, (int)length));
+                }
+            }
+
+            return paths;
+        }
+        finally
+        {
+            DragFinish(drop);
+        }
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern uint DragQueryFileW(nint drop, uint index, char[]? file, uint length);
+
+    [DllImport("shell32.dll")]
+    private static extern void DragFinish(nint drop);
+
+    [DllImport("shell32.dll")]
+    private static extern void DragAcceptFiles(nint window, [MarshalAs(UnmanagedType.Bool)] bool accept);
+
     [DllImport("user32.dll")]
     private static extern nint SetCapture(nint window);
 
@@ -201,6 +274,10 @@ public sealed class TerminalPane : HwndHost
     protected override HandleRef BuildWindowCore(HandleRef hwndParent)
     {
         PaneHandle = PaneClass.Create(Class, hwndParent.Handle, ChildStyle);
+
+        // Files may be let go over this window — QS64. Without it Explorer shows the no-drop cursor
+        // over every terminal, whatever the window around it accepts.
+        DragAcceptFiles(PaneHandle, accept: true);
 
         Ready?.Invoke(this, EventArgs.Empty);
 

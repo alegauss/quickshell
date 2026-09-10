@@ -172,7 +172,7 @@ public sealed class FileBrowser : Window
     /// </summary>
     private void Keys()
     {
-        PreviewKeyDown += (_, e) =>
+        PreviewKeyDown += (sender, e) =>
         {
             if (Keyboard.FocusedElement is TextBox)
             {
@@ -487,7 +487,7 @@ public sealed class FileBrowser : Window
             _up.Click += (_, _) => _ = _pane.Up();
             _hidden.Click += (_, _) => _pane.ShowHidden = _hidden.IsChecked == true;
 
-            _path.KeyDown += (_, e) =>
+            _path.KeyDown += (sender, e) =>
             {
                 if (e.Key == Key.Enter && _path.Text.Trim() is { Length: > 0 } typed)
                 {
@@ -506,11 +506,32 @@ public sealed class FileBrowser : Window
             };
 
             _list.SelectionChanged += (_, _) => _pane.Selected = [.. _list.SelectedItems.OfType<FileItem>()];
+
+            // Files dragged in from Explorer land in the directory this pane shows — QS64.
+            AllowDrop = true;
+
+            DragOver += (_, e) =>
+            {
+                e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+                e.Handled = true;
+            };
+
+            Drop += (sender, e) =>
+            {
+                if (e.Data.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } files)
+                {
+                    browser.Focused(_pane);
+
+                    _ = browser.Actions.DropAsync(_pane, files);
+                }
+
+                e.Handled = true;
+            };
             _list.MouseDoubleClick += (_, _) => OpenSelected();
 
             // Enter opens and Backspace goes up, which is what a keyboard does in every file list
             // on this platform; Alt with an arrow walks the history, as it does in a browser.
-            _list.PreviewKeyDown += (_, e) =>
+            _list.PreviewKeyDown += (sender, e) =>
             {
                 Key key = e.Key == Key.System ? e.SystemKey : e.Key;
                 bool alt = (Keyboard.Modifiers & ModifierKeys.Alt) != 0;

@@ -195,6 +195,195 @@ public sealed class BrowserActions
         Tell(to, Copied(queue.Entries, left), refresh: true);
     }
 
+    /// <summary>
+    /// Files dropped onto a pane from Explorer, copied into the directory it shows — QS64.
+    ///
+    /// <para><b>The drop is the question.</b> A copy started from a key names where it lands before it
+    /// starts, because the destination is the other pane and easy to have wrong; a drop was aimed at
+    /// the pane it lands on, so it is not asked about again. A name already taken is still asked
+    /// about, as every copy here does.</para>
+    ///
+    /// <para>Onto the host's pane it is an upload through <see cref="TransferQueue"/>, with
+    /// everything that queue guarantees. Onto this computer's pane it is a copy on this disk, with the
+    /// same question about a name that is taken.</para>
+    /// </summary>
+    /// <param name="onto">The pane the files were let go over.</param>
+    /// <param name="paths">What was dropped, as this computer's paths.</param>
+    /// <param name="cancellationToken">Abandons the copy.</param>
+    public async Task DropAsync(DirectoryPane onto, IReadOnlyList<string> paths,
+                                CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(onto);
+        ArgumentNullException.ThrowIfNull(paths);
+
+        if (paths.Count == 0 || onto.Path.Length == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            if (onto.Side is RemoteFiles host)
+            {
+                TransferQueue queue = new(host.Channel) { OnCollision = OnCollision };
+                List<string> left = [];
+
+                foreach (string path in paths)
+                {
+                    string target = host.Into(onto.Path, Path.GetFileName(Path.TrimEndingDirectorySeparator(path)));
+
+                    if (Directory.Exists(path))
+                    {
+                        TransferPlan plan = TransferPlan.ToCopyUp(path, target);
+
+                        await plan.EnqueueAsync(queue, host.Channel, cancellationToken).ConfigureAwait(false);
+
+                        left.AddRange(plan.Skipped);
+                    }
+                    else
+                    {
+                        queue.Enqueue(TransferDirection.Upload, path, target);
+                    }
+                }
+
+                await queue.RunAsync(cancellationToken).ConfigureAwait(false);
+
+                Tell(onto, Copied(queue.Entries, left), refresh: true);
+
+                return;
+            }
+
+            (int done, int kept) = await CopyHereAsync(paths, onto.Path, new Answering(), cancellationToken)
+                                             .ConfigureAwait(false);
+
+            string said = $"Copied {done.ToString("N0", CultureInfo.InvariantCulture)} "
+                          + (done == 1 ? "file" : "files");
+
+            Tell(onto, kept > 0 ? $"{said}, {kept.ToString(CultureInfo.InvariantCulture)} left alone." : said + ".",
+                 refresh: true);
+        }
+        catch (Exception failed) when (failed is not OperationCanceledException)
+        {
+            Tell(onto, $"The copy stopped: {Sentence(failed)}", refresh: true);
+        }
+    }
+
+    /// <summary>
+    /// Copies files and directories into a directory of this computer, asking about a name that is
+    /// taken exactly as the queue would.
+    /// </summary>
+    /// <returns>How many files were written, and how many were left alone.</returns>
+    private async Task<(int Done, int Kept)> CopyHereAsync(IEnumerable<string> sources, string into,
+                                                           Answering answering,
+                                                           CancellationToken cancellationToken)
+    {
+        int done = 0;
+        int kept = 0;
+
+        foreach (string source in sources)
+        {
+            string name = Path.GetFileName(Path.TrimEndingDirectorySeparator(source));
+
+            if (Directory.Exists(source))
+            {
+                string target = Path.Combine(into, name);
+
+                Directory.CreateDirectory(target);
+
+                (int inner, int innerKept) = await CopyHereAsync(
+                    Directory.EnumerateFileSystemEntries(source), target, answering, cancellationToken)
+                    .ConfigureAwait(false);
+
+                done += inner;
+                kept += innerKept;
+
+                continue;
+            }
+
+            string? destination = await Destination(source, Path.Combine(into, name), answering,
+                                                    cancellationToken).ConfigureAwait(false);
+
+            if (destination is null)
+            {
+                kept++;
+
+                continue;
+            }
+
+            await Task.Run(() => File.Copy(source, destination, overwrite: true), cancellationToken)
+                      .ConfigureAwait(false);
+
+            done++;
+        }
+
+        return (done, kept);
+    }
+
+    /// <summary>
+    /// Where a file copied here lands: its own name where that is free, and otherwise whatever the
+    /// question about a taken name decides — or null, for a file left alone.
+    /// </summary>
+    private async Task<string?> Destination(string source, string destination, Answering answering,
+                                            CancellationToken cancellationToken)
+    {
+        if (!File.Exists(destination))
+        {
+            return destination;
+        }
+
+        FileInfo from = new(source);
+        FileInfo there = new(destination);
+
+        CollisionAnswer answer = answering.ForTheRest ?? CollisionAnswer.Skip;
+
+        if (answering.ForTheRest is null && OnCollision is not null)
+        {
+            CollisionChoice chosen = await OnCollision(
+                new Collision(destination, from.Length, from.LastWriteTimeUtc, there.Length, there.LastWriteTimeUtc),
+                cancellationToken).ConfigureAwait(false);
+
+            answer = chosen.Answer;
+
+            if (chosen.ForTheRest)
+            {
+                answering.ForTheRest = chosen.Answer;
+            }
+        }
+
+        return answer switch
+        {
+            CollisionAnswer.Skip => null,
+            CollisionAnswer.TakeNewer when from.LastWriteTimeUtc <= there.LastWriteTimeUtc => null,
+            CollisionAnswer.Rename => Free(destination),
+            _ => destination,
+        };
+    }
+
+    /// <summary>An answer that stands for the rest of one copy, however deep the tree it walks.</summary>
+    private sealed class Answering
+    {
+        public CollisionAnswer? ForTheRest { get; set; }
+    }
+
+    /// <summary>The first "name (2).ext" beside a taken name that is not taken itself.</summary>
+    private static string Free(string taken)
+    {
+        string directory = Path.GetDirectoryName(taken) ?? string.Empty;
+        string stem = Path.GetFileNameWithoutExtension(taken);
+        string extension = Path.GetExtension(taken);
+
+        for (int copy = 2; ; copy++)
+        {
+            string candidate = Path.Combine(directory,
+                                            $"{stem} ({copy.ToString(CultureInfo.InvariantCulture)}){extension}");
+
+            if (!File.Exists(candidate) && !Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+    }
+
     /// <summary>Renames the one entry selected, to a name asked for.</summary>
     public async Task RenameAsync(CancellationToken cancellationToken = default)
     {

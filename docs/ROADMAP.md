@@ -50,12 +50,13 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-- 📋 **QS64** (deps: QS60 ✅) **A file can only be transferred through the browser, so dragging one from Explorer does nothing** — Dragging a file onto a session is the shortest path a user has to moving it, and it is the interaction they try first without being told it exists. → §QS64
 - 📋 **QS122** (deps: QS59 ✅) **The shared-session trick rests on six SSH.NET members reached by name, and only a live server proves it holds** — A library upgrade can break it, and the test that would notice needs a container running, so an upgrade on a machine without one looks clean. → §QS122
 - 📋 **QS123** (deps: QS62 ✅) **A symbolic link on the server cannot be copied, because nothing here can read where it points** — A tree copied down loses every link in it, which for a source checkout or a set of config files is a copy that does not work at the far end. → §QS123
 - 📋 **QS184** (deps: QS126) **The remote pane opens at the account's home while the shell beside it has already said where it is** — OSC 7 already records the shell's directory and nothing reads it, so a user who cd'd into a deployment finds the browser somewhere else. → §QS184
 - 📋 **QS185** (deps: QS60 ✅, QS126) **A remote file cannot be edited in a local editor, so changing a config is still a download, an edit and an upload** — It is why most people open a file browser at all, and the manual round trip is exactly what they want the client to do for them. → §QS185
 - 📋 **QS186** (deps: —) **A copy started from the browser shows nothing until it ends and cannot be stopped, so a large tree looks hung** — The queue under it reports each file's progress and can pause, cancel and retry, and none of that reaches the window. → §QS186
+- 📋 **QS188** (deps: —) **Nothing can be dragged out of the host's pane, so a file on the server reaches Explorer only through a copy** — Windows asks for a dragged file's data during the drop, and a server cannot always answer in that time, so it needs deferred rendering. → §QS188
+- 📋 **QS189** (deps: QS126) **A file dropped onto an SSH terminal can only be typed as its path, never sent to the directory the shell is in** — QS64 typed the path and left the modifier that transfers instead, which needs an SSH tab and the directory its shell reported. → §QS189
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
