@@ -70,6 +70,18 @@ or close a pane, and it is never on when the client starts.
 | `Ctrl+Shift+I` | Imports sessions from another client. |
 | `Ctrl+Shift+F1` | Collects a diagnostic report. |
 
+## In the file browser
+
+The browser is a window of its own, so none of its keys is taken from the program in the
+terminal, and each is written on the button that does the same thing. They are the keys two-pane
+file tools on this platform have always used:
+
+- `F5` copies the selection into the directory the other side is showing, after saying where.
+- `F2` renames, and `F7` makes a directory.
+- `F8` or `Delete` deletes, after saying how many entries and whether any is a directory.
+- `Alt+Enter` sets the mode of the selected entry, and `Ctrl+R` lists the directory again.
+- `Enter` opens a directory, `Backspace` goes up, and `Alt+Left` and `Alt+Right` go back and forward.
+
 ## Why they all look like that
 
 **Two modifiers, almost always.** A terminal owes the program on the far side everything it can

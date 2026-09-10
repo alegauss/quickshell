@@ -113,6 +113,24 @@ public sealed class DirectoryPane : INotifyPropertyChanged
         }
     }
 
+    /// <summary>What is selected in this pane, which every operation acts on. The view sets it.</summary>
+    public IReadOnlyList<FileItem> Selected { get; set; } = [];
+
+    /// <summary>
+    /// One sentence about the last thing done here — what was copied, or why it was not — shown
+    /// under the listing until the pane goes somewhere else. It survives the relisting its own
+    /// operation causes, which is the one moment it is read.
+    /// </summary>
+    public string? Note { get; private set; }
+
+    /// <summary>Says something under the listing, where the user is already looking.</summary>
+    public void Say(string note)
+    {
+        Note = note;
+
+        Notify();
+    }
+
     /// <summary>Whether there is somewhere to go back to.</summary>
     public bool CanGoBack => _back.Count > 0;
 
@@ -142,8 +160,9 @@ public sealed class DirectoryPane : INotifyPropertyChanged
             int hidden = _all.Count - Items.Count;
 
             string shown = hidden > 0 ? $"{count}, {Count(hidden, "hidden", "hidden")}" : count;
+            string listing = Loading ? $"{shown} so far, still listing" : shown;
 
-            return Loading ? $"{shown} so far, still listing" : shown;
+            return Note is { } note ? $"{listing}. {note}" : listing;
         }
     }
 
@@ -238,8 +257,16 @@ public sealed class DirectoryPane : INotifyPropertyChanged
 
         int generation = ++_generation;
 
+        // Somewhere else is a different directory, and a note about the last one would be about
+        // entries this pane no longer shows.
+        if (!string.Equals(path, Path, StringComparison.Ordinal))
+        {
+            Note = null;
+        }
+
         _all.Clear();
         Items = [];
+        Selected = [];
         Failed = null;
         Loading = true;
         Path = path;
@@ -466,7 +493,7 @@ public sealed class DirectoryPane : INotifyPropertyChanged
     private static readonly string[] Changes =
     [
         nameof(Path), nameof(Items), nameof(Arrived), nameof(Loading), nameof(Failed),
-        nameof(Status), nameof(Sort), nameof(Descending), nameof(ShowHidden),
+        nameof(Note), nameof(Status), nameof(Sort), nameof(Descending), nameof(ShowHidden),
         nameof(CanGoBack), nameof(CanGoForward), nameof(CanGoUp),
     ];
 }

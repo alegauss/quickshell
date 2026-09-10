@@ -875,26 +875,6 @@ to a pane that is not one of them.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-### §QS60 Two panes, and the operations between them
-
-Local on one side, remote on the other, because that is the shape of the task and every
-alternative makes the user hold the direction in their head.
-
-Each side lists name, size, modified time and permissions, sorts by any of them, and
-shows hidden entries on a toggle. Navigation is by double click, by typing a path, and
-by history. A large listing arrives incrementally rather than after it completes: a
-directory of fifty thousand files should show its first screen immediately, and a
-browser that blocks until the listing finishes is a browser people stop opening.
-
-The operations are the ordinary ones — copy either direction, rename, delete, create a
-directory, change permissions. Opening a remote file in a local editor with write-back
-on save is QS185's, and a remote pane that follows the shell's working directory is
-QS184's.
-
-Deleting asks, and says how many entries and whether any of them is a directory.
-
-Falsified when listing fifty thousand entries blocks the pane until it completes.
-
 ### §QS64 The gesture users try before reading anything
 
 Two drop targets, and they mean different things.

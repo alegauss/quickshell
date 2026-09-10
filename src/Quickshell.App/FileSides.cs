@@ -87,6 +87,22 @@ public interface IFileSide
 
     /// <summary>The directory a path sits in, or null at the top.</summary>
     string? Parent(string path);
+
+    /// <summary>Moves or renames an entry, which on both sides is one operation.</summary>
+    Task RenameAsync(string from, string to, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes an entry, and a directory with everything in it. A symbolic link is removed as a
+    /// link and never followed: a delete that walked through one into another tree would be
+    /// deleting files nobody selected.
+    /// </summary>
+    Task DeleteAsync(FileItem entry, string path, CancellationToken cancellationToken = default);
+
+    /// <summary>Makes a directory.</summary>
+    Task CreateDirectoryAsync(string path, CancellationToken cancellationToken = default);
+
+    /// <summary>Sets an entry's mode, given the way the server writes one: <c>0o755</c>.</summary>
+    Task ChangeModeAsync(string path, int mode, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -151,6 +167,65 @@ public sealed class LocalFiles : IFileSide
 
     /// <inheritdoc/>
     public string? Parent(string path) => Directory.GetParent(Path.TrimEndingDirectorySeparator(path))?.FullName;
+
+    /// <inheritdoc/>
+    public Task RenameAsync(string from, string to, CancellationToken cancellationToken = default) =>
+        Task.Run(() =>
+        {
+            if (Directory.Exists(from))
+            {
+                Directory.Move(from, to);
+            }
+            else
+            {
+                File.Move(from, to);
+            }
+        }, cancellationToken);
+
+    /// <summary>
+    /// Removes a file, or a directory and what is in it. A junction or a symbolic link to a
+    /// directory is removed as the link: the framework's recursive delete does not follow reparse
+    /// points, which is the property the interface asks for.
+    /// </summary>
+    public Task DeleteAsync(FileItem entry, string path, CancellationToken cancellationToken = default) =>
+        Task.Run(() =>
+        {
+            if (entry.IsDirectory)
+            {
+                Directory.Delete(path, recursive: true);
+            }
+            else
+            {
+                File.Delete(path);
+            }
+        }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task CreateDirectoryAsync(string path, CancellationToken cancellationToken = default) =>
+        Task.Run(() =>
+        {
+            if (Directory.Exists(path) || File.Exists(path))
+            {
+                throw new IOException($"{Path.GetFileName(path)} already exists");
+            }
+
+            Directory.CreateDirectory(path);
+        }, cancellationToken);
+
+    /// <summary>
+    /// Windows keeps one bit of a mode: whether the owner may write. A mode without it makes the
+    /// entry read-only and a mode with it clears that; the other eight bits have nowhere to go on
+    /// this side, and the dialog asking for a mode says so.
+    /// </summary>
+    public Task ChangeModeAsync(string path, int mode, CancellationToken cancellationToken = default) =>
+        Task.Run(() =>
+        {
+            FileAttributes attributes = File.GetAttributes(path);
+            bool writable = (mode & 0b_010_000_000) != 0;
+
+            File.SetAttributes(path, writable ? attributes & ~FileAttributes.ReadOnly
+                                              : attributes | FileAttributes.ReadOnly);
+        }, cancellationToken);
 }
 
 /// <summary>
@@ -178,6 +253,13 @@ public sealed class RemoteFiles : IFileSide
 
     /// <inheritdoc/>
     public string Title { get; }
+
+    /// <summary>
+    /// The session's file channel, which a copy between the panes runs over. Held by the side
+    /// rather than handed round separately, so a copy cannot be pointed at one host while its pane
+    /// is listing another.
+    /// </summary>
+    public IFileTransferChannel Channel => _channel;
 
     /// <inheritdoc/>
     public string Home => _channel.WorkingDirectory is { Length: > 0 } home ? home : "/";
@@ -222,4 +304,41 @@ public sealed class RemoteFiles : IFileSide
             _ => trimmed[..slash],
         };
     }
+
+    /// <inheritdoc/>
+    public async Task RenameAsync(string from, string to, CancellationToken cancellationToken = default) =>
+        await _channel.RenameAsync(from, to, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// Removes a file, or a directory by removing what is in it first — SFTP removes only an empty
+    /// directory. The walk goes into what the listing calls a directory and nowhere else, and a
+    /// listing reports a link by its own mode, so a link to a directory is removed and never walked.
+    /// </summary>
+    public async Task DeleteAsync(FileItem entry, string path, CancellationToken cancellationToken = default)
+    {
+        if (entry.IsDirectory && !entry.Permissions.StartsWith('l'))
+        {
+            List<FileItem> inside = [];
+
+            await foreach (FileItem child in ListAsync(path, cancellationToken).ConfigureAwait(false))
+            {
+                inside.Add(child);
+            }
+
+            foreach (FileItem child in inside)
+            {
+                await DeleteAsync(child, Into(path, child.Name), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        await _channel.DeleteAsync(path, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task CreateDirectoryAsync(string path, CancellationToken cancellationToken = default) =>
+        await _channel.CreateDirectoryAsync(path, cancellationToken).ConfigureAwait(false);
+
+    /// <inheritdoc/>
+    public async Task ChangeModeAsync(string path, int mode, CancellationToken cancellationToken = default) =>
+        await _channel.ChangePermissionsAsync(path, mode, cancellationToken).ConfigureAwait(false);
 }

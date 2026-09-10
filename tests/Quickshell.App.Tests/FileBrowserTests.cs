@@ -1,7 +1,5 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using Quickshell.App;
 using Quickshell.Transport;
@@ -34,7 +32,7 @@ public sealed class FileBrowserTests
     {
         TaskCompletionSource resume = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Stalling side = new(50_000, stallAfter: 100, resume.Task);
-        Pump pump = new();
+        PanePump pump = new();
         DirectoryPane pane = new(side, pump.Post);
 
         Task listing = pane.Start();
@@ -78,7 +76,7 @@ public sealed class FileBrowserTests
         using ManualResetEventSlim release = new();
 
         Blocking side = new(entered, release);
-        Pump pump = new();
+        PanePump pump = new();
         DirectoryPane pane = new(side, pump.Post);
 
         int asking = Environment.CurrentManagedThreadId;
@@ -117,7 +115,7 @@ public sealed class FileBrowserTests
             Hold = never.Task,
         };
 
-        Pump pump = new();
+        PanePump pump = new();
         DirectoryPane pane = new(side, pump.Post);
 
         _ = pane.Go("/slow");
@@ -153,7 +151,7 @@ public sealed class FileBrowserTests
             HomeIs = "/",
         };
 
-        Pump pump = new();
+        PanePump pump = new();
         DirectoryPane pane = new(side, pump.Post);
 
         await Settled(pane, pump, pane.Start());
@@ -199,7 +197,7 @@ public sealed class FileBrowserTests
             HomeIs = "/",
         };
 
-        Pump pump = new();
+        PanePump pump = new();
         DirectoryPane pane = new(side, pump.Post);
 
         await Settled(pane, pump, pane.Start());
@@ -232,7 +230,7 @@ public sealed class FileBrowserTests
             HomeIs = "/",
         };
 
-        Pump pump = new();
+        PanePump pump = new();
         DirectoryPane pane = new(side, pump.Post);
 
         await Settled(pane, pump, pane.Start());
@@ -258,7 +256,7 @@ public sealed class FileBrowserTests
             Refusing = new UnauthorizedAccessException("Access to the path '/root' is denied."),
         };
 
-        Pump pump = new();
+        PanePump pump = new();
         DirectoryPane pane = new(side, pump.Post);
 
         await Settled(pane, pump, pane.Start());
@@ -337,23 +335,20 @@ public sealed class FileBrowserTests
     [Fact]
     public async Task FiftyThousandEntriesOnARealServerArriveInPieces()
     {
-        SkipWithoutFixture();
+        SshFixture.SkipWithoutIt();
 
         string directory = "/tmp/qs60-" + Guid.NewGuid().ToString("N");
 
-        Assert.SkipUnless(Docker($"mkdir -p {directory} && cd {directory} && seq 1 50000 | xargs touch"),
+        Assert.SkipUnless(SshFixture.Docker($"mkdir -p {directory} && cd {directory} && seq 1 50000 | xargs touch"),
                           "the fixture's container could not be asked to make the directory");
 
         try
         {
-            await using SshNetTransport session = new();
-
-            await session.ConnectAsync(SshEndpoint.For("127.0.0.1", "probe", 2222), [Key()],
-                                       (_, _, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept), Stop);
+            await using SshNetTransport session = await SshFixture.ConnectAsync(Stop);
 
             await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
 
-            Pump pump = new();
+            PanePump pump = new();
             DirectoryPane pane = new(new RemoteFiles(files, "qs-sshd-target"), pump.Post);
 
             Stopwatch clock = Stopwatch.StartNew();
@@ -383,7 +378,7 @@ public sealed class FileBrowserTests
         }
         finally
         {
-            Docker($"rm -rf {directory}");
+            SshFixture.Docker($"rm -rf {directory}");
         }
     }
 
@@ -458,57 +453,8 @@ public sealed class FileBrowserTests
 
     // ---- The pane's thread, and the sides it lists ----
 
-    /// <summary>
-    /// The pane's thread, as a queue drained by hand — which is all a dispatcher is — and the
-    /// longest any one piece of work held it.
-    /// </summary>
-    private sealed class Pump
-    {
-        private readonly ConcurrentQueue<Action> _queue = new();
-
-        public TimeSpan Longest { get; private set; }
-
-        public void Post(Action work) => _queue.Enqueue(work);
-
-        public void Drain()
-        {
-            while (_queue.TryDequeue(out Action? work))
-            {
-                long began = Stopwatch.GetTimestamp();
-
-                work();
-
-                TimeSpan took = Stopwatch.GetElapsedTime(began);
-
-                if (took > Longest)
-                {
-                    Longest = took;
-                }
-            }
-        }
-
-        public async Task DrainUntil(Func<bool> done, TimeSpan patience)
-        {
-            Stopwatch waited = Stopwatch.StartNew();
-
-            while (true)
-            {
-                Drain();
-
-                if (done())
-                {
-                    return;
-                }
-
-                Assert.True(waited.Elapsed < patience, "the pane never reached the state waited for");
-
-                await Task.Delay(5, Stop);
-            }
-        }
-    }
-
     /// <summary>Waits for a navigation to finish and for everything it posted to be drawn.</summary>
-    private static async Task Settled(DirectoryPane pane, Pump pump, Task navigating)
+    private static async Task Settled(DirectoryPane pane, PanePump pump, Task navigating)
     {
         await navigating.WaitAsync(TimeSpan.FromSeconds(10), Stop);
         await pump.DrainUntil(() => !pane.Loading, TimeSpan.FromSeconds(5));
@@ -522,8 +468,37 @@ public sealed class FileBrowserTests
     private static FileItem Folder(string name) =>
         new(name, 0, true, DateTimeOffset.UnixEpoch, "drwxr-xr-x", false);
 
+    /// <summary>
+    /// A side that lists and does nothing else, which is every fake here: the operations are the
+    /// real sides' and are tested against a real directory and a real server.
+    /// </summary>
+    private abstract class ListingSide : IFileSide
+    {
+        public abstract string Title { get; }
+
+        public abstract string Home { get; }
+
+        public abstract IAsyncEnumerable<FileItem> ListAsync(string path, CancellationToken cancellationToken = default);
+
+        public abstract string Into(string directory, string name);
+
+        public abstract string? Parent(string path);
+
+        public Task RenameAsync(string from, string to, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task DeleteAsync(FileItem entry, string path, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task CreateDirectoryAsync(string path, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task ChangeModeAsync(string path, int mode, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
     /// <summary>A side that sends so many entries, goes quiet after some, and resumes on cue.</summary>
-    private sealed class Stalling(int count, int stallAfter, Task resume) : IFileSide
+    private sealed class Stalling(int count, int stallAfter, Task resume) : ListingSide
     {
         private readonly TaskCompletionSource _stalled = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -531,11 +506,11 @@ public sealed class FileBrowserTests
 
         public int ReadOn { get; private set; }
 
-        public string Title => "stalling";
+        public override string Title => "stalling";
 
-        public string Home => "/big";
+        public override string Home => "/big";
 
-        public async IAsyncEnumerable<FileItem> ListAsync(
+        public override async IAsyncEnumerable<FileItem> ListAsync(
             string path, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ReadOn = Environment.CurrentManagedThreadId;
@@ -554,21 +529,21 @@ public sealed class FileBrowserTests
             }
         }
 
-        public string Into(string directory, string name) => directory + "/" + name;
+        public override string Into(string directory, string name) => directory + "/" + name;
 
-        public string? Parent(string path) => null;
+        public override string? Parent(string path) => null;
     }
 
     /// <summary>A side whose first read blocks its thread until it is released.</summary>
-    private sealed class Blocking(ManualResetEventSlim entered, ManualResetEventSlim release) : IFileSide
+    private sealed class Blocking(ManualResetEventSlim entered, ManualResetEventSlim release) : ListingSide
     {
         public int ReadOn { get; private set; }
 
-        public string Title => "blocking";
+        public override string Title => "blocking";
 
-        public string Home => "/";
+        public override string Home => "/";
 
-        public async IAsyncEnumerable<FileItem> ListAsync(
+        public override async IAsyncEnumerable<FileItem> ListAsync(
             string path, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask.ConfigureAwait(false);
@@ -582,13 +557,13 @@ public sealed class FileBrowserTests
             yield return Plain("only");
         }
 
-        public string Into(string directory, string name) => directory + name;
+        public override string Into(string directory, string name) => directory + name;
 
-        public string? Parent(string path) => null;
+        public override string? Parent(string path) => null;
     }
 
     /// <summary>A side over a fixed tree, which can hold one directory's listing open or refuse.</summary>
-    private sealed class Tree(Dictionary<string, FileItem[]> directories) : IFileSide
+    private sealed class Tree(Dictionary<string, FileItem[]> directories) : ListingSide
     {
         public string HomeIs { get; init; } = "/";
 
@@ -598,11 +573,11 @@ public sealed class FileBrowserTests
 
         public Exception? Refusing { get; init; }
 
-        public string Title => "tree";
+        public override string Title => "tree";
 
-        public string Home => HomeIs;
+        public override string Home => HomeIs;
 
-        public async IAsyncEnumerable<FileItem> ListAsync(
+        public override async IAsyncEnumerable<FileItem> ListAsync(
             string path, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.Yield();
@@ -627,10 +602,10 @@ public sealed class FileBrowserTests
             }
         }
 
-        public string Into(string directory, string name) =>
+        public override string Into(string directory, string name) =>
             directory.EndsWith('/') ? directory + name : directory + "/" + name;
 
-        public string? Parent(string path) => new RemoteFiles(new NoChannel(), "tree").Parent(path);
+        public override string? Parent(string path) => new RemoteFiles(new NoChannel(), "tree").Parent(path);
     }
 
     /// <summary>A file channel for the members that never touch one.</summary>
@@ -683,68 +658,5 @@ public sealed class FileBrowserTests
             throw new NotSupportedException();
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-    }
-
-    // ---- The fixture ----
-
-    private static void SkipWithoutFixture()
-    {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync("127.0.0.1", 2222).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
-
-        Assert.SkipUnless(up, "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
-    }
-
-    /// <summary>Runs a command in the fixture's target container as root, and says whether it worked.</summary>
-    private static bool Docker(string command)
-    {
-        try
-        {
-            using Process docker = Process.Start(new ProcessStartInfo("docker")
-            {
-                ArgumentList = { "exec", "qs-sshd-target", "sh", "-c", command },
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            })!;
-
-            docker.StandardOutput.ReadToEnd();
-            docker.StandardError.ReadToEnd();
-            docker.WaitForExit();
-
-            return docker.ExitCode == 0;
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-    }
-
-    private static SshCredential.PrivateKey Key() =>
-        new(Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !System.IO.File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-
-        return directory.FullName;
     }
 }
