@@ -227,6 +227,44 @@ public sealed class CopyPasteTests
     public void TheLineCountIsWhatTheHostWouldRun(string text, int lines) =>
         Assert.Equal(lines, MainWindow.Lines(text));
 
+    /// <summary>
+    /// A paste of an ordinary accented paragraph reaches the pane's host whole, down the client's
+    /// own route — QS187, where it threw out of the paste instead.
+    /// </summary>
+    [Fact]
+    public void AnAccentedParagraphIsPastedWhole()
+    {
+        const string Paragraph =
+            "Não é possível estabelecer a conexão: a configuração da sessão está incompleta e "
+            + "precisa de atenção antes da próxima execução.";
+
+        byte[] heard = OnStaThread(() =>
+        {
+            List<byte> into = [];
+
+            MainWindow window = new() { Clipboard = new HeldClipboard { Text = Paragraph } };
+            TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "cmd.exe");
+
+            window.Add(tab);
+
+            tab.Focused.Typist.Sending = bytes =>
+            {
+                into.AddRange(bytes.ToArray());
+
+                return ValueTask.CompletedTask;
+            };
+
+            window.PasteFromClipboard();
+
+            return into.ToArray();
+        });
+
+        Assert.Equal(Encoding.UTF8.GetBytes(Paragraph), heard);
+    }
+
+    /// <summary>The one device, atlas and render loop the pasting tab would draw with.</summary>
+    private static readonly TerminalShare Shared = new();
+
     /// <summary>A paste with nowhere to go sends nothing rather than throwing on a UI thread.</summary>
     [Fact]
     public void APasteWithNoSessionSendsNothing()
@@ -473,6 +511,12 @@ public sealed class CopyPasteTests
             catch (Exception error)
             {
                 failed = error;
+            }
+            finally
+            {
+                // A window with a tab starts a timer on this thread's dispatcher, and a dispatcher
+                // never shut down keeps a foreground thread alive after the test has finished.
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
             }
         });
 

@@ -58,6 +58,7 @@
 - ✅ **QS144** **Writing cells is sixty milliseconds a megabyte, the largest cost on the path** — Scrolling is cleared of it: the ring already rotates and its fill is a seventh, measured by widening the screen tenfold, so 87 per cent is the per-character path at 87 ns each.
 - ✅ **QS146** **Placing one character costs eighty-seven nanoseconds, and nobody knows which part** — The width lookup was 22 per cent of placing a character and two binary searches guaranteed to miss for ASCII; below U+0300 it now answers without searching, and the path is 19 per cent faster.
 - ✅ **QS143** **Grapheme clustering costs nine times everything that reaches it** — Two characters below U+0300 cannot join, so the first is a cluster without asking the rules — clustering fell from 23.2 ns to 3.53, and the ladder's segment arm from 60 MB/s to 259.
+- ✅ **QS187** **Pasting or composing more than sixteen accented or eight CJK characters throws instead of reaching the host** — The typist sizes its buffer in bytes, so a pasted Portuguese paragraph, a CJK phrase from the input method or an emoji reaches the host as its own UTF-8 instead of throwing.
 
 ## Block D — The tree a user organises work in
 

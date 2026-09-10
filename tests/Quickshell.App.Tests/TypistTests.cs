@@ -92,6 +92,37 @@ public sealed class TypistTests
     }
 
     /// <summary>
+    /// Text of any length and any script reaches the host as its own UTF-8 — QS187.
+    ///
+    /// <para><b>Past where a buffer counted in characters ran out</b>, which was seventeen accented
+    /// letters or nine CJK characters: the typist threw out of the keystroke handler, and a paste of
+    /// an ordinary Portuguese paragraph or a Japanese phrase committed by the input method was an
+    /// exception on the window's thread. Each case here is past that line, and an emoji built from
+    /// surrogate pairs and a joiner is there because four bytes to two characters is the other way
+    /// the count goes wrong.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("çççççççççççççççççççç")]
+    [InlineData("Não é possível estabelecer a conexão: a configuração da sessão está incompleta.")]
+    [InlineData("日本語の入力を確認しています")]
+    [InlineData("👩‍💻👩‍💻👩‍💻👩‍💻👩‍💻👩‍💻👩‍💻👩‍💻")]
+    public async Task TextOfAnyLengthAndScriptReachesTheHostAsItsOwnUtf8(string text)
+    {
+        PtyStub host = new();
+        Emulator emulator = new(80, 25);
+
+        await using SessionPipeline pipeline = SessionPipeline.Start(host, emulator);
+
+        Typist typist = new(emulator) { Sending = bytes => pipeline.TypeAsync(bytes) };
+
+        Assert.True(typist.Type(text, ModifierKeys.None), "the terminal declined the text");
+
+        byte[] sent = await Written(host);
+
+        Assert.Equal(Encoding.UTF8.GetBytes(text), sent);
+    }
+
+    /// <summary>
     /// The window's own chords never reach the host, and are counted where they stop.
     ///
     /// <para>Both of them, by name. This is the list a user is owed when they ask what this client

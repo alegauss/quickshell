@@ -101,7 +101,11 @@ public sealed class Typist
             return false;
         }
 
-        byte[] bytes = new byte[Keys.MaximumLength + text.Length];
+        // In bytes and not in characters, which is QS187: UTF-8 spends up to three bytes on one
+        // character of this string, and a buffer counted in characters refused a paste of seventeen
+        // accented letters by throwing out of the keystroke handler. The encoder's own bound, plus
+        // the room an escape prefix and a key's sequence need.
+        byte[] bytes = new byte[Keys.MaximumLength + System.Text.Encoding.UTF8.GetMaxByteCount(text.Length)];
         int written = _emulator.Encode(text, Typing.From(modifiers), bytes);
 
         return Send(bytes, written);
