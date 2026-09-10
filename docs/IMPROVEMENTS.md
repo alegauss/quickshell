@@ -1695,6 +1695,57 @@ which is not much, and is worth knowing before it is spent.
 
 Falsified when the idle figure is quoted for a client that has never held a connection.
 
+### §QS190 Building what the first frame shows, and nothing else
+
+Measured by QS75 on the reference machine: the release publish reaches the prompt in 647
+ms warm, and the main window's constructor is the largest single step in that, 230 ms.
+Taking the theme assignment out of it saved 18 ms, so the cost is not the Fluent theme.
+It is WPF being asked to build, before the first paint, a window's worth of things the
+first paint does not show.
+
+The constructor builds a `TabControl` whose strip is collapsed while there is one tab,
+and a find bar — a text box, three buttons and their templates — that is collapsed until
+somebody presses `Ctrl+Shift+F`. Both are the window's argument about what is on screen
+by default, and both are paid for at start-up by every user who never opens either.
+
+The move is to build each the first time it is needed: the strip when a second tab
+opens, the find bar when it is asked for. The window's layout keeps a place for each so
+nothing shifts when it arrives. What a test checks about them — that the strip appears
+with a second tab, that the find bar takes the keyboard — does not change, and neither
+does anything a user sees.
+
+It is measured with `tools/Quickshell.Startup` before and after, on the same publish,
+and the result goes into `benchmarks/results/startup-h.md` beside the figure it moved.
+
+Falsified when the release publish's warm start is not measurably earlier at
+`constructed` once the hidden chrome is built on demand.
+
+### §QS191 Three slow things, in parallel
+
+Measured by QS75 on the reference machine: in the release publish's 647 ms warm start
+the shell is started at 498 ms and the graphics device is ready at 617 ms, and both wait
+for the window — the shell for the synchronous work in the entry point after `Show()`,
+the device for the first layout. Neither needs the window for most of what it does.
+
+The device, the glyph atlas and the compiled shaders are process-wide since QS49 and ask
+nothing of a window: only the swapchain needs a handle. Opened on their own thread as
+the process starts, they would be ready while WPF spends its 230 ms building the first
+window. The pseudo-console and the shell are the same: nothing about them depends on a
+pixel, and cmd's start could overlap WPF's.
+
+What cannot move is the order a user sees: the window first, then the terminal in it.
+Starting work earlier changes nothing about that; it only stops two slow things from
+queueing behind a third.
+
+The risk is a failure surfacing earlier than there is a window to report it in, which
+the crash guard already covers by being armed before the window exists.
+
+Measured with `tools/Quickshell.Startup` before and after, and recorded in
+`benchmarks/results/startup-h.md`.
+
+Falsified when the device is still created after the first layout, or the shell still
+started after the window is shown, in a timed start of the release publish.
+
 ## Block I — An error a user can act on
 
 ### §QS128 A trace that carries both sides of the negotiation
