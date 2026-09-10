@@ -77,6 +77,92 @@ public sealed class TerminalTab : IAsyncDisposable
     /// <summary>Whether output arrived in any of its panes while the tab was not on screen.</summary>
     public bool HasActivity => _leaves.Values.Any(leaf => leaf.HasActivity);
 
+    /// <summary>
+    /// Whether what is typed goes to every pane in this tab rather than to the focused one — QS53.
+    ///
+    /// <para><b>The target is this tab and never anything wider.</b> The mistake this mode makes
+    /// possible is a command reaching a host the user did not have in mind, so what it reaches is
+    /// what is on screen in front of them when they turn it on, and every one of those panes is
+    /// marked for as long as it lasts.</para>
+    ///
+    /// <para><b>Held in memory and nowhere else</b>, so it never survives a restart: a mode restored
+    /// from a previous session is a mode nobody remembers enabling, and this one types into
+    /// production hosts.</para>
+    /// </summary>
+    public bool Broadcasting { get; private set; }
+
+    /// <summary>
+    /// The panes a keystroke goes to: the focused one, or every pane while broadcasting.
+    ///
+    /// <para>The focused pane first, because it is the one being watched, and a keystroke that
+    /// reached the others before it would be one the user sees arrive last where they are looking.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<TerminalLeaf> Receivers =>
+        Broadcasting
+            ? [Focused, .. Leaves.Where(leaf => !ReferenceEquals(leaf, Focused))]
+            : [Focused];
+
+    /// <summary>
+    /// Turns broadcast typing on for every pane in this tab, or off again.
+    ///
+    /// <para><b>Nothing to broadcast to with one pane</b>, so that answers no rather than turning on
+    /// a mode that marks a single pane and changes nothing about where its keystrokes go.</para>
+    ///
+    /// <para><b>A zoom is undone first.</b> A zoomed tab is hiding the very panes this would type
+    /// into, and a keystroke reaching a pane nobody can see is the exact thing the mark exists to
+    /// rule out — so every receiver is put back on screen before any of them receives.</para>
+    /// </summary>
+    /// <returns>Whether the tab is broadcasting now.</returns>
+    public bool Broadcast()
+    {
+        if (Broadcasting)
+        {
+            StopBroadcasting();
+
+            return false;
+        }
+
+        if (Layout.Count < 2)
+        {
+            return false;
+        }
+
+        Zoomed = -1;
+        Broadcasting = true;
+
+        foreach (TerminalLeaf leaf in _leaves.Values)
+        {
+            leaf.Receiving = true;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Ends broadcast typing, and takes every mark off with it.
+    ///
+    /// <para>Called on every change to what is on screen — a split, a closed pane, a zoom, another
+    /// tab brought forward. The set a user turned this on for is the panes they were looking at; a
+    /// pane that arrived afterwards is one they never chose, and a pane that went is a set they are
+    /// no longer looking at. Ending it is the one answer to all four that cannot send a keystroke
+    /// somewhere unintended.</para>
+    /// </summary>
+    public void StopBroadcasting()
+    {
+        if (!Broadcasting)
+        {
+            return;
+        }
+
+        Broadcasting = false;
+
+        foreach (TerminalLeaf leaf in _leaves.Values)
+        {
+            leaf.Receiving = false;
+        }
+    }
+
     /// <summary>Builds a tab with one pane in it, with a device and a loop but no session yet.</summary>
     public static TerminalTab Open(Settings settings, TerminalShare share, string host)
     {
@@ -109,6 +195,9 @@ public sealed class TerminalTab : IAsyncDisposable
             return null;
         }
 
+        // Before the new pane exists, so it is never briefly a pane receiving typing nobody chose.
+        StopBroadcasting();
+
         TerminalLeaf leaf = TerminalLeaf.Open(_settings, Host, _share);
 
         _leaves[made] = leaf;
@@ -137,6 +226,8 @@ public sealed class TerminalTab : IAsyncDisposable
         {
             return null;
         }
+
+        StopBroadcasting();
 
         _leaves.Remove(_focused);
 
@@ -188,8 +279,18 @@ public sealed class TerminalTab : IAsyncDisposable
     /// <summary>The terminal in a pane, or null where that number is not one.</summary>
     public TerminalLeaf? In(int pane) => _leaves.GetValueOrDefault(pane);
 
-    /// <summary>Fills the tab with the focused pane, or gives the others their space back.</summary>
-    public void Zoom() => Zoomed = Zoomed < 0 ? _focused : -1;
+    /// <summary>
+    /// Fills the tab with the focused pane, or gives the others their space back.
+    ///
+    /// <para>Broadcasting ends here, because a zoom hides every pane but one and a hidden pane
+    /// receiving keystrokes is the state <see cref="Broadcasting"/> exists to make impossible.</para>
+    /// </summary>
+    public void Zoom()
+    {
+        StopBroadcasting();
+
+        Zoomed = Zoomed < 0 ? _focused : -1;
+    }
 
     /// <summary>This tab is the one on screen now, or is no longer.</summary>
     public void Showing(bool showing)

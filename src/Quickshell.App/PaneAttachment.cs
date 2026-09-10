@@ -31,6 +31,7 @@ public sealed class PaneAttachment : IDisposable
 
     private bool _dragging;
     private bool _disposed;
+    private bool _outlined;
 
     internal PaneAttachment(TerminalPane pane, Emulator emulator, TerminalShare share,
                             string family, float sizeInPoints, bool ligatures = true)
@@ -72,6 +73,30 @@ public sealed class PaneAttachment : IDisposable
     /// a session arrives and this stops being the model's own method.</para>
     /// </summary>
     public Action<int, int>? Resized { get; set; }
+
+    /// <summary>
+    /// Whether the pane's edge is marked, which QS53 asks of every pane receiving broadcast typing.
+    ///
+    /// <para><b>Held here and not only on the view</b>, because the view does not exist until the
+    /// pane has a handle and a size — and a pane marked before then must come up marked, or it is a
+    /// pane receiving keystrokes with nothing on screen saying so, which is the one state this mode
+    /// is falsified by.</para>
+    /// </summary>
+    public bool Outlined
+    {
+        get => _outlined;
+
+        set
+        {
+            _outlined = value;
+
+            if (View is { } view && view.Outlined != value)
+            {
+                view.Outlined = value;
+                _damage.Set();
+            }
+        }
+    }
 
     /// <summary>
     /// What went wrong opening the device, or null.
@@ -487,6 +512,9 @@ public sealed class PaneAttachment : IDisposable
         // far end is told. Here it is the first size rather than a resize, which is why nothing is
         // debounced and nobody is told: there is no previous size to have been wrong.
         _emulator.Resize(View.Columns, View.Rows);
+
+        // A mark asked for before there was anything to draw it on.
+        View.Outlined = _outlined;
 
         // Every size after this one, from the render thread once the swapchain has taken it.
         View.GridChanged += (columns, rows) => Resized?.Invoke(columns, rows);

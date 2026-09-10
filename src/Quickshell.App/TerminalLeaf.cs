@@ -1,3 +1,4 @@
+using System.Windows.Automation;
 using Quickshell.Terminal;
 
 namespace Quickshell.App;
@@ -31,6 +32,7 @@ public sealed class TerminalLeaf : IAsyncDisposable
     private LocalSession? _session;
     private long _seen;
     private bool _disposed;
+    private bool _receiving;
 
     private TerminalLeaf(Emulator emulator, TerminalPane pane, TerminalShare share,
                          Settings settings, string host)
@@ -78,6 +80,50 @@ public sealed class TerminalLeaf : IAsyncDisposable
 
     /// <summary>Whether the session is still running, which is what closing asks about.</summary>
     public bool IsLive => Ended is null && _session is not null;
+
+    /// <summary>
+    /// What this pane says to a screen reader while it is receiving broadcast typing.
+    ///
+    /// <para>Beside the name and not in it: the name is read every time a reader arrives, and this
+    /// is a state that comes and goes. It is UI Automation's help text, which is where a state that
+    /// has no pattern of its own is put.</para>
+    /// </summary>
+    public const string ReceivingSays = "Receiving everything typed in this tab";
+
+    /// <summary>
+    /// Whether what is typed in this tab reaches this pane whichever pane has the keyboard — QS53.
+    ///
+    /// <para><b>Setting it is what marks the pane, and nothing else may.</b> The design is falsified
+    /// by a pane that receives input without being visibly marked, so the mark and the membership
+    /// are one property rather than two that have to be kept in step: the edge goes on the glass,
+    /// and the same sentence goes where a screen reader will find it.</para>
+    /// </summary>
+    public bool Receiving
+    {
+        get => _receiving;
+
+        internal set
+        {
+            if (_receiving == value)
+            {
+                return;
+            }
+
+            _receiving = value;
+
+            Terminal.Outlined = value;
+
+            string was = AutomationProperties.GetHelpText(Pane);
+            string now = value ? ReceivingSays : string.Empty;
+
+            AutomationProperties.SetHelpText(Pane, now);
+
+            // Only where a reader already asked for the peer. Building one here to announce a change
+            // nobody is listening for would be the client creating accessibility objects on its own.
+            Pane.Automation?.RaisePropertyChangedEvent(AutomationElementIdentifiers.HelpTextProperty,
+                                                       was, now);
+        }
+    }
 
     /// <summary>
     /// Whether something happened here while this tab was not the one on screen.

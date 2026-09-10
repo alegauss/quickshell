@@ -23,9 +23,11 @@ cbuffer Frame : register(b0)
     float  CursorShowing;       // the blink phase: 1 while the cursor is on, 0 while it is not
     float  ClearType;           // 1 while the coverage pages carry one alpha per colour stripe
     float3 CursorColour;
-    float  Reserved2;
+    float  OutlineWidth;        // pixels of outline inside the grid's edge, 0 for none
     float3 SelectionColour;
-    float  Reserved3;
+    uint   Rows;                // rows the grid holds, which with Columns is where its edge is
+    float3 OutlineColour;
+    float  Reserved4;
 };
 
 // One per atlas page. D3D feature level 11_0 cannot index a texture array dynamically, so the page
@@ -311,6 +313,21 @@ float4 PixelMain(Fragment input) : SV_Target
             : Rule(y, CellSize.y - max(1.0, UnderlineThickness), max(2.0, UnderlineThickness * 2.0));
 
         blended = lerp(blended, ToLinear(CursorColour), saturate(bar));
+    }
+
+    // A pane receiving what is typed into another says so at its own edge, over whatever is there.
+    // Measured against the grid and not the window: the strip past the last whole cell is drawn by
+    // no instance, so an edge placed at the window's would vanish on the two sides that have one.
+    if (OutlineWidth > 0.0)
+    {
+        float2 extent = CellSize * float2(Columns, Rows);
+        float2 at = input.Position.xy;
+        float inside = min(min(at.x, at.y), min(extent.x - at.x, extent.y - at.y));
+
+        if (inside < OutlineWidth)
+        {
+            blended = ToLinear(OutlineColour);
+        }
     }
 
     return float4(ToEncoded(blended), 1.0);

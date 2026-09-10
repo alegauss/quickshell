@@ -62,9 +62,9 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
     }
 
     /// <summary>
-    /// What the shader is told once per frame. Eighty bytes, laid out so that no three-float vector
-    /// straddles a sixteen-byte boundary — HLSL would silently move one that did, and the picture
-    /// would be wrong in a way that looks like a shader bug rather than a packing one.
+    /// What the shader is told once per frame. Ninety-six bytes, laid out so that no three-float
+    /// vector straddles a sixteen-byte boundary — HLSL would silently move one that did, and the
+    /// picture would be wrong in a way that looks like a shader bug rather than a packing one.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     private struct FrameConstants
@@ -84,11 +84,15 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
         public float CursorRed;
         public float CursorGreen;
         public float CursorBlue;
-        public float Reserved2;
+        public float OutlineWidth;
         public float SelectionRed;
         public float SelectionGreen;
         public float SelectionBlue;
-        public float Reserved3;
+        public uint Rows;
+        public float OutlineRed;
+        public float OutlineGreen;
+        public float OutlineBlue;
+        public float Reserved4;
     }
 
     /// <summary>Opens the renderer and registers it, so a device loss rebuilds its shaders with everything else.</summary>
@@ -132,6 +136,25 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
     public Rgb SelectionColour { get; set; } = new(52, 78, 120);
 
     /// <summary>
+    /// The edge a pane is drawn with while it receives what is typed into another.
+    ///
+    /// <para><b>One colour and not the scheme's</b>, because what it has to be is unmistakable on
+    /// every scheme at once: a mark that disappears against somebody's background is a mode that
+    /// sends keystrokes to a host without saying so. This orange keeps better than three to one
+    /// against white and better than five to one against black.</para>
+    /// </summary>
+    public Rgb OutlineColour { get; set; } = new(232, 89, 12);
+
+    /// <summary>
+    /// How wide that edge is, in pixels: a quarter of a cell, and never under two.
+    ///
+    /// <para>From the cell rather than a constant, so it follows the display's scale and the font's
+    /// size together — a two-pixel line on a 200% display is a hairline, and a mode that sends a
+    /// keystroke to eight hosts is not something to announce with a hairline.</para>
+    /// </summary>
+    public float OutlineWidth => Math.Max(2f, MathF.Round(Metrics.Width / 4f));
+
+    /// <summary>
     /// How long this renderer has been running, which is what the blink phase is measured from.
     /// Settable so a test can put the cursor in either phase without waiting for a real clock.
     /// </summary>
@@ -172,7 +195,13 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
     /// <param name="surface">The surface to draw into.</param>
     /// <param name="cells">Row-major cells, <paramref name="columns"/> to a row.</param>
     /// <param name="columns">How many cells make a row.</param>
-    public void Draw(PresentSurface surface, ReadOnlySpan<CellInstance> cells, int columns)
+    /// <param name="outlined">
+    /// Whether the grid's edge is drawn in <see cref="OutlineColour"/>. A parameter rather than a
+    /// property, because this renderer draws every pane in the process and only some of them are
+    /// marked: a setting on the renderer would be whichever pane set it last.
+    /// </param>
+    public void Draw(PresentSurface surface, ReadOnlySpan<CellInstance> cells, int columns,
+                     bool outlined = false)
     {
         ArgumentNullException.ThrowIfNull(surface);
         ArgumentOutOfRangeException.ThrowIfLessThan(columns, 1);
@@ -190,7 +219,8 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
         ID3D11DeviceContext context = _graphics.Context;
         ID3D11Buffer instances = Upload(cells);
 
-        WriteFrameConstants(context, surface, columns);
+        WriteFrameConstants(context, surface, columns, (cells.Length + columns - 1) / columns,
+                            outlined);
 
         context.OMSetRenderTargets(surface.View);
         context.RSSetViewport(0f, 0f, surface.Width, surface.Height);
@@ -303,7 +333,8 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
         return buffer;
     }
 
-    private unsafe void WriteFrameConstants(ID3D11DeviceContext context, PresentSurface surface, int columns)
+    private unsafe void WriteFrameConstants(ID3D11DeviceContext context, PresentSurface surface,
+                                            int columns, int rows, bool outlined)
     {
         FrameConstants constants = new()
         {
@@ -328,6 +359,13 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
             SelectionRed = SelectionColour.Red / 255f,
             SelectionGreen = SelectionColour.Green / 255f,
             SelectionBlue = SelectionColour.Blue / 255f,
+            Rows = (uint)rows,
+
+            // Zero is the shader's "no outline", so an unmarked pane takes no branch that draws.
+            OutlineWidth = outlined ? OutlineWidth : 0f,
+            OutlineRed = OutlineColour.Red / 255f,
+            OutlineGreen = OutlineColour.Green / 255f,
+            OutlineBlue = OutlineColour.Blue / 255f,
         };
 
         MappedSubresource mapped = context.Map(_frame!, MapMode.WriteDiscard);

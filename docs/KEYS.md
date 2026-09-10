@@ -29,6 +29,7 @@ Nothing here is configurable yet. When it becomes configurable this page becomes
 | `Alt+Shift+Left` `Alt+Shift+Right` `Alt+Shift+Up` `Alt+Shift+Down` | Moves the focus to the pane that way on screen. Nothing that way leaves the focus where it is. |
 | `Ctrl+Shift+Z` | Zooms the focused pane to fill the tab, and back. The other panes keep running. |
 | `Ctrl+Shift+E` | Gives every pane in the tab an equal share. |
+| `Ctrl+Shift+B` | Types into every pane in the tab at once; press it again to stop. A paste goes to all of them too. Every pane receiving what you type has an orange edge for as long as it lasts, and nothing outside this tab ever receives it. It stops by itself when you switch tabs, split, zoom or close a pane, and it is never on when the client starts. |
 
 There is no chord that closes a pane. A pane goes when the thing running in it ends, which is what
 typing `exit` has always meant.

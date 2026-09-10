@@ -94,7 +94,6 @@ public static class Entry
 
         window.Input.Placing = composing => Placed(window, composing);
         window.Selected = () => Pane(window)?.Terminal.Selected() ?? string.Empty;
-        window.Bracketed = () => Pane(window)?.Emulator.BracketedPaste ?? false;
         window.Scrolling = lines => Pane(window)?.Terminal.ScrollBy(lines);
         window.Finding = (needle, forward, exactly) =>
             Pane(window)?.Terminal.Find(needle, forward, exactly)?.Cells;
@@ -127,6 +126,15 @@ public static class Entry
             {
                 window.SplitPane(Divide.Beside);
             }
+        }
+
+        // `--broadcast` types into every pane of that tab, which is what Ctrl+Shift+B turns on. After
+        // the split and not before it, because a split ends broadcasting — and it is asked for on
+        // this command line every time, so it is still a mode somebody chose rather than one this
+        // client remembered.
+        if (arguments.Contains("--broadcast", StringComparer.Ordinal))
+        {
+            window.Broadcast();
         }
 
         // `--import` opens what Ctrl+Shift+I opens, and after the window is up rather than before:
@@ -222,13 +230,6 @@ public static class Entry
         window.Add(tab);
         window.Sessions.Open(host, another: true);
 
-        // A paste goes down the keystroke path and not the parser's, which is what makes it arrive
-        // in order with what the user is typing around it — and it goes to whichever pane has the
-        // keyboard when the paste happens, never to the one that had it when this was wired.
-        window.Pasting = text => Pane(window) is { } leaf
-            ? Sent(leaf.Typist, text)
-            : ValueTask.CompletedTask;
-
         _ = tab.ConnectAsync();
     }
 
@@ -256,14 +257,6 @@ public static class Entry
                                System.Globalization.CultureInfo.InvariantCulture, out int how)
             ? how
             : null;
-    }
-
-    /// <summary>A paste, down the same route a keystroke takes.</summary>
-    private static ValueTask Sent(Typist typist, string text)
-    {
-        typist.Type(text, System.Windows.Input.ModifierKeys.None);
-
-        return ValueTask.CompletedTask;
     }
 
     /// <summary>

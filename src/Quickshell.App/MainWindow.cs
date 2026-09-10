@@ -212,6 +212,11 @@ public sealed class MainWindow : Window
         InputBindings.Add(new KeyBinding(new Equalising(this), Key.E,
                                          ModifierKeys.Control | ModifierKeys.Shift));
 
+        // Typing into every pane of the tab at once. B for broadcast, which is the word every
+        // client that has this uses for it, and what a user types into the palette to find it.
+        InputBindings.Add(new KeyBinding(new Broadcasting(this), Key.B,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
@@ -260,6 +265,13 @@ public sealed class MainWindow : Window
             for (int tab = 0; tab < _open.Count; tab++)
             {
                 _open[tab].Showing(tab == at);
+
+                // A tab that is not on screen is not typed into, and broadcasting ends when the tab
+                // loses the focus — coming back to it later must not find the mode still on.
+                if (tab != at)
+                {
+                    _open[tab].StopBroadcasting();
+                }
             }
 
             Arrange();
@@ -435,7 +447,8 @@ public sealed class MainWindow : Window
     }
 
     /// <summary>
-    /// Who this window's keystrokes belong to, or null while nothing is listening.
+    /// Who this window's keystrokes belong to, or null while nothing is listening. While the tab is
+    /// broadcasting they reach every pane in it as well — <see cref="Press"/> is where.
     ///
     /// <para>On the window rather than on the pane, and QS4 is why: the pane is a child HWND whose
     /// window procedure does nothing at all, deliberately, so that input arrives through WPF and
@@ -459,11 +472,85 @@ public sealed class MainWindow : Window
 
         // Alt chords arrive as System with the real key beside them, and a client reading only Key
         // would send alt-f as nothing at all.
-        if (!e.Handled && Typing is not null
-            && Typing.Press(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers))
+        if (!e.Handled && Press(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers))
         {
             e.Handled = true;
         }
+    }
+
+    /// <summary>
+    /// A key with no character of its own, sent to every pane that receives typing.
+    ///
+    /// <para><b>Each pane encodes it for itself</b>, which is the reason this is a loop over typists
+    /// and not one encoding copied eight times. An arrow is a different sequence to a program that
+    /// has asked for application cursor keys, and eight hosts are eight programs with eight sets of
+    /// modes — so the bytes that reach each are the bytes its own program asked for.</para>
+    ///
+    /// <para>One pane is asked directly and not through the list, because this runs on every
+    /// keystroke and a keystroke is the one thing this client does that a user feels: the ordinary
+    /// case allocates nothing it did not allocate before broadcasting existed.</para>
+    /// </summary>
+    /// <returns>Whether any of them took it, which is what marks the event handled.</returns>
+    public bool Press(Key key, ModifierKeys modifiers)
+    {
+        if (Current is not { } tab)
+        {
+            return false;
+        }
+
+        if (!tab.Broadcasting)
+        {
+            return tab.Focused.Typist.Press(key, modifiers);
+        }
+
+        bool taken = false;
+
+        foreach (TerminalLeaf leaf in tab.Receivers)
+        {
+            taken |= leaf.Typist.Press(key, modifiers);
+        }
+
+        return taken;
+    }
+
+    /// <summary>A character the keyboard layout resolved, sent to every pane that receives typing.</summary>
+    /// <returns>Whether any of them took it.</returns>
+    public bool Type(string text, ModifierKeys modifiers)
+    {
+        if (Current is not { } tab)
+        {
+            return false;
+        }
+
+        if (!tab.Broadcasting)
+        {
+            return tab.Focused.Typist.Type(text, modifiers);
+        }
+
+        bool taken = false;
+
+        foreach (TerminalLeaf leaf in tab.Receivers)
+        {
+            taken |= leaf.Typist.Type(text, modifiers);
+        }
+
+        return taken;
+    }
+
+    /// <summary>
+    /// Turns typing into every pane of the tab on screen on, or off again — QS53.
+    ///
+    /// <para>Laid out afterwards because turning it on undoes a zoom: the panes it is about to type
+    /// into have to be on screen before any of them receives a keystroke.</para>
+    /// </summary>
+    /// <returns>Whether the tab on screen is broadcasting now.</returns>
+    public bool Broadcast()
+    {
+        bool now = Current?.Broadcast() ?? false;
+
+        Arrange();
+
+        return now;
     }
 
     /// <summary>
@@ -478,14 +565,14 @@ public sealed class MainWindow : Window
 
         ArgumentNullException.ThrowIfNull(e);
 
-        if (e.Handled || Typing is null)
+        if (e.Handled)
         {
             return;
         }
 
         string text = string.IsNullOrEmpty(e.Text) ? e.ControlText : e.Text;
 
-        if (Typing.Type(text, Keyboard.Modifiers))
+        if (Type(text, Keyboard.Modifiers))
         {
             e.Handled = true;
         }
@@ -717,6 +804,10 @@ public sealed class MainWindow : Window
         }
 
         TerminalTab going = _open[at];
+
+        // A tab leaving this window leaves the mode behind: wherever it goes next, nobody there
+        // turned it on.
+        going.StopBroadcasting();
 
         _open.RemoveAt(at);
         _tabs.Items.RemoveAt(at);
@@ -1052,13 +1143,42 @@ public sealed class MainWindow : Window
     /// </summary>
     public Func<string>? Selected { get; set; }
 
-    /// <summary>Where a paste goes, or null while there is no session to send it to.</summary>
+    /// <summary>
+    /// Where a paste goes. Null sends it to every pane receiving typing, which is what the client
+    /// does — a caller says otherwise only to watch what would have been sent.
+    /// </summary>
     public Func<string, ValueTask>? Pasting { get; set; }
 
     /// <summary>
-    /// Whether the program has turned bracketed paste on, which decides whether this client asks.
+    /// Whether the programs a paste will reach have turned bracketed paste on, which decides whether
+    /// this client asks. Null asks every pane receiving typing.
     /// </summary>
     public Func<bool>? Bracketed { get; set; }
+
+    /// <summary>
+    /// The default route for a paste: typed, into every pane receiving typing.
+    ///
+    /// <para><b>Down the keystroke path and not the parser's</b>, which is what makes it arrive in
+    /// order with what the user is typing around it. And to the panes receiving typing when the
+    /// paste happens, never to the ones that had it when something was wired — while broadcasting
+    /// that is every pane in the tab, because a paste is how a command is typed.</para>
+    /// </summary>
+    private ValueTask Typed(string text)
+    {
+        Type(text, ModifierKeys.None);
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Whether every pane a paste will reach has asked for bracketing.
+    ///
+    /// <para><b>All of them or it is not bracketed.</b> One program that did not ask is one that runs
+    /// a pasted newline, and while broadcasting that is one host among eight running something the
+    /// user has not read. Asking is the answer that is safe for all eight.</para>
+    /// </summary>
+    private bool EveryReceiverBracketed() =>
+        Current?.Receivers is { Count: > 0 } to && to.All(leaf => leaf.Emulator.BracketedPaste);
 
     /// <summary>
     /// How a risky paste is shown. A dialog carrying exactly what would be sent, unless a caller
@@ -1121,7 +1241,9 @@ public sealed class MainWindow : Window
             return string.Empty;
         }
 
-        if (held.Length == 0 || Pasting is not { } sending)
+        Func<string, ValueTask>? sending = Pasting ?? (Current is null ? null : Typed);
+
+        if (held.Length == 0 || sending is null)
         {
             return string.Empty;
         }
@@ -1135,7 +1257,7 @@ public sealed class MainWindow : Window
         }
 
         string text = new(cleaned, 0, written);
-        bool bracketed = Bracketed?.Invoke() ?? false;
+        bool bracketed = (Bracketed ?? EveryReceiverBracketed)();
 
         // Shown before it is sent, and the dialog carries the text itself rather than a count: a
         // user asked whether to paste "4 lines" has been told nothing they can act on.
@@ -1672,6 +1794,28 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.EqualisePanes();
+    }
+
+    /// <summary>
+    /// The broadcast binding's command, named for what pressing it will do now.
+    ///
+    /// <para>Two names and not one: a palette entry reading "broadcast" while the mode is on would
+    /// be offering to start what is already running, and the entry a user needs then is the one
+    /// that stops it. Both carry the word, because it is what anybody looking for either types.</para>
+    /// </summary>
+    private sealed class Broadcasting(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => Window.Current?.Broadcasting == true
+            ? "Stop broadcasting typing"
+            : "Broadcast typing to every pane in this tab";
+
+        /// <summary>A tab of one pane has nothing to broadcast to, and so no entry.</summary>
+        public override bool CanExecute(object? parameter) =>
+            Window.Current is { } tab && (tab.Broadcasting || tab.Layout.Count > 1);
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.Broadcast();
     }
 
     /// <summary>Who rereads the settings file when the user asks, or null while nothing can.</summary>

@@ -42,6 +42,7 @@ public sealed class TerminalView : IDisposable
     private long _draws;
     private bool _showing = true;
     private bool _covered;
+    private volatile bool _outlined;
 
     private TerminalView(GraphicsDevice device, GlyphAtlas atlas, PresentSurface surface,
                          CellRenderer renderer, Palette palette)
@@ -163,6 +164,31 @@ public sealed class TerminalView : IDisposable
             {
                 _gate.Invalidate();
             }
+        }
+    }
+
+    /// <summary>
+    /// Whether this pane's edge is drawn in the renderer's outline colour — QS53's mark on a pane
+    /// that is receiving what is typed into another.
+    ///
+    /// <para><b>Written on WPF's thread and read on the loop's</b>, and a flag is the one shape
+    /// that crosses without a lock: the frame draws whatever it says at the instant it is asked.
+    /// Changing it forgets the frame on the glass, because nothing was printed and the gate would
+    /// otherwise answer that the picture without the mark is still current.</para>
+    /// </summary>
+    public bool Outlined
+    {
+        get => _outlined;
+
+        set
+        {
+            if (_outlined == value)
+            {
+                return;
+            }
+
+            _outlined = value;
+            _gate.Invalidate();
         }
     }
 
@@ -369,7 +395,7 @@ public sealed class TerminalView : IDisposable
 
         long occluded = _surface.Occlusions;
 
-        _renderer.Draw(_surface, _cells.AsSpan(0, _painter.Painted), buffer.Columns);
+        _renderer.Draw(_surface, _cells.AsSpan(0, _painter.Painted), buffer.Columns, _outlined);
         _surface.Present();
 
         _draws++;

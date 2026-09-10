@@ -196,6 +196,63 @@ public sealed class CellRendererTests
         Assert.True(rightInk > 0, "the cell that was given a glyph drew nothing");
     }
 
+    /// <summary>
+    /// QS53's mark: an outlined grid carries the outline colour along all four of its own edges, as
+    /// wide as the renderer says and not a pixel wider, and the same cells drawn without it are
+    /// exactly what they were.
+    ///
+    /// <para><b>The grid's edge and not the window's</b>, and this is the shape that tells them
+    /// apart: eight columns end well short of the surface, so a mark measured against the window
+    /// would put its right and bottom sides on pixels no cell ever draws — which is to say nowhere.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void AnOutlinedGridIsMarkedAlongItsOwnFourEdgesAndNowhereInside()
+    {
+        using Harness harness = new();
+
+        Rgb blue = new(0, 0, 200);
+        int columns = 8;
+        int rows = 4;
+
+        CellInstance[] cells = new CellInstance[columns * rows];
+        Array.Fill(cells, CellInstance.For(GlyphPlacement.Empty, Rgb.White, blue));
+
+        harness.Renderer.Draw(harness.Surface, cells, columns, outlined: true);
+
+        byte[] marked = harness.ReadBack();
+        CellMetrics metrics = harness.Metrics;
+        Rgb outline = harness.Renderer.OutlineColour;
+
+        int width = columns * metrics.Width;
+        int height = rows * metrics.Height;
+        int edge = (int)harness.Renderer.OutlineWidth;
+
+        Assert.True(width < Width && height < Height, "the grid fills the surface, so this proves nothing");
+        Assert.True(edge >= 2, $"an outline {edge} pixel wide is a hairline");
+
+        // Halfway along each side.
+        Assert.Equal(outline, Pixel(marked, 0, height / 2));
+        Assert.Equal(outline, Pixel(marked, width - 1, height / 2));
+        Assert.Equal(outline, Pixel(marked, width / 2, 0));
+        Assert.Equal(outline, Pixel(marked, width / 2, height - 1));
+
+        // Its whole width and not a pixel more, on the two sides whose inner edge is not the zero
+        // every other test here starts from.
+        Assert.Equal(outline, Pixel(marked, width - edge, height / 2));
+        Assert.Equal(blue, Pixel(marked, width - edge - 1, height / 2));
+        Assert.Equal(outline, Pixel(marked, width / 2, height - edge));
+        Assert.Equal(blue, Pixel(marked, width / 2, height - edge - 1));
+        Assert.Equal(blue, Pixel(marked, width / 2, height / 2));
+
+        harness.Renderer.Draw(harness.Surface, cells, columns);
+
+        byte[] plain = harness.ReadBack();
+
+        Assert.Equal(blue, Pixel(plain, 0, height / 2));
+        Assert.Equal(blue, Pixel(plain, width - 1, height - 1));
+    }
+
     [Fact]
     public void MoreCellsThanTheBufferHoldsGrowsItRatherThanRefusing()
     {
