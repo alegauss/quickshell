@@ -1005,6 +1005,31 @@ in front, and on a tab that holds an SSH session, which is QS126.
 Falsified when a save in the local editor does not reach the server, or reaches it over
 a change somebody else made in the meantime without asking.
 
+### §QS186 A copy you can watch and stop
+
+QS60's operations run a copy through `TransferQueue`, and the browser says one thing
+about it: a sentence when it is over. The queue knows much more — each entry's bytes
+against its length, a rate over a short window rather than since the start, and whether
+it is waiting, running, paused, failed or skipped — and it can pause, cancel and retry
+any entry or all of them. None of that reaches the window.
+
+So a tree of a few gigabytes over a slow link is a browser that shows nothing for
+minutes, indistinguishable from one that hung, and the only way to stop it is to close
+the window. That is the shape a person gives up on and repeats from a shell.
+
+The move is a strip under the panes that exists only while a copy does: one line per
+copy with what is moving, how far it has got, the rate and the time left, and a button
+that stops it. A failed entry stays there with its reason and a retry instead of being
+folded into the closing sentence. The queue does not change; this is its state, read at
+the rate the strip is drawn.
+
+It answers to the block's criterion that an interrupted transfer resumes without
+producing a file unlike the source: stopping from the strip is an interruption, and the
+retry is the resume.
+
+Falsified when a copy that has moved bytes for a second shows no progress in the
+browser.
+
 ## Block F — A forward is a lifecycle, not a checkbox
 
 ### §QS68 One forward that covers a network

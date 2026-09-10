@@ -55,6 +55,7 @@
 - 📋 **QS123** (deps: QS62 ✅) **A symbolic link on the server cannot be copied, because nothing here can read where it points** — A tree copied down loses every link in it, which for a source checkout or a set of config files is a copy that does not work at the far end. → §QS123
 - 📋 **QS184** (deps: QS126) **The remote pane opens at the account's home while the shell beside it has already said where it is** — OSC 7 already records the shell's directory and nothing reads it, so a user who cd'd into a deployment finds the browser somewhere else. → §QS184
 - 📋 **QS185** (deps: QS60 ✅, QS126) **A remote file cannot be edited in a local editor, so changing a config is still a download, an edit and an upload** — It is why most people open a file browser at all, and the manual round trip is exactly what they want the client to do for them. → §QS185
+- 📋 **QS186** (deps: —) **A copy started from the browser shows nothing until it ends and cannot be stopped, so a large tree looks hung** — The queue under it reports each file's progress and can pause, cancel and retry, and none of that reaches the window. → §QS186
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
