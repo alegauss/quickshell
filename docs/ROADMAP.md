@@ -54,6 +54,8 @@
 - 📋 **QS64** (deps: QS60 ⏳) **A file can only be transferred through the browser, so dragging one from Explorer does nothing** — Dragging a file onto a session is the shortest path a user has to moving it, and it is the interaction they try first without being told it exists. → §QS64
 - 📋 **QS122** (deps: QS59 ✅) **The shared-session trick rests on six SSH.NET members reached by name, and only a live server proves it holds** — A library upgrade can break it, and the test that would notice needs a container running, so an upgrade on a machine without one looks clean. → §QS122
 - 📋 **QS123** (deps: QS62 ✅) **A symbolic link on the server cannot be copied, because nothing here can read where it points** — A tree copied down loses every link in it, which for a source checkout or a set of config files is a copy that does not work at the far end. → §QS123
+- 📋 **QS184** (deps: QS126) **The remote pane opens at the account's home while the shell beside it has already said where it is** — OSC 7 already records the shell's directory and nothing reads it, so a user who cd'd into a deployment finds the browser somewhere else. → §QS184
+- 📋 **QS185** (deps: QS60 ⏳, QS126) **A remote file cannot be edited in a local editor, so changing a config is still a download, an edit and an upload** — It is why most people open a file browser at all, and the manual round trip is exactly what they want the client to do for them. → §QS185
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

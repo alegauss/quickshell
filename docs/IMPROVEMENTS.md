@@ -887,13 +887,9 @@ directory of fifty thousand files should show its first screen immediately, and 
 browser that blocks until the listing finishes is a browser people stop opening.
 
 The operations are the ordinary ones — copy either direction, rename, delete, create a
-directory, change permissions — plus opening a remote file in a local editor with
-write-back on save. That last one earns its cost: editing a config file remotely is why
-people open a file browser at all, and the manual download-edit-upload round trip is
-exactly what they are trying to avoid.
-
-The remote pane follows the session's working directory wherever the shell reports one,
-which is what the OSC work already bought.
+directory, change permissions. Opening a remote file in a local editor with write-back
+on save is QS185's, and a remote pane that follows the shell's working directory is
+QS184's.
 
 Deleting asks, and says how many entries and whether any of them is a directory.
 
@@ -977,6 +973,57 @@ it means a file operation depending on a shell that a restricted account may not
 
 Falsified when a tree containing a symbolic link is copied down and the link is missing
 from the result.
+
+### §QS184 A pane that goes where the shell is
+
+Carried out of QS60's design: the remote pane follows the session's working directory
+wherever the shell reports one. The emulator already records it —
+`Emulator.WorkingDirectory` is what OSC 7 writes — so the reading exists and nothing
+uses it.
+
+Following means two things and only two. The browser opens where the shell is rather
+than at the account's home, because a user who has `cd`'d into a deployment directory
+and opens the browser is looking for that directory. And while the browser is open, a
+change the shell reports moves the pane — unless the user has navigated the pane
+themselves since, because a pane that jumped away from where somebody was reading would
+be the browser taking the directory out of their hands.
+
+OSC 7 carries a URL, `file://host/path`, and the host in it is the shell's idea of its
+own name, which is not always the name the session connected to. A path is followed only
+when the host matches the session's or is empty; a shell reporting another machine's
+directory, which is what a nested `ssh` does, is ignored rather than listed on the wrong
+server.
+
+A shell that reports nothing — most do not without a line in their profile — leaves the
+pane at home, and the pane does not guess.
+
+Falsified when the browser opens at home while the shell has reported a different
+directory of the same host.
+
+### §QS185 A save that lands on the server
+
+Carried out of QS60's design, which argued for it: editing a configuration file on a
+server is why most people open a file browser at all, and the round trip it replaces —
+download, edit, upload, and hope the upload went to the same path — is what they are
+trying to stop doing by hand.
+
+Opening a remote file downloads it to a temporary directory this client owns, opens it
+in the program Windows associates with it, and watches the copy. Each save is uploaded
+to the path it came from over the session's own file channel, and the pane says whether
+it landed. A save while the previous upload is still running waits for it rather than
+racing it.
+
+Two things make this more than a watcher. The file on the server may have changed since
+it was opened, and an upload that silently overwrote somebody else's edit is the worst
+outcome there is, so its modification time is checked before every write-back and a
+change is a question. And the temporary copy is the user's text: it goes when the
+session ends, never before its upload landed.
+
+It waits on QS60's operations, since writing a file back is one of them with a watcher
+in front, and on a tab that holds an SSH session, which is QS126.
+
+Falsified when a save in the local editor does not reach the server, or reaches it over
+a change somebody else made in the meantime without asking.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
