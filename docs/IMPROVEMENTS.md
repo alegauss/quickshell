@@ -2082,8 +2082,8 @@ way in. Two things follow, and both were met while shipping QS53.
 The run is not hermetic. With the VMware guest up for a picture, all six clipboard tests
 went red together, each after twenty-two seconds of the clipboard refusing to hold what
 was put on it; with the guest suspended the same eighteen tests passed in one run.
-Clipboard sharing is the likeliest holder, and it is not the only program on a working
-desk that watches the clipboard.
+VMware is not the only holder: watched later, CrossDeviceService and msrdc each held it
+open just after a test wrote, and a read landing then came back empty.
 
 And a run is destructive. Whatever the person at the machine had copied is gone after
 the suite, replaced by `echo one` and a bracketed test string, which is a cost nobody
@@ -2123,3 +2123,29 @@ The second hazard is worth closing whatever the first finds: a step that looks f
 dialog's button must not be able to land on the window behind it.
 
 Falsified when the case fails on a tree nothing changed.
+
+### §QS182 A picture of a desk that was not drawing
+
+The host suite has to run with the guest suspended, because a running guest holds the
+host's clipboard (QS180). So a task that takes a picture and then runs the suite
+suspends the guest in between, and the next picture resumes it.
+
+The resume did not return. `run-app-vm.ps1` printed that the guest was not running and
+that it was starting it, and then nothing for thirty-five minutes, although
+`Connect-Guest` gives the wait for VMware Tools a ten-minute deadline. The deadline
+covers the loop and not `vmrun start` before it, so a start that does not return is
+waited for without bound. Stopped by hand, a `checkToolsState` straight afterwards
+answered `running`.
+
+And the picture after it was of nothing. The next `run-app-vm` built the client, started
+it, let it draw for twelve seconds and brought back a 3838 by 1841 capture in which
+every pixel is black: the desk the guest resumed to draws nothing, most likely a display
+that went dark or a session that locked while suspended. The script reported success.
+
+Two moves. `vmrun start` gets the same deadline as the wait after it, so a stuck resume
+refuses instead of holding the run. And a capture that is one colour from edge to edge
+is refused as a picture of nothing, because a black rectangle filed as evidence is worse
+than no file.
+
+Falsified when a resumed guest yields a capture of a single colour and the script exits
+zero.
