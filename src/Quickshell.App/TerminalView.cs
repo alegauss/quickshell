@@ -404,7 +404,39 @@ public sealed class TerminalView : IDisposable
         // DXGI whether it still is, rather than drawing another frame to find out.
         _covered = _surface.Occlusions != occluded;
 
+        // QS75's last two milestones, asked only while a start is being timed: the first frame on
+        // the glass, and the first that carries anything the shell wrote.
+        if (StartupTimeline.Waiting)
+        {
+            StartupTimeline.Mark("frame");
+
+            if (Shows(buffer))
+            {
+                StartupTimeline.Interactive();
+            }
+        }
+
         return true;
+    }
+
+    /// <summary>
+    /// Whether the screen holds anything a host printed, which is what makes a start "a prompt" and
+    /// not "a window". Scans only while a start is being timed, and stops at the first character.
+    /// </summary>
+    private static bool Shows(TerminalBuffer buffer)
+    {
+        for (int row = 0; row < buffer.Rows; row++)
+        {
+            foreach (Cell cell in buffer.Screen(row))
+            {
+                if (cell.Width != 0 && cell.Codepoint is not (' ' or 0))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

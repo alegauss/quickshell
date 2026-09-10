@@ -226,6 +226,9 @@ public sealed class TerminalLeaf : IAsyncDisposable
 
             _session = session;
 
+            // The shell is running, which is when a timed start stops waiting on this client.
+            StartupTimeline.Mark("shell");
+
             Typist.Sending = bytes => session.Pipeline.TypeAsync(bytes);
             Typist.Typed = Terminal.ToBottom;
             Terminal.Resized = session.Pipeline.Resize;

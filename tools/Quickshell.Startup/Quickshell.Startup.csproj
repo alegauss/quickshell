@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The cold start measurement, figure 5. A tool and not a test, for the idle tool's reason: it
+       starts the client again and again and reads what each start reports, which is a measurement
+       of a desk and not a check a suite should repeat on every run. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.Startup</RootNamespace>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>

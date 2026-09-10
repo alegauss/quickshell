@@ -508,6 +508,10 @@ public sealed class PaneAttachment : IDisposable
             return;
         }
 
+        // The device, the atlas and the swapchain are open: the one part of a start that cannot be
+        // deferred past the first frame, and so the one QS75 times on its own.
+        StartupTimeline.Mark("device");
+
         // The grid the window turned out to hold is the size the model takes, and later the size the
         // far end is told. Here it is the first size rather than a resize, which is why nothing is
         // debounced and nobody is told: there is no previous size to have been wrong.

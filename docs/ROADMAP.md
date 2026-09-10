@@ -85,10 +85,10 @@
 
 ## Block H — The reason to leave the incumbent
 
-- 📋 **QS75** (deps: QS2 ✅, QS46 ✅) **Nothing has been measured starting, so the cold start figure is an aspiration** — Start-up is the first thing a user compares against the incumbent, and it is decided by publishing choices far more than by application code. → §QS75
-- 📋 **QS77** (deps: QS75) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
+- ⏳ **QS75** (deps: QS2 ✅, QS46 ✅, the incumbent closed on the reference desk) **Nothing has been measured starting, so the cold start figure is an aspiration** — The incumbent has not been started beside it on the same machine, so the comparison the figure exists for is not made. → §QS75
+- 📋 **QS77** (deps: —) **There is no way to install this client, so it can only be run from a build directory** — Installation and update are where a lean client is judged before it is started, and an unsigned binary is one a corporate machine simply refuses. → §QS77
 - ⏳ **QS78** (deps: QS139) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
-- 📋 **QS79** (deps: QS3 ✅, QS75) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
+- 📋 **QS79** (deps: QS3 ✅) **A change that costs performance is caught by whoever happens to notice it** — The measurements exist and are trusted by now, so all that is left is making a regression fail a build instead of reaching a release. → §QS79
 - 📋 **QS86** (deps: QS7 ✅, QS9 ✅) **Input to photon is the first figure in the budget and the only one nothing has ever measured** — The present path was built to bound it and the one workload that exists cannot run ahead of the display, so the flags remain an argument rather than a number. → §QS86
 - 📋 **QS135** (deps: QS74 ✅) **Three settings are read, written and kept faithfully, and nothing acts on them** — The typeface, its size and the scrollback depth reach no pane, so a user who edits the file sees the theme change and the rest do nothing. → §QS135
 - 📋 **QS137** (deps: QS76 ✅) **The idle figure is measured on a window with no session and no render loop in it** — Zero core time over ten minutes is real and is not the connected-session number the budget will be read against, and nothing yet can put the client in that state. → §QS137
@@ -314,6 +314,13 @@
   half landed, which is the Windows OpenSSH agent and Pageant from 0.78 on. What is left
   is the shared-memory transport older Pageants speak, and a token-backed key is the
   case with no other route at all.
+
+## Done when — QS75
+
+- **The incumbent's start is timed beside this client's on the reference machine**
+  Settled by MobaXterm's process start to its first window, and to a local shell where
+  it can be read, timed on the same desk the same day as tools/Quickshell.Startup's run
+  and recorded in startup-h.md.
 
 ## Non-goals
 

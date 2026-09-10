@@ -40,7 +40,18 @@ public static class Entry
     {
         ArgumentNullException.ThrowIfNull(arguments);
 
+        // `--startup-report <file>` times this start and writes the milestones there once the shell
+        // is on screen — QS75's instrument, and first so that it sees everything after the runtime.
+        if (Given(arguments, "--startup-report") is { } report)
+        {
+            StartupTimeline.Arm(report);
+            StartupTimeline.Mark("main");
+        }
+
         Application application = new() { ShutdownMode = ShutdownMode.OnMainWindowClose };
+
+        StartupTimeline.Mark("application");
+
         MainWindow? window = null;
         PaneAttachment? terminal = null;
 
@@ -56,7 +67,12 @@ public static class Entry
 
         window = new MainWindow();
 
+        StartupTimeline.Mark("constructed");
+
         window.Show();
+
+        // The window exists and is on the desk, which is the half of a start a user sees first.
+        StartupTimeline.Mark("shown");
 
         // Only now, with something on screen. All of these are corrections to a window that is
         // already up: the settings file decides the theme, and no read here is on the way to the
@@ -248,6 +264,16 @@ public static class Entry
     /// a session sitting beside the one they are looking at.</para>
     /// </summary>
     private static TerminalLeaf? Pane(MainWindow window) => window.Current?.Focused;
+
+    /// <summary>The path a flag was given, or null where it was absent.</summary>
+    private static string? Given(string[] arguments, string flag)
+    {
+        int at = Array.IndexOf(arguments, flag);
+
+        return at >= 0 && at + 1 < arguments.Length && arguments[at + 1].Length > 0
+            ? arguments[at + 1]
+            : null;
+    }
 
     /// <summary>
     /// The number a flag was given, or null where it was absent or not a number.
