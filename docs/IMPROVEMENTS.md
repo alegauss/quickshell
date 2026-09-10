@@ -1768,28 +1768,6 @@ happened, so somebody who expected their sessions knows whether to look for them
 Falsified when a portable copy holding saved sessions installs into a profile with no
 settings folder, and the installed copy starts without them.
 
-### §QS194 A folder something is still reading
-
-Found by the suite on the fourth run of QS77's installer: moving the freshly copied
-`quickshell.new` into place was denied. Any handle open on a file inside a folder stops
-that folder being renamed, whatever its share mode - checked on this machine - and
-something almost always has one a moment after a copy: the virus scanner opens every
-executable it sees written, the search indexer follows it, and Explorer reads icons. The
-install then fails with a sentence about access, on a machine where nothing is wrong.
-
-The two renames that swap a new copy in, the one that puts the old copy back, and the
-deletions of what an install leaves beside the folder all meet it. Each is tried again
-for five seconds, a tenth of a second apart, before its failure is believed; a scanner
-lets go well inside that. What is still refused after five seconds is a real refusal - a
-file somebody has open in an editor, say - and it is reported as that.
-
-The suite reproduces it on purpose rather than waiting for the scanner: a file of the
-installed copy is held open, the way a scanner holds it, for most of a second while a
-newer copy installs over it, and again while it uninstalls.
-
-Falsified when an install or an uninstall fails because a file in the folder was held
-open for less than five seconds.
-
 ## Block I — An error a user can act on
 
 ### §QS128 A trace that carries both sides of the negotiation

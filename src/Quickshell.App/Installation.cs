@@ -38,6 +38,12 @@ public sealed class Installation
     /// <summary>What the Start menu shows when a pointer rests on the shortcut.</summary>
     private const string Description = "An SSH client for Windows";
 
+    /// <summary>How many times a folder is renamed or removed before a refusal is believed.</summary>
+    private const int Attempts = 50;
+
+    /// <summary>How long between those tries: fifty of them are five seconds.</summary>
+    private static readonly TimeSpan Pause = TimeSpan.FromMilliseconds(100);
+
     private readonly string _shortcuts;
     private readonly RegistryKey _hive;
     private readonly string _entry;
@@ -206,7 +212,7 @@ public sealed class Installation
             return false;
         }
 
-        Directory.Delete(Folder, recursive: true);
+        Discard(Folder);
 
         return true;
     }
@@ -315,19 +321,19 @@ public sealed class Installation
 
             if (Directory.Exists(Folder))
             {
-                Directory.Move(Folder, previous);
+                Patiently(() => Directory.Move(Folder, previous), Folder, "replaced");
             }
 
-            Directory.Move(staging, Folder);
+            Patiently(() => Directory.Move(staging, Folder), Folder, "replaced");
         }
         catch (Exception)
         {
             if (!Directory.Exists(Folder) && Directory.Exists(previous))
             {
-                Directory.Move(previous, Folder);
+                Patiently(() => Directory.Move(previous, Folder), Folder, $"put back from {previous}");
             }
 
-            Discard(staging);
+            Leave(staging);
 
             throw;
         }
@@ -380,7 +386,7 @@ public sealed class Installation
     {
         if (Directory.Exists(folder))
         {
-            Directory.Delete(folder, recursive: true);
+            Patiently(() => Directory.Delete(folder, recursive: true), folder, "removed");
         }
     }
 
@@ -394,14 +400,50 @@ public sealed class Installation
         {
             Discard(folder);
         }
-        catch (IOException)
+        catch (SetupException)
         {
-            // Something still has a file in it open; the next install or uninstall tries again.
+            // Something has kept a file in it open for the whole wait; the next install or
+            // uninstall tries again.
         }
-        catch (UnauthorizedAccessException)
+    }
+
+    /// <summary>
+    /// Renames or removes a folder, trying again for five seconds where something has a file in it
+    /// open (QS194).
+    ///
+    /// <para><b>Something usually has.</b> Any handle open on a file inside a folder stops the folder
+    /// being renamed, whatever its share mode, and a moment after a copy there nearly always is one:
+    /// the virus scanner opens every executable it sees written, the indexer follows it, Explorer
+    /// reads icons. All of them let go within a second or two, so a failure is believed only once it
+    /// has lasted longer than that — and is then said as what it is, rather than as a denied path.</para>
+    /// </summary>
+    private static void Patiently(Action change, string folder, string doing)
+    {
+        Exception? held = null;
+
+        for (int attempt = 0; attempt < Attempts; attempt++)
         {
-            // A file in it is read-only or not this user's; the same, for the same reason.
+            if (attempt > 0)
+            {
+                Thread.Sleep(Pause);
+            }
+
+            try
+            {
+                change();
+
+                return;
+            }
+            catch (Exception busy) when (busy is IOException or UnauthorizedAccessException)
+            {
+                held = busy;
+            }
         }
+
+        throw new SetupException(
+            $"{folder} could not be {doing}: something has kept a file in it open for "
+            + $"{Attempts * Pause.TotalSeconds:0} seconds. Close whatever is using it, and try again.",
+            held!);
     }
 
     private static string Full(string folder) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));

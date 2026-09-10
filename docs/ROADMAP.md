@@ -95,7 +95,6 @@
 - 📋 **QS190** (deps: —) **The window's constructor spends 230 ms of a 647 ms start building chrome the first frame does not show** — The tab strip and the find bar are built before the first paint although both are collapsed until somebody asks for them. → §QS190
 - 📋 **QS191** (deps: —) **The graphics device and the shell both wait for the window, so a start runs three slow things one after another** — Neither the device, the atlas and the shaders nor the pseudo-console needs a window, and each could be ready while WPF builds one. → §QS191
 - 📋 **QS192** (deps: —) **A portable copy that installs itself leaves its saved sessions and settings behind in the copy it came from** — Somebody who tried the archive portable and imported their sessions opens an installed copy with none of them, and no word of where they went. → §QS192
-- 🛠 **QS194** (deps: —) **An install fails outright when a virus scanner has one of its just-copied files open for a moment** — Any open handle inside a folder stops it being renamed, and the install swaps its copy in by renaming, on machines where something always reads new executables. → §QS194
 
 ## Block I — An error a user can act on
 

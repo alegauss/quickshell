@@ -164,6 +164,79 @@ public sealed class InstallationTests : IDisposable
     }
 
     /// <summary>
+    /// QS194: a file of the installed copy held open the way a virus scanner holds one — for most of
+    /// a second, sharing everything — is waited for, where it used to fail the install outright.
+    /// </summary>
+    [Fact]
+    public void AnInstallWaitsForAFileSomethingIsStillReading()
+    {
+        Installation installed = At();
+
+        installed.Install(Copy("first", ("quickshell.exe", "first"), ("scanned.dll", "old")), "1.0.0");
+
+        string second = Copy("second", ("quickshell.exe", "second"));
+        Stopwatch clock = Stopwatch.StartNew();
+
+        using (HoldFor(Path.Combine(installed.Folder, "scanned.dll"), TimeSpan.FromMilliseconds(800)))
+        {
+            installed.Install(second, "2.0.0");
+        }
+
+        Assert.Equal("second", File.ReadAllText(installed.Program));
+        Assert.True(clock.Elapsed >= TimeSpan.FromMilliseconds(500),
+                    "the install never met the held file, so this proves nothing about waiting for one");
+    }
+
+    /// <summary>
+    /// The same, met by an uninstall — and by a reader that does not share deletion, since one that
+    /// does is no obstacle: Windows takes the name away at once and lets the handle keep the file.
+    /// </summary>
+    [Fact]
+    public void AnUninstallWaitsForAFileSomethingIsStillReading()
+    {
+        Installation installed = At();
+
+        installed.Install(Copy("first", ("quickshell.exe", "first"), ("scanned.dll", "old")), "1.0.0");
+
+        Stopwatch clock = Stopwatch.StartNew();
+
+        using (HoldFor(Path.Combine(installed.Folder, "scanned.dll"), TimeSpan.FromMilliseconds(800),
+                       FileShare.Read))
+        {
+            Assert.True(installed.Uninstall(), "a copy this process was not running from was left to remove later");
+        }
+
+        Assert.False(Directory.Exists(installed.Folder), "the program folder stayed");
+        Assert.True(clock.Elapsed >= TimeSpan.FromMilliseconds(500),
+                    "the uninstall never met the held file, so this proves nothing about waiting for one");
+    }
+
+    /// <summary>
+    /// A file held for longer than the wait is a real refusal: it is said as one, and the copy that
+    /// was installed is still there, whole, with nothing of the new one beside it.
+    /// </summary>
+    [Fact]
+    public void AFileHeldLongerThanTheWaitLeavesTheInstalledCopyAsItWas()
+    {
+        Installation installed = At();
+
+        installed.Install(Copy("first", ("quickshell.exe", "first"), ("scanned.dll", "old")), "1.0.0");
+
+        string second = Copy("second", ("quickshell.exe", "second"));
+
+        using (HoldFor(Path.Combine(installed.Folder, "scanned.dll"), TimeSpan.FromSeconds(30)))
+        {
+            SetupException refused = Assert.Throws<SetupException>(() => installed.Install(second, "2.0.0"));
+
+            Assert.StartsWith($"{installed.Folder} could not be replaced: something has kept a file in it open for 5 seconds.",
+                              refused.Message, StringComparison.Ordinal);
+        }
+
+        Assert.Equal("first", File.ReadAllText(installed.Program));
+        Assert.False(Directory.Exists(installed.Folder + ".new"), "the new copy was left beside the old one");
+    }
+
+    /// <summary>
     /// The folder a copy uninstalls itself from goes once nothing holds it — here, the moment the
     /// program running from it exits, which it does after the call and not before.
     /// </summary>
@@ -277,6 +350,20 @@ public sealed class InstallationTests : IDisposable
         }
 
         return folder;
+    }
+
+    /// <summary>
+    /// A file opened for reading — by default the way a virus scanner opens one, sharing everything —
+    /// and let go after the time given, or when the returned handle is disposed, whichever is first.
+    /// </summary>
+    private static FileStream HoldFor(string file, TimeSpan time,
+                                      FileShare sharing = FileShare.ReadWrite | FileShare.Delete)
+    {
+        FileStream held = new(file, FileMode.Open, FileAccess.Read, sharing);
+
+        _ = Task.Delay(time, CancellationToken.None).ContinueWith(_ => held.Dispose(), TaskScheduler.Default);
+
+        return held;
     }
 
     /// <summary>A program running from a file for about as many seconds as asked, holding it open.</summary>
