@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using Quickshell.Replay;
 
 // Replays every captured stream through every consumer that exists, and writes the numbers to a
@@ -8,8 +9,49 @@ using Quickshell.Replay;
 //
 // It is not BenchmarkDotNet and deliberately not: a one-shot stream of this size does not fit that
 // iteration model. The microbenchmarks live next door in Quickshell.Benchmarks.
+//
+//   Quickshell.Replay [corpus] [--only cat-log:parse,cat-log:emulate] [--json <file>]
+//
+// `--only` replays just the pairs named, and then the results file is left alone: a table of two
+// rows written over the table of thirty-six would be a report that shrank because somebody asked a
+// narrower question. `--json` writes what was measured where a program can read it, which is how
+// the performance gate (QS79) reads it.
 
-string corpusDirectory = args.Length > 0 ? args[0] : Corpus.Find();
+string? only = null;
+string? json = null;
+string? corpusArgument = null;
+
+// Every argument accounted for. A flag this harness does not know, or one given no value, is refused
+// rather than ignored: ignored, it would fall through to a full run and write over the results file
+// that `--only` exists to leave alone.
+for (int at = 0; at < args.Length; at++)
+{
+    switch (args[at])
+    {
+        case "--only" when at + 1 < args.Length:
+            only = args[++at];
+            break;
+
+        case "--json" when at + 1 < args.Length:
+            json = args[++at];
+            break;
+
+        case string flag when flag.StartsWith("--", StringComparison.Ordinal):
+            Console.Error.WriteLine($"{flag} is not a flag this harness takes, or it was given no value. "
+                                    + "It takes a corpus folder, --only <stream:consumer,...> and --json <file>.");
+            return 2;
+
+        case string folder when corpusArgument is null:
+            corpusArgument = folder;
+            break;
+
+        default:
+            Console.Error.WriteLine($"two corpus folders were given, {corpusArgument} and {args[at]}; a run replays one.");
+            return 2;
+    }
+}
+
+string corpusDirectory = corpusArgument ?? Corpus.Find();
 IReadOnlyList<Corpus> streams = Corpus.Load(corpusDirectory);
 
 if (streams.Count == 0)
@@ -18,16 +60,33 @@ if (streams.Count == 0)
     return 1;
 }
 
-using RenderConsumer renderConsumer = new();
+HashSet<string>? wanted = only is null
+    ? null
+    : new HashSet<string>(only.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                          StringComparer.Ordinal);
+
+// Built only where it is asked for: it opens a device and a window, which a question about the
+// parser has no business paying for.
+using RenderConsumer? renderConsumer =
+    wanted is null || wanted.Any(pair => pair.EndsWith(":render", StringComparison.Ordinal))
+        ? new RenderConsumer()
+        : null;
 
 // In order of how much of a terminal each one is: the floor, the state machine, the real terminal,
 // and the glyph work. `emulate` sits between parse and render on purpose - it is what a session
 // costs, and until QS141 nothing here measured it.
-IStreamConsumer[] consumers =
+List<IStreamConsumer> consumers =
 [
     new EscapeScanConsumer(), new ParseConsumer(), new DecodeConsumer(), new SegmentConsumer(),
-    new EmulateConsumer(), renderConsumer,
+    new EmulateConsumer(),
 ];
+
+if (renderConsumer is not null)
+{
+    consumers.Add(renderConsumer);
+}
+
+List<Dictionary<string, object>> measured = [];
 
 const int ChunkSize = 64 * 1024;
 const int Warmups = 1;
@@ -50,6 +109,11 @@ foreach (Corpus stream in streams)
 {
     foreach (IStreamConsumer consumer in consumers)
     {
+        if (wanted is not null && !wanted.Contains($"{stream.Name}:{consumer.Name}"))
+        {
+            continue;
+        }
+
         double best = 0;
         long bestAllocated = 0;
         int bestGen0 = 0;
@@ -100,6 +164,15 @@ foreach (Corpus stream in streams)
         report.AppendLine(CultureInfo.InvariantCulture,
             $"| `{stream.Name}` | {stream.Megabytes:F2} | {consumer.Name} | {best:F0} | " +
             $"{bestAllocated / Math.Max(0.001, stream.Megabytes) / 1024.0:F1} | {bestGen0} |");
+
+        measured.Add(new Dictionary<string, object>
+        {
+            ["stream"] = stream.Name,
+            ["consumer"] = consumer.Name,
+            ["megabytesPerSecond"] = best,
+            ["allocatedKilobytesPerMegabyte"] = bestAllocated / Math.Max(0.001, stream.Megabytes) / 1024.0,
+            ["gen0"] = bestGen0,
+        });
 
         Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
             "{0,-16} {1,8:F2} MB  {2,-14} {3,8:F0} MB/s  {4,7:F1} KB/MB",
@@ -206,6 +279,27 @@ foreach (IStreamConsumer consumer in consumers)
 {
     report.AppendLine();
     report.AppendLine(CultureInfo.InvariantCulture, $"- `{consumer.Name}` - {consumer.What}");
+}
+
+if (json is not null)
+{
+    File.WriteAllText(json, JsonSerializer.Serialize(measured));
+}
+
+if (wanted is not null)
+{
+    // Every pair asked for, or a refusal naming the ones that were not there: a list with a misspelt
+    // pair in it is a question half answered, and exiting 0 on it would pass the half off as whole.
+    string[] missed = [.. wanted.Where(pair => !measured.Any(one => $"{one["stream"]}:{one["consumer"]}" == pair))
+                                .Order(StringComparer.Ordinal)];
+
+    if (missed.Length > 0)
+    {
+        Console.Error.WriteLine($"--only named what this corpus and these consumers do not have: {string.Join(", ", missed)}");
+        return 1;
+    }
+
+    return 0;
 }
 
 string resultsDirectory = Path.Combine(Path.GetDirectoryName(corpusDirectory)!, "..", "results");

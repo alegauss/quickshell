@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.Gate.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The gate's judging, which is arithmetic and text and can be read without a desk. Its
+         measuring is the tool's own and is run where the figures are defined, not here. -->
+    <ProjectReference Include="..\..\tools\Quickshell.Gate\Quickshell.Gate.csproj" />
+  </ItemGroup>
+
+</Project>

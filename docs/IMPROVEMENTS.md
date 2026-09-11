@@ -1596,25 +1596,25 @@ Falsified when a watched counter rises across the run and the run is called a pa
 
 ### §QS79 Making the number a gate instead of a report
 
-The harness and the budgets have both existed for a long time by this point, and the
-numbers have been watched long enough for their noise to be known. That is the
-precondition this line waited for: a gate built on a measurement nobody trusts gets
-disabled inside a month, and then there is no gate and no measurement.
+The measurements had been watched long enough for their noise to be known, which is the
+precondition this line waited for: a gate built on a number nobody trusts is disabled
+inside a month, and then there is no gate and no measurement.
 
-CI runs parse throughput, frame cost, the allocation assertion and cold start on a
-consistent machine, and fails a build that regresses beyond a threshold. The threshold
-is derived from observed variance rather than chosen, and it is written down.
+The first half is built and is described where it runs: `run-perf-gate.cmd`, and
+`release.cmd` before it archives, hold `parse`, `emulate` and warm `start` on the
+machine that took the baseline. Each threshold is derived from that baseline's own
+samples and written beside them. A worsening past it fails; one a commit named with a
+`Performance-Moved` trailer passes once and then owes a new baseline before a release;
+every judged run is a row in `benchmarks/results/gate-<machine>.md`. PERFORMANCE.md says
+how, and what it does not hold.
 
-A deliberate regression is allowed and is an explicit act: a marker in the commit naming
-which figure moved and why, so the history records the trade that was made. Silence is
-what is refused here, not the regression itself.
+What is left needs a machine this repository does not have: the same gate run by CI on
+every commit, on a runner that is the same machine each time, so drift is read per
+commit without anybody remembering to run it. A hosted runner is a different machine
+every run. Frame cost joins the gate once QS196 has measured it.
 
-Results are published per commit, so gradual drift shows as a trend. The failure a
-threshold cannot catch is one per cent on every commit for a year, and only the trend
-reveals it.
-
-The allocation assertion is the strictest of the four because it is exact rather than
-statistical: zero is zero, and no noise threshold applies to it.
+The allocation assertion is not part of it: it is exact rather than statistical, zero is
+zero, and the suite checks it on every run already.
 
 Falsified when the gate is disabled to land a change and the disabling is not itself a
 filed line.
@@ -1767,6 +1767,52 @@ happened, so somebody who expected their sessions knows whether to look for them
 
 Falsified when a portable copy holding saved sessions installs into a profile with no
 settings folder, and the installed copy starts without them.
+
+### §QS196 A frame, timed on both sides
+
+Found building QS79's gate. Figure 3 of the budget is steady-state frame cost: one
+filled 200 by 50 grid redrawn continuously, under 2 ms of GPU and CPU time on the
+reference machine, and never the first frame. Nothing in this repository measures it.
+The replay harness's `render` arm reports megabytes of stream per second through the
+glyph path, which is a throughput and folds parsing in; the render tests assert what is
+drawn and that an idle pane draws nothing. So the gate holds parse, emulate and start,
+and the figure a second pane most depends on is the one it cannot hold.
+
+The measurement belongs in the replay harness beside `render`, as its own arm: a grid
+filled once from a real stream and then drawn a few thousand times without new input,
+timed on the CPU around each `Draw` and on the GPU with timestamp queries around the
+same work, so the two halves of the figure are read separately. It never presents, for
+the reason the render arm never does: a vsync-locked present measures the display. The
+report gives the median and the 99th percentile per frame, since a frame budget is
+broken by the slow frame and not by the average one.
+
+Once it exists the gate reads it as a fourth figure, lower being better, with a
+threshold derived from its samples like the others.
+
+Falsified when figure 3 is quoted anywhere without a run of that arm behind it.
+
+### §QS197 A pass too short to time on a hybrid CPU
+
+Found taking QS79's first baseline. Seven replays of `cat-log` through the `parse` arm
+read 1,032 to 1,191 MB/s, so the threshold derived from them is 20.9 per cent: the gate
+lets a parser regression of a fifth through without a word. The same seven runs put
+`emulate` within 6.4 per cent and the warm start within 5.2, so the noise is this arm's
+and not the machine's.
+
+The arm is short. At 1.1 GB/s the 32 MB stream takes 28 ms a pass, and the harness keeps
+the best of five passes - long enough to be timed, short enough that where the thread
+runs decides the number. The reference machine's i7-14700 has eight performance cores
+and twelve efficient ones, and a pass the scheduler places on an efficient core is a
+pass a fifth slower with nothing about the parser changed.
+
+Two moves, measured one at a time so each earns its place. The replay runs with its
+affinity on one performance core and at high priority, which is how the scheduler is
+kept out of the figure. And the parse arm replays the stream several times per timed
+pass, so a pass lasts long enough that a moment's interruption is a small part of it.
+Then the baseline is taken again, and this line says what the threshold became.
+
+Falsified when a baseline's derived threshold for `parse` is still above ten per cent on
+the reference machine.
 
 ## Block I — An error a user can act on
 

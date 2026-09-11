@@ -1,8 +1,10 @@
 name: CI
 
-# Builds and tests on every push. It deliberately does not yet gate on performance: there
-# is nothing to measure until the harness exists, and the pipeline is here now so that
-# adding that step later is a step and not a project.
+# Builds and tests on every push. It deliberately does not gate on performance: a hosted
+# runner is a different machine every time, and a figure only means something against the
+# desk it was measured on. The gate is run-perf-gate.cmd, on the machine that took its
+# baseline, and release.cmd runs it before it archives (QS79). A runner that is always the
+# same machine is what would move it here.
 
 on:
   push:

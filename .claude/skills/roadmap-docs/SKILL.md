@@ -261,6 +261,12 @@ shortcut and the uninstall entry, starts the installed copy, and removes it thro
 command. An install on this machine is an app in its owner's list, so an installer change is proven
 there and not here.
 
+**`.\run-perf-gate.cmd` is the performance gate, and `release.cmd` runs it before it archives.** It
+times parse and emulate throughput and warm start against `benchmarks\gate\<machine>.json`, and fails
+a figure worse than that baseline's own noise allows unless a commit since then carries
+`Performance-Moved: <figure> - <why>`. `--baseline` takes a new one, which is committed. It starts the
+client on the desk it runs on, so it runs on the reference machine and nowhere else.
+
 A terminal client is judged on behaviour under a real connection, so its own tasks are held to that:
 
 - **A claim is proven by a run, against a real endpoint** — a live sshd, a container, a jump host,

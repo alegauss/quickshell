@@ -43,6 +43,7 @@ public static class Startup
                   --runs <n>       how many starts (default 10)
                   --label <name>   what to call this build in the report
                   --out <file>     append the report here as well as printing it
+                  --json <file>    write every start's milestones here, for a program to read
 
                 Each start is timed by the client itself, from its creation to the first frame that
                 carries the shell's own output.
@@ -96,6 +97,18 @@ public static class Startup
             File.AppendAllText(file, report + Environment.NewLine);
         }
 
+        // Every start and not the summary, first included and in order: the performance gate
+        // (QS79) derives its threshold from how far the warm starts spread, which a median hides.
+        if (Argument(arguments, "--json") is { } json)
+        {
+            File.WriteAllText(json, JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                ["label"] = label,
+                ["launch"] = launch,
+                ["starts"] = starts,
+            }));
+        }
+
         return 0;
     }
 
@@ -124,7 +137,27 @@ public static class Startup
                 Thread.Sleep(10);
             }
 
-            return JsonSerializer.Deserialize<Dictionary<string, double>>(File.ReadAllText(report));
+            // Read as soon as it can be, which is not always as soon as it exists: the client moves it
+            // into place whole, and a virus scanner opening a file that has just appeared is enough
+            // to refuse the first read of it. Found by the performance gate's first failing run.
+            while (true)
+            {
+                try
+                {
+                    return JsonSerializer.Deserialize<Dictionary<string, double>>(File.ReadAllText(report));
+                }
+                catch (IOException)
+                {
+                    // Past the same thirty seconds a report that never appears gets, it is a start that
+                    // reported nothing, and the caller says so rather than this dying on the read.
+                    if (waited.Elapsed > TimeSpan.FromSeconds(30))
+                    {
+                        return null;
+                    }
+
+                    Thread.Sleep(10);
+                }
+            }
         }
         finally
         {
@@ -139,10 +172,31 @@ public static class Startup
                 // Already gone.
             }
 
-            File.Delete(report);
+            Gone(report);
 
             // Long enough for the console host the shell ran under to go too.
             Thread.Sleep(1_000);
+        }
+    }
+
+    /// <summary>
+    /// Deletes a start's report, waiting out whatever is still reading it, and leaves it in the
+    /// temporary folder rather than fail a run of starts over one file.
+    /// </summary>
+    private static void Gone(string report)
+    {
+        for (int attempt = 0; attempt < 50; attempt++)
+        {
+            try
+            {
+                File.Delete(report);
+
+                return;
+            }
+            catch (IOException)
+            {
+                Thread.Sleep(100);
+            }
         }
     }
 

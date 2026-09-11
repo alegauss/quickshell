@@ -19,6 +19,14 @@
   signs and refuses a signature this machine does not verify, and without one it refuses to run
   unless -Unsigned says so - and then the archive's own name says so too, where nobody can miss it.
 
+  And it does not ship a regression by accident (QS79). Once the client is published, the
+  performance gate times that build's start, and the parse and emulate arms of the same source
+  through the replay harness, against this machine's baseline. A figure worse than the baseline's
+  own noise allows refuses the release before anything is signed or zipped. So does one a commit
+  since the baseline said was meant: that trade is allowed, and a new baseline is owed before the
+  release, or the trailer would go on excusing the figure by any amount. A machine with no baseline
+  is refused too, unless -Ungated says so.
+
 .PARAMETER Certificate
   The thumbprint of a code-signing certificate in the current user's store. Its private key may be
   on a token; signtool asks the token for its PIN itself.
@@ -30,6 +38,10 @@
 .PARAMETER Unsigned
   Build without signing. The archive is named ...-unsigned.zip, so it cannot pass for a release.
 
+.PARAMETER Ungated
+  Build without running the performance gate - on a machine that has no baseline, say. The run says
+  UNGATED where it would have printed the verdict.
+
 .PARAMETER Output
   Where the archive and SHA256SUMS.txt go: artifacts\release unless given, which .gitignore covers.
 #>
@@ -40,6 +52,8 @@ param(
     [string] $Timestamp = 'http://timestamp.digicert.com',
 
     [switch] $Unsigned,
+
+    [switch] $Ungated,
 
     [string] $Output
 )
@@ -107,6 +121,28 @@ if (Test-Path -LiteralPath $publish) { Remove-Item -LiteralPath $publish -Recurs
 & dotnet publish $project --configuration Release --runtime win-x64 --self-contained true `
     -p:PublishReadyToRun=true --output $publish --nologo -v quiet
 if ($LASTEXITCODE -ne 0) { Refuse 'the publish failed' }
+
+if ($Ungated) {
+    Write-Host '  UNGATED    the performance gate was not run on this build' -ForegroundColor Yellow
+}
+else {
+    # The build just published, timed where it lies: the start the gate measures is the start of the
+    # archive about to be made, before a marker or a signature is added to it. Built first and on its
+    # own, because a gate that did not compile has judged nothing, and `dotnet run` would hand that
+    # back as the exit code that means a figure got worse.
+    Write-Host '  gating     against this machine''s baseline'
+    & dotnet build (Join-Path $root 'tools\Quickshell.Gate\Quickshell.Gate.csproj') -c Release --nologo -v quiet
+    if ($LASTEXITCODE -ne 0) { Refuse 'the performance gate did not build, so this build was not judged' }
+
+    & (Join-Path $root 'tools\Quickshell.Gate\bin\Release\net10.0-windows\Quickshell.Gate.exe') `
+        --client (Join-Path $publish 'quickshell.exe')
+    switch ($LASTEXITCODE) {
+        0 { }
+        1 { Refuse 'the performance gate found a figure worse than its baseline allows' 'Find what cost it, or say in the commit that made it: Performance-Moved: <figure> - <what it bought>.' }
+        2 { Refuse 'a commit since the baseline traded a figure, and no baseline has been taken since' 'Take one at this commit with run-perf-gate.cmd --baseline, commit it, and release again.' }
+        default { Refuse 'the performance gate could not judge this build' 'What it printed above says why; -Ungated builds without it, and says so.' }
+    }
+}
 
 if ($Certificate) {
     # This client's own files. The runtime's are Microsoft's, already signed by Microsoft.

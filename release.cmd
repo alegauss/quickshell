@@ -8,6 +8,9 @@ rem
 rem A release is signed, so without a certificate it refuses unless -Unsigned is given - and then the
 rem archive is named ...-unsigned.zip, which is how an unsigned build cannot pass for a release.
 rem
+rem And it is gated: the published build is timed by run-perf-gate.cmd's gate against this machine's
+rem baseline, and a regression nothing explained refuses it (QS79). -Ungated skips that, and says so.
+rem
 rem The archive and its checksum land in artifacts\release\.
 setlocal
 

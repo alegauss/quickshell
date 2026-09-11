@@ -117,6 +117,7 @@
 - ✅ **QS75 (this client's own start)** **Nothing has been measured starting, so the cold start figure is an aspiration** — Timed starts on the reference machine reach the prompt in 647 ms warm for the self-contained ReadyToRun publish, 230 of them in the window's constructor, per startup-h.md.
 - ✅ **QS77 (install and the portable archive)** **There is no way to install this client, so it can only be run from a build directory** — The release archive runs portable or installs itself for one user with no administrator prompt and uninstalls keeping settings, proven on a guest by run-install-vm.cmd.
 - ✅ **QS194** **An install fails outright when a virus scanner has one of its just-copied files open for a moment** — Each rename and removal of the program folder is tried for five seconds, so a scanner reading a just-copied file no longer fails an install, and a longer hold is named.
+- ✅ **QS79 (parse, emulate and start, gated locally)** **A change that costs performance is caught by whoever happens to notice it** — run-perf-gate.cmd and release.cmd fail a build whose parse, emulate or warm start is worse than the baseline's own noise allows, unless a commit's trailer says so.
 
 ## Block I — An error a user can act on
 

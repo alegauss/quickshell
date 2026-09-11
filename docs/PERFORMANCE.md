@@ -95,6 +95,39 @@ One connected session at default scrollback.
 window opens. Block H also asks that this figure stay **flat** across a seventy-two-hour
 soak: a number that passes on minute one and drifts is a leak that passed.
 
+## How a regression is caught
+
+**`run-perf-gate.cmd` fails when a figure gets worse than its own noise explains**, and
+`release.cmd` runs it before it archives, so a regression fails a release rather than reaching one.
+It holds two of the six figures today, `parse` (the arm figure 2 governs) and `start` (figure 5,
+warm), and one figure the budget has no number for, `emulate`, which is what a session actually
+costs. `start` is timed on the very build being archived; `parse` and `emulate` are the same source
+replayed through the harness in Release, so a setting that exists only in the published client does
+not reach them.
+
+**The allowance is measured, not chosen.** `run-perf-gate.cmd --baseline` samples `parse` and
+`emulate` seven times each and starts the client eleven times, dropping the first start as the cold
+one, so `start` has ten samples. Each figure's allowance is the larger of three robust standard
+deviations and the whole spread its samples showed, and that allowance is written into
+`benchmarks/gate/<machine>.json` as the threshold, beside the median and every sample it came from.
+The file is committed. A check replays three times and starts the client seven times (six judged),
+compares medians, and adds a row to `benchmarks/results/gate-<machine>.md` whatever the verdict: a
+threshold catches a step, and only that file shows one per cent a month.
+
+**A regression that was meant is said, not hidden.** The commit that trades a figure for something
+carries a trailer naming it, `Performance-Moved: start - the find bar is built up front`, and the
+gate lets that figure through, naming the commit. The excuse is one-shot: `release.cmd` refuses to
+archive until a new baseline has been taken at or after that commit, because a trailer left in range
+would go on excusing the figure by any amount. Switching the gate off is `release.cmd -Ungated`,
+which prints that it was.
+
+What it does not hold, said plainly: figure 3 has no measurement at all yet (QS196), figure 1 has
+none either (QS86), figures 4 and 6 are measured over minutes and days by their own tools rather
+than in seconds, and the zero-allocation claim is exact rather than statistical and is checked by the
+suite on every run. The parse figure is noisy enough on the reference machine that its allowance is
+a fifth (QS197). Only this machine has a baseline, so a check anywhere else is refused rather than
+judged against somebody else's desk.
+
 ## What is deliberately not budgeted here
 
 Transfer throughput for SCP and SFTP, and connection setup time, are bounded by the network

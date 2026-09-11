@@ -18,19 +18,21 @@ dotnet run --project benchmarks/Quickshell.Benchmarks -c Release -- --filter "*"
   because a run that got faster while allocating more has borrowed from a collection that will
   happen during somebody's `vim` session.
 
-**Results are committed** so two runs months apart on the same machine are comparable. **CI does
-not gate on them**, deliberately: a measurement has to be trusted before it is allowed to fail a
-build, and that is a later line.
+**Results are committed** so two runs months apart on the same machine are comparable.
 
-## What is measured today, and what is not
+**The performance gate runs this harness itself and does not read those files** (QS79).
+`run-perf-gate.cmd` replays `cat-log` through `parse` and `emulate` with
+`--only cat-log:parse,cat-log:emulate --json <file>`, which writes what a program can read and leaves
+`results/replay-<machine>.md` alone. It judges the figures against its own baseline,
+`gate/<machine>.json`, and records each run in `results/gate-<machine>.md`; a new replay results file
+moves neither. See [PERFORMANCE.md](../docs/PERFORMANCE.md#how-a-regression-is-caught). CI does not
+run it: a hosted runner is a different machine every time, and a figure only means something against
+the desk it was taken on.
 
-Each stream is meant to be replayed **twice** — headless, which measures the parser alone, and
-through the whole pipeline with a renderer, which measures what coalescing saves. The gap between
-those two is the most informative figure this project will produce.
+## What is measured today
 
-**Neither consumer exists yet.** There is no parser and no renderer, so `IStreamConsumer` has one
-implementation: `escape-scan`, which touches every byte and counts `ESC`. That is not either arm —
-it is the **floor**, and its value is that it is a ceiling. A parser at 300 MB/s on a stream whose
-floor is 1,500 MB/s has spent four fifths of the budget on itself, and without this number nobody
-could say so. The results file names the empty arms rather than reporting one number as if it were
-the pair.
+Six consumers, in order of how much of a terminal each one is, so consecutive arms differ by one
+stage: `escape-scan` (the floor, which no parser can beat), `parse` (the state machine alone),
+`decode`, `segment`, `emulate` (the real `Emulator`, which is what a session costs) and `render` (the
+glyph path). What each one adds, and how to read the gap between them, is written under *Reading these
+numbers* in `results/replay-<machine>.md`, beside the figures it explains.
