@@ -79,13 +79,13 @@ public sealed record ColourScheme
     }
 
     /// <summary>Default text.</summary>
-    public Rgb Foreground { get; init; } = new(214, 219, 228);
+    public Rgb Foreground { get; init; } = Brand.Ink;
 
     /// <summary>The ground behind it.</summary>
-    public Rgb Background { get; init; } = new(16, 18, 24);
+    public Rgb Background { get; init; } = Brand.Ground;
 
     /// <summary>The cursor. Where a file omits it, it is the foreground — see the reference.</summary>
-    public Rgb Cursor { get; init; } = new(220, 220, 220);
+    public Rgb Cursor { get; init; } = Brand.Cursor;
 
     /// <summary>
     /// Every colour this scheme paints text in that cannot be read against its own background.

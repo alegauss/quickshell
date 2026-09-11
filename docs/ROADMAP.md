@@ -40,6 +40,7 @@
 - 📋 **QS158** (deps: QS31 ✅) **Nothing says how far back the view is, so a reader who scrolled has no idea where they are or that output arrived** — QS31 gave the viewport a wheel and a find and left it with no indicator, and the reading it already answers reaches nobody. → §QS158
 - 📋 **QS177** (deps: —) **The strip past the last whole cell is never painted, so every pane has a black band at its right and bottom edges** — No instance covers those pixels and nothing clears the target, so they come back black on every scheme, and on a light one the band is plain to see. → §QS177
 - 📋 **QS183** (deps: —) **A paste pressed while another process holds the clipboard open does nothing and says nothing** — Phone Link and WSLg's bridge open the clipboard just after every change, so a paste landing then reads empty and the keystroke is simply lost. → §QS183
+- 📋 **QS198** (deps: —) **A scheme's cursor colour and OSC 12 are stored and never drawn, so every pane's cursor is the same grey** — The renderer draws a process-wide constant and never reads the palette's cursor, while SETTINGS.md tells users a scheme sets it. → §QS198
 
 ## Block D — The tree a user organises work in
 
@@ -69,7 +70,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS83** (deps: QS82 ✅, QS46 ✅) **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — The design system already exists in two shipped clients, so what is decided here is whether it is borrowed whole or rediscovered a window at a time. → §QS83
 - 📋 **QS126** (deps: QS121) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126
 - 📋 **QS151** (deps: QS116 ✅) **A reconnecting session makes a new damage signal per connection, so a pane asleep on the first never repaints** — QS126 wires this up and inherits a window frozen at whatever frame it drew first. → §QS151
 - 📋 **QS152** (deps: QS116 ✅) **A shell that exits leaves the window holding its last frame, with nothing saying the session ended** — Typing exit is the ordinary way a session ends, and the client that answers it with a frozen picture reads as hung. → §QS152
@@ -82,6 +82,7 @@
 - 📋 **QS172** (deps: —) **A user looking for help presses Ctrl+Shift+F1 and gets a defect report** — F1 is where a person looks for help, this client binds it to collecting a diagnostic bundle, and the keys reference it should open is a file in the repository. → §QS172
 - 📋 **QS174** (deps: —) **A settings value the client could not use is not mentioned anywhere the user will look** — A mistyped scheme path, an unreadable scheme file and a settings file that will not parse all load as the defaults in silence, and the client looks broken rather than misconfigured. → §QS174
 - 📋 **QS178** (deps: —) **Five command-line flags exist and no page names them, so a script author finds them by reading the source** — The client has no menu, so the command line is how another program asks it for anything, and a surface nobody documented is one nobody finds. → §QS178
+- 📋 **QS199** (deps: —) **The test that says a chrome theme leaves the terminal's colours alone checks a palette nothing draws with** — Appearance.Palette is a second model of the terminal's colours that no running code reads; the colours a pane draws come from Settings.Colours. → §QS199
 
 ## Block H — The reason to leave the incumbent
 
@@ -97,6 +98,7 @@
 - 📋 **QS192** (deps: —) **A portable copy that installs itself leaves its saved sessions and settings behind in the copy it came from** — Somebody who tried the archive portable and imported their sessions opens an installed copy with none of them, and no word of where they went. → §QS192
 - 📋 **QS196** (deps: —) **Figure 3 of the budget, steady-state frame cost, is measured by nothing, so no gate can hold it** — The render arm reports stream throughput with parsing folded in, and no harness times one full grid drawn again and again on the CPU and the GPU. → §QS196
 - 📋 **QS197** (deps: —) **The parse figure spreads by a fifth between runs on the reference machine, so the gate lets a regression that big pass** — A 28 ms pass on a CPU with performance and efficient cores is timed wherever the scheduler put it, which moves the number more than the parser does. → §QS197
+- 📋 **QS200** (deps: —) **The release gate times parse and emulate on the replay harness's build, not on the assemblies being archived** — A runtime setting that exists only in the published client, such as tiered compilation, would slow what ships while the gate reports the figures held. → §QS200
 
 ## Block I — An error a user can act on
 

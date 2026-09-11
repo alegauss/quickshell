@@ -37,11 +37,7 @@ public readonly record struct TerminalPalette(string Name, Rgb Foreground, Rgb B
     /// which is what a terminal has looked like since terminals were furniture.
     /// </summary>
     public static TerminalPalette Default { get; } = new(
-        "quickshell",
-        new Rgb(214, 219, 228),
-        new Rgb(16, 18, 24),
-        new Rgb(220, 220, 220),
-        new Rgb(52, 78, 120));
+        "quickshell", Brand.Ink, Brand.Ground, Brand.Cursor, Brand.Selection);
 }
 
 /// <summary>

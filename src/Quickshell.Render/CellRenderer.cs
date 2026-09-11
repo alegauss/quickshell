@@ -130,20 +130,16 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
     public CursorBlink Blink { get; } = new();
 
     /// <summary>The cursor's colour, which a block cursor inverts the glyph against.</summary>
-    public Rgb CursorColour { get; set; } = new(220, 220, 220);
+    public Rgb CursorColour { get; set; } = Brand.Cursor;
 
     /// <summary>The background a selected cell takes.</summary>
-    public Rgb SelectionColour { get; set; } = new(52, 78, 120);
+    public Rgb SelectionColour { get; set; } = Brand.Selection;
 
     /// <summary>
-    /// The edge a pane is drawn with while it receives what is typed into another.
-    ///
-    /// <para><b>One colour and not the scheme's</b>, because what it has to be is unmistakable on
-    /// every scheme at once: a mark that disappears against somebody's background is a mode that
-    /// sends keystrokes to a host without saying so. This orange keeps better than three to one
-    /// against white and better than five to one against black.</para>
+    /// The edge a pane is drawn with while it receives what is typed into another: one colour and not
+    /// the scheme's, for the reason <see cref="Brand.Outline"/> gives.
     /// </summary>
-    public Rgb OutlineColour { get; set; } = new(232, 89, 12);
+    public Rgb OutlineColour { get; set; } = Brand.Outline;
 
     /// <summary>
     /// How wide that edge is, in pixels: a quarter of a cell, and never under two.

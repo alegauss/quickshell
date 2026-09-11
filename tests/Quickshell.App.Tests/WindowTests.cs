@@ -132,6 +132,30 @@ public sealed class WindowTests : IDisposable
     }
 
     /// <summary>
+    /// QS83: a window this one opened follows a change of theme along with it, rather than keeping
+    /// the one it was built with — two windows of one client painted two ways is the drift the design
+    /// system exists to stop.
+    /// </summary>
+    [Fact]
+    public void AnOpenBrowserFollowsAChangeOfTheme()
+    {
+        (ThemeMode before, ThemeMode after) = OnStaThread(() =>
+        {
+            MainWindow window = new() { ShowsBrowser = _ => { } };
+
+            FileBrowser browser = window.BrowseFiles();
+            ThemeMode opened = browser.ThemeMode;
+
+            window.Apply(Settings.Default with { Theme = ChromeTheme.Dark });
+
+            return (opened, browser.ThemeMode);
+        });
+
+        Assert.Equal(ThemeMode.System, before);
+        Assert.Equal(ThemeMode.Dark, after);
+    }
+
+    /// <summary>
     /// The mistake this design names: a user with a favourite scheme wants it under either chrome.
     /// Changing one must not touch the other, in the model or in the window.
     /// </summary>

@@ -81,12 +81,7 @@ public sealed class MainWindow : Window
         MinWidth = 320;
         MinHeight = 200;
 
-        ThemeMode = Appearance.Theme switch
-        {
-            ChromeTheme.Light => ThemeMode.Light,
-            ChromeTheme.Dark => ThemeMode.Dark,
-            _ => ThemeMode.System,
-        };
+        ThemeMode = Theme.Mode(Appearance.Theme);
 
         _tabs.Visibility = Visibility.Collapsed;
         _find.Visibility = Visibility.Collapsed;
@@ -980,12 +975,21 @@ public sealed class MainWindow : Window
 
         Settings = settings;
 
-        ThemeMode = settings.Theme switch
+        ThemeMode = Theme.Mode(settings.Theme);
+
+        // And every window this one has open, not only the ones it opens next: a browser left open
+        // across a change of theme would otherwise keep the one it was built with, which is two
+        // windows of one client painted two ways. The browser is named as well as owned, because a
+        // browser opened before this window was shown has no owner to be found through.
+        foreach (Window owned in OwnedWindows)
         {
-            ChromeTheme.Light => ThemeMode.Light,
-            ChromeTheme.Dark => ThemeMode.Dark,
-            _ => ThemeMode.System,
-        };
+            owned.ThemeMode = ThemeMode;
+        }
+
+        if (_browser is { } browser)
+        {
+            browser.ThemeMode = ThemeMode;
+        }
 
         // Every pane that is already open, and not only the ones opened after this. A font size that
         // needs a restart is a font size nobody experiments with, and experimenting is the entire

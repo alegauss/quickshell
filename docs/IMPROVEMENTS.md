@@ -775,6 +775,19 @@ send what it holds.
 Falsified when a paste pressed while another process holds the clipboard for less than a
 tenth of a second sends nothing.
 
+### §QS198 A cursor colour that reaches the pane
+
+Found while shipping QS83. ColourScheme.ApplyTo writes the scheme's cursor into the
+pane's Palette, and OSC 12 writes it there too, but CellRenderer draws with its own
+CursorColour, which nothing in src sets, so every pane's cursor is Brand.Cursor whatever
+the scheme or the host asked for. docs/SETTINGS.md says a scheme sets the cursor colour,
+which is not true today. The built-in scheme is also inconsistent with a scheme file: a
+file that omits its cursor gets the foreground, while the built-in one's cursor is a
+different grey. The move is for the view to hand the palette's cursor to the renderer
+each frame, the way cell colours already travel, with a test that sets a scheme's cursor
+and reads the colour a block cursor was drawn with. Falsified when a scheme or OSC 12
+sets the cursor and the drawn cursor is not that colour.
+
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine
@@ -1210,32 +1223,6 @@ Falsified when a hundred connects through the proxy all receive a well-formed re
 
 ## Block G — The clean interface, defended
 
-### §QS83 Borrowing a design system rather than rediscovering one
-
-Two shipped clients in this family have already answered this, and what they share is a
-pattern rather than a library - which is the only reason it can be borrowed at all.
-
-Colour is declared once as bytes - freewilly's `Palette.cs`, claude-tray's `Brand.cs` -
-because no single type serves every edge: the tray icon is GDI+ and wants a
-`System.Drawing.Color`, the window is WPF and wants a frozen `Brush`, and markup wants
-something `{x:Static}` can reach. Each edge converts. One `Theme.cs` makes the
-application and merges one `Theme.xaml`; `ThemeMode="System"` stays on each window and
-never moves to the application or to code, which freewilly settled with four captures.
-`RowStyle` shapes a row, and each screen is a page in a page window.
-
-quickshell adds a third edge to the colour rule and nothing else: the pane is D3D11 and
-wants floats, so the same bytes feed the brush, the icon and the clear colour, and the
-terminal's own palette and the chrome's accent stop being two decisions.
-
-The boundary is where the pane starts. The grid is D3D11 and a non-goal forbids WPF text
-in it, so the design system covers tabs, settings, the palette, the session tree and
-every dialog, and stops at the pane's edge.
-
-One consequence is already measured. With a child HWND per pane, anything over a pane
-must be a popup or drawn by the pane itself; an adorner will not appear.
-
-Falsified when two windows in this repository declare the same colour.
-
 ### §QS126 Machinery with no way in
 
 Counted on 2026-08-30 across `src/Quickshell.App/*.cs`. Not one file names `SshChain`,
@@ -1509,6 +1496,20 @@ print one into, and a `--help` that opened a dialog would be the client choosing
 a window in front of a script.
 
 Falsified when the entry point acts on a flag the reference does not name.
+
+### §QS199 One model of the terminal's colours
+
+Found while shipping QS83. Appearance carries a TerminalPalette with a foreground,
+background, cursor and selection, and
+WindowTests.TheChromesThemeDoesNotTouchTheTerminalsColours asserts that changing the
+chrome theme leaves it alone. Nothing at run time reads it: panes take their colours
+from Settings.Colours through ColourScheme.ApplyTo, and MainWindow never passes its
+Appearance palette anywhere. So the test proves an invariant about a model no pixel
+comes from, and the invariant that matters, that a theme change leaves a pane's scheme
+alone, is untested. The move is to delete TerminalPalette and Appearance.Palette, and to
+rewrite the test against the real path: apply settings with another theme and read that
+an open pane's palette is unchanged. Falsified when a model of the terminal's colours
+exists that no pane draws from.
 
 ## Block H — The reason to leave the incumbent
 
@@ -1813,6 +1814,19 @@ Then the baseline is taken again, and this line says what the threshold became.
 
 Falsified when a baseline's derived threshold for `parse` is still above ten per cent on
 the reference machine.
+
+### §QS200 Timing the bytes that ship
+
+Found by the QS79 review. release.cmd hands the gate the published client, but only the
+start figure is measured on it. Parse and emulate come from Quickshell.Replay built from
+the same source in Release, framework-dependent and with its own runtimeconfig. A
+setting in the App project or in the publish command, such as TieredPGO off or a
+different GC mode, changes what ships and not what the gate measures. PERFORMANCE.md now
+says so plainly. The move is to run the replay arms against the published assemblies:
+publish the harness beside the client with the same runtime settings, or load the arms
+from the publish folder, then take a new baseline. Falsified when a runtime setting
+added only to the client's publish slows its emulate path and the release gate still
+reports emulate held.
 
 ## Block I — An error a user can act on
 
