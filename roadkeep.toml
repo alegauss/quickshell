@@ -41,3 +41,8 @@ held = 60
 # the third list: what would make a block done, so "the block is finished" is a
 # reading and never a line count reaching zero
 [criteria]
+
+[project]
+name = "Quickshell"
+description = "A Windows terminal built to be faster and lighter than MobaXterm."
+icon = "⚡"
