@@ -55,6 +55,10 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
     public const int PageSize = 2048;
 
     private readonly Dictionary<GlyphKey, GlyphPlacement> _entries = [];
+
+    // Whole clusters, beside the single glyphs. Cleared and swept wherever _entries is, because a
+    // placement here points into the same pages.
+    private readonly Dictionary<ClusterKey, GlyphPlacement> _clusters = [];
     private readonly List<Page> _coverage = [];
     private readonly List<Page> _colour = [];
     private readonly GraphicsDevice _graphics;
@@ -200,6 +204,54 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
     }
 
     /// <summary>
+    /// Caches a whole grapheme cluster as one glyph, in the face its base character resolves to and
+    /// at the size that base is fitted at, so the cluster sits in its cell exactly where the base
+    /// alone would have.
+    ///
+    /// <para><b>QS91.</b> Where the face cannot shape the cluster whole, the base is cached and
+    /// answered instead, and that answer is remembered under the cluster: the shaping is asked once
+    /// per distinct cluster and font, not once per frame.</para>
+    /// </summary>
+    /// <param name="cluster">The cluster's characters, as the model holds them.</param>
+    /// <param name="baseCodepoint">Its first character, which decides the face and the fit.</param>
+    /// <param name="weight">The weight to match a face at.</param>
+    /// <param name="slant">Upright, italic or oblique.</param>
+    /// <param name="maximumAdvance">The room it has, in pixels, as for <see cref="Cache(int, FontWeight, FontStyle, float, float)"/>.</param>
+    public GlyphPlacement CacheCluster(string cluster, int baseCodepoint,
+                                       FontWeight weight = FontWeight.Normal,
+                                       FontStyle slant = FontStyle.Normal, float maximumAdvance = 0f)
+    {
+        ArgumentNullException.ThrowIfNull(cluster);
+
+        GlyphResolution resolved = _rasteriser.Resolve(Font, weight, slant, baseCodepoint, maximumAdvance);
+        ClusterKey key = new(resolved.Family, weight, slant, resolved.SizeInPixels, cluster, IsClearType);
+
+        if (_clusters.TryGetValue(key, out GlyphPlacement hit))
+        {
+            if (!hit.IsEmpty)
+            {
+                PagesFor(hit.IsColour ? GlyphKind.Colour : GlyphKind.Coverage)[hit.Page].LastUsed = ++_clock;
+            }
+
+            return hit;
+        }
+
+        GlyphBitmap? whole = _rasteriser.RasteriseCluster(resolved.Family, weight, slant,
+                                                          resolved.SizeInPixels, cluster, IsClearType);
+
+        GlyphPlacement placement = whole is null
+            ? Cache(baseCodepoint, weight, slant, 0f, maximumAdvance)
+            : Place(whole);
+
+        _clusters[key] = placement;
+        return placement;
+    }
+
+    /// <summary>Everything about a cluster's glyph that changes its pixels.</summary>
+    private readonly record struct ClusterKey(string Family, FontWeight Weight, FontStyle Slant,
+                                              float SizeInPixels, string Cluster, bool ClearType);
+
+    /// <summary>
     /// Points the atlas at a different font. Every entry is invalid at once, so this rebuilds: the
     /// cache is emptied and the pages are handed back to their packers rather than swept for what
     /// happens to still be valid.
@@ -215,6 +267,7 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
 
         Font = font;
         _entries.Clear();
+        _clusters.Clear();
 
         // A coverage page is one channel or four depending on this, and a texture's format is fixed
         // when it is created. So this one setting is the only font change that cannot be answered by
@@ -244,6 +297,7 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
         // what the atlas held before the loss is exactly what the next frames will ask for again.
         _device = device;
         _entries.Clear();
+        _clusters.Clear();
         _coverage.Clear();
         _colour.Clear();
         Evictions = 0;
@@ -260,6 +314,7 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
         _coverage.Clear();
         _colour.Clear();
         _entries.Clear();
+        _clusters.Clear();
         _device = null;
     }
 
@@ -422,6 +477,15 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
                                          .ToList())
         {
             _entries.Remove(key);
+        }
+
+        foreach (ClusterKey key in _clusters.Where(entry => !entry.Value.IsEmpty
+                                                            && entry.Value.IsColour == colour
+                                                            && entry.Value.Page == victim)
+                                            .Select(entry => entry.Key)
+                                            .ToList())
+        {
+            _clusters.Remove(key);
         }
 
         pages[victim].Packer.Reset();

@@ -322,34 +322,6 @@ with the remaining tenth named individually rather than waved at.
 
 Falsified when a pass rate is quoted without the run and the date that produced it.
 
-### §QS91 The mark that took no cell and then went nowhere
-
-QS10 settled what a combining mark costs in columns: nothing, which is what the host
-also decided, so the cursor lands where it should. It said nothing about drawing the
-mark, and so nothing does. `e` followed by U+0301 renders as a bare `e` — visible in the
-QS10 capture, whose last cells read `ea` and should read `éä`.
-
-The first shape landed at paint time, so the model keeps what the host sent; the third
-is left.
-
-Normalise on the way in. NFC folds `e` plus U+0301 to U+00E9, which the primary face
-already has. Cheapest, and it covers most of what arrives — but a mark with no
-precomposed form still disappears, and the model would no longer hold what the host
-sent.
-
-Give the cell a second glyph slot. The instance grows, every cell pays for the rare one,
-and stacked marks still overflow it.
-
-Draw the mark as its own instance, positioned over the base cell rather than beside it.
-A zero-span instance already exists for the trailing half of a wide pair, so the shader
-knows how to draw a quad owning no column; what it lacks is an offset. This is the shape
-that neither lies nor caps the count.
-
-The model has to carry the marks either way, which is where this meets the buffer's own
-line rather than the renderer's.
-
-Falsified when a decomposed accent renders identically to its precomposed form.
-
 ### §QS92 The three environments this machine is not
 
 QS12 landed the suite and ran it on two environments: this machine's own adapter, which
@@ -788,6 +760,27 @@ different grey. The move is for the view to hand the palette's cursor to the ren
 each frame, the way cell colours already travel, with a test that sets a scheme's cursor
 and reads the colour a block cursor was drawn with. Falsified when a scheme or OSC 12
 sets the cursor and the drawn cursor is not that colour.
+
+### §QS203 Stacking what the shaper would not
+
+QS91 draws a cluster as one atlas glyph, shaped whole by DirectWrite. On Consolas the
+shaper places the first mark after a base correctly and every later one a whole base
+advance to the left, out of the cell. That held for both the Latin and the Common
+shaper. So `GlyphRasteriser.Restack` places each mark from the base shaped with that
+mark alone.
+
+That is right for marks on different sides, a dot below and an acute above. Two marks on
+the same side, an acute and a diaeresis above one vowel as Vietnamese or IPA write them,
+are each placed where they would sit alone, so they land on the same pixels.
+
+What to build: after placing each mark alone, read its ink bounds from the rasterised
+pair, and push a later mark above, or below, the ink of the earlier ones on its side by
+that height plus a pixel. The side is the sign of where the ink sits against the base's
+x-height. Then check the shaper again first: if a newer DirectWrite, or a face with
+mark-to-mark positioning, places the second mark right, `Restack` should step aside for
+it rather than override it.
+
+Falsified when `a` with U+0301 and U+0308 reads back two separate inks above the a.
 
 ## Block D — The tree a user organises work in
 

@@ -127,8 +127,16 @@ public sealed class GlyphRasteriser : IDisposable
 
     private readonly Dictionary<(string Family, FontWeight Weight, FontStyle Slant), IDWriteFontFace> _faces = [];
     private readonly Dictionary<(string Family, FontWeight Weight, FontStyle Slant, int Codepoint), string> _resolved = [];
+    /// <summary>ISO 15924's numbers for Latin and for Common, the two scripts a cluster is shaped in.</summary>
+    private const int LatinIsoScript = 215;
+
+    private const int CommonIsoScript = 998;
+
     private readonly IDWriteFactory2 _factory;
     private readonly IDWriteFontCollection _installed;
+    private readonly Dictionary<int, ScriptAnalysis?> _scripts = [];
+    private IDWriteTextAnalyzer? _analyzer;
+
 
     // DirectWrite's character-map call is a batch API and the atlas asks it one character at a
     // time, so the batch of one is kept rather than allocated on every cache miss.
@@ -341,6 +349,194 @@ public sealed class GlyphRasteriser : IDisposable
     }
 
     /// <summary>
+    /// Rasterises a whole grapheme cluster as one bitmap: a base with marks stacked on it, or an
+    /// emoji sequence a face joins into one picture. Null where the face cannot shape it whole, so
+    /// the caller draws what it can of it instead.
+    ///
+    /// <para><b>QS91.</b> A cell holds a cluster, and the grid draws one glyph per cell. A mark is a
+    /// second glyph placed over the base by the face's own positioning, which only shaping knows, so
+    /// the cluster is shaped here and its glyphs rasterised together at the offsets the shaper gave.
+    /// The atlas then holds the result like any other glyph, and the shader never learns that a cell
+    /// can hold more than one.</para>
+    ///
+    /// <para><b>A glyph the face does not have refuses the whole cluster.</b> A mark drawn as the
+    /// face's missing-glyph box over the base is worse than the base alone.</para>
+    /// </summary>
+    /// <param name="family">The face the base character resolved to.</param>
+    /// <param name="weight">The weight to match it at.</param>
+    /// <param name="slant">Upright, italic or oblique.</param>
+    /// <param name="sizeInPixels">The em size, already fitted to the cell by the base's resolution.</param>
+    /// <param name="cluster">The cluster's characters, as the model holds them.</param>
+    /// <param name="clearType">Whether coverage is wanted per colour stripe.</param>
+    public GlyphBitmap? RasteriseCluster(string family, FontWeight weight, FontStyle slant,
+                                         float sizeInPixels, string cluster, bool clearType)
+    {
+        ArgumentNullException.ThrowIfNull(cluster);
+
+        if (cluster.Length == 0 || Script(cluster) is not { } script)
+        {
+            return null;
+        }
+
+        IDWriteFontFace face = Face(family, weight, slant);
+
+        if (Shape(cluster, face, sizeInPixels, script) is not { } shaped)
+        {
+            return null;
+        }
+
+        Restack(cluster, face, sizeInPixels, script, shaped);
+
+        GlyphRun run = new()
+        {
+            FontFace = face,
+            FontEmSize = sizeInPixels,
+            Indices = shaped.Glyphs,
+            Advances = shaped.Advances,
+            Offsets = shaped.Offsets,
+            BidiLevel = 0,
+            IsSideways = false,
+        };
+
+        Rasterisations++;
+
+        return RasteriseColour(run, 0f) ?? RasteriseCoverage(run, 0f, clearType);
+    }
+
+    /// <summary>What DirectWrite's shaper answered for a run: one entry per glyph, in order.</summary>
+    private sealed record Shaped(ushort[] Glyphs, float[] Advances, GlyphOffset[] Offsets);
+
+    /// <summary>
+    /// Shapes text in one face, or answers null where it produced nothing or a glyph the face does
+    /// not have — a mark drawn as a missing-glyph box over its base is worse than the base alone.
+    /// </summary>
+    private Shaped? Shape(string text, IDWriteFontFace face, float sizeInPixels, ScriptAnalysis script)
+    {
+        // DirectWrite's own bound on how many glyphs a run of this length can produce.
+        int maximum = (3 * text.Length / 2) + 16;
+        ushort[] clusterMap = new ushort[text.Length];
+        ShapingTextProperties[] textProperties = new ShapingTextProperties[text.Length];
+        ushort[] glyphs = new ushort[maximum];
+        ShapingGlyphProperties[] glyphProperties = new ShapingGlyphProperties[maximum];
+        float[] advances = new float[maximum];
+        GlyphOffset[] offsets = new GlyphOffset[maximum];
+
+        _analyzer ??= _factory.CreateTextAnalyzer();
+
+        _analyzer.GetGlyphs(text, (uint)text.Length, face, false, false, script, "en-us", null,
+                            null, null, 0, (uint)maximum, clusterMap, textProperties, glyphs,
+                            glyphProperties, out uint produced);
+
+        if (produced == 0 || glyphs.AsSpan(0, (int)produced).Contains((ushort)0))
+        {
+            return null;
+        }
+
+        _analyzer.GetGlyphPlacements(text, clusterMap, textProperties, (uint)text.Length, glyphs,
+                                     glyphProperties, produced, face, sizeInPixels, false, false,
+                                     script, "en-us", null, null, 0, advances, offsets);
+
+        return new Shaped(glyphs[..(int)produced], advances[..(int)produced], offsets[..(int)produced]);
+    }
+
+    /// <summary>
+    /// Places each mark where the face puts it over this base alone.
+    ///
+    /// <para><b>Because DirectWrite does not, past the first.</b> Measured on Consolas: <c>q</c> with
+    /// U+0301 puts the acute 0.71 px right of the pen, over the q. <c>q</c> with U+0323 and then
+    /// U+0301 puts the dot correctly under it and the acute 7.29 px <em>left</em> of the pen — the
+    /// base's whole advance too far, out of the cell, where the grid clips it. The Latin and the
+    /// Common shaper both answered that way. Each mark shaped with its base alone is right, so each
+    /// mark is placed from that shaping. Two marks on the same side then overlap rather than stack;
+    /// that is the case left, and it is rarer than the one this fixes.</para>
+    ///
+    /// <para>Only a run that came back one glyph per character, a base and then marks that advance
+    /// nothing of their own, is touched. An emoji sequence the face joined is one glyph and is left
+    /// exactly as the shaper gave it.</para>
+    /// </summary>
+    private void Restack(string cluster, IDWriteFontFace face, float sizeInPixels, ScriptAnalysis script,
+                         Shaped shaped)
+    {
+        int baseLength = char.IsSurrogatePair(cluster, 0) ? 2 : 1;
+        int marks = shaped.Glyphs.Length - 1;
+
+        if (marks < 2 || cluster.Length - baseLength != marks)
+        {
+            return;
+        }
+
+        string baseText = cluster[..baseLength];
+        float penAfterBase = shaped.Advances[0];
+
+        for (int mark = 1; mark <= marks; mark++)
+        {
+            string pair = baseText + cluster[baseLength + mark - 1];
+
+            if (Shape(pair, face, sizeInPixels, script) is not { Glyphs.Length: 2 } alone
+                || alone.Glyphs[1] != shaped.Glyphs[mark])
+            {
+                return;
+            }
+
+            // Where the mark lands, measured from the base's own origin, as the pair placed it; then
+            // stated against the pen this run reaches it at, which is after the base and stays there.
+            float x = alone.Advances[0] + alone.Offsets[1].AdvanceOffset;
+
+            shaped.Advances[mark] = 0f;
+            shaped.Offsets[mark] = new GlyphOffset
+            {
+                AdvanceOffset = x - penAfterBase,
+                AscenderOffset = alone.Offsets[1].AscenderOffset,
+            };
+        }
+    }
+
+    /// <summary>
+    /// The script a cluster is shaped in: Latin for a Latin base, which is where its marks'
+    /// positioning lives in a programming face, and Common for everything else, which is the
+    /// script an emoji sequence is joined under. Found by ISO number, as <see cref="TextShaper"/>
+    /// finds Latin, because DirectWrite's own numbering is not documented.
+    /// </summary>
+    private ScriptAnalysis? Script(string cluster)
+    {
+        int first = char.IsSurrogatePair(cluster, 0) ? char.ConvertToUtf32(cluster, 0) : cluster[0];
+        bool latin = first < 0x0250 || (first >= 0x1E00 && first < 0x1F00);
+        int iso = latin ? LatinIsoScript : CommonIsoScript;
+
+        if (_scripts.TryGetValue(iso, out ScriptAnalysis? known))
+        {
+            return known;
+        }
+
+        _analyzer ??= _factory.CreateTextAnalyzer();
+
+        ScriptAnalysis? found = null;
+
+        using (IDWriteTextAnalyzer1? described = _analyzer.QueryInterfaceOrNull<IDWriteTextAnalyzer1>())
+        {
+            for (ushort script = 0; described is not null && script < 256 && found is null; script++)
+            {
+                ScriptAnalysis candidate = new() { Script = script, Shapes = ScriptShapes.Default };
+
+                try
+                {
+                    if (described.GetScriptProperties(candidate).IsoScriptNumber == iso)
+                    {
+                        found = candidate;
+                    }
+                }
+                catch (SharpGenException)
+                {
+                    // A number this DirectWrite does not define.
+                }
+            }
+        }
+
+        _scripts[iso] = found;
+        return found;
+    }
+
+    /// <summary>
     /// Rasterises a run's coverage, in one channel or in three.
     ///
     /// <para>The layer path calls this with <paramref name="clearType"/> false whatever the face
@@ -529,6 +725,7 @@ public sealed class GlyphRasteriser : IDisposable
         }
 
         _faces.Clear();
+        _analyzer?.Dispose();
         _installed.Dispose();
         _factory.Dispose();
     }

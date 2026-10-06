@@ -253,6 +253,96 @@ public sealed class CellRendererTests
         Assert.Equal(blue, Pixel(plain, width - 1, height - 1));
     }
 
+    /// <summary>
+    /// QS91's first criterion, read off the back buffer: a base with two marks that no single
+    /// character composes to puts ink inside its own cell above and below where the base alone does,
+    /// and none in the cell beside it.
+    /// </summary>
+    [Fact]
+    public void AMarkWithNoPrecomposedFormIsDrawnOverItsBaseCell()
+    {
+        using Harness harness = new();
+
+        CellInstance[] plain =
+        [
+            CellInstance.For(harness.Atlas.Cache('q', maximumAdvance: harness.Metrics.Width), Rgb.White, Rgb.Black),
+            CellInstance.For(GlyphPlacement.Empty, Rgb.White, Rgb.Black),
+        ];
+
+        harness.Renderer.Draw(harness.Surface, plain, 2);
+        (int Above, int Below, int Beside) bare = Ink(harness.ReadBack(), harness.Metrics);
+
+        CellInstance[] marked =
+        [
+            CellInstance.For(harness.Atlas.CacheCluster("q̣́", 'q', maximumAdvance: harness.Metrics.Width),
+                             Rgb.White, Rgb.Black),
+            CellInstance.For(GlyphPlacement.Empty, Rgb.White, Rgb.Black),
+        ];
+
+        harness.Renderer.Draw(harness.Surface, marked, 2);
+        (int Above, int Below, int Beside) withMarks = Ink(harness.ReadBack(), harness.Metrics);
+
+        Assert.True(withMarks.Above > bare.Above,
+            $"the acute put no ink above the q: {withMarks.Above} lit pixels against {bare.Above}");
+        Assert.True(withMarks.Below > bare.Below,
+            $"the dot below put no ink under the q: {withMarks.Below} lit pixels against {bare.Below}");
+        Assert.Equal(0, withMarks.Beside);
+    }
+
+    /// <summary>
+    /// Lit pixels in the first cell's top and bottom thirds, where a q's own bowl does not reach far
+    /// and its marks do, and anywhere in the second cell.
+    /// </summary>
+    private static (int Above, int Below, int Beside) Ink(byte[] frame, CellMetrics metrics)
+    {
+        int above = 0;
+        int below = 0;
+        int beside = 0;
+
+        for (int y = 0; y < metrics.Height; y++)
+        {
+            for (int x = 0; x < metrics.Width; x++)
+            {
+                bool lit = Pixel(frame, x, y).Green > 64;
+
+                above += lit && y < metrics.Height / 3 ? 1 : 0;
+                below += lit && y >= metrics.Height * 2 / 3 ? 1 : 0;
+                beside += Pixel(frame, metrics.Width + x, y).Green > 64 ? 1 : 0;
+            }
+        }
+
+        return (above, below, beside);
+    }
+
+    /// <summary>
+    /// QS91's second criterion: a joined emoji sequence is shaped into the one picture the emoji face
+    /// draws for it, and not into the picture of its first emoji.
+    /// </summary>
+    [Fact]
+    public void AJoinedEmojiSequenceIsOneGlyphAndNotItsFirstEmoji()
+    {
+        using GlyphRasteriser rasteriser = new();
+
+        // Man, zero-width joiner, woman, zero-width joiner, girl: the family.
+        const string family = "\U0001F468‍\U0001F469‍\U0001F467";
+
+        GlyphResolution resolved = rasteriser.Resolve(FontSettings.Default, Vortice.DirectWrite.FontWeight.Normal,
+                                                      Vortice.DirectWrite.FontStyle.Normal, 0x1F468, 0f);
+
+        GlyphBitmap? whole = rasteriser.RasteriseCluster(resolved.Family, Vortice.DirectWrite.FontWeight.Normal,
+                                                         Vortice.DirectWrite.FontStyle.Normal,
+                                                         resolved.SizeInPixels, family, clearType: false);
+        GlyphBitmap? first = rasteriser.RasteriseCluster(resolved.Family, Vortice.DirectWrite.FontWeight.Normal,
+                                                         Vortice.DirectWrite.FontStyle.Normal,
+                                                         resolved.SizeInPixels, "\U0001F468", clearType: false);
+
+        Assert.NotNull(whole);
+        Assert.NotNull(first);
+        Assert.Equal(GlyphKind.Colour, whole.Kind);
+        Assert.False(whole.Coverage.SequenceEqual(first.Coverage),
+                     "the family drew exactly as the man does, so the sequence was not joined");
+    }
+
     [Fact]
     public void MoreCellsThanTheBufferHoldsGrowsItRatherThanRefusing()
     {

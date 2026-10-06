@@ -33,6 +33,7 @@
 - ✅ **QS109** **The golden suite's text tolerance does not hold on the CI runner, so every commit's build is red for the same pixels** — A golden text scene is judged by mean difference; a maximum is a fact about one pixel on one machine and does not survive a change of machine.
 - ✅ **QS106** **The latency test's bound is a maximum over more reads at sixteen megabytes than at four, so a scheduler hiccup fails it** — A statistic compared across two moments must not move with the sample size: maxima are recorded for diagnosis and never asserted on.
 - ✅ **QS120** **The pipeline test's drain guard counts reads rather than bytes, so a loaded machine fails it** — Lag is measured in the unit the work is done in: bytes outstanding, never reads per drain, which is a property of the producer and not of the consumer.
+- ✅ **QS91** **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — A cluster is one atlas glyph shaped whole, never extra instances: the shader derives a cell's position from its instance index.
 
 ## Block D — The tree a user organises work in
 

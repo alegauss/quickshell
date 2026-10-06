@@ -199,11 +199,12 @@ public sealed class GridPainterTests
     }
 
     /// <summary>
-    /// A cluster nothing composes to one character is drawn as its base, never as the replacement
-    /// character a cluster cell answers when asked for a codepoint.
+    /// A cluster nothing composes to one character is drawn as the whole cluster the atlas shaped —
+    /// not as its base alone, and never as the replacement character a cluster cell answers when
+    /// asked for a codepoint.
     /// </summary>
     [Fact]
-    public void AClusterWithNoPrecomposedFormDrawsItsBaseAndNotAReplacementCharacter()
+    public void AClusterWithNoPrecomposedFormIsDrawnWhole()
     {
         using Harness harness = new();
 
@@ -222,8 +223,12 @@ public sealed class GridPainterTests
         Rgb foreground = emulator.Palette.Resolve(Colour.Default);
         Rgb ground = emulator.Palette.Resolve(Colour.Default, background: true);
 
-        Assert.Equal(CellInstance.For(harness.Atlas.Cache('q', maximumAdvance: Box.Width), foreground, ground),
-                     cells[0]);
+        Assert.Equal(
+            CellInstance.For(harness.Atlas.CacheCluster("q̣́", 'q', maximumAdvance: Box.Width),
+                             foreground, ground),
+            cells[0]);
+        Assert.NotEqual(CellInstance.For(harness.Atlas.Cache('q', maximumAdvance: Box.Width), foreground, ground),
+                        cells[0]);
         Assert.NotEqual(CellInstance.For(harness.Atlas.Cache(0xFFFD, maximumAdvance: Box.Width), foreground, ground),
                         cells[0]);
     }

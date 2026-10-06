@@ -134,14 +134,9 @@ public sealed class GridPainter
                     (foreground, background) = (background, foreground);
                 }
 
-                int codepoint = cell.IsCluster ? Composed(buffer, cell) : cell.Codepoint;
-
-                GlyphPlacement glyph = span == 0 || codepoint == ' '
+                GlyphPlacement glyph = span == 0
                     ? GlyphPlacement.Empty
-                    : _atlas.Cache(codepoint,
-                                   (cell.Flags & CellFlags.Bold) != 0 ? FontWeight.Bold : FontWeight.Normal,
-                                   (cell.Flags & CellFlags.Slant) != 0 ? FontStyle.Italic : FontStyle.Normal,
-                                   maximumAdvance: metrics.Width * Math.Max(1, span));
+                    : GlyphFor(buffer, cell, metrics.Width * span);
 
                 into[Painted++] = CellInstance.For(
                     glyph, foreground, background, cell.Flags, Math.Max(1, span), cell.Underline,
@@ -150,24 +145,43 @@ public sealed class GridPainter
         }
     }
 
+    /// <summary>The glyph a cell that occupies room is drawn with, from whichever cache holds it.</summary>
+    private GlyphPlacement GlyphFor(TerminalBuffer buffer, Cell cell, float room)
+    {
+        FontWeight weight = (cell.Flags & CellFlags.Bold) != 0 ? FontWeight.Bold : FontWeight.Normal;
+        FontStyle slant = (cell.Flags & CellFlags.Slant) != 0 ? FontStyle.Italic : FontStyle.Normal;
+
+        if (!cell.IsCluster)
+        {
+            return cell.Codepoint == ' '
+                ? GlyphPlacement.Empty
+                : _atlas.Cache(cell.Codepoint, weight, slant, maximumAdvance: room);
+        }
+
+        string text = buffer.TextOf(cell);
+        int composed = Composed(text);
+
+        return composed >= 0
+            ? _atlas.Cache(composed, weight, slant, maximumAdvance: room)
+            : _atlas.CacheCluster(text, Base(text), weight, slant, room);
+    }
+
     /// <summary>
-    /// The one character a cluster cell is drawn as.
+    /// The one character a cluster composes to, or -1 where it composes to more than one.
     ///
     /// <para><b>QS91.</b> A cell holding a cluster has no codepoint of its own — it answers U+FFFD —
     /// and the painter used to draw exactly that, so <c>e</c> followed by U+0301 came out as a
     /// replacement character. The model keeps what the host sent; what is drawn is its canonical
-    /// composition, which is the precomposed <c>é</c> the face already has and is what the same
-    /// text sent precomposed draws as.</para>
+    /// composition where that is one character, which is the precomposed <c>é</c> the face already
+    /// has and is exactly what the same text sent precomposed draws as.</para>
     ///
-    /// <para><b>Where nothing composes it to one character, the base is drawn.</b> A mark with no
-    /// precomposed form, or an emoji joined to another, still loses what follows the base; that is
-    /// less wrong than a replacement character, and drawing the rest is the overlay QS91's
-    /// remainder names.</para>
+    /// <para><b>Where nothing composes it to one character, the atlas shapes it whole</b> — a mark
+    /// with no precomposed form stacked on its base, or an emoji sequence the face joins — through
+    /// <see cref="GlyphAtlas.CacheCluster"/>. The cell is still one instance and one glyph; the
+    /// glyph is just a picture of several.</para>
     /// </summary>
-    private int Composed(TerminalBuffer buffer, Cell cell)
+    private int Composed(string text)
     {
-        string text = buffer.TextOf(cell);
-
         if (_composed.TryGetValue(text, out int known))
         {
             return known;
@@ -184,14 +198,9 @@ public sealed class GridPainter
         return drawn;
     }
 
-    /// <summary>The cluster's NFC form where that is one character, and its first character where not.</summary>
+    /// <summary>The cluster's NFC form where that is one character, and -1 where not.</summary>
     private static int Compose(string text)
     {
-        if (text.Length == 0 || Rune.DecodeFromUtf16(text, out Rune first, out _) != OperationStatus.Done)
-        {
-            return 0xFFFD;
-        }
-
         string composed;
 
         try
@@ -200,13 +209,20 @@ public sealed class GridPainter
         }
         catch (ArgumentException)
         {
-            // Not well-formed enough to normalise. The base is still a character.
-            return first.Value;
+            // Not well-formed enough to normalise, so not one character either.
+            return -1;
         }
 
-        return Rune.DecodeFromUtf16(composed, out Rune only, out int consumed) == OperationStatus.Done
+        return composed.Length > 0
+               && Rune.DecodeFromUtf16(composed, out Rune only, out int consumed) == OperationStatus.Done
                && consumed == composed.Length
             ? only.Value
-            : first.Value;
+            : -1;
     }
+
+    /// <summary>A cluster's first character, which decides the face it is drawn in.</summary>
+    private static int Base(string text) =>
+        text.Length > 0 && Rune.DecodeFromUtf16(text, out Rune first, out _) == OperationStatus.Done
+            ? first.Value
+            : 0xFFFD;
 }
