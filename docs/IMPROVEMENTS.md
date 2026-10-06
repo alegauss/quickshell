@@ -2058,30 +2058,6 @@ Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS90 The clone that has never been made
-
-Block K asks that a clean clone build and pass with nothing taken from memory. That has
-never been checked here, and the checking is the whole task: what a machine already has
-is invisible from on top of it.
-
-The specific things this tree might be leaning on without saying so. A NuGet cache that
-already holds Vortice, xunit and their transitive graph, so a restore that would fail
-behind a proxy succeeds here. A D3D debug layer `GraphicsDevice` asks for and quietly
-does without — the fallback is deliberate, but nobody has watched it taken. A
-`global.json` pinned to 10.0.100 with `rollForward` at `latestFeature`, satisfied here
-by 10.0.303 and by nothing on a machine carrying only the pinned one. And DirectWrite
-finding Consolas, which every Windows has and no container necessarily does.
-
-The check is one run: clone into an empty directory on a machine carrying only the .NET
-SDK, run `run-tests.cmd`, and read the count. What it turns up goes in a README naming
-the prerequisites, or into the repository as a step — a requirement discovered and then
-written only into a commit message is one the next machine still will not meet.
-
-CI is the closest thing that exists and is not the same: the runner image carries a
-Windows SDK and a warm tool cache, and has never been asked what it used.
-
-Falsified when the clean clone needs a step this task did not name.
-
 ### §QS99 QS
 
 The suite is run by invoking the test assembly directly, which is what `run-tests.cmd`

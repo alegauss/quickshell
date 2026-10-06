@@ -66,6 +66,19 @@ them. `--uninstall --quiet`, which is what a deployment runs, never removes them
 - No service, no scheduled task, no file association, no change to `PATH`.
 - It does not check for updates yet.
 
+## Build it from source
+
+The .NET 10 SDK on Windows x64 is the only prerequisite. Clone, then from the repository root:
+
+```
+run-tests.cmd
+```
+
+That restores, builds the solution and runs every test, and its exit code is the verdict. A fresh
+clone has been built and passed this way with an empty NuGet cache, and in a separate Windows guest
+from the committed tree alone, with no other step (QS90). The SSH tests skip unless their fixture is
+running — `prototypes/SshProbe/fixture/up.sh` says how. `release.cmd` builds what a release ships.
+
 ## Exit codes
 
 | Code | Meaning |

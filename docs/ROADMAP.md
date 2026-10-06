@@ -117,7 +117,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS90** (deps: —) **Nobody has built this repository from a clean clone, so the steps it needs beyond the SDK are unknown** — Every build so far has run on the machine that wrote the code, which is the one machine whose caches and installed components prove nothing about the next. → §QS90
 - 📋 **QS99** (deps: —) **A failed build leaves the old test binary in place and running it reports a green suite that proves nothing** — Twice this session a compile error was swallowed and the previous assembly ran, reporting the old pass count as if it were the new one. → §QS99
 - 📋 **QS102** (deps: QS24 ✅) **The parser is fuzzed only by the suite's own mutator, which stops when the build does** — A bounded run at a fixed seed explores the same inputs for ever, so coverage-guided fuzzing needs a harness that runs for hours outside the suite. → §QS102
 - 📋 **QS136** (deps: —) **A run with a hundred tests skipped prints the same "Passed" as one with none** — The fixture stops on its own and the summary line does not change, so the green that proves nothing looks exactly like the green that proves everything. → §QS136
