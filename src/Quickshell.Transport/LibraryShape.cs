@@ -66,6 +66,19 @@ public static class LibraryShape
         Need(LocalForward.Pump, "ChannelDirectTcpip.Bind()");
         Need(LocalForward.SayEnd, "IChannel.SendEof()");
         Need(LocalForward.Live, "ChannelDirectTcpip.IsOpen");
+        Need(LocalForward.ChannelNumber, "ChannelDirectTcpip.LocalChannelNumber");
+
+        // And why a channel was refused (QS125): the session's event and the message it carries.
+        Need(LocalForward.OpenRefused, "ISession.ChannelOpenFailureReceived");
+
+        if (Need(library.GetType("Renci.SshNet.Messages.Connection.ChannelOpenFailureMessage"),
+                 "ChannelOpenFailureMessage") is { } refusal)
+        {
+            foreach (string member in (string[])["LocalChannelNumber", "ReasonCode", "Description"])
+            {
+                Need(refusal.GetProperty(member, Any), $"ChannelOpenFailureMessage.{member}");
+            }
+        }
 
         // A jump's local port, closed without ending what it carries (QS119).
         Need(SshChain.StopListening, "ForwardedPortLocal.StopListener()");

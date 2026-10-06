@@ -11,12 +11,11 @@ namespace Quickshell.Transport;
 /// <summary>
 /// Where a forward's local listener accepts from.
 ///
-/// <para><b>An address and not a switch, because "everywhere" is not available.</b> SSH.NET resolves
-/// the bound host as a name, and refuses <c>0.0.0.0</c> outright; its one constructor that takes no
-/// bound host binds to whatever that machine's empty-name resolution returns first, which measured
-/// here was a link-local address other machines can reach. So there is no honest "all interfaces"
-/// to offer, and QS125 carries that. What is offered instead is better: the caller names the
-/// address, which is a narrower hole than "everywhere" and cannot be opened by accident.</para>
+/// <para><b>An address the caller names, every interface included now that it can be honest.</b>
+/// SSH.NET's own port refused <c>0.0.0.0</c> and bound its no-host constructor to a link-local
+/// address nobody chose, so "everywhere" was not on offer. The listener is this client's own since
+/// QS124 and binds exactly what it is given, so <see cref="Everywhere"/> exists (QS125) — as a value
+/// somebody has to pass, never a default, and carrying the loudest warning a forward has.</para>
 /// </summary>
 /// <param name="Address">The local address to accept on.</param>
 public readonly record struct ForwardBinding(string Address)
@@ -24,9 +23,20 @@ public readonly record struct ForwardBinding(string Address)
     /// <summary>This machine only, which is what anything gets without asking.</summary>
     public static ForwardBinding Loopback { get; } = new("127.0.0.1");
 
+    /// <summary>
+    /// Every interface this machine has: anything that can reach it on the network can use the
+    /// forward. Only ever by asking for it.
+    /// </summary>
+    public static ForwardBinding Everywhere { get; } = new("0.0.0.0");
+
     /// <summary>Whether this is the default, private binding.</summary>
     public bool IsLoopback =>
         IPAddress.TryParse(Address, out IPAddress? address) && IPAddress.IsLoopback(address);
+
+    /// <summary>Whether this is every interface at once.</summary>
+    public bool IsEverywhere =>
+        IPAddress.TryParse(Address, out IPAddress? address)
+        && (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any));
 
     /// <summary>
     /// One named address on this machine, so other machines can use the forward.
@@ -46,27 +56,18 @@ public readonly record struct ForwardBinding(string Address)
                 "Use ForwardBinding.Loopback, or name an address from ipconfig.");
         }
 
-        if (parsed.Equals(IPAddress.Any) || parsed.Equals(IPAddress.IPv6Any))
-        {
-            throw new SshException(
-                SshFailureKind.Unrecognised,
-                $"A forward cannot be bound to {address}.",
-                "The library resolves the bound host as a name, and the unspecified address is not "
-                + "one; there is no way through it to listen on every interface.",
-                "Name the one address other machines should reach this forward at.");
-        }
-
-        return new ForwardBinding(address);
+        // The unspecified address is accepted: it is every interface, which is a choice this
+        // method's caller made by passing it, and the forward's warning says what it means.
+        return new ForwardBinding(parsed.ToString());
     }
 }
 
 /// <summary>
 /// Why one connection through a forward did not work.
 ///
-/// <para><b>Only some of these arrive.</b> A local port already in use is caught where the listener
-/// opens and never appears here. A target that refuses is not reported by the library at all — the
-/// channel closes with nothing sent, exactly as an ordinary close does — so it cannot be told apart
-/// from a server that hung up, and QS125 carries that.</para>
+/// <para>A local port already in use is caught where the listener opens and never appears here.
+/// The other two arrive told apart by the reason code of the server's channel-open failure (QS125),
+/// and an ordinary close is not a failure and arrives as nothing.</para>
 /// </summary>
 public enum ForwardTrouble
 {
@@ -137,12 +138,30 @@ public sealed class LocalForward : IAsyncDisposable
 
     internal static readonly PropertyInfo? Live = ChannelType?.GetProperty("IsOpen", Hidden);
 
+    /// <summary>
+    /// The session's report of a channel the server would not open, which carries the protocol's
+    /// reason code and the server's words — the one place a refused target and a forbidden forward
+    /// differ (QS125).
+    /// </summary>
+    internal static readonly EventInfo? OpenRefused =
+        typeof(SshClient).Assembly.GetType("Renci.SshNet.ISession")?.GetEvent("ChannelOpenFailureReceived", Hidden);
+
+    internal static readonly PropertyInfo? ChannelNumber = ChannelType?.GetProperty("LocalChannelNumber", Hidden);
+
+    /// <summary>SSH_OPEN_ADMINISTRATIVELY_PROHIBITED: the server's policy said no.</summary>
+    private const uint Prohibited = 1;
+
+    /// <summary>SSH_OPEN_CONNECT_FAILED: the server tried and the target did not answer.</summary>
+    private const uint ConnectFailed = 2;
+
     private readonly TcpListener _listener;
     private readonly object _session;
     private readonly ForwardedPortLocal _anchor;
     private readonly CancellationTokenSource _stopping = new();
     private readonly List<ForwardFailure> _failures = [];
     private readonly List<IDisposable> _carrying = [];
+    private readonly Dictionary<uint, (uint Code, string Said)> _refusals = [];
+    private Delegate? _hearing;
     private readonly Lock _guard = new();
 
     private Task _accepting = Task.CompletedTask;
@@ -193,9 +212,13 @@ public sealed class LocalForward : IAsyncDisposable
     public string Warning =>
         Binding.IsLoopback
             ? string.Empty
-            : $"This forward accepts on {Binding.Address}, so anything that can reach this machine "
-              + $"there on port {BoundPort} can reach {TargetHost}:{TargetPort} on the remote "
-              + "network without authenticating.";
+            : Binding.IsEverywhere
+                ? $"This forward accepts on every interface, so anything on any network this machine "
+                  + $"is on can reach {TargetHost}:{TargetPort} on the remote network through port "
+                  + $"{BoundPort}, without authenticating."
+                : $"This forward accepts on {Binding.Address}, so anything that can reach this machine "
+                  + $"there on port {BoundPort} can reach {TargetHost}:{TargetPort} on the remote "
+                  + "network without authenticating.";
 
     /// <summary>Connections that failed, and why.</summary>
     public IReadOnlyList<ForwardFailure> Failures
@@ -269,6 +292,15 @@ public sealed class LocalForward : IAsyncDisposable
 
         LocalForward forward = new(listener, session, targetHost, targetPort, where);
 
+        // Heard before anything can be refused. The event's type is the library's own; a handler
+        // taking (object, EventArgs) binds to it because delegates accept a wider parameter.
+        if (OpenRefused?.EventHandlerType is { } handler)
+        {
+            forward._hearing = Delegate.CreateDelegate(
+                handler, forward, typeof(LocalForward).GetMethod(nameof(Heard), BindingFlags.NonPublic | BindingFlags.Instance)!);
+            OpenRefused.AddEventHandler(session, forward._hearing);
+        }
+
         forward._accepting = forward.AcceptAsync();
 
         // Nothing outlives the session: when it goes, so does every listener it was carrying.
@@ -330,6 +362,15 @@ public sealed class LocalForward : IAsyncDisposable
 
             Interlocked.Increment(ref _connections);
 
+            if (Live?.GetValue(channel) is not true)
+            {
+                // Refused at the open, with nothing thrown: the reason is what the session heard for
+                // this channel's number (QS125).
+                Refused(ChannelNumber?.GetValue(channel) is uint number ? number : uint.MaxValue);
+
+                return;
+            }
+
             Pump!.Invoke(channel, null);
 
             if (Live?.GetValue(channel) is true)
@@ -364,6 +405,76 @@ public sealed class LocalForward : IAsyncDisposable
             }
 
             accepted.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Keeps what the server said about each channel it would not open, by channel number, until the
+    /// connection that asked reads it.
+    /// </summary>
+    private void Heard(object? sender, EventArgs what)
+    {
+        object? message = what.GetType().GetProperty("Message")?.GetValue(what);
+
+        if (message?.GetType() is not { } type
+            || type.GetProperty("LocalChannelNumber")?.GetValue(message) is not uint number)
+        {
+            return;
+        }
+
+        uint code = type.GetProperty("ReasonCode")?.GetValue(message) is uint reason ? reason : 0;
+        string said = type.GetProperty("Description")?.GetValue(message) as string ?? string.Empty;
+
+        lock (_guard)
+        {
+            _refusals[number] = (code, said);
+        }
+    }
+
+    /// <summary>
+    /// A channel the server would not open, recorded as the failure its reason code says it was.
+    ///
+    /// <para><b>The three failures are now three.</b> A port in use here is caught where the listener
+    /// opens. A server whose policy forbids forwarding answers with "administratively prohibited",
+    /// and the remedy is its sshd config. A target that did not accept answers with "connect
+    /// failed", and the remedy is the name or the port, checked from the server. Before QS125 the
+    /// last two read as an ordinary close with nothing reported.</para>
+    /// </summary>
+    private void Refused(uint number)
+    {
+        (uint code, string said) = (0u, string.Empty);
+
+        lock (_guard)
+        {
+            if (_refusals.Remove(number, out (uint, string) heard))
+            {
+                (code, said) = heard;
+            }
+        }
+
+        string why = said.Length > 0 ? $" The server said: {said}." : string.Empty;
+
+        ForwardFailure failure = code switch
+        {
+            Prohibited => new ForwardFailure(
+                ForwardTrouble.ServerRefused,
+                $"The server would not open a channel to {TargetHost}:{TargetPort}.{why}",
+                "The server forbids forwarding: AllowTcpForwarding in its sshd config."),
+
+            ConnectFailed => new ForwardFailure(
+                ForwardTrouble.TargetRefused,
+                $"{TargetHost}:{TargetPort} did not accept the connection.{why}",
+                "Check the name and the port from the server: it is the server that resolves and dials them."),
+
+            _ => new ForwardFailure(
+                ForwardTrouble.Unrecognised,
+                $"The channel to {TargetHost}:{TargetPort} did not open.{why}",
+                string.Empty),
+        };
+
+        lock (_guard)
+        {
+            _failures.Add(failure);
         }
     }
 
@@ -422,6 +533,11 @@ public sealed class LocalForward : IAsyncDisposable
         await _stopping.CancelAsync().ConfigureAwait(false);
 
         _listener.Stop();
+
+        if (_hearing is not null)
+        {
+            OpenRefused?.RemoveEventHandler(_session, _hearing);
+        }
 
         await _accepting.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 

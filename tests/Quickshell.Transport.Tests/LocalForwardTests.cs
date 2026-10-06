@@ -85,17 +85,28 @@ public sealed class LocalForwardTests
     }
 
     /// <summary>
-    /// There is no way to ask for every interface at once, and asking says why rather than binding
-    /// somewhere arbitrary.
+    /// Every interface can be asked for (QS125), and only by asking: the operating system lists the
+    /// forward on the unspecified address, and the warning says anything on any network can use it.
     /// </summary>
-    [Theory]
-    [InlineData("0.0.0.0")]
-    [InlineData("::")]
-    public void TheUnspecifiedAddressIsRefusedWithItsReason(string address)
+    [Fact]
+    public async Task EveryInterfaceIsAChoiceAndSaysWhatItMeans()
     {
-        SshException refused = Assert.Throws<SshException>(() => ForwardBinding.To(address));
+        SkipWithoutFixture();
 
-        Assert.Contains("every interface", refused.Means, StringComparison.Ordinal);
+        Assert.Equal(ForwardBinding.Everywhere, ForwardBinding.To("0.0.0.0"));
+        Assert.True(ForwardBinding.To("::").IsEverywhere);
+
+        await using SshNetTransport session = await Connected();
+
+        await using LocalForward forward =
+            LocalForward.Open(session, OnlyOverThere, 22, binding: ForwardBinding.Everywhere);
+
+        Assert.Contains(IPAddress.Any, LocalForward.ListeningOn(forward.BoundPort));
+        Assert.Contains("every interface", forward.Warning, StringComparison.Ordinal);
+        Assert.Contains("without authenticating", forward.Warning, StringComparison.Ordinal);
+
+        // And it carries, which a binding that only looked wide would not.
+        Assert.StartsWith("SSH-2.0-", await Banner(forward.BoundPort), StringComparison.Ordinal);
     }
 
     /// <summary>And a name is not an address, because a name can move.</summary>
@@ -277,38 +288,57 @@ public sealed class LocalForwardTests
     }
 
     /// <summary>
-    /// A target that refuses closes the connection with nothing sent, and the library says no more
-    /// than that.
+    /// QS125's falsification: a wrong target port, a server that forbids forwarding and an ordinary
+    /// close are three different things to the user, each with its own remedy.
     ///
-    /// <para><b>This test records a limitation rather than a behaviour.</b> Port nine on the far
-    /// side has nothing listening, so the channel opens and the far end's connection fails — and
-    /// SSH.NET reports it exactly as it reports an ordinary close: no exception, no event, an empty
-    /// read. So of the three failures this design wanted told apart, only the local port clash is
-    /// distinguishable today. QS125 carries the rest, and when it is answered this test is what
-    /// changes.</para>
+    /// <para>Before QS125 the first two read exactly as the third: an empty read, nothing raised.
+    /// The server's channel-open failure carries a reason code — connect failed, or administratively
+    /// prohibited — and that is what tells them apart. The fixture's <c>noforward</c> server on 2226
+    /// is the one that forbids.</para>
     /// </summary>
     [Fact]
-    public async Task ATargetThatRefusesIsIndistinguishableFromAClose()
+    public async Task ARefusedTargetAForbiddenForwardAndACloseAreToldApart()
     {
         SkipWithoutFixture();
 
-        await using SshNetTransport session = await Connected();
+        // A target with nothing listening on it.
+        ForwardFailure refused = Assert.Single(await FailuresOf(Port, "127.0.0.1", 9));
 
-        await using LocalForward forward = LocalForward.Open(session, "127.0.0.1", 9);
+        Assert.Equal(ForwardTrouble.TargetRefused, refused.Trouble);
+        Assert.Contains("127.0.0.1:9", refused.Reason, StringComparison.Ordinal);
+        Assert.Contains("from the server", refused.Remedy, StringComparison.Ordinal);
+
+        // A server whose policy says no.
+        ForwardFailure forbidden = Assert.Single(await FailuresOf(Forbidding, "127.0.0.1", 22));
+
+        Assert.Equal(ForwardTrouble.ServerRefused, forbidden.Trouble);
+        Assert.Contains("AllowTcpForwarding", forbidden.Remedy, StringComparison.Ordinal);
+
+        // And a connection that simply ends is not a failure at all.
+        Assert.Empty(await FailuresOf(Port, OnlyOverThere, 22));
+    }
+
+    /// <summary>The fixture's server with forwarding switched off.</summary>
+    private const int Forbidding = 2226;
+
+    /// <summary>One connection through a forward, closed, and what the forward said about it.</summary>
+    private static async Task<IReadOnlyList<ForwardFailure>> FailuresOf(int server, string host, int port)
+    {
+        await using SshNetTransport session = new();
+
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", server), [Key()], Trusting, Stop);
+
+        await using LocalForward forward = LocalForward.Open(session, host, port);
 
         using (Socket socket = await Dial(forward.BoundPort))
         {
-            byte[] buffer = new byte[16];
-
-            // Nothing arrives: the far end could not connect, so the channel closes empty.
-            Assert.Equal(0, await socket.ReceiveAsync(buffer, Stop));
+            await socket.ReceiveAsync(new byte[64], Stop);
         }
 
+        // Given the moment a refusal takes to be recorded, so an empty answer is a real one.
         await Settle(() => forward.Failures.Count > 0);
 
-        // And nothing was reported, which is the limitation stated as an assertion so that the day
-        // it stops being true, something says so.
-        Assert.Empty(forward.Failures);
+        return forward.Failures;
     }
 
     // ---- Nothing outlives its owner ----

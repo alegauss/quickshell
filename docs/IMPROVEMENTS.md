@@ -860,30 +860,6 @@ This is a surface that survives the leanness argument, because the alternative t
 
 Falsified when a running forward does not appear in this view.
 
-### §QS125 Three failures, one of them legible
-
-Measured on 2026-08-30. A forward to a port with nothing listening on the far side
-closes the connection with no bytes and raises nothing at all: no exception, no event.
-It is indistinguishable from a server that hung up normally. Only the local port clash
-is reported cleanly, and that one is caught before any traffic flows.
-
-So of the three remedies the design wanted to offer, two cannot be reached: a wrong
-target port and a server that closed look identical, and the user is shown an empty read
-either way.
-
-Binding has the same shape of gap. `ForwardedPortLocal` resolves its bound host as a
-name and refuses the unspecified address outright, and its constructor without a bound
-host binds to whatever empty-name resolution returns first — measured here, a link-local
-address other machines can reach. So there is no way to say "every interface", and the
-one convenience constructor that looks like it says that says something worse.
-
-Both fall out of the same cause: the accept loop and the channel belong to the library.
-A listener of our own over a direct-tcpip channel sees the channel-open failure and the
-socket that never connected as separate events, and binds where it is told. QS124 wants
-the same thing for its own reason, so the two are one piece of work.
-
-Falsified when a wrong target port and a closed connection produce the same message.
-
 ### §QS127 A proxy that answers wrongly is worse than no proxy
 
 Measured on 2026-08-30 with twenty lines using SSH.NET alone, no code of this project
