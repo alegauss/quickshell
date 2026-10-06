@@ -300,13 +300,27 @@ public sealed class CompositionTests
 
     // ---- The path it goes down ----
 
-    /// <summary>Composing allocates nothing: it runs on every keystroke of a phrase.</summary>
+    /// <summary>
+    /// Composing allocates nothing: it runs on every keystroke of a phrase.
+    ///
+    /// <para>Measured after one pass over every caret position the loop uses. The first call down
+    /// these paths in a process allocates 4,072 bytes once, and without the pass this test counted
+    /// them whenever it ran before anything else in its class had — which is a cost per process,
+    /// not per keystroke (QS213).</para>
+    /// </summary>
     [Fact]
     public void ComposingAllocatesNothing()
     {
         Composition composition = new();
         composition.Start();
         composition.Update("にほんご", 4);
+
+        for (int caret = 0; caret < 5; caret++)
+        {
+            composition.Update("にほんご", caret);
+            _ = composition.Cells;
+            _ = composition.Candidate(10, 3, 80);
+        }
 
         long before = GC.GetAllocatedBytesForCurrentThread();
 

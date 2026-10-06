@@ -32,7 +32,6 @@
 - 📋 **QS207** (deps: —) **Insert mode is ignored, so text printed with CSI 4 h overwrites the row instead of pushing it right** — Editors and readline-style prompts use IRM to insert in place, and a terminal that overwrites shows the line the program did not draw. → §QS207
 - 📋 **QS208** (deps: —) **A request for 132 columns is ignored without its side effects, and nothing says whether that is the intent** — DECCOLM also clears the screen and resets the margins, so a program that asks gets neither the width nor the clean screen it assumes. → §QS208
 - 📋 **QS211** (deps: —) **esctest is judged through a pseudo-console that answers its queries itself, so the figure measures conhost** — A DECRQCRA sent through ConPtyChannel came back as conhost's 0000 and never reached the emulator, so 228 failures cannot move. → §QS211
-- 📋 **QS213** (deps: —) **The composition allocation test fails whenever it runs first, counting a one-time initialisation as a keystroke's** — Alone it counts 4,072 bytes and with its class none, so the guest suite goes red on test order. → §QS213
 - 📋 **QS214** (deps: —) **Replaying the tmux resize recording sometimes allocates in steady state in the guest, and the failure says no more** — One guest run counted 7,288 bytes and the next none, and a number with no type is a failure nobody can act on. → §QS214
 
 ## Block D — The tree a user organises work in
