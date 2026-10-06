@@ -83,7 +83,6 @@
 - 📋 **QS174** (deps: —) **A settings value the client could not use is not mentioned anywhere the user will look** — A mistyped scheme path, an unreadable scheme file and a settings file that will not parse all load as the defaults in silence, and the client looks broken rather than misconfigured. → §QS174
 - 📋 **QS178** (deps: —) **Five command-line flags exist and no page names them, so a script author finds them by reading the source** — The client has no menu, so the command line is how another program asks it for anything, and a surface nobody documented is one nobody finds. → §QS178
 - 📋 **QS199** (deps: —) **The test that says a chrome theme leaves the terminal's colours alone checks a palette nothing draws with** — Appearance.Palette is a second model of the terminal's colours that no running code reads; the colours a pane draws come from Settings.Colours. → §QS199
-- 📋 **QS202** (deps: —) **An editor's save over the settings file can be refused while the client is reading it** — The read shares nothing but reading, so a move over the file fails for as long as it lasts, and one full test run went red on exactly that. → §QS202
 
 ## Block H — The reason to leave the incumbent
 

@@ -40,7 +40,7 @@ public static class SchemeFile
         try
         {
             return File.Exists(path)
-                       ? Parse(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))
+                       ? Parse(SettingsFile.SharedText(path), Path.GetFileNameWithoutExtension(path))
                        : null;
         }
         catch (Exception)

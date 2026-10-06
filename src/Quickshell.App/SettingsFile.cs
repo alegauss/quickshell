@@ -125,6 +125,42 @@ public static class SettingsFile
     ];
 
     /// <summary>
+    /// A file a person edits, read without standing in the way of their editor.
+    ///
+    /// <para><b>QS202.</b> <c>File.ReadAllBytes</c> shares reading and nothing else, so an editor
+    /// that saves by deleting the file and renaming its temporary into place was refused the delete
+    /// whenever the save landed while the client was reading, with an error naming no culprit.
+    /// Shared for writing and deleting too, that save goes through, and the watcher reads the file
+    /// again once it is done.</para>
+    ///
+    /// <para><b>What no sharing can do.</b> A move that <em>replaces</em> the file is refused while
+    /// anybody holds it, whatever they share — Windows renames over an open file only under POSIX
+    /// rename semantics, which <c>MoveFileEx</c> does not ask for. An editor saving that way
+    /// retries; the read is kept short, and that is all the client can offer it.</para>
+    /// </summary>
+    public static FileStream OpenShared(string path) =>
+        new(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+
+    /// <summary>The whole file, through <see cref="OpenShared"/>.</summary>
+    internal static byte[] Shared(string path)
+    {
+        using FileStream file = OpenShared(path);
+        using MemoryStream into = new();
+
+        file.CopyTo(into);
+        return into.ToArray();
+    }
+
+    /// <summary>The whole file through <see cref="OpenShared"/>, decoded as <c>File.ReadAllText</c> decodes.</summary>
+    internal static string SharedText(string path)
+    {
+        using FileStream file = OpenShared(path);
+        using StreamReader reader = new(file, detectEncodingFromByteOrderMarks: true);
+
+        return reader.ReadToEnd();
+    }
+
+    /// <summary>
     /// Reads the file, migrating it forward where it is older than this build.
     /// </summary>
     /// <param name="path">The file. A missing one is the defaults and is not an error.</param>
@@ -147,7 +183,7 @@ public static class SettingsFile
             // answer with the defaults for a file whose every value the user had set — silently,
             // which is the worst way for a settings file to be wrong.
             using JsonDocument document = JsonDocument.Parse(
-                File.ReadAllBytes(path),
+                Shared(path),
                 new JsonDocumentOptions
                 {
                     CommentHandling = JsonCommentHandling.Skip,
@@ -206,7 +242,7 @@ public static class SettingsFile
             Directory.CreateDirectory(directory);
         }
 
-        if (File.Exists(path) && Spliced(File.ReadAllText(path), settings) is { } edited)
+        if (File.Exists(path) && Spliced(SharedText(path), settings) is { } edited)
         {
             File.WriteAllText(path, edited);
 

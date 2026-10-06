@@ -1511,30 +1511,6 @@ rewrite the test against the real path: apply settings with another theme and re
 an open pane's palette is unchanged. Falsified when a model of the terminal's colours
 exists that no pane draws from.
 
-### §QS202 A read that lets the editor's move through
-
-Found shipping QS86: one full host run of `run-tests.cmd` failed
-`SettingsWatchTests.AFileReplacedByARenameIsReadAsWell` with
-`UnauthorizedAccessException` from `File.Move(temporary, file, overwrite: true)`, and
-the same test passed five runs out of five alone and in a full rerun of its assembly.
-
-A move over a file is refused while anyone holds that file open without
-`FILE_SHARE_DELETE`. Two readers can be holding it at that instant. The virus scanner
-reads `settings.json` straight after the test writes it, which is QS194's pattern. And
-`SettingsFile` reads with `File.ReadAllBytes`, which shares read only, so the client
-itself refuses a rename over the file for as long as a read lasts.
-
-The second reader is the one that matters to a user. Notepad, Vim and VS Code all save
-by writing beside the file and moving over it, so a save that lands while the client is
-reading the settings fails in the editor with an error that names no culprit.
-
-What to build: read the settings file, and the scheme files beside it, through a
-`FileStream` opened with `FileShare.ReadWrite | FileShare.Delete`, so the client never
-refuses an editor's save. Then make the test's move retry for a short bounded time on
-access denied, as editors do, so a scanner's read is not a red run. A test that holds
-the file open through the client's own read path and moves over it proves the first half
-without any timing involved.
-
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go

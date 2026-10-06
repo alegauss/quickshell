@@ -103,6 +103,7 @@
 - ✅ **QS52** **Every action needs a chord the user memorised or a menu they have to go looking for** — Ctrl+Shift+P lists every action this client has, each beside the chord that also does it, and the list is read off the bindings so one cannot exist that it does not offer.
 - ✅ **QS53** **The same command on eight hosts has to be typed eight times** — Ctrl+Shift+B types and pastes into every pane of the tab at once, the palette leaves any pane out, and only panes wearing an orange edge receive, until a switch, split, zoom or close ends it.
 - ✅ **QS83** **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — Every colour the client decides is declared once in Brand.cs, a test refuses one written elsewhere in src, and open windows follow a change of theme.
+- ✅ **QS202** **An editor's save over the settings file can be refused while the client is reading it** — A save that deletes the settings file and renames into place is not refused by the client's read; a move over an open file still is, by any reader.
 
 ## Block H — The reason to leave the incumbent
 

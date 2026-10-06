@@ -72,9 +72,69 @@ public sealed class SettingsWatchTests : IDisposable
 
         // What an editor does: write beside it, then move over it.
         File.WriteAllText(temporary, """{ "fontSize": 20 }""");
-        File.Move(temporary, file, overwrite: true);
+        MoveAsAnEditorDoes(temporary, file);
 
         Assert.Equal(20d, Until(seen, one => one.FontSize == 20).FontSize);
+    }
+
+    /// <summary>
+    /// QS202: an editor that saves by deleting the file and renaming its temporary into place is
+    /// not refused by the client reading the file.
+    ///
+    /// <para><b>The file is held open through the client's own read path</b> for the whole save, so
+    /// this has no timing in it: a read that shared nothing but reading refuses the delete every
+    /// time, where the race it stands for refused it only when the save landed mid-read.</para>
+    ///
+    /// <para><b>Delete and rename, not a move over the file.</b> A move that replaces a file is
+    /// refused while anybody holds that file, whatever they share, so no read of the client's can
+    /// let that save through; an editor that saves that way retries, and the rename test above
+    /// does the same.</para>
+    /// </summary>
+    [Fact]
+    public void AnEditorsSaveIsNotRefusedWhileTheClientIsReadingTheFile()
+    {
+        string file = Path.Combine(_directory, "settings.json");
+        string temporary = Path.Combine(_directory, "settings.json.tmp");
+
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(file, """{ "fontSize": 12 }""");
+        File.WriteAllText(temporary, """{ "fontSize": 20 }""");
+
+        using (FileStream reading = SettingsFile.OpenShared(file))
+        {
+            File.Delete(file);
+            File.Move(temporary, file);
+        }
+
+        Assert.Equal(20d, SettingsFile.ReadFrom(file).FontSize);
+    }
+
+    /// <summary>
+    /// Moves over a file, retrying a refusal for a moment as editors do. The client's own read no
+    /// longer refuses a move (QS202), but a virus scanner reading a file this test has just written
+    /// still can, and that is the desk and not the code under test.
+    /// </summary>
+    private static void MoveAsAnEditorDoes(string from, string to)
+    {
+        Stopwatch waiting = Stopwatch.StartNew();
+
+        while (true)
+        {
+            try
+            {
+                File.Move(from, to, overwrite: true);
+
+                return;
+            }
+            catch (UnauthorizedAccessException) when (waiting.Elapsed < TimeSpan.FromSeconds(2))
+            {
+                Thread.Sleep(25);
+            }
+            catch (IOException) when (waiting.Elapsed < TimeSpan.FromSeconds(2))
+            {
+                Thread.Sleep(25);
+            }
+        }
     }
 
     /// <summary>
