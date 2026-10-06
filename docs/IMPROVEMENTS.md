@@ -2041,29 +2041,6 @@ Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS102 Continuous fuzzing, and why the suite's mutator is not it
-
-QS24 ships a deterministic mutator inside the test suite: three thousand mutations
-seeded from the captured streams and from twenty named pathological shapes, at a fixed
-seed so a failure is reproducible from its iteration number. That is the right thing to
-run on every build — bounded, fast, and it fails the build.
-
-It is not fuzzing. A bounded run at a fixed seed explores the same three thousand inputs
-for ever, and finds only what those inputs find. What the design asked for was SharpFuzz
-over libFuzzer, which instruments the assembly and steers mutation by coverage — the
-difference between checking a list and searching a space.
-
-Why it was not shipped with QS24: libFuzzer on Windows needs a prebuilt driver binary
-that is not on NuGet, the run is unbounded so it cannot live in the one test command,
-and a corpus that grows across runs needs somewhere to live. Each of those is a decision
-about the harness rather than about the parser, which is why this is Block K.
-
-What it owes: the instrumented build, the driver, a seed corpus taken from the captured
-streams, a place for findings to land as new seeds, and a way to run it that is not a
-developer remembering to. A crash it finds becomes a case in the suite's own list.
-
-Falsified when a crash found here is not reproducible from the suite afterwards.
-
 ### §QS136 A green that says how much it covered
 
 `run-tests.cmd` already refuses one way of shrinking silently: no test applications
@@ -2253,3 +2230,26 @@ one mechanical change a reviewer can check by reading it once.
 
 Falsified when a fix to how a test reaches the fixture or builds a window has to be made
 in more than one file.
+
+### §QS210 A campaign nobody has to remember
+
+QS102 built the campaign (`run-fuzz.cmd`) and made every finding fail the suite, and
+left the one thing that makes fuzzing continuous rather than occasional: something that
+starts a campaign without a person remembering to.
+
+There are three places it could run, and choosing between them is the owner's call
+because each is a standing change to somebody's machine or account. A Windows scheduled
+task on the reference machine is the cheapest, and it competes with the person at the
+desk for the CPU; `-Jobs` should then stay at one, and the window should be overnight.
+The VMware guest is quieter, but it is up only while somebody started it, and its runs
+would have to be brought back the way `run-tests-vm` brings reports back. A scheduled CI
+job runs on a machine that is different every time, which suits fuzzing better than it
+suits the performance gate, because a crash is a crash on any machine. It needs the
+corpus kept between runs as a cache or an artifact, and the driver fetched under the
+pinned hash.
+
+Whichever it is, the run writes a line somewhere a person reads, with the date, the
+length, the coverage gained and any finding, so that "it has not run for a month" is
+visible.
+
+Falsified when a week passes with no campaign and nothing says so.

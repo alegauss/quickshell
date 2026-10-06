@@ -117,7 +117,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- ⏳ **QS102** (deps: QS24 ✅) **The parser is fuzzed only by the suite's own mutator, which stops when the build does** — Nothing runs a campaign unless somebody types run-fuzz.cmd, and a crash it finds becomes a suite case by hand. → §QS102
 - 📋 **QS136** (deps: —) **A run with a hundred tests skipped prints the same "Passed" as one with none** — The fixture stops on its own and the summary line does not change, so the green that proves nothing looks exactly like the green that proves everything. → §QS136
 - 📋 **QS149** (deps: —) **A tool that rewrites a source file can mangle its punctuation and every check stays green** — The hygiene test bans control bytes and says nothing about text that decoded through the wrong codepage on its way back to disk. → §QS149
 - 📋 **QS159** (deps: QS147 ✅) **The shipping discipline tells an agent to screenshot a UI task, and this repository's evidence rule forbids that** — A session followed the skill, spent an hour driving the operator's desk with synthetic keystrokes, and never found the winwright cases already here. → §QS159
@@ -350,15 +349,6 @@
 - **Frame cost is one of the gated figures** Settled when the gate's figures include the
   arm QS196 adds, a baseline carries its threshold, and a check prints it beside parse,
   emulate and start.
-
-## Done when — QS102
-
-- **A campaign runs on a schedule nobody has to remember** Checked by the schedule's own
-  record: a run started without anyone typing run-fuzz.cmd, with its date and how long
-  it ran, at least weekly.
-- **A crash the campaign finds fails the suite with no hand edit** Checked by planting a
-  crashing input in the findings folder and seeing the next suite run fail on it by
-  name, before anyone copies it into HostileInputTests.
 
 ## Non-goals
 

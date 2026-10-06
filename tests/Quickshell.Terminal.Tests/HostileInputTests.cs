@@ -72,6 +72,48 @@ public sealed class HostileInputTests
         }
     }
 
+    /// <summary>
+    /// What <c>run-fuzz.cmd</c> found, replayed: every <c>crash-*</c> file in
+    /// <c>artifacts/fuzz/findings</c>, fed the way the fuzz target fed it, fails this by name until
+    /// the bug is fixed (QS102). A desk that never ran a campaign has nothing to replay.
+    ///
+    /// <para>The split is the fuzz target's own: the first byte, modulo the length plus one, is
+    /// where the input is cut into two reads. A finding replayed any other way may not be the input
+    /// that crashed, and a pass here would then say nothing.</para>
+    /// </summary>
+    [Fact]
+    public void EveryFuzzFindingIsSurvived()
+    {
+        string findings = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(CorpusDirectory)!)!,
+                                       "..", "artifacts", "fuzz", "findings");
+        string[] crashes = Directory.Exists(findings) ? Directory.GetFiles(findings, "crash-*") : [];
+
+        Assert.SkipWhen(crashes.Length == 0, "no fuzz findings on this desk: run-fuzz.cmd has found nothing here");
+
+        List<string> broken = [];
+
+        foreach (string crash in crashes)
+        {
+            byte[] input = File.ReadAllBytes(crash);
+            int split = input.Length == 0 ? 0 : input[0] % (input.Length + 1);
+
+            try
+            {
+                Emulator emulator = new(80, 24, scrollback: 200);
+                emulator.Feed(input.AsSpan(0, split));
+                emulator.Feed(input.AsSpan(split));
+                Bounded(emulator);
+            }
+            catch (Exception failure)
+            {
+                broken.Add($"{Path.GetFileName(crash)}: {failure.GetType().Name}: {failure.Message}");
+            }
+        }
+
+        Assert.True(broken.Count == 0,
+            $"{broken.Count} of {crashes.Length} fuzz findings still break the model:\n" + string.Join("\n", broken));
+    }
+
     // ---- It does not fail ----
 
     [Theory]

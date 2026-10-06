@@ -23,3 +23,5 @@
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+- ⏸ **QS210** (deps: —) **The fuzzing campaign runs only when somebody types run-fuzz.cmd** — set aside (Waits for the owner to choose this desk, the guest or CI.): QS102's search is continuous only on a schedule, and where it runs is a standing change the owner has to choose. → §QS210
