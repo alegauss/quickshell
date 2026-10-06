@@ -32,7 +32,7 @@ jobs:
       - name: Build
         run: dotnet build Quickshell.sln --configuration Release --no-restore -warnaserror
 
-      # run-tests.cmd and not `dotnet test`: that command reports "zero tests ran" and exits 5 on
-      # a tree where every assembly passes, so a pipeline gated on it is gated on nothing.
+      # run-tests.cmd, which is the suite on every desk: it writes a TRX per assembly and names a
+      # red run's tests. `dotnet test --solution Quickshell.sln` gives the same verdict since QS89.
       - name: Test
         run: .\run-tests.cmd Release

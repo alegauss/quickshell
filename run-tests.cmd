@@ -3,10 +3,11 @@ setlocal enabledelayedexpansion
 
 rem The one command whose exit code is the suite's verdict.
 rem
-rem It is a script and not `dotnet test` because that command does not answer honestly here: on
-rem this tree it reports "zero tests ran" and exits 5 while every test assembly, run directly,
-rem discovers and passes its tests and exits 0. A command that reports a failure the tree does not
-rem have is worse than no command, because the first thing it teaches is to stop reading it.
+rem It was written because `dotnet test` did not answer honestly here: it reported "zero tests
+rem ran" and exited 5 while every assembly, run directly, passed. Since QS89 it does answer -
+rem `dotnet test --solution Quickshell.sln` runs the same 1307 tests and exits 2 on a broken one
+rem (SDK 10.0.401). This stays the suite for what follows: the TRX per assembly, the names of a
+rem red run's tests, and the same command on the guest.
 rem
 rem QS175: every assembly writes a TRX beside the run, and a red run prints the names out of it.
 rem A run that fails once in eight and leaves only a count teaches the reader to rerun rather than

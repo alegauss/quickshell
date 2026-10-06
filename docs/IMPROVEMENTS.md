@@ -2058,34 +2058,6 @@ Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS89 What dotnet test does with this tree that the assembly does not
-
-QS88 delivered a command whose exit code is the verdict; it is not this one, and this
-one is still wrong. What is known, measured on 2026-08-22 against SDK 10.0.303 and
-xunit.v3 4.0.0:
-
-The test assembly run directly — `bin\Debug\net10.0-windows\*.Tests.exe`, or through
-`dotnet exec` on its dll — discovers and passes every test and exits 0. Handed the same
-tree, `dotnet test` prints "zero tests ran" and exits 5, in about 150 ms, having plainly
-never started the assembly.
-
-`Platform` correlates with it. Before `AppendPlatformToOutputPath` was turned off,
-`dotnet test <csproj>` passed and `dotnet test <csproj> -p:Platform=x64` and `dotnet
-test Quickshell.sln` both reported zero. After it, all three report zero. So the
-platform segment in the output path is part of the story and not all of it.
-
-`global.json` already declares the Microsoft.Testing.Platform runner, the projects now
-build against it, and `Microsoft.Testing.Extensions.MSBuild` is in the output — so this
-is not a project that forgot to opt in.
-
-The three candidates worth separating: the path the SDK's MTP integration launches the
-app from under a non-default platform; a protocol version between that integration and
-the one xunit.v3 4.0.0 carries; and something in `Directory.Build.props` that only bites
-when MSBuild is the launcher. Each is answerable by one run.
-
-Falsified when `dotnet test Quickshell.sln` reports the same count as `run-tests.cmd`
-and exits zero, and non-zero when a test is broken.
-
 ### §QS90 The clone that has never been made
 
 Block K asks that a clean clone build and pass with nothing taken from memory. That has
@@ -2112,11 +2084,11 @@ Falsified when the clean clone needs a step this task did not name.
 
 ### §QS99 QS
 
-The suite is run by invoking the test assembly directly, because `dotnet test` prints
-nothing (QS89). That works, and it has one failure mode that has now cost two debugging
-cycles: when the build ahead of it fails, the assembly from the last successful build is
-still sitting there, and running it prints a full green summary for code that was never
-compiled.
+The suite is run by invoking the test assembly directly, which is what `run-tests.cmd`
+does even now that `dotnet test` answers (QS89). That works, and it has one failure mode
+that has now cost two debugging cycles: when the build ahead of it fails, the assembly
+from the last successful build is still sitting there, and running it prints a full
+green summary for code that was never compiled.
 
 Both times the green summary was believed for a moment. The first time an analyser error
 (CA1823, an unused field left by a deliberate probe) failed the build; the second time a
