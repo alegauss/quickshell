@@ -1,0 +1,126 @@
+[
+ {
+  "name": "menu",
+  "offset": 12
+ },
+ {
+  "name": "menu-1-screen-1",
+  "offset": 746
+ },
+ {
+  "name": "menu-1-screen-2",
+  "offset": 748
+ },
+ {
+  "name": "menu-1-screen-3",
+  "offset": 750
+ },
+ {
+  "name": "menu-1-screen-4",
+  "offset": 752
+ },
+ {
+  "name": "menu-1-screen-5",
+  "offset": 754
+ },
+ {
+  "name": "menu-1-screen-6",
+  "offset": 756
+ },
+ {
+  "name": "menu-1-screen-7",
+  "offset": 758
+ },
+ {
+  "name": "menu-2-screen-1",
+  "offset": 1293
+ },
+ {
+  "name": "menu-2-screen-2",
+  "offset": 1793
+ },
+ {
+  "name": "menu-2-screen-3",
+  "offset": 2955
+ },
+ {
+  "name": "menu-2-screen-4",
+  "offset": 3930
+ },
+ {
+  "name": "menu-2-screen-5",
+  "offset": 5074
+ },
+ {
+  "name": "menu-2-screen-6",
+  "offset": 6031
+ },
+ {
+  "name": "menu-2-screen-7",
+  "offset": 8962
+ },
+ {
+  "name": "menu-2-screen-8",
+  "offset": 11878
+ },
+ {
+  "name": "menu-2-screen-9",
+  "offset": 14800
+ },
+ {
+  "name": "menu-2-screen-10",
+  "offset": 17716
+ },
+ {
+  "name": "menu-2-screen-11",
+  "offset": 17875
+ },
+ {
+  "name": "menu-2-screen-12",
+  "offset": 18022
+ },
+ {
+  "name": "menu-2-screen-13",
+  "offset": 18603
+ },
+ {
+  "name": "menu-2-screen-14",
+  "offset": 18650
+ },
+ {
+  "name": "menu-2-screen-15",
+  "offset": 19995
+ },
+ {
+  "name": "menu-8-screen-1",
+  "offset": 22843
+ },
+ {
+  "name": "menu-8-screen-2",
+  "offset": 23176
+ },
+ {
+  "name": "menu-8-screen-3",
+  "offset": 23367
+ },
+ {
+  "name": "menu-8-screen-4",
+  "offset": 23462
+ },
+ {
+  "name": "menu-8-screen-5",
+  "offset": 25909
+ },
+ {
+  "name": "menu-8-screen-6",
+  "offset": 27468
+ },
+ {
+  "name": "menu-8-screen-7",
+  "offset": 27845
+ },
+ {
+  "name": "menu-8-screen-8",
+  "offset": 31254
+ }
+]

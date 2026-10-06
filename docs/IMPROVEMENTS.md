@@ -297,31 +297,6 @@ Falsified when the derivation changes without a way to read what the old one wro
 
 ## Block C — Emulation that does not lie about the remote
 
-### §QS33 Judged by somebody else's tests
-
-Two external suites, run against the headless model with a pseudo-console driving them
-and no renderer or network involved.
-
-`esctest`, from the iTerm2 project, is the more valuable of the two: it is programmatic,
-it asserts specific buffer states, and it covers exactly the corners this project would
-otherwise discover from a user — parameter defaults, clamping at margins, the
-interaction of origin mode with CUP, DECSC across a screen switch.
-
-`vttest` is interactive and older, and its value is different in kind: it exercises the
-DEC behaviours a program written in 1985 still depends on, and network appliances are
-full of programs written in 1985.
-
-The result is a pass rate per section, committed to the repository, so a change that
-improves one area while quietly breaking another shows up as a number rather than as a
-feeling. Known failures are listed with a reason each — not implemented, deliberately
-not implemented, or a defect with a task id beside it. A failure with no entry in that
-list is a regression by definition.
-
-The target is above ninety per cent of `esctest` before the emulator is called finished,
-with the remaining tenth named individually rather than waved at.
-
-Falsified when a pass rate is quoted without the run and the date that produced it.
-
 ### §QS92 The three environments this machine is not
 
 QS12 landed the suite and ran it on two environments: this machine's own adapter, which
@@ -757,6 +732,69 @@ mark-to-mark positioning, places the second mark right, `Restack` should step as
 it rather than override it.
 
 Falsified when `a` with U+0301 and U+0308 reads back two separate inks above the a.
+
+### §QS205 A movement that respects the region
+
+Found by QS33's vttest run, cuts 014 and 016. vttest turns origin mode on, sets the
+region to rows 12 and 13, and moves with `CSI 24 B` and later `CSI 24 A`, expecting both
+to stop at the region's edge. Here `CSI A` clamps only to row 0 and `CSI B` only to the
+last row, so the cursor leaves the region and the soft-scroll test writes over row 1.
+
+What to build: CUU stops at the top margin when the cursor starts at or below it, and
+CUD at the bottom margin when it starts at or above it, which is DEC's rule and xterm's.
+A cursor already outside the region moves to the screen's edge as now. CNL and CPL are
+the same movement plus a carriage return and take the same clamp.
+
+Falsified when vttest's cuts 014 and 016 still disagree with xterm after the change, or
+when esctest's CUU and CUD sections lose a test.
+
+### §QS206 The save that keeps the character set
+
+Found by QS33's vttest run, cut 022. vttest designates the DEC special graphics set into
+G0, saves the cursor with `ESC 7`, switches G0 back to ASCII, and restores with `ESC 8`,
+expecting the line-drawing set to come back with the position. DEC's DECSC saves the
+character set designations and the shift state with the cursor, and xterm restores them.
+Here they are not saved, so half of every line-drawing run prints as the letter q.
+
+What to build: SaveCursor keeps the four designations and which set is shifted in,
+beside what it keeps already, and RestoreCursor puts them back. The alternate screen's
+save is the same structure and takes the same fields.
+
+Falsified when cut 022 still shows a q.
+
+### §QS207 Insert mode
+
+Found by QS33's vttest run, cuts 025 and 026. `CSI 4 h` turns on insert mode, in which a
+printed character pushes the rest of the row right instead of overwriting it, and the
+character pushed off the right margin is lost. vttest prints 78 stars in insert mode in
+front of a B and expects the B at the right edge; here the stars overwrite it. Cut 026
+only inherits that row.
+
+What to build: IRM as a mode bit, set and reset by SM and RM 4, and in PrintCluster an
+insert of the character's width at the cursor before the write, using the buffer's
+existing InsertCells so damage is recorded. A wide character inserts two cells. DECRQM
+(QS104) reports it once both exist.
+
+Falsified when cut 025 does not end in B.
+
+### §QS208 132 columns, obeyed or refused
+
+Found by QS33's vttest run, cuts 010, 012 and 030. `CSI ? 3 h` asks for 132 columns; the
+xterm in the oracle obeys and redraws, and this emulator ignores it, so every 132-column
+screen vttest draws is read here as 80 columns of it.
+
+This is a choice before it is a build. Obeying means the client resizes its window, or
+its grid, when a host says so, which a tabbed and split client has no single answer for.
+xterm itself ignores the sequence unless allowC132 is set, and many modern terminals do
+the same. Ignoring it entirely also drops the side effects DECCOLM carries everywhere:
+clear the screen, home the cursor, reset the margins.
+
+What to decide, then build: either obey within the pane by reflowing to 132 columns, or
+keep ignoring the width and still perform the clear, home and margin reset. The second
+is small and is what xterm does with allowC132 set and no room to grow. If the answer is
+to ignore it, that is a non-goal and this line retires into it.
+
+Falsified when cut 010 is decided against without a line in the non-goals saying so.
 
 ## Block D — The tree a user organises work in
 
@@ -1452,9 +1490,9 @@ find.
 
 The client has no menu on purpose, and the command line is where that decision put
 everything a script or another program might ask of it: `--tabs`, `--panes`,
-`--broadcast`, `--import` and `--palette` today. Each is parsed where it is used in the
-entry point, and each is explained by a comment beside that line, which is the one place
-a user will never read.
+`--broadcast`, `--import [file]` and `--palette` today. Each is parsed where it is used
+in the entry point, and each is explained by a comment beside that line, which is the
+one place a user will never read.
 
 KEYS.md solved the same problem for chords, and the shape carries over: the flags become
 one list in code that the entry point reads rather than five separate lookups, and a
