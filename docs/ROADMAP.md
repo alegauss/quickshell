@@ -83,7 +83,6 @@
 
 ## Block I — An error a user can act on
 
-- 📋 **QS128** (deps: QS71 ✅) **A trace shows what this client offered and never what the server did** — Half a negotiation cannot settle "no algorithm in common", so the appliance failures this level exists for are still diagnosed by guesswork. → §QS128
 - 📋 **QS129** (deps: QS71 ✅) **Nothing in the client says where its log is, or turns the trace on** — A log a user cannot find is a log that does not exist, and a trace that can only be enabled by editing code is one no bug report will ever carry. → §QS129
 - 📋 **QS130** (deps: QS71 ✅) **The log goes quiet exactly where a transfer or a tunnel failed** — A connection's own life is recorded and everything carried over it is not, so the reports hardest to reproduce are the ones the log has least to say about. → §QS130
 - 📋 **QS131** (deps: QS72 ✅) **The crash dialog mixes this client's English with Windows' own button words** — Two dialogs do it now, the crash report and the diagnostics bundle, and "Yes/No" names neither of the things their buttons actually do. → §QS131

@@ -29,6 +29,8 @@
 
 ## Block I — An error a user can act on
 
+- ⏸ **QS128** (deps: QS71 ✅) **A trace shows what this client offered and never what the server did** — set aside (A decision: parse KEXINIT here or wait.): SSH.NET 2026.0 raises the server's KEXINIT only on an internal session event no caller can reach in time, so the rest is reading it ourselves. → §QS128
+
 ## Block J — Leaving MobaXterm, proven by the switch
 
 - ⏸ **QS81** (deps: QS80 ✅, QS116 ✅, QS126 ✅, QS217, QS218, QS219) **A user weighing the switch has nothing that says what they will and will not get** — set aside (Needs MobaXterm in the guest.): Its figures need MobaXterm measured where it may run, and the build it describes still lacks a password prompt. → §QS81
