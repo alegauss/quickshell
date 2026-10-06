@@ -22,7 +22,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - 🛠 **QS33** (deps: QS17 ✅, QS18 ✅, QS20 ✅, QS21 ✅, QS25 ✅, QS93) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — vttest's verdict is a person looking at the screen, so automating it needs something to compare against rather than a way to press its keys. → §QS33
-- 📋 **QS92** (deps: —) **The golden suite has run on two rasterisers and none of the three vendor drivers its matrix names** — A driver bug is by definition the thing the machine that wrote the code cannot see, so a suite that has only ever run here is one nobody has tested yet. → §QS92
 - 📋 **QS93** (deps: QS25 ✅) **Every golden scene is text somebody typed into the test, so none of them is a screen a real program drew** — A scene an author invented exercises what that author thought of, which is never the combination that turns out to break on somebody's machine. → §QS93
 - 📋 **QS101** (deps: —) **Ninety-six bytes of the parse path's allocation is measured but unattributed** — Three hostile shapes cost thirty-two bytes each per pass, only when the whole sequence runs, so something oscillates between two states and the zero-allocation claim carries a ceiling instead. → §QS101
 - 📋 **QS103** (deps: —) **Nothing answers a request for a rectangle's checksum, so an external suite cannot read the screen back** — It is how esctest checks a cell, so its absence fails two hundred and twenty-eight tests that are about something else entirely. → §QS103

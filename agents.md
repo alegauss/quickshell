@@ -26,8 +26,8 @@ finding that leaves with the session that had it.
 
 ## What is governed here
 
-`docs/ROADMAP.md`, `docs/CHANGELOG.md`, `docs/IMPROVEMENTS.md` and `docs/DECISIONS.md` are
-written by roadkeep and a hand-edit is refused by a hook. The `roadkeep` skill says which
+`docs/ROADMAP.md`, `docs/CHANGELOG.md`, `docs/IMPROVEMENTS.md`, `docs/DECISIONS.md` and
+`docs/DEFERRED.md` (lines set aside until something outside this desk exists) are written by roadkeep and a hand-edit is refused by a hook. The `roadkeep` skill says which
 command to call; `.claude/skills/roadmap-docs/SKILL.md` says when a task may ship and what
 a commit owes.
 
