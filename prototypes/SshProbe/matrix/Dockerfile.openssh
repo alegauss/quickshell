@@ -1,0 +1,16 @@
+# One OpenSSH server per distribution release, because the version is the variable (QS40): the
+# release decides which key exchanges, host keys and signature algorithms the server offers, and a
+# client that has only met the newest fails against the oldest in a way that reads as a broken
+# server. The base image is the only argument.
+ARG BASE=ubuntu:20.04
+FROM ${BASE}
+
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends openssh-server procps \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 22
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "openssh"]

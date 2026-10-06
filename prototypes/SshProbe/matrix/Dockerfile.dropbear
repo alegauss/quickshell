@@ -1,0 +1,11 @@
+# Dropbear, which is what an embedded device runs: a much smaller algorithm set than OpenSSH, and a
+# BusyBox userland behind it rather than GNU, so the full-screen program is BusyBox's own top.
+FROM alpine:3.20
+
+RUN apk add --no-cache dropbear
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 22
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "dropbear"]

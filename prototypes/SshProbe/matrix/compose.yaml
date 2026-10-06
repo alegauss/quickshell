@@ -1,0 +1,50 @@
+# The compatibility matrix (QS40): servers that are not the fixture's OpenSSH 9.6, each a container
+# so the rows are reproducible by somebody who owns none of the hardware they stand for. The 9.6 row
+# is the fixture's own target on 2222. Keys come from the fixture: bring it up first (../fixture/up.sh).
+services:
+  # The far side of the SHA-1 line: before 7.2 an RSA key can only sign as ssh-rsa.
+  openssh66:
+    build:
+      context: .
+      dockerfile: Dockerfile.openssh
+      args:
+        BASE: ubuntu:14.04
+    container_name: qs-matrix-openssh66
+    ports:
+      - "127.0.0.1:2230:22"
+    volumes:
+      - ../fixture/keys:/keys:ro
+
+  openssh72:
+    build:
+      context: .
+      dockerfile: Dockerfile.openssh
+      args:
+        BASE: ubuntu:16.04
+    container_name: qs-matrix-openssh72
+    ports:
+      - "127.0.0.1:2231:22"
+    volumes:
+      - ../fixture/keys:/keys:ro
+
+  openssh82:
+    build:
+      context: .
+      dockerfile: Dockerfile.openssh
+      args:
+        BASE: ubuntu:20.04
+    container_name: qs-matrix-openssh82
+    ports:
+      - "127.0.0.1:2232:22"
+    volumes:
+      - ../fixture/keys:/keys:ro
+
+  dropbear:
+    build:
+      context: .
+      dockerfile: Dockerfile.dropbear
+    container_name: qs-matrix-dropbear
+    ports:
+      - "127.0.0.1:2233:22"
+    volumes:
+      - ../fixture/keys:/keys:ro
