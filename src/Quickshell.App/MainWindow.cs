@@ -1028,10 +1028,21 @@ public sealed class MainWindow : Window
     /// is two steps rather than one: the preview is built and shown, and the tree is written after
     /// the answer and not before it.</para>
     /// </summary>
+    /// <param name="from">
+    /// The session file to read, or null to look where MobaXterm keeps it. A named file that is not
+    /// there is answered the way a machine with no MobaXterm is: there is nothing to import.
+    /// </param>
     /// <returns>Where the sessions were written, or empty where nothing was.</returns>
-    public string ImportSessions()
+    public string ImportSessions(string? from = null)
     {
-        if (MobaXtermImport.Find() is not { } found)
+        string? found = MobaXtermImport.Find();
+
+        if (from is not null)
+        {
+            found = System.IO.File.Exists(from) ? from : null;
+        }
+
+        if (found is null)
         {
             (Importing ?? Asked)(new ImportPreview([], string.Empty));
 

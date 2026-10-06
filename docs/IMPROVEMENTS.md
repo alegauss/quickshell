@@ -2230,31 +2230,6 @@ here records which feed that is. Finding out is most of the work.
 
 Falsified when a case explains itself by an engine limitation that no longer exists.
 
-### §QS181 A dialog five seconds late
-
-While QS53 was being shipped, one full run of `run-tests.cmd` failed a single case: the
-import preview was not on the desk under its caption after sixty polls over five
-seconds, and the step that refuses it then invoked the main window's Close button
-instead, because that was the rightmost button left to find. `Quickshell.Cases` run on
-its own straight afterwards passed all six cases, and so did the next full run. Nothing
-in that commit touches the import path.
-
-So this is the intermittent red Block K's criterion rules out, and the report kept by
-QS175 is what named it. What it does not say is why. The dialog is asked for with
-`BeginInvoke` before the dispatcher starts, and it shares the window's thread with the
-first pane's layout, device and shell, all of which a desk still busy with the previous
-assembly can slow. Five seconds is the engine's resolve timeout, not a figure anybody
-measured for this dialog.
-
-A guest run on 2026-10-06 found the dialog and failed anyway: `Button[order=right]`
-resolved to the dialog's own caption Close, disabled. The step names a position, not a
-button. Measure how long the preview takes to appear before choosing any wait.
-
-The second hazard is worth closing whatever the first finds: a step that looks for a
-dialog's button must not be able to land on the window behind it.
-
-Falsified when the case fails on a tree nothing changed.
-
 ### §QS182 A picture of a desk that was not drawing
 
 The host suite runs with the guest suspended, because a running guest holds the host's

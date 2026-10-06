@@ -12,8 +12,14 @@
     {
       // The dialog opens over the window rather than instead of it, so the fixture is the
       // application with the flag on.
+      //
+      // Given a file, and not left to find whatever this desk has installed (QS181): a desk with no
+      // MobaXterm shows an OK-only notice instead of the Yes/No preview, so the same case asserted
+      // two different dialogs depending on where it ran. The file is synthetic and committed; the
+      // path is relative to the repository, which CasesRun makes the application's working
+      // directory because a fixture cannot say so itself (WW508).
       "name": "the import preview",
-      "arguments": ["--import"],
+      "arguments": ["--import", "cases/fixtures/MobaXterm.ini"],
       "shareable": true
     }
   ],
@@ -38,14 +44,17 @@
           "named": "the preview is on the desk under its own caption"
         },
         {
-          // The rightmost button, because it cannot be named: MessageBox takes its captions from
-          // Windows, so on this desk they read "Sim" and "Não". That is QS131 — the dialog is
-          // bilingual — and here it is the difference between a case that runs anywhere and one
-          // that runs on an English machine.
+          // No, by its control id. MessageBox takes its captions from Windows, so on this desk they
+          // read "Sim" and "Não" and a name would tie the case to one language (QS131). The id is
+          // IDNO, 7, in every language, and a dialog button's automation id is its control id —
+          // read off the tree in the guest, where the OK-only notice's button answered as 2.
+          //
+          // Not `Button[order=right]`, which this was until QS181: the dialog's caption Close is a
+          // button too, disabled on a Yes/No box, and on some runs it is the rightmost one found.
           //
           // `invoke` and not `click`: the pattern is the act, and a synthesised pointer would need
           // the foreground this whole exercise exists to stop needing.
-          "locator": "Button[order=right]",
+          "locator": "Window[class=\"#32770\"] > Button#7",
           "act": "invoke",
           "named": "refusing the import, which is what writes nothing"
         }

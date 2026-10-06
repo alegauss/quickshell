@@ -159,6 +159,32 @@ public sealed class MobaXtermImportTests : IDisposable
                      Directory.GetFiles(_here).Select(Path.GetFileName).ToArray());
     }
 
+    /// <summary>
+    /// QS181: an import told which file to read previews that file, whatever this machine has
+    /// installed, and one told a file that is not there answers as a machine with none does.
+    /// </summary>
+    [Fact]
+    public void AnImportToldWhichFileReadsThatFile()
+    {
+        string named = File(Line("named", 0, "named.example", "22", "alex"));
+        string missing = Path.Combine(_here, "not-there.ini");
+
+        (int namedSessions, string namedSource, string missingSource) = OnStaThread(() =>
+        {
+            List<ImportPreview> seen = [];
+            MainWindow window = new() { Importing = preview => { seen.Add(preview); return false; } };
+
+            window.ImportSessions(named);
+            window.ImportSessions(missing);
+
+            return (seen[0].Sessions.Count, seen[0].Source, seen[1].Source);
+        });
+
+        Assert.Equal(1, namedSessions);
+        Assert.Equal(named, namedSource);
+        Assert.Equal(string.Empty, missingSource);
+    }
+
     // ---- Against a real file, where there is one ----
 
     /// <summary>
@@ -218,6 +244,42 @@ public sealed class MobaXtermImportTests : IDisposable
         }
 
         return $"{name}={string.Join('%', fields)}";
+    }
+
+    /// <summary>Runs something on an STA thread, and shuts the dispatcher it built down after.</summary>
+    private static T OnStaThread<T>(Func<T> work)
+    {
+        T result = default!;
+        Exception? failed = null;
+
+        Thread thread = new(() =>
+        {
+            try
+            {
+                result = work();
+            }
+            catch (Exception error)
+            {
+                failed = error;
+            }
+            finally
+            {
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
+            }
+        });
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.IsBackground = true;
+        thread.Start();
+
+        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
+
+        if (failed is not null)
+        {
+            throw new InvalidOperationException("the STA work failed", failed);
+        }
+
+        return result;
     }
 
     private string File(string content, bool whole = false)

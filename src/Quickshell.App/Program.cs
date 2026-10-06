@@ -178,9 +178,19 @@ public static class Entry
         // `--import` opens what Ctrl+Shift+I opens, and after the window is up rather than before:
         // the preview is a dialog over a window, and a modal with nothing behind it is a client that
         // looks like it failed to start. It still writes nothing until the answer is yes.
-        if (arguments.Contains("--import", StringComparer.Ordinal))
+        //
+        // `--import <file>` previews that file instead of looking in MobaXterm's usual places: a
+        // session file somebody copied off another machine, and a UI case that needs the same
+        // preview on every desk rather than whatever this one has installed (QS181).
+        int import = Array.IndexOf(arguments, "--import");
+
+        if (import >= 0)
         {
-            window.Dispatcher.BeginInvoke(() => window.ImportSessions());
+            string? from = import + 1 < arguments.Length && !arguments[import + 1].StartsWith("--", StringComparison.Ordinal)
+                ? Path.GetFullPath(arguments[import + 1])
+                : null;
+
+            window.Dispatcher.BeginInvoke(() => window.ImportSessions(from));
         }
 
         // `--palette` opens what Ctrl+Shift+P opens, and for the same reason as `--import`: after

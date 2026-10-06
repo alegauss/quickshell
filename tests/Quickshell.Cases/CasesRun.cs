@@ -57,6 +57,11 @@ public sealed class CasesRun
 
         using ProcessRegister register = ProcessRegister.For(project);
 
+        // The application inherits this process's directory, and a fixture argument naming a file
+        // in the repository means that file only from its root (QS181). Set here because the engine
+        // starts the application without a working directory of its own, which is WW508.
+        Directory.SetCurrentDirectory(repository);
+
         SuiteVerdict verdict = Suite.Launch(declared, Selection.All, register, project);
 
         // The whole reading and not the outcome: xUnit shows one message, so the message has to be
