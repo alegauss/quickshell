@@ -7,6 +7,7 @@
 ## Block B — Keys, agents, and the host you think you reached
 
 - ⏸ **QS114** (deps: QS41 ✅) **A PuTTY user on Pageant older than 0.78 has an agent this client cannot reach at all** — set aside (Needs a real Pageant installed.): It has met only a window answering as Pageant does, since no real Pageant is installed here or in the guest. → §QS114
+- ⏸ **QS43** (deps: QS41 ✅, QS114 ✅) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — set aside (Needs a hardware token.): Both carriers now reach an agent, and no key on a hardware token has yet signed a session through either. → §QS43
 
 ## Block C — Emulation that does not lie about the remote
 

@@ -8,8 +8,7 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- ⏳ **QS43** (deps: QS41 ✅, QS114 ✅) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — Pageant older than 0.78 speaks over shared memory rather than a pipe, and that transport is the half of it this does not reach. → §QS43
-- 📋 **QS45** (deps: QS43 ⏳) **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — Forwarding hands a remote machine the ability to authenticate as the user everywhere, so it is decided per host rather than by a checkbox set once. → §QS45
+- 📋 **QS45** (deps: QS43 ✅) **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — Forwarding hands a remote machine the ability to authenticate as the user everywhere, so it is decided per host rather than by a checkbox set once. → §QS45
 - ⏳ **QS113** (deps: QS41 ✅, QS46 ✅, QS126) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — The report reaches nothing a user sees until a remote session is in the window, which QS126 brings. → §QS113
 - 📋 **QS115** (deps: QS44 ✅) **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — The framework ships no memory-hard derivation, so the choice was a third-party dependency where a mistake is unrecoverable, or the strongest thing it has. → §QS115
 
