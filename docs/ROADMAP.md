@@ -45,8 +45,7 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-- 📋 **QS68** (deps: QS66 ✅, QS127 ✅) **Reaching many hosts on the remote network needs one forward configured per host** — A SOCKS proxy is a single forward covering a whole network, which is what a browser or a cloud tool needs and what per-host forwards cannot provide. → §QS68
-- 📋 **QS69** (deps: QS66 ✅, QS67 ✅, QS68, QS38 ✅) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
+- 📋 **QS69** (deps: QS66 ✅, QS67 ✅, QS68 ✅, QS38 ✅) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
 - 📋 **QS70** (deps: QS69) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — A forward is invisible by nature, and a client that will not show its own listeners makes the user consult netstat to understand the client. → §QS70
 
 ## Block G — The clean interface, defended

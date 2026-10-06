@@ -788,33 +788,6 @@ a second connection to list it.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-### §QS68 One forward that covers a network
-
-Dynamic forwarding is a SOCKS proxy served by the client: the application says where it
-wants to go and the client opens a channel there. One forward covers everything
-reachable from the remote host, which is why this is the forward a browser or a cloud
-CLI actually wants.
-
-SOCKS5 with no authentication on loopback is the working configuration, and SOCKS4a is
-supported because old tools still speak it. `CONNECT` is the command that matters;
-`BIND` and UDP associate are not implemented and are refused cleanly rather than left to
-time out.
-
-Hostname targets are passed to the server unresolved, and that is the whole security
-property. Resolving locally leaks every hostname the user visits to the local network's
-DNS, and it also breaks any name that exists only inside the remote network. A SOCKS
-proxy that resolves locally is a common defect and a quiet one, because most names
-happen to resolve both places.
-
-Binding follows the local forward's rule — loopback by default, a warning beyond it —
-with more force here, since this listener is a route into an entire network rather than
-to one port.
-
-Failures are reported with the correct SOCKS reply code, because an application handed a
-generic failure retries forever instead of telling its user anything.
-
-Falsified when a hostname is resolved locally rather than by the server.
-
 ### §QS69 A forward has a life, and it outlives attention
 
 A forward is configured on a session rather than created ad hoc, so it survives the

@@ -20,9 +20,11 @@ namespace Quickshell.Transport;
 /// channel is handed a socket of its own rather than the client's, and the client hears the reply
 /// before a single byte of the target's — every time, because nothing is relayed until it has.</para>
 ///
-/// <para><b>SOCKS5 with no authentication, CONNECT only.</b> That is what a browser and every
-/// command-line tool speak. BIND and UDP ASSOCIATE are refused with the reply SOCKS has for a command
-/// it does not support, rather than pretended to; a SOCKS4 client is closed. A refusal from the far
+/// <para><b>SOCKS5 with no authentication, and SOCKS4a for the old tools that still speak it;
+/// CONNECT only (QS68).</b> BIND and UDP ASSOCIATE are refused with the reply SOCKS has for a command
+/// it does not support, rather than pretended to. A host name, in either version, goes to the server
+/// unresolved: resolving it here would tell this network's DNS every name visited, and fail every
+/// name that exists only on the far side. A refusal from the far
 /// side is answered with the reply that names it: connection refused where the target did not
 /// accept, not allowed where the server forbids forwarding.</para>
 ///
@@ -33,6 +35,7 @@ namespace Quickshell.Transport;
 public sealed class DynamicForward : IAsyncDisposable
 {
     private const byte Socks5 = 5;
+    private const byte Socks4 = 4;
     private const byte NoAuthentication = 0;
     private const byte NoAcceptableMethod = 0xFF;
     private const byte Connect = 1;
@@ -193,7 +196,7 @@ public sealed class DynamicForward : IAsyncDisposable
                 return;
             }
 
-            Carry(client, talk, wanted.Host, wanted.Port);
+            Carry(client, talk, wanted.Host, wanted.Port, wanted.Version);
         }
         catch (Exception ended) when (ended is IOException or SocketException or ObjectDisposedException
                                           or EndOfStreamException)
@@ -210,15 +213,19 @@ public sealed class DynamicForward : IAsyncDisposable
     /// The greeting and the request, answered where they cannot be served. Null where the
     /// conversation ended here.
     /// </summary>
-    private static (string Host, int Port)? Asked(NetworkStream talk)
+    private static (string Host, int Port, byte Version)? Asked(NetworkStream talk)
     {
         Span<byte> two = stackalloc byte[2];
 
         talk.ReadExactly(two);
 
+        if (two[0] == Socks4)
+        {
+            return Asked4(talk, two[1]);
+        }
+
         if (two[0] != Socks5)
         {
-            // SOCKS4 has no way to say "use five", so the connection is simply ended.
             return null;
         }
 
@@ -289,13 +296,62 @@ public sealed class DynamicForward : IAsyncDisposable
             return null;
         }
 
-        return (host, port);
+        return (host, port, Socks5);
+    }
+
+    /// <summary>
+    /// SOCKS4 and 4a, for the old tools that still speak it: a port, an address, a user name, and —
+    /// where the address is 0.0.0.x — a host name after it, which goes to the server unresolved
+    /// exactly as a SOCKS5 name does.
+    /// </summary>
+    private static (string Host, int Port, byte Version)? Asked4(NetworkStream talk, byte command)
+    {
+        Span<byte> six = stackalloc byte[6];
+
+        talk.ReadExactly(six);
+
+        int port = BinaryPrimitives.ReadUInt16BigEndian(six);
+        byte[] address = six[2..].ToArray();
+
+        _ = Terminated(talk);
+
+        // 0.0.0.x with x not zero is 4a's sign that a name follows.
+        string host = address is [0, 0, 0, not 0]
+            ? Terminated(talk)
+            : new IPAddress(address).ToString();
+
+        if (command != Connect)
+        {
+            Reply(talk, CommandNotSupported, Socks4);
+
+            return null;
+        }
+
+        return (host, port, Socks4);
+    }
+
+    /// <summary>A string ended by a zero byte, bounded so a client that never ends one is refused.</summary>
+    private static string Terminated(NetworkStream talk)
+    {
+        StringBuilder text = new();
+
+        for (int each; (each = talk.ReadByte()) > 0;)
+        {
+            if (text.Length == 255)
+            {
+                throw new IOException("a SOCKS4 field ran past 255 bytes");
+            }
+
+            text.Append((char)each);
+        }
+
+        return text.ToString();
     }
 
     /// <summary>
     /// The channel, opened on a socket of its own, and the client joined to it only after the reply.
     /// </summary>
-    private void Carry(Socket client, NetworkStream talk, string host, int port)
+    private void Carry(Socket client, NetworkStream talk, string host, int port, byte version)
     {
         (Socket inner, Socket outer) = Pair();
         IDisposable? channel = null;
@@ -321,7 +377,7 @@ public sealed class DynamicForward : IAsyncDisposable
                     ChannelRefusals.Prohibited => NotAllowed,
                     ChannelRefusals.ConnectFailed => ConnectionRefused,
                     _ => HostUnreachable,
-                });
+                }, version);
 
                 return;
             }
@@ -330,7 +386,7 @@ public sealed class DynamicForward : IAsyncDisposable
 
             // The reply first, then the relay: what the target has already sent is waiting in the
             // pair's buffer, and reaches the client only after this.
-            Reply(talk, Granted);
+            Reply(talk, Granted, version);
 
             Task up = Relay(client, outer);
             Task down = Relay(outer, client);
@@ -352,7 +408,7 @@ public sealed class DynamicForward : IAsyncDisposable
         }
         catch (TargetInvocationException)
         {
-            Reply(talk, GeneralFailure);
+            Reply(talk, GeneralFailure, version);
         }
         finally
         {
@@ -421,10 +477,19 @@ public sealed class DynamicForward : IAsyncDisposable
         }
     }
 
-    private static void Reply(NetworkStream talk, byte code)
+    private static void Reply(NetworkStream talk, byte code, byte version = Socks5)
     {
-        // Bound address and port are zeros: nothing a client of a CONNECT relies on.
-        talk.Write([Socks5, code, 0, IPv4, 0, 0, 0, 0, 0, 0]);
+        // Bound address and port are zeros: nothing a client of a CONNECT relies on. SOCKS4 has
+        // one way to say yes and one to say no.
+        if (version == Socks4)
+        {
+            talk.Write([0, code == Granted ? (byte)0x5A : (byte)0x5B, 0, 0, 0, 0, 0, 0]);
+        }
+        else
+        {
+            talk.Write([Socks5, code, 0, IPv4, 0, 0, 0, 0, 0, 0]);
+        }
+
         talk.Flush();
     }
 

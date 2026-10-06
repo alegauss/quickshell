@@ -51,6 +51,40 @@ public sealed class DynamicForwardTests
     }
 
     /// <summary>
+    /// QS68's falsification: a host name is resolved by the server and never here. The name is one
+    /// this machine cannot resolve at all, so a proxy that looked it up locally would fail every
+    /// time; this one reaches it, over SOCKS5 and SOCKS4a alike.
+    /// </summary>
+    [Fact]
+    public async Task ANameIsResolvedByTheServerAndNeverHere()
+    {
+        SkipWithoutFixture();
+
+        await Assert.ThrowsAnyAsync<SocketException>(async () => await Dns.GetHostAddressesAsync(OnlyOverThere, Stop));
+
+        await using SshNetTransport session = await Connected(Port);
+
+        await using DynamicForward proxy = DynamicForward.Open(session);
+
+        using (Socket five = await Dial(proxy.BoundPort))
+        {
+            Assert.Equal(0, (await Request(five, 1, OnlyOverThere, 22))[1]);
+            Assert.StartsWith("SSH-2.0-", await Read(five, 8), StringComparison.Ordinal);
+        }
+
+        // SOCKS4a: 0.0.0.1 as the address says a name follows the (empty) user id.
+        using Socket four = await Dial(proxy.BoundPort);
+        List<byte> request = [4, 1, 0, 22, 0, 0, 0, 1, 0, .. Encoding.ASCII.GetBytes(OnlyOverThere), 0];
+
+        await four.SendAsync(request.ToArray(), Stop);
+
+        byte[] reply = await Exactly(four, 8);
+
+        Assert.Equal([0, 0x5A], reply[..2]);
+        Assert.StartsWith("SSH-2.0-", await Read(four, 8), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// BIND is refused as a command the proxy does not support — not answered with success and then
     /// a connection somewhere else, which is what the library's did.
     /// </summary>
