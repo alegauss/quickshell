@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.Text;
 using Quickshell.Terminal;
 using Vortice.DirectWrite;
 
@@ -22,8 +24,22 @@ namespace Quickshell.Render;
 /// </summary>
 public sealed class GridPainter
 {
+    /// <summary>
+    /// How many clusters' composed forms are remembered before the memory starts again: both screens'
+    /// worth of a full cluster table, so an ordinary session never reaches it and a hostile one
+    /// cannot grow it without bound.
+    /// </summary>
+    private const int MaximumComposed = TerminalBuffer.MaximumClusters * 2;
+
     private readonly GlyphAtlas _atlas;
     private readonly Palette _palette;
+
+    /// <summary>
+    /// What each cluster the painter has met draws as, keyed by the buffer's own interned string —
+    /// so a cluster already met is a lookup and allocates nothing, and the one allocation
+    /// composing costs is paid once per distinct cluster and not once per frame.
+    /// </summary>
+    private readonly Dictionary<string, int> _composed = new(StringComparer.Ordinal);
 
     /// <summary>Builds a painter over an atlas and the palette its colours mean something in.</summary>
     public GridPainter(GlyphAtlas atlas, Palette palette)
@@ -118,9 +134,11 @@ public sealed class GridPainter
                     (foreground, background) = (background, foreground);
                 }
 
-                GlyphPlacement glyph = span == 0 || cell.Codepoint == ' '
+                int codepoint = cell.IsCluster ? Composed(buffer, cell) : cell.Codepoint;
+
+                GlyphPlacement glyph = span == 0 || codepoint == ' '
                     ? GlyphPlacement.Empty
-                    : _atlas.Cache(cell.Codepoint,
+                    : _atlas.Cache(codepoint,
                                    (cell.Flags & CellFlags.Bold) != 0 ? FontWeight.Bold : FontWeight.Normal,
                                    (cell.Flags & CellFlags.Slant) != 0 ? FontStyle.Italic : FontStyle.Normal,
                                    maximumAdvance: metrics.Width * Math.Max(1, span));
@@ -130,5 +148,65 @@ public sealed class GridPainter
                     row == caret && column == cursorColumn ? cursor : CursorShape.None);
             }
         }
+    }
+
+    /// <summary>
+    /// The one character a cluster cell is drawn as.
+    ///
+    /// <para><b>QS91.</b> A cell holding a cluster has no codepoint of its own — it answers U+FFFD —
+    /// and the painter used to draw exactly that, so <c>e</c> followed by U+0301 came out as a
+    /// replacement character. The model keeps what the host sent; what is drawn is its canonical
+    /// composition, which is the precomposed <c>é</c> the face already has and is what the same
+    /// text sent precomposed draws as.</para>
+    ///
+    /// <para><b>Where nothing composes it to one character, the base is drawn.</b> A mark with no
+    /// precomposed form, or an emoji joined to another, still loses what follows the base; that is
+    /// less wrong than a replacement character, and drawing the rest is the overlay QS91's
+    /// remainder names.</para>
+    /// </summary>
+    private int Composed(TerminalBuffer buffer, Cell cell)
+    {
+        string text = buffer.TextOf(cell);
+
+        if (_composed.TryGetValue(text, out int known))
+        {
+            return known;
+        }
+
+        if (_composed.Count >= MaximumComposed)
+        {
+            _composed.Clear();
+        }
+
+        int drawn = Compose(text);
+        _composed[text] = drawn;
+
+        return drawn;
+    }
+
+    /// <summary>The cluster's NFC form where that is one character, and its first character where not.</summary>
+    private static int Compose(string text)
+    {
+        if (text.Length == 0 || Rune.DecodeFromUtf16(text, out Rune first, out _) != OperationStatus.Done)
+        {
+            return 0xFFFD;
+        }
+
+        string composed;
+
+        try
+        {
+            composed = text.Normalize(NormalizationForm.FormC);
+        }
+        catch (ArgumentException)
+        {
+            // Not well-formed enough to normalise. The base is still a character.
+            return first.Value;
+        }
+
+        return Rune.DecodeFromUtf16(composed, out Rune only, out int consumed) == OperationStatus.Done
+               && consumed == composed.Length
+            ? only.Value
+            : first.Value;
     }
 }

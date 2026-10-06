@@ -329,7 +329,8 @@ also decided, so the cursor lands where it should. It said nothing about drawing
 mark, and so nothing does. `e` followed by U+0301 renders as a bare `e` — visible in the
 QS10 capture, whose last cells read `ea` and should read `éä`.
 
-Three shapes, and which is right is what this task decides.
+The first shape landed at paint time, so the model keeps what the host sent; the third
+is left.
 
 Normalise on the way in. NFC folds `e` plus U+0301 to U+00E9, which the primary face
 already has. Cheapest, and it covers most of what arrives — but a mark with no

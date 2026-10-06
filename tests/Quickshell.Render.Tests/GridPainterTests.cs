@@ -169,6 +169,66 @@ public sealed class GridPainterTests
             cell.Flags, Math.Max(1, cell.Width), cell.Underline, CursorShape.None);
 
     /// <summary>
+    /// QS91's falsifier: an accent sent decomposed is painted exactly as the same accent sent
+    /// precomposed, while the model still holds the two codepoints the host sent.
+    /// </summary>
+    [Fact]
+    public void ADecomposedAccentPaintsAsItsPrecomposedForm()
+    {
+        using Harness harness = new();
+
+        Emulator decomposed = new(10, 2);
+        Emulator precomposed = new(10, 2);
+
+        decomposed.Feed(Encoding.UTF8.GetBytes("éä"));
+        precomposed.Feed(Encoding.UTF8.GetBytes("éä"));
+
+        Assert.True(decomposed.Buffer.Screen(0)[0].IsCluster, "the model folded the mark away");
+        Assert.Equal("é", decomposed.Buffer.TextOf(decomposed.Buffer.Screen(0)[0]));
+
+        CellInstance[] fromDecomposed = new CellInstance[10 * 2];
+        CellInstance[] fromPrecomposed = new CellInstance[10 * 2];
+
+        new GridPainter(harness.Atlas, decomposed.Palette)
+            .Paint(decomposed.Buffer, fromDecomposed, -1, -1, CursorShape.None, Box);
+        new GridPainter(harness.Atlas, precomposed.Palette)
+            .Paint(precomposed.Buffer, fromPrecomposed, -1, -1, CursorShape.None, Box);
+
+        Assert.Equal(fromPrecomposed[0], fromDecomposed[0]);
+        Assert.Equal(fromPrecomposed[1], fromDecomposed[1]);
+    }
+
+    /// <summary>
+    /// A cluster nothing composes to one character is drawn as its base, never as the replacement
+    /// character a cluster cell answers when asked for a codepoint.
+    /// </summary>
+    [Fact]
+    public void AClusterWithNoPrecomposedFormDrawsItsBaseAndNotAReplacementCharacter()
+    {
+        using Harness harness = new();
+
+        Emulator emulator = new(10, 2);
+
+        // q with a combining dot below and a combining acute: no single character is all three.
+        emulator.Feed(Encoding.UTF8.GetBytes("q̣́"));
+
+        Assert.True(emulator.Buffer.Screen(0)[0].IsCluster);
+
+        CellInstance[] cells = new CellInstance[10 * 2];
+
+        new GridPainter(harness.Atlas, emulator.Palette)
+            .Paint(emulator.Buffer, cells, -1, -1, CursorShape.None, Box);
+
+        Rgb foreground = emulator.Palette.Resolve(Colour.Default);
+        Rgb ground = emulator.Palette.Resolve(Colour.Default, background: true);
+
+        Assert.Equal(CellInstance.For(harness.Atlas.Cache('q', maximumAdvance: Box.Width), foreground, ground),
+                     cells[0]);
+        Assert.NotEqual(CellInstance.For(harness.Atlas.Cache(0xFFFD, maximumAdvance: Box.Width), foreground, ground),
+                        cells[0]);
+    }
+
+    /// <summary>
     /// Painting a frame allocates nothing, which is Block C's criterion where a frame is built.
     /// </summary>
     [Fact]
@@ -178,7 +238,8 @@ public sealed class GridPainterTests
 
         Emulator emulator = new(80, 25);
 
-        emulator.Feed(Encoding.UTF8.GetBytes(new string('x', 80 * 20)));
+        // Decomposed accents among the plain text, so a cluster cell's lookup is in the frame too.
+        emulator.Feed(Encoding.UTF8.GetBytes(new string('x', 80 * 20) + "éä"));
 
         CellInstance[] cells = new CellInstance[80 * 25];
 

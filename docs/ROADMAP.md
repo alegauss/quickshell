@@ -22,7 +22,7 @@
 ## Block C — Emulation that does not lie about the remote
 
 - 🛠 **QS33** (deps: QS17 ✅, QS18 ✅, QS20 ✅, QS21 ✅, QS25 ✅, QS93) **No external suite has ever judged this emulator, so its fidelity is the author's own opinion** — vttest's verdict is a person looking at the screen, so automating it needs something to compare against rather than a way to press its keys. → §QS33
-- 📋 **QS91** (deps: —) **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — Text that arrives decomposed is ordinary on macOS and in Git output, and a client that silently drops the accent is one that shows the wrong filename. → §QS91
+- ⏳ **QS91** (deps: —) **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — A mark with no precomposed form, and a joined emoji, still draw only their base until each mark is its own instance over the base cell. → §QS91
 - 📋 **QS92** (deps: —) **The golden suite has run on two rasterisers and none of the three vendor drivers its matrix names** — A driver bug is by definition the thing the machine that wrote the code cannot see, so a suite that has only ever run here is one nobody has tested yet. → §QS92
 - 📋 **QS93** (deps: QS25 ✅) **Every golden scene is text somebody typed into the test, so none of them is a screen a real program drew** — A scene an author invented exercises what that author thought of, which is never the combination that turns out to break on somebody's machine. → §QS93
 - 📋 **QS101** (deps: —) **Ninety-six bytes of the parse path's allocation is measured but unattributed** — Three hostile shapes cost thirty-two bytes each per pass, only when the whole sequence runs, so something oscillates between two states and the zero-allocation claim carries a ceiling instead. → §QS101
@@ -352,6 +352,15 @@
 - **Frame cost is one of the gated figures** Settled when the gate's figures include the
   arm QS196 adds, a baseline carries its threshold, and a check prints it beside parse,
   emulate and start.
+
+## Done when — QS91
+
+- **A mark with no precomposed form is drawn over its base cell** Checked by painting q
+  with U+0323 and U+0301 and reading the back buffer: the dot below and the acute both
+  show ink inside the q's cell, and none in the cell beside it.
+- **A joined emoji sequence draws as one glyph and not its first emoji** Checked by
+  painting a family ZWJ sequence and comparing its cell with the colour glyph
+  DirectWrite gives the whole sequence, not with the glyph of its first codepoint.
 
 ## Non-goals
 
