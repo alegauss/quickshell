@@ -350,6 +350,9 @@ public sealed class SshChain : ISshTransport
             failure.Origin);
     }
 
+    /// <summary>The last hop's connection, which is what a forward over this chain rides on.</summary>
+    internal SshNetTransport? Carrier => _last;
+
     private SshNetTransport Live()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

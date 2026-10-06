@@ -138,6 +138,79 @@ public sealed class RemoteShellTests : IDisposable
         Assert.Contains("accepted publickey and wants keyboard-interactive next", screen, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// QS69: a session's forwards start with it, one that cannot start is said in the pane and costs
+    /// nothing else, and — the line's falsification — closing the session leaves no listener behind.
+    /// </summary>
+    [Fact]
+    public async Task ASessionsForwardsStartWithItAndGoWithIt()
+    {
+        SkipWithoutFixture();
+
+        using TcpListener busy = new(System.Net.IPAddress.Loopback, 0);
+
+        busy.Start();
+
+        int taken = ((System.Net.IPEndPoint)busy.LocalEndpoint).Port;
+
+        string store = Store($$"""
+            { "Name": "", "Children": [
+                { "Name": "web", "Host": "127.0.0.1", "Settings": { "User": "probe", "Port": 2222, "Key": "KEY" },
+                  "Forwards": [
+                    { "Kind": "Local", "ListenPort": 0, "TargetHost": "qs-sshd-jump", "TargetPort": 22 },
+                    { "Kind": "Dynamic", "ListenPort": 0 },
+                    { "Kind": "Local", "ListenPort": {{taken}}, "TargetHost": "qs-sshd-jump", "TargetPort": 22 }
+                  ] }
+            ] }
+            """);
+
+        ResolvedSession web = SessionTree.ReadFrom(store).Session("web")!;
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        Emulator emulator = new(120, 25);
+
+        RemoteShell shell = await RemoteShell.OpenAsync(web, trust, emulator, new DamageSignal(), 120, 25, Stop);
+        int[] listening;
+
+        try
+        {
+            Assert.Equal(2, shell.Forwards.Started.Count);
+
+            FailedForward failed = Assert.Single(shell.Forwards.Failed);
+
+            Assert.Equal(taken, failed.Spec.ListenPort);
+
+            // The pane says both, and the shell is there all the same.
+            string screen = Screen(emulator);
+
+            Assert.Contains("is listening on port", screen, StringComparison.Ordinal);
+            Assert.Contains($"-L {taken}:qs-sshd-jump:22 did not start", screen, StringComparison.Ordinal);
+
+            await shell.Pipeline.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
+            await Until(() => Screen(emulator).Contains("qs-sshd-target", StringComparison.Ordinal));
+
+            // One stopped and started again on its own, leaving the other and the session alone.
+            StartedForward first = shell.Forwards.Started[0];
+
+            await shell.Forwards.StopAsync(first.Spec);
+
+            Assert.Empty(LocalForward.ListeningOn(first.BoundPort));
+            Assert.Single(shell.Forwards.Started);
+            Assert.True(await shell.Forwards.StartAsync(first.Spec));
+
+            listening = [.. shell.Forwards.Started.Select(started => started.BoundPort)];
+
+            Assert.Equal(2, listening.Length);
+            Assert.All(listening, port => Assert.NotEmpty(LocalForward.ListeningOn(port)));
+        }
+        finally
+        {
+            await shell.DisposeAsync();
+        }
+
+        Assert.All(listening, port => Assert.Empty(LocalForward.ListeningOn(port)));
+    }
+
     /// <summary>A jump host is written as OpenSSH writes one, and every part of it is optional but the host.</summary>
     [Theory]
     [InlineData("bastion.example", "me", "bastion.example", 22)]

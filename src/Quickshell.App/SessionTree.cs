@@ -88,6 +88,18 @@ public sealed record SessionNode
     /// <summary>Labels a search can find it by.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
 
+    /// <summary>
+    /// The forwards that start with this session (QS69).
+    ///
+    /// <para><b>A session's own, never a folder's</b>, for the reason <see cref="PostLogin"/> gives
+    /// and one more: a folder's forward handed to every session under it would be one port opened
+    /// once per session, and every one after the first would fail.</para>
+    ///
+    /// <para>Null rather than empty where there are none, so a store with no forwards in it is not
+    /// written with an empty list on every node.</para>
+    /// </summary>
+    public IReadOnlyList<Quickshell.Transport.ForwardSpec>? Forwards { get; init; }
+
     /// <summary>What is under it.</summary>
     public IReadOnlyList<SessionNode> Children { get; init; } = [];
 
@@ -136,6 +148,9 @@ public sealed record ResolvedSession(string Path, string Host, Source<string>? U
     /// because there is only ever one place it can have come from.
     /// </summary>
     public string? PostLogin { get; init; }
+
+    /// <summary>The forwards that start with it, which are its own or none (QS69).</summary>
+    public IReadOnlyList<Quickshell.Transport.ForwardSpec> Forwards { get; init; } = [];
 }
 
 /// <summary>
@@ -459,6 +474,7 @@ public sealed class SessionTree
 
                 // Its own, never the folder's: see SessionNode.PostLogin.
                 PostLogin = node.PostLogin,
+                Forwards = node.Forwards ?? [],
             });
         }
 

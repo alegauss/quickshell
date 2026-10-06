@@ -5,6 +5,7 @@
 ## Block A — A session that stays up, or says why it did not
 
 - 📋 **QS142** (deps: QS139) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
+- 📋 **QS220** (deps: QS151) **An SSH tab whose link drops stays ended, though the session that reconnects was built for it** — RemoteShell connects once and RemoteSession, which reconnects and keeps the scrollback, is reached by nothing. → §QS220
 
 ## Block B — Keys, agents, and the host you think you reached
 
@@ -45,8 +46,8 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-- 📋 **QS69** (deps: QS66 ✅, QS67 ✅, QS68 ✅, QS38 ✅) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
-- 📋 **QS70** (deps: QS69) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — A forward is invisible by nature, and a client that will not show its own listeners makes the user consult netstat to understand the client. → §QS70
+- ⏳ **QS69** (deps: QS66 ✅, QS67 ✅, QS68 ✅, QS38 ✅, QS220) **A forward is set up by hand each time and dies silently when its session drops** — A reconnect does not bring forwards back, since an SSH tab does not reconnect until QS220, and what holds a busy port is not named. → §QS69
+- 📋 **QS70** (deps: QS69 ⏳) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — A forward is invisible by nature, and a client that will not show its own listeners makes the user consult netstat to understand the client. → §QS70
 
 ## Block G — The clean interface, defended
 
@@ -338,6 +339,12 @@
 
 - **A recorded blank names its cause** A guest contrast.txt carries a reference retry
   line saying whether the second read of the same target had ink.
+
+## Done when — QS69
+
+- **Forwards come back after a reconnect, each said** An SSH tab whose link dropped
+  reconnects with every forward it had started again, and the pane names any that did
+  not come back and what holds its port.
 
 ## Non-goals
 

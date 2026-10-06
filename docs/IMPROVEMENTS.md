@@ -54,6 +54,27 @@ would make the rest of this unnecessary.
 
 Falsified when the trade turns out not to exist.
 
+### §QS220 A tab and the session that reconnects, never introduced
+
+QS38 built `RemoteSession`: a model that outlives its connection, a bounded and visible
+backoff, a frozen peer noticed by QS111's keepalive, an exit that is not retried. QS126
+made a saved session an SSH tab through `RemoteShell`, which connects once and ends with
+the connection. The two have never met, so a tab whose link drops shows the ending and
+stays ended, exactly the symptom QS38 shipped a fix for.
+
+What to build: `RemoteShell` connects through `RemoteSession` rather than beside it —
+the factory builds the transport and the sign-in narration as it does now, and the
+session reconnects under the policy, keeping the pane's model and scrollback. The pane
+shows the attempt, when the next one is due and how to stop, which `SessionStatus`
+already carries. The session's forwards are started again on each new connection, and
+the pane says which came back and which did not (QS69's remainder).
+
+`RemoteSession` makes its own pipeline per connection with a damage signal of its own,
+which QS151 already says freezes a pane asleep on the first; that is part of this work.
+
+Falsified when an SSH tab whose link dropped for ten seconds is not connected again with
+its scrollback, or comes back without saying which of its forwards did.
+
 ## Block B — Keys, agents, and the host you think you reached
 
 ### §QS43 Two agents, one protocol, and the key that never leaves

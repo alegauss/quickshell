@@ -28,16 +28,21 @@ public sealed class RemoteShell : IShellSession
     private readonly ISshTransport _transport;
     private readonly IPtyChannel _channel;
 
-    private RemoteShell(ISshTransport transport, IPtyChannel channel, SessionPipeline pipeline)
+    private RemoteShell(ISshTransport transport, IPtyChannel channel, SessionPipeline pipeline,
+                        SessionForwards forwards)
     {
         _transport = transport;
         _channel = channel;
 
         Pipeline = pipeline;
+        Forwards = forwards;
     }
 
     /// <inheritdoc/>
     public SessionPipeline Pipeline { get; }
+
+    /// <summary>The session's forwards: what started, what did not, and each to stop or start again.</summary>
+    public SessionForwards Forwards { get; }
 
     /// <summary>The transport, for whatever else a pane opens over the same connection.</summary>
     public ISshTransport Transport => _transport;
@@ -94,6 +99,21 @@ public sealed class RemoteShell : IShellSession
                 .OpenShellAsync(Math.Max(1, columns), Math.Max(1, rows), cancellationToken)
                 .ConfigureAwait(false);
 
+            // The session's forwards, each on its own: one that cannot start is said and costs
+            // nothing else, least of all the shell (QS69). Said before the pipeline starts, while
+            // these lines are still the only writer the pane has.
+            SessionForwards forwards = SessionForwards.Start(transport, session.Forwards);
+
+            foreach (StartedForward started in forwards.Started)
+            {
+                said.Line($"Forward {started.Spec} is listening on port {started.BoundPort}.");
+            }
+
+            foreach (FailedForward failed in forwards.Failed)
+            {
+                said.Line($"Forward {failed.Spec} did not start: {failed.Reason} {failed.Remedy}");
+            }
+
             SessionPipeline pipeline = SessionPipeline.Start(channel, emulator, damage: damage);
 
             // Its own and never a folder's (SessionNode.PostLogin), typed once the shell is there.
@@ -103,7 +123,7 @@ public sealed class RemoteShell : IShellSession
                               .ConfigureAwait(false);
             }
 
-            return new RemoteShell(transport, channel, pipeline);
+            return new RemoteShell(transport, channel, pipeline, forwards);
         }
         catch
         {
@@ -227,8 +247,10 @@ public sealed class RemoteShell : IShellSession
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        // The pipeline first, for the reason LocalSession gives; then the shell, then the connection.
+        // The pipeline first, for the reason LocalSession gives; then the forwards, so no listener
+        // outlives the session that made it; then the shell, then the connection.
         await Pipeline.DisposeAsync().ConfigureAwait(false);
+        await Forwards.DisposeAsync().ConfigureAwait(false);
         await _channel.DisposeAsync().ConfigureAwait(false);
         await _transport.DisposeAsync().ConfigureAwait(false);
     }

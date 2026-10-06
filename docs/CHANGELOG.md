@@ -108,6 +108,7 @@
 - ✅ **QS125** **A forward cannot tell a refused target from a normal close, and cannot be bound to every interface** — A refused target, a forbidden forward and a close each say so, from the server's reason code, and every interface can be asked for (design recorded in `src/Quickshell.Transport/LocalForward.cs`).
 - ✅ **QS127** **The library's SOCKS proxy answers about one request in six with something that is not a SOCKS reply** — A hundred connects through the SOCKS proxy each get a well-formed reply before the target's first byte (design recorded in `src/Quickshell.Transport/DynamicForward.cs`).
 - ✅ **QS68** **Reaching many hosts on the remote network needs one forward configured per host** — One SOCKS5 or SOCKS4a proxy reaches the remote network, every name resolved by the server and every refusal given its reply code.
+- ✅ **QS69 (forwards kept on a session)** **A forward is set up by hand each time and dies silently when its session drops** — A session's saved forwards start with it, a failed one is said without costing the shell, and none outlives it.
 
 ## Block G — The clean interface, defended
 
