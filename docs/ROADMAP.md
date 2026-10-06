@@ -4,8 +4,7 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-- ⏳ **QS38** (deps: QS37 ✅, QS111 ✅) **A link that drops for ten seconds costs the whole session and its scrollback** — A peer that stopped answering on a socket that stayed open is still invisible, because the library's keepalive keeps a NAT mapping rather than detecting a death. → §QS38
-- 📋 **QS40** (deps: QS38 ⏳, QS39 ✅) **This client has met one server, so an appliance that negotiates differently is an unknown** — Interoperability failures are found by connecting to unusual servers and by no other method, so the unusual servers are enumerated and connected to deliberately. → §QS40
+- 📋 **QS40** (deps: QS38 ✅, QS39 ✅) **This client has met one server, so an appliance that negotiates differently is an unknown** — Interoperability failures are found by connecting to unusual servers and by no other method, so the unusual servers are enumerated and connected to deliberately. → §QS40
 - 📋 **QS112** (deps: QS39 ✅) **A dead route and a port that is not SSH read as one failure, so the remedy offered covers two things** — The library's asynchronous connect gives both the same sentence, and the synchronous one that tells them apart takes no cancellation token. → §QS112
 - 📋 **QS142** (deps: QS139) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
 
@@ -56,7 +55,7 @@
 ## Block F — A forward is a lifecycle, not a checkbox
 
 - 📋 **QS68** (deps: QS66 ✅, QS127) **Reaching many hosts on the remote network needs one forward configured per host** — A SOCKS proxy is a single forward covering a whole network, which is what a browser or a cloud tool needs and what per-host forwards cannot provide. → §QS68
-- 📋 **QS69** (deps: QS66 ✅, QS67 ✅, QS68, QS38 ⏳) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
+- 📋 **QS69** (deps: QS66 ✅, QS67 ✅, QS68, QS38 ✅) **A forward is set up by hand each time and dies silently when its session drops** — A forward is something a user relies on for hours without looking at it, so its failure has to be visible and its restart has to be automatic. → §QS69
 - 📋 **QS70** (deps: QS69) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — A forward is invisible by nature, and a client that will not show its own listeners makes the user consult netstat to understand the client. → §QS70
 - 📋 **QS124** (deps: QS66 ✅) **A forward drops the whole connection when one direction half-closes, so protocols that shut and wait hang** — Many protocols send, shut their sending half, and wait for the answer; against this forward they get a closed socket instead of a reply. → §QS124
 - 📋 **QS125** (deps: QS66 ✅) **A forward cannot tell a refused target from a normal close, and cannot be bound to every interface** — The design asks for three failures told apart and only one is, so a user with a wrong port and a user with a wrong name are shown the same nothing. → §QS125
@@ -296,14 +295,6 @@
   there is none rather than inventing one. Checked by figure 2 or a figure beside it
   stating a number for the `emulate` arm, with the reasoning for that number and not
   merely the measurement it was taken from.
-
-## Done when — QS38
-
-- **A peer that stopped answering is noticed in seconds, not in the OS's own time**
-  Reconnect landed with its backoff and its honesty about what a new shell cannot
-  restore. This is the third failure of the three, the one where the socket stays open,
-  and the library's keepalive answers a different question: QS111 is where that is
-  measured.
 
 ## Done when — QS43
 

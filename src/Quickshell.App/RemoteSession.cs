@@ -219,13 +219,29 @@ public sealed class RemoteSession : IAsyncDisposable
 
             try
             {
-                await pipeline.Completed.WaitAsync(_stopping.Token).ConfigureAwait(false);
+                // Whichever comes first. A peer that froze leaves the pipeline's read waiting on a
+                // socket that will never say anything, so the transport's verdict is the only thing
+                // that ends this connection — waiting for the pipeline alone is how a session sat
+                // "live" on a dead host (QS38, QS111). Disposing the pipeline below is what cancels
+                // that read.
+                await Task.WhenAny(pipeline.Completed, transport.Disconnected)
+                          .WaitAsync(_stopping.Token).ConfigureAwait(false);
             }
             finally
             {
                 Volatile.Write(ref _pipeline, null);
 
                 await pipeline.DisposeAsync().ConfigureAwait(false);
+            }
+
+            if (!channel.Closed.IsCompleted && transport.Disconnected.IsCompleted)
+            {
+                // The connection went and the shell was never told: the reason is the transport's.
+                SshException? gone = await transport.Disconnected.ConfigureAwait(false);
+
+                return gone is null
+                    ? ("the connection ended", true)
+                    : (gone.Message, gone.Kind is SshFailureKind.Dropped or SshFailureKind.Unreachable);
             }
 
             PtyExit exit = await channel.Closed.ConfigureAwait(false);

@@ -2,33 +2,6 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-### §QS38 What survives a drop, and what honestly cannot
-
-Three distinct failures wearing one appearance: the server closed the session; the
-network went away and came back; the network went away and the TCP connection is still
-sitting there open, waiting, and will wait for a very long time.
-
-Keepalive addresses the third. Protocol-level keepalive at a configurable interval
-detects a dead peer in seconds rather than in the operating system's own good time, and
-it keeps a NAT mapping alive besides — which is what stops an idle session dying after
-twenty minutes on a corporate link.
-
-Reconnect addresses the second, and it is honest about its limits. A new connection
-means a new shell and a new remote state: working directory, environment and any running
-program are gone, and no client recovers those without cooperation on the far side. What
-quickshell keeps is the scrollback, the tab, the session's settings and the layout — so
-a drop costs the user a command, not an afternoon.
-
-Backoff is exponential with a ceiling and a cap on attempts, and every attempt is
-visible: which attempt this is, when the next one is due, and how to stop. A client that
-reconnects silently and forever is a client hammering a server that is deliberately
-refusing it.
-
-Reconnect is per-session, and off for hosts where an unexpected new login is itself an
-event.
-
-Falsified when a reconnect claims to restore state the protocol cannot restore.
-
 ### §QS40 The servers that are not OpenSSH on Linux
 
 OpenSSH on Linux is the easy case and the one every client passes. This matrix is

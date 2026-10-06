@@ -108,6 +108,33 @@ public sealed class RemoteSessionTests
     }
 
     /// <summary>
+    /// A host that stopped answering is reconnected too, though the read under the session never
+    /// returns: the transport's verdict ends the connection, not the pipeline running dry. Waiting
+    /// on the pipeline alone left a session "live" on a dead host for as long as the read waited.
+    /// </summary>
+    [Fact]
+    public async Task AFrozenPeerIsReconnectedThoughItsReadNeverReturns()
+    {
+        List<ReplayTransport> made = [];
+
+        await using RemoteSession session = RemoteSession.Start(
+            _ => Connect(made, "before the freeze\r\n"), new Emulator(80, 25), Quick);
+
+        await Until(() => session.Status.IsLive);
+        await Until(() => Screen(session).Contains("before the freeze", StringComparison.Ordinal));
+
+        made[0].Freeze("the host stopped answering");
+
+        await Until(() => session.Connections >= 2);
+        await Until(() => session.Status.IsLive);
+
+        Assert.Contains("before the freeze", Screen(session), StringComparison.Ordinal);
+        Assert.Equal(2, made.Count);
+
+        session.Stop();
+    }
+
+    /// <summary>
     /// The falsification the design names, and the one that is easy to get wrong by being generous:
     /// a reconnect must not claim to restore state the protocol cannot restore.
     ///

@@ -168,6 +168,18 @@ public sealed class ReplayTransport : ISshTransport
         IsConnected = false;
     }
 
+    /// <summary>
+    /// Ends the session as a host that stopped answering: the verdict arrives, and a read already
+    /// waiting stays waiting, because that is what one over a paused peer does — nothing on the
+    /// socket ever comes to wake it (QS111).
+    /// </summary>
+    public void Freeze(string reason)
+    {
+        _shell?.Lost(reason);
+        _disconnected.TrySetResult(new SshException(SshFailureKind.Dropped, reason));
+        IsConnected = false;
+    }
+
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
@@ -291,6 +303,9 @@ internal sealed class ReplayChannel : IPtyChannel
         _closed.TrySetResult(PtyExit.Failed(reason));
         _ended.Writer.TryWrite(true);
     }
+
+    /// <summary>The ending published, and a waiting read left waiting.</summary>
+    internal void Lost(string reason) => _closed.TrySetResult(PtyExit.Failed(reason));
 
     /// <inheritdoc/>
     public ValueTask DisposeAsync()
