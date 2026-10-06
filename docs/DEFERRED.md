@@ -2,6 +2,8 @@
 
 ## Block A — A session that stays up, or says why it did not
 
+- ⏸ **QS40** (deps: QS38 ✅, QS39 ✅) **This client has met one server, so an appliance that negotiates differently is an unknown** — set aside (Needs guest sshd, an appliance, a server licence.): Windows OpenSSH, a network appliance and a commercial server are still unmet, since no container stands for them. → §QS40
+
 ## Block B — Keys, agents, and the host you think you reached
 
 ## Block C — Emulation that does not lie about the remote

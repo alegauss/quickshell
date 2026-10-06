@@ -4,7 +4,6 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-- ⏳ **QS40** (deps: QS38 ✅, QS39 ✅) **This client has met one server, so an appliance that negotiates differently is an unknown** — Windows OpenSSH, a network appliance and a commercial server are still unmet, since no container stands for them. → §QS40
 - 📋 **QS112** (deps: QS39 ✅) **A dead route and a port that is not SSH read as one failure, so the remedy offered covers two things** — The library's asynchronous connect gives both the same sentence, and the synchronous one that tells them apart takes no cancellation token. → §QS112
 - 📋 **QS142** (deps: QS139) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
 
