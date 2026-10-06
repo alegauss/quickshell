@@ -29,11 +29,10 @@
 - 📋 **QS208** (deps: —) **A request for 132 columns is ignored without its side effects, and nothing says whether that is the intent** — DECCOLM also clears the screen and resets the margins, so a program that asks gets neither the width nor the clean screen it assumes. → §QS208
 - 📋 **QS211** (deps: —) **esctest is judged through a pseudo-console that answers its queries itself, so the figure measures conhost** — A DECRQCRA sent through ConPtyChannel came back as conhost's 0000 and never reached the emulator, so 228 failures cannot move. → §QS211
 - 📋 **QS214** (deps: —) **Replaying the tmux resize recording sometimes allocates in steady state in the guest, and the failure says no more** — One guest run counted 7,288 bytes and the next none, and a number with no type is a failure nobody can act on. → §QS214
-- 📋 **QS215** (deps: —) **The contrast test's Direct2D reference sometimes draws nothing in the guest, and the failure reads as infinite ink** — One guest pass measured 0.0 where the run before measured 682.8, so a blank reference fails a renderer that drew correctly. → §QS215
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS121** (deps: QS55 ✅, QS58 ✅) **Nothing owns the session store file and nothing opens the session dialog, so neither is reachable** — A store with no owner and a dialog with no way in are two finished parts that a user cannot get to, which is the same to them as neither existing. → §QS121
+- 🛠 **QS121** (deps: QS55 ✅, QS58 ✅) **Nothing owns the session store file and nothing opens the session dialog, so neither is reachable** — A store with no owner and a dialog with no way in are two finished parts that a user cannot get to, which is the same to them as neither existing. → §QS121
 - 📋 **QS179** (deps: QS121) **A fleet has no saved group to broadcast to, so the same split is rebuilt by hand before every broadcast** — QS53 built the tab as its target and left the saved group, which needs a session store the running client can read, and that is QS121. → §QS179
 
 ## Block E — SCP and SFTP as a thing a person operates
@@ -101,6 +100,7 @@
 ## Block J — Leaving MobaXterm, proven by the switch
 
 - 📋 **QS81** (deps: QS80 ✅, QS116 ✅, QS126) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
+- 📋 **QS216** (deps: —) **Importing sessions writes over the whole session store, so sessions made since are lost without a word** — The import writes the imported tree alone, and since QS121 the store can hold sessions the user made here. → §QS216
 
 ## Block K — The build and the harness — what a green run is evidence of
 
@@ -346,6 +346,11 @@
 - **A real Pageant older than 0.78 signs through the window** A session opens with a key
   loaded only in an installed Pageant 0.77 or older, reached through
   SshAgent.PageantWindow.
+
+## Done when — QS215
+
+- **A recorded blank names its cause** A guest contrast.txt carries a reference retry
+  line saying whether the second read of the same target had ink.
 
 ## Non-goals
 

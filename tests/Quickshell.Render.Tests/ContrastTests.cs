@@ -47,12 +47,15 @@ public sealed class ContrastTests
                 // would count as ink neither picture put there.
                 byte[] drawn = Ours(clearType, dark, out bool honoured, out int across, out int down);
                 double ours = Ink(drawn, dark, across, down);
-                double reference = Ink(Direct2D(honoured, dark), dark, across, down);
+                List<string> blanks = [];
+                double reference = Ink(Direct2D(honoured, dark, across, down, blanks), dark, across, down);
                 double ratio = ours / reference;
+
+                string retried = blanks.Count > 0 ? $" (reference: {string.Join("; ", blanks)})" : string.Empty;
 
                 lines.Add(string.Create(CultureInfo.InvariantCulture,
                     $"{(dark ? "light on dark" : "dark on light")}, {(honoured ? "cleartype" : "grayscale")}: "
-                    + $"ours {ours:F1}, direct2d {reference:F1}, ratio {ratio:F3}"));
+                    + $"ours {ours:F1}, direct2d {reference:F1}, ratio {ratio:F3}{retried}"));
                 ratios.Add(ratio);
             }
         }
@@ -107,7 +110,7 @@ public sealed class ContrastTests
     }
 
     /// <summary>The same run through Direct2D, with the system's own rendering parameters.</summary>
-    private static byte[] Direct2D(bool clearType, bool dark)
+    private static byte[] Direct2D(bool clearType, bool dark, int across, int down, List<string> blanks)
     {
         Color4 ink = dark ? new Color4(1f, 1f, 1f, 1f) : new Color4(0f, 0f, 0f, 1f);
         Color4 ground = dark ? new Color4(0f, 0f, 0f, 1f) : new Color4(1f, 1f, 1f, 1f);
@@ -150,12 +153,42 @@ public sealed class ContrastTests
 
         canvas.TextAntialiasMode = clearType ? Vortice.Direct2D1.TextAntialiasMode.Cleartype
                                              : Vortice.Direct2D1.TextAntialiasMode.Grayscale;
-        canvas.BeginDraw();
-        canvas.Clear(ground);
-        canvas.DrawText(Run, format, new Rect(0, 0, Width, Height), brush);
-        canvas.EndDraw();
 
-        return ReadBack(device, immediate, target);
+        // QS215: in the guest the reference sometimes came back blank, and the ratio read as
+        // infinite ink. A draw that failed now says so, a draw still queued is flushed before it is
+        // read, and a blank read is read again and then drawn again — each recorded, so a pass that
+        // needed it is in contrast.txt and not hidden by having worked the second time.
+        for (int attempt = 1; attempt <= 3; attempt++)
+        {
+            canvas.BeginDraw();
+            canvas.Clear(ground);
+            canvas.DrawText(Run, format, new Rect(0, 0, Width, Height), brush);
+            canvas.EndDraw().CheckError();
+            immediate.Flush();
+
+            byte[] frame = ReadBack(device, immediate, target);
+
+            if (Ink(frame, dark, across, down) > 0)
+            {
+                return frame;
+            }
+
+            byte[] again = ReadBack(device, immediate, target);
+
+            blanks.Add(Ink(again, dark, across, down) > 0
+                ? $"draw {attempt} read blank and then had ink on a second read of the same target: read before it landed"
+                : $"draw {attempt} read blank twice: the draw never reached the target");
+
+            if (Ink(again, dark, across, down) > 0)
+            {
+                return again;
+            }
+        }
+
+        throw new Xunit.Sdk.XunitException(
+            $"Direct2D's reference was blank on three draws ({(dark ? "light on dark" : "dark on light")}, "
+            + $"{(clearType ? "cleartype" : "grayscale")}), so there is nothing to measure this renderer against: "
+            + string.Join("; ", blanks));
     }
 
     private static byte[] ReadBack(ID3D11Device device, ID3D11DeviceContext context, ID3D11Texture2D source)
