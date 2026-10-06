@@ -323,33 +323,6 @@ than absorbed.
 Falsified when this repository claims cross-vendor correctness with no run behind it on
 any vendor's silicon.
 
-### §QS107 The half of the thinness that is not the coverage
-
-QS35 answered the stated cause — grayscale coverage — and left a second one standing
-that its own design named and this did not do: "DirectWrite's contrast enhancement has
-to be carried through rather than dropped on the floor".
-
-`IDWriteRenderingParams` publishes `Gamma`, `EnhancedContrast` and `ClearTypeLevel`.
-`IDWriteFactory2::CreateGlyphRunAnalysis` takes none of them, so the coverage
-`CreateAlphaTexture` returns has had none of them applied: they are the client's to
-apply, and Direct2D applies them inside a shader whose curve Microsoft does not
-document.
-
-Gamma is arguably already handled and handled better. This renderer mixes coverage in
-linear light, which is what gamma correction exists to approximate, so carrying
-DirectWrite's gamma across would be correcting twice. Enhanced contrast is the part with
-nothing standing in for it: a deliberate perceptual boost that thickens stems, and thin
-stems are exactly the symptom QS35 was filed under.
-
-What this needs is a measurement rather than a guess at the curve. Draw one glyph run
-through Direct2D into an offscreen target, draw the same run through this renderer, and
-difference them. If the pictures agree, the boost is not being applied by D2D either and
-there is nothing to carry. If they differ, the difference is the size of the thing to
-fix and a lookup table fitted to it is honest where a guessed exponent is not. Direct2D
-used only as the reference a test compares against is not a second backend.
-
-Falsified when the two pictures differ and the number is not written down.
-
 ### §QS108 Measured against the suite's own build
 
 Two wall-clock tests in `Quickshell.App.Tests` failed on 2026-08-30, one each on
@@ -723,6 +696,32 @@ every byte esctest sends reaches the emulator and every reply goes back unchange
 Then rerun esctest and rewrite the measurement, naming which path judged it.
 
 Falsified when an esctest reply is produced by anything other than this emulator.
+
+### §QS212 Symmetric, or the same as Windows
+
+QS107 measured it, in `docs/measurements/contrast.md`. Against Direct2D's own text, this
+renderer's dark-on-light text carries 12 to 17 % less ink, and its light-on-dark text 4
+to 7 % more. This renderer weighs the same both ways because it blends coverage in
+linear light, which QS9 built on purpose and tests:
+`TheSameCharacterLightOnDarkAndDarkOnLightHasMatchingWeight`. Windows does not, so a
+light theme here looks thinner than the editor beside it.
+
+Two ways to go, and choosing between them is a judgement about what this client should
+look like:
+
+- Keep the symmetry. Text weighs what its coverage says on any theme, and the light-theme gap
+  to Windows is the price. Then this line retires into a decision record naming the measured
+  gap.
+- Match Windows. Fit a correction by polarity, a curve applied to coverage when the ink is
+  darker than the ground, fitted against the Direct2D reference `ContrastTests` already draws.
+  That rewrites QS9's symmetry test into "matches Windows within N %" for both polarities. A
+  lookup table fitted to the measurement is honest where a guessed exponent is not, and the
+  fit is checked by the same test going to a ratio near one on both rows.
+
+Either way the fit is per pixel and not per total, so the first step of the second
+option is a profile: ink by coverage level, from the same two pictures.
+
+Falsified when a light theme is called fixed without the dark-on-light ratio near one.
 
 ## Block D — The tree a user organises work in
 

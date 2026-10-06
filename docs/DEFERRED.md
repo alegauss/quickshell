@@ -7,6 +7,7 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏸ **QS92** (deps: —) **The golden suite has run on NVIDIA and WARP and never on AMD, Intel integrated graphics or under RDP** — set aside (Waits for an AMD desk, an Intel integrated one and an RDP session; the guest has no GPU.): A driver bug is exactly what the machine that wrote the code cannot see. → §QS92
+- ⏸ **QS212** (deps: —) **Dark text on a light theme carries 12 to 17 % less ink than Windows draws, while light-on-dark carries more** — set aside (Owner's call: symmetric or Windows' weight.): The linear blend weighs both polarities alike and Direct2D does not; matching it gives up QS9's symmetry. → §QS212
 
 ## Block D — The tree a user organises work in
 
