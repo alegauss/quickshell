@@ -642,6 +642,9 @@ public sealed class FileBrowserTests
         public ValueTask SymbolicLinkAsync(string target, string link, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public ValueTask<string> ReadLinkAsync(string path, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public ValueTask ChangePermissionsAsync(string path, int mode, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 

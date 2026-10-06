@@ -339,10 +339,12 @@ public sealed class TransferPlanTests : IDisposable
             // It terminated, which following it would not have.
             Assert.Single(plan.Files);
 
-            // And it is left out with the reason attached rather than recreated from a guess: what
-            // a remote link points at cannot be read over this connection at all.
-            Assert.Empty(plan.Links);
-            Assert.Contains("cannot be read", Assert.Single(plan.Skipped), StringComparison.Ordinal);
+            // And it is planned as a link, with the target the server holds for it (QS123).
+            PlannedLink loop = Assert.Single(plan.Links);
+
+            Assert.Equal(there, loop.Target);
+            Assert.True(loop.ToDirectory);
+            Assert.Empty(plan.Skipped);
 
             // Skipping says the same thing more briefly.
             TransferPlan skipping = await TransferPlan.ToCopyDownAsync(
@@ -350,6 +352,74 @@ public sealed class TransferPlanTests : IDisposable
 
             Assert.Empty(skipping.Links);
             Assert.Contains("left out", Assert.Single(skipping.Skipped), StringComparison.Ordinal);
+        }
+        finally
+        {
+            await Remove(files, there);
+        }
+    }
+
+    /// <summary>
+    /// QS123's falsification: a tree with symbolic links in it, copied down, has them in the result
+    /// — each pointing where it pointed on the server, relative as it was, so the copy still works.
+    /// A link to an absolute path on the server is left out by name, since that path means nothing
+    /// here.
+    /// </summary>
+    [Fact]
+    public async Task ATreeCopiedDownKeepsItsLinks()
+    {
+        SkipWithoutFixture();
+
+        await using SshNetTransport session = new();
+
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+
+        await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
+
+        string there = $"/tmp/qs-{Guid.NewGuid():N}";
+
+        await files.CreateDirectoryAsync(there, Stop);
+        await files.CreateDirectoryAsync($"{there}/releases", Stop);
+        await files.CreateDirectoryAsync($"{there}/releases/2026-08", Stop);
+
+        try
+        {
+            await using (Stream writing = await files.OpenWriteAsync($"{there}/releases/2026-08/app.conf", Stop))
+            {
+                await writing.WriteAsync(Encoding.UTF8.GetBytes("port=8080"), Stop);
+            }
+
+            // The shapes that matter: a directory link and a file link, both relative, and one
+            // absolute link that has no meaning off the server.
+            await files.SymbolicLinkAsync("releases/2026-08", $"{there}/current", Stop);
+            await files.SymbolicLinkAsync("releases/2026-08/app.conf", $"{there}/app.conf", Stop);
+            await files.SymbolicLinkAsync("/etc/hostname", $"{there}/host", Stop);
+
+            string down = Path.Combine(Mine(), "linked");
+            TransferPlan plan = await TransferPlan.ToCopyDownAsync(files, there, down, LinkPolicy.Copy, Stop);
+            TransferQueue queue = new(files);
+
+            await plan.EnqueueAsync(queue, files, Stop);
+            await queue.RunAsync(Stop);
+
+            // All three are read, each with the target the server holds — relative ones kept relative.
+            Assert.Equal(["/etc/hostname", "releases/2026-08", "releases/2026-08/app.conf"],
+                         plan.Links.Select(link => link.Target).Order(StringComparer.Ordinal));
+            Assert.True(plan.Skipped.Count == 1, $"skipped {string.Join(" | ", plan.Skipped)}");
+
+            DirectoryInfo current = new(Path.Combine(down, "current"));
+            FileInfo conf = new(Path.Combine(down, "app.conf"));
+
+            Assert.Equal(Path.Combine("releases", "2026-08"), current.LinkTarget);
+            Assert.Equal(Path.Combine("releases", "2026-08", "app.conf"), conf.LinkTarget);
+
+            // Through the link, the file the link was for: the copy works where it landed.
+            Assert.Equal("port=8080", await File.ReadAllTextAsync(Path.Combine(down, "current", "app.conf"), Stop));
+            Assert.Equal("port=8080", await File.ReadAllTextAsync(conf.FullName, Stop));
+
+            Assert.False(File.Exists(Path.Combine(down, "host")) || Directory.Exists(Path.Combine(down, "host")));
+            Assert.Contains(plan.Skipped, said => said.Contains("/etc/hostname", StringComparison.Ordinal)
+                                                  && said.Contains("absolute", StringComparison.Ordinal));
         }
         finally
         {

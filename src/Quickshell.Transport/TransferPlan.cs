@@ -13,7 +13,14 @@ public readonly record struct PlannedFile(string From, string To);
 /// <summary>A symbolic link the copy will recreate rather than follow.</summary>
 /// <param name="Target">What it points at, exactly as the far side spells it.</param>
 /// <param name="Link">Where the new link goes.</param>
-public readonly record struct PlannedLink(string Target, string Link);
+public readonly record struct PlannedLink(string Target, string Link)
+{
+    /// <summary>
+    /// Whether what it points at is a directory, which Windows needs to know to make the link and
+    /// the server does not. False for a link that points at nothing.
+    /// </summary>
+    public bool ToDirectory { get; init; }
+}
 
 /// <summary>
 /// What copying a directory turns out to be, worked out before anything is written.
@@ -32,12 +39,12 @@ public readonly record struct PlannedLink(string Target, string Link);
 /// into a loop, or quietly drags in an entire filesystem through a <c>/</c> somebody left in their
 /// home directory. Following is available and is chosen deliberately.</para>
 ///
-/// <para><b>Copying a link works upward and not downward, and the walk says so rather than
-/// guessing.</b> A link on this machine reports what it points at, so it can be recreated on the
-/// server. A link on the server cannot be asked: SSH.NET exposes no readlink, publicly or
-/// otherwise, so its target is not knowable through this seam. Such a link is left out with the
-/// reason attached, because a link pointing at a guess is worse than no link. QS123 carries the
-/// gap.</para>
+/// <para><b>Copying a link works both ways.</b> A link on this machine reports what it points at,
+/// and one on the server is asked with the protocol's READLINK (QS123), so either is recreated at
+/// the far end pointing where it pointed — relative where it was relative, which is what keeps a
+/// <c>current -&gt; releases/2026-08</c> working in the copy. Two cases are left out by name rather
+/// than recreated wrong: a server link to an absolute path, which means nothing on this machine,
+/// and one this filesystem refuses to make.</para>
 /// </summary>
 public sealed class TransferPlan
 {
@@ -144,10 +151,7 @@ public sealed class TransferPlan
             }
             else
             {
-                // Windows will not make one without the developer-mode privilege, so the link is
-                // recorded as a loss rather than failing the whole copy over a shortcut.
-                _skipped.Add($"{link.Link} is a symbolic link to {link.Target}, which was not "
-                             + "recreated: this filesystem does not allow it without extra rights.");
+                Recreate(link);
             }
         }
 
@@ -161,6 +165,46 @@ public sealed class TransferPlan
         }
 
         return entries;
+    }
+
+    /// <summary>
+    /// A server's link, made on this machine pointing where it pointed there.
+    ///
+    /// <para>The target is kept relative where it was, with the server's separators turned into
+    /// this machine's. An absolute one names a path on the server, so it is left out by name rather
+    /// than pointed at the same path on whatever drive this is. Windows makes a link only with
+    /// Developer Mode or elevation; where it refuses, the loss is recorded rather than failing the
+    /// copy over a shortcut.</para>
+    /// </summary>
+    private void Recreate(PlannedLink link)
+    {
+        if (link.Target.StartsWith('/'))
+        {
+            _skipped.Add($"{link.Link} is a symbolic link to {link.Target} on the server, which was not "
+                         + "recreated: an absolute path there means nothing on this machine.");
+
+            return;
+        }
+
+        string target = link.Target.Replace('/', Path.DirectorySeparatorChar);
+
+        try
+        {
+            if (link.ToDirectory)
+            {
+                Directory.CreateSymbolicLink(link.Link, target);
+            }
+            else
+            {
+                File.CreateSymbolicLink(link.Link, target);
+            }
+        }
+        catch (Exception refused) when (refused is IOException or UnauthorizedAccessException)
+        {
+            _skipped.Add($"{link.Link} is a symbolic link to {link.Target}, which was not recreated: "
+                         + $"this filesystem would not make it ({refused.Message.TrimEnd('.')}). "
+                         + "Developer Mode in Windows settings allows it.");
+        }
     }
 
     private async ValueTask MakeAsync(IFileTransferChannel over, string path,
@@ -218,9 +262,22 @@ public sealed class TransferPlan
                         continue;
 
                     case LinkPolicy.Copy:
-                        _skipped.Add($"{below} is a symbolic link and was left out: what it points "
-                                     + "at cannot be read over this connection, and a link to a "
-                                     + "guess is worse than no link.");
+                        string target = await over.ReadLinkAsync(below, cancellationToken).ConfigureAwait(false);
+                        bool toDirectory;
+
+                        try
+                        {
+                            // A stat follows the link, which is the one way to learn what kind of
+                            // thing it points at; one pointing at nothing is a file link.
+                            toDirectory = (await over.StatAsync(below, cancellationToken).ConfigureAwait(false))
+                                          .IsDirectory;
+                        }
+                        catch (SshException)
+                        {
+                            toDirectory = false;
+                        }
+
+                        _links.Add(new PlannedLink(target, beside) { ToDirectory = toDirectory });
 
                         continue;
 

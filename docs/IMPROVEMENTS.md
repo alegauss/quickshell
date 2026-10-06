@@ -654,31 +654,6 @@ to a pane that is not one of them.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-### §QS123 A link that cannot be read is a link that cannot be copied
-
-SFTP has `SSH_FXP_READLINK` and SSH.NET does not expose it: not on `SftpClient`, not on
-`ISftpFile`, and not on the internal `ISftpSession`, which offers `RequestSymLink` to
-create one and nothing to read one. `Get` follows a link and reports the target's
-attributes without saying what the target is called.
-
-So a downward copy leaves every link out, with the reason attached. That is the honest
-answer — a link recreated from a guess points somewhere nobody chose, and it looks like
-it worked. It is not a good answer. A checkout, a set of dotfiles, or anything with a
-`current -> releases/2026-08` in it arrives subtly broken.
-
-Two ways to close it, and the second is better.
-
-Send the request directly. `SftpSession` already carries the plumbing to send a message
-and match a response, and the client already reaches into it for remove and rename. One
-more member, and the same fragility QS122 describes.
-
-Ask the shell. A session already has one, and `readlink -n` answers exactly this. It
-costs a round trip per link and it uses only documented behaviour of the far side, but
-it means a file operation depending on a shell that a restricted account may not have.
-
-Falsified when a tree containing a symbolic link is copied down and the link is missing
-from the result.
-
 ### §QS184 A pane that goes where the shell is
 
 Carried out of QS60's design: the remote pane follows the session's working directory

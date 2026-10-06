@@ -98,6 +98,7 @@
 - ✅ **QS60** **There is no way to see what is on the remote host without running a command** — Browse files lists as entries arrive, 50,000 remote ones first shown in 19 ms, and copies both ways, renames, makes, sets modes and deletes after asking, each proven on a real server.
 - ✅ **QS64** **A file can only be transferred through the browser, so dragging one from Explorer does nothing** — Files dragged from Explorer onto a terminal are typed as their paths, quoted for that pane's shell, and onto a browser pane are copied into the directory it shows.
 - ✅ **QS122** **The shared-session trick rests on six SSH.NET members reached by name, and only a live server proves it holds** — Every SSH.NET member reached by name is checked by a test with no server, and the library is pinned to one version (design recorded in `src/Quickshell.Transport/LibraryShape.cs`).
+- ✅ **QS123** **A symbolic link on the server cannot be copied, because nothing here can read where it points** — Remote links are read with READLINK and recreated relative as they were (design recorded in `src/Quickshell.Transport/TransferPlan.cs`).
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

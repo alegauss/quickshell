@@ -72,6 +72,12 @@ public interface IFileTransferChannel : IAsyncDisposable
                                 CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// What a symbolic link points at, exactly as the far side spells it — relative where it was
+    /// made relative, so a tree copied with it still works where it lands (QS123).
+    /// </summary>
+    ValueTask<string> ReadLinkAsync(string path, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sets the mode as a bitmask, which is what a mode is: <c>0b_110_100_100</c>, or 0o644 in the
     /// notation the far side uses, or 420 in decimal — three spellings of one number.
     /// </summary>

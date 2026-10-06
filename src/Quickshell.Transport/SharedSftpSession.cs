@@ -36,6 +36,8 @@ internal static class SharedSftpSession
     internal const string ResponseFactoryType = "Renci.SshNet.Sftp.SftpResponseFactory";
     internal const string RemoveRequest = "RequestRemoveAsync";
     internal const string RenameRequest = "RequestRenameAsync";
+    internal const string ReadLinkRequest = "RequestReadLink";
+    internal const string SymLinkRequest = "RequestSymLink";
 
     /// <summary>
     /// Opens an SFTP channel on a connected client's session and wraps it in a usable client.
@@ -132,6 +134,63 @@ internal static class SharedSftpSession
                                    CancellationToken cancellationToken) =>
         (Task)Request(session, RenameRequest)
             .Invoke(session, [from, to, cancellationToken])!;
+
+    /// <summary>
+    /// What a symbolic link points at, exactly as the server spells it, or null where it answers
+    /// with nothing.
+    ///
+    /// <para><b>The protocol's own READLINK, which the library has and does not publish</b>
+    /// (QS123). Its public surface can make a link and cannot read one, so a tree copied down lost
+    /// every link in it. The session's request takes a path and answers the name it holds.</para>
+    /// </summary>
+    public static string? ReadLink(object session, string path)
+    {
+        object? answer;
+
+        try
+        {
+            answer = Request(session, ReadLinkRequest).Invoke(session, [path, false]);
+        }
+        catch (TargetInvocationException asked) when (asked.InnerException is not null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(asked.InnerException);
+
+            throw;
+        }
+
+        // Name and attributes, one pair per name; a link has one, and its name is the target.
+        return answer is Array { Length: > 0 } names && names.GetValue(0) is { } first
+            ? first.GetType().GetProperty("Key")?.GetValue(first) as string
+            : null;
+    }
+
+    /// <summary>
+    /// Makes a link that points at exactly the target given.
+    ///
+    /// <para><b>The supported route rewrites the target.</b> SSH.NET's <c>SymbolicLink</c>
+    /// canonicalises both paths through the server first, so a relative target is resolved against
+    /// the account's home rather than kept relative to the link's own folder: <c>current -&gt;
+    /// releases/2026-08</c> made in <c>/srv/app</c> arrived as a link to
+    /// <c>/home/probe/releases/2026-08</c>, measured against the fixture (QS123). Every relative
+    /// link an upload made pointed somewhere nobody chose.</para>
+    /// </summary>
+    public static void SymLink(object session, string link, string target)
+    {
+        try
+        {
+            // Target first, into the parameter the library names linkpath. OpenSSH's sftp-server
+            // reads SSH_FXP_SYMLINK's two paths in the opposite order to the draft, and the library's
+            // own SymbolicLink passes them this way round for it; the other order made links named
+            // after their targets, measured against the fixture.
+            Request(session, SymLinkRequest).Invoke(session, [target, link]);
+        }
+        catch (TargetInvocationException asked) when (asked.InnerException is not null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(asked.InnerException);
+
+            throw;
+        }
+    }
 
     private static MethodInfo Request(object session, string name) =>
         Member(session.GetType().GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic

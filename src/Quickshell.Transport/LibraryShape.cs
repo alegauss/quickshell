@@ -49,6 +49,10 @@ public static class LibraryShape
             Need(sftp.GetMethod("Connect", Any, Type.EmptyTypes), "SftpSession.Connect()");
             Need(sftp.GetMethod(SharedSftpSession.RemoveRequest, Any), $"SftpSession.{SharedSftpSession.RemoveRequest}");
             Need(sftp.GetMethod(SharedSftpSession.RenameRequest, Any), $"SftpSession.{SharedSftpSession.RenameRequest}");
+            Need(sftp.GetMethod(SharedSftpSession.ReadLinkRequest, Any, [typeof(string), typeof(bool)]),
+                 $"SftpSession.{SharedSftpSession.ReadLinkRequest}(string, bool)");
+            Need(sftp.GetMethod(SharedSftpSession.SymLinkRequest, Any, [typeof(string), typeof(string)]),
+                 $"SftpSession.{SharedSftpSession.SymLinkRequest}(string, string)");
             Need(sftp.GetProperty("ProtocolVersion", Any), "SftpSession.ProtocolVersion");
         }
 

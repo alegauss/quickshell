@@ -243,13 +243,28 @@ internal sealed class SftpChannel : IFileTransferChannel
     {
         Live();
 
-        // SSH.NET has no async spelling of this one, so it is put on the pool rather than run on the
-        // caller's thread: every other member here yields, and one that did not would be the one
-        // that froze a window.
+        // Through the session and not the client, which would rewrite a relative target against
+        // the home directory: see SharedSftpSession.SymLink. Synchronous underneath, so it is put on
+        // the pool rather than run on the caller's thread: every other member here yields, and one
+        // that did not would be the one that froze a window.
         await Translated(
-            () => Task.Run(() => { _client.SymbolicLink(target, link); return true; },
+            () => Task.Run(() => { SharedSftpSession.SymLink(_session, link, target); return true; },
                            cancellationToken),
             link).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask<string> ReadLinkAsync(string path, CancellationToken cancellationToken = default)
+    {
+        Live();
+
+        // Synchronous underneath, so on the pool for the reason SymbolicLinkAsync gives.
+        return await Translated(
+            () => Task.Run(() => SharedSftpSession.ReadLink(_session, path)
+                                 ?? throw new Renci.SshNet.Common.SftpPathNotFoundException(
+                                     $"{path} answered with no target"),
+                           cancellationToken),
+            path).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
