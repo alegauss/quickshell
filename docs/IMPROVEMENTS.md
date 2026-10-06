@@ -107,34 +107,6 @@ so instead of staying neutral.
 
 Falsified when a session forwards an agent with no per-host consent recorded.
 
-### §QS113 Progress through an authentication that takes two steps
-
-QS41's design asks that a partial success — a key accepted with a second factor still
-required — be "shown as progress" rather than treated as an error. The state is reached
-and tested: the fixture's `twofactor` account is under `AuthenticationMethods
-publickey,keyboard-interactive`, and a connection there completes both. What is missing
-is anybody being told, in between.
-
-Three things happen during that connection and none of them reaches a caller. The server
-may send an authentication banner, which is its own words and is exactly the sort of
-thing worth showing. The first method succeeds. The second method's prompts arrive —
-those do reach the caller, through `SshCredential.Interactive`, which is why the
-falsification test can assert them.
-
-So the gap is narrow and specific: the two moments before the prompt. A user watching a
-connection that takes six seconds because somebody has to approve a push notification is
-watching nothing at all until the prompt appears, and a client that shows nothing there
-is one a user assumes has hung.
-
-This waits on the window, because progress is a thing that is shown. What belongs in the
-transport is the report: a callback or a state on `ISshTransport` carrying the banner
-when there is one, and the fact that a method completed with more still wanted.
-`SshNetTransport` already subscribes to nothing for either, and
-`ConnectionInfo.AuthenticationBanner` is the library's half of the first.
-
-Falsified when a two-step authentication shows the same thing at second five as at
-second one.
-
 ### §QS114 The other transport under the same protocol
 
 QS43's design names two agents to reach on Windows and says the useful thing about them:

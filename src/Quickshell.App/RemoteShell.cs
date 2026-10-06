@@ -69,12 +69,21 @@ public sealed class RemoteShell : IShellSession
         // A keepalive that detects, not only one that keeps (QS111): a frozen host is noticed.
         TimeSpan keepAlive = TimeSpan.FromSeconds(15);
 
+        // Said into the pane while there is nothing else in it (QS113): before the shell starts, no
+        // pipeline writes to this model, so these lines are the only writer it has.
+        Narration said = new(emulator, damage);
+        Progress signIn = new(said);
+
         ISshTransport transport = session.JumpHost is { } jump
             ? new SshChain([
                 new SshHop(Through(jump.Value, target.User), credentials, trust.CheckAsync),
                 new SshHop(target, credentials, trust.CheckAsync),
-              ]) { KeepAlive = keepAlive }
-            : new SshNetTransport { KeepAlive = keepAlive };
+              ]) { KeepAlive = keepAlive, SignIn = signIn }
+            : new SshNetTransport { KeepAlive = keepAlive, SignIn = signIn };
+
+        said.Line(session.JumpHost is { } through
+            ? $"Connecting to {target} through {through.Value}..."
+            : $"Connecting to {target}...");
 
         try
         {
@@ -165,6 +174,48 @@ public sealed class RemoteShell : IShellSession
         }
 
         return SshEndpoint.For(host, user, port);
+    }
+
+    /// <summary>
+    /// Lines written into the pane before its shell exists, so a sign-in that waits on a person —
+    /// a push to approve, a code to type — is not a blank pane that looks hung (QS113).
+    /// </summary>
+    private sealed class Narration(Emulator emulator, DamageSignal damage)
+    {
+        private readonly Lock _guard = new();
+
+        public void Line(string text)
+        {
+            lock (_guard)
+            {
+                emulator.Feed(Encoding.UTF8.GetBytes(text.ReplaceLineEndings("\r\n").TrimEnd() + "\r\n"));
+            }
+
+            damage.Set();
+        }
+    }
+
+    /// <summary>The transport's sign-in steps, said as a person reads them.</summary>
+    private sealed class Progress(Narration said) : IProgress<SshSignInStep>
+    {
+        public void Report(SshSignInStep value)
+        {
+            switch (value)
+            {
+                case SshSignInStep.Banner banner when banner.Text.Trim().Length > 0:
+                    // The server's own words, already stripped of anything a display would act on.
+                    said.Line(banner.Text);
+                    break;
+
+                case SshSignInStep.Partly partly:
+                    said.Line($"{partly.Endpoint.Host} accepted {partly.Accepted} and wants "
+                              + $"{string.Join(" or ", partly.StillWanted)} next.");
+                    break;
+
+                default:
+                    break;
+            }
+        }
     }
 
     private static string Expand(string path) =>

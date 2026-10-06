@@ -8,7 +8,6 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- ⏳ **QS113** (deps: QS41 ✅, QS46 ✅, QS126 ✅) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — The report reaches nothing a user sees until a remote session is in the window, which QS126 brings. → §QS113
 - 📋 **QS218** (deps: QS126 ✅) **A saved session to a host that takes a password or a one-time code cannot be connected from the client** — The connection offers keys and the agent only, so the server's own prompt has nowhere to be shown and a saved password is never used. → §QS218
 
 ## Block C — Emulation that does not lie about the remote
@@ -330,12 +329,6 @@
 - **Every server class the design names has a row** Windows OpenSSH, a network appliance
   and a commercial server each have a row in docs/measurements/compatibility.md with
   their negotiated algorithms.
-
-## Done when — QS113
-
-- **A two-step sign-in shows progress in the window** Connecting to the fixture's
-  twofactor account in the client shows the banner and the accepted key before the
-  second prompt appears.
 
 ## Done when — QS114
 

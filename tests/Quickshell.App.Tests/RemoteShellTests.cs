@@ -105,6 +105,39 @@ public sealed class RemoteShellTests : IDisposable
         await Until(() => Screen(emulator).Contains("qs-sshd-target", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// QS113's falsification: a two-step sign-in does not show the same thing at second five as at
+    /// second one. Against the fixture's <c>twofactor</c> account the pane shows where it is
+    /// connecting, the server's banner and that the key was accepted with a second factor still to
+    /// come — before anything else happens, and before the client has a way to answer that factor
+    /// (QS218), which is why the connection then fails by name.
+    /// </summary>
+    [Fact]
+    public async Task ATwoStepSignInSaysWhereItIsInThePane()
+    {
+        SkipWithoutFixture();
+
+        string store = Store("""
+            { "Name": "", "Children": [
+                { "Name": "mfa", "Host": "127.0.0.1", "Settings": { "User": "twofactor", "Port": 2222, "Key": "KEY" } }
+            ] }
+            """);
+
+        ResolvedSession mfa = SessionTree.ReadFrom(store).Session("mfa")!;
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        Emulator emulator = new(100, 25);
+
+        await Assert.ThrowsAsync<SshException>(async () =>
+            await RemoteShell.OpenAsync(mfa, trust, emulator, new DamageSignal(), 100, 25, Stop));
+
+        string screen = Screen(emulator);
+
+        Assert.Contains("Connecting to twofactor@127.0.0.1:2222", screen, StringComparison.Ordinal);
+        Assert.Contains("Authorised use only.", screen, StringComparison.Ordinal);
+        Assert.Contains("accepted publickey and wants keyboard-interactive next", screen, StringComparison.Ordinal);
+    }
+
     /// <summary>A jump host is written as OpenSSH writes one, and every part of it is optional but the host.</summary>
     [Theory]
     [InlineData("bastion.example", "me", "bastion.example", 22)]
