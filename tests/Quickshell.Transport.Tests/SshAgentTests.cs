@@ -202,6 +202,92 @@ public sealed class SshAgentTests
         Assert.NotNull(windows.Identities());
     }
 
+    // ---- Pageant's window: the carrier before the pipe (QS114) ----
+
+    /// <summary>
+    /// QS114's falsification: a signature obtained through shared memory is the signature obtained
+    /// through the pipe, for the same key and the same data.
+    ///
+    /// <para>The same agent answers both — <see cref="FakeAgent"/> on its pipe and behind a Pageant
+    /// window — and its RSA signatures are deterministic, so any difference is the carrier's. The
+    /// window also checks the mapping's owner the way Pageant does, and nothing was refused.</para>
+    /// </summary>
+    [Fact]
+    public async Task ASignatureThroughPageantsWindowIsTheSignatureThroughThePipe()
+    {
+        Assert.SkipWhen(FakePageant.AnotherIsOpen, "a real Pageant is open, and this must not answer for it");
+
+        await using FakeAgent agent = new("through-the-window");
+        using FakePageant window = new(agent.Answer);
+
+        SshAgent piped = new(agent.Pipe);
+        SshAgent mapped = new(SshAgent.PageantWindow);
+
+        Assert.True(mapped.IsRunning, "the Pageant window was not found");
+
+        AgentIdentity throughPipe = Assert.Single(piped.Identities());
+        AgentIdentity throughWindow = Assert.Single(mapped.Identities());
+
+        Assert.Equal(throughPipe.Fingerprint, throughWindow.Fingerprint);
+        Assert.Equal(throughPipe.Comment, throughWindow.Comment);
+
+        byte[] data = Encoding.ASCII.GetBytes("the same session identifier, signed twice");
+
+        byte[] signedThroughPipe = piped.Sign(throughPipe.Blob.Span, data, SshAgent.RsaSha256);
+        byte[] signedThroughWindow = mapped.Sign(throughWindow.Blob.Span, data, SshAgent.RsaSha256);
+
+        Assert.Equal(signedThroughPipe, signedThroughWindow);
+        Assert.Equal(2, window.Requests);
+        Assert.Equal(0, window.RefusedForOwner);
+    }
+
+    /// <summary>
+    /// End to end through the window: a key held only by the agent behind it opens a session on a
+    /// real OpenSSH server, which can only happen if the signature crossed the mapping intact.
+    /// </summary>
+    [Fact]
+    public async Task AKeyBehindPageantsWindowAuthenticatesASession()
+    {
+        SkipWithoutFixture();
+        Assert.SkipWhen(FakePageant.AnotherIsOpen, "a real Pageant is open, and this must not answer for it");
+
+        await using FakeAgent agent = new("behind-the-window");
+        using FakePageant window = new(agent.Answer);
+
+        Authorise(agent.AuthorizedKey);
+
+        try
+        {
+            await using SshNetTransport transport = new();
+
+            await transport.ConnectAsync(SshEndpoint.For("127.0.0.1", "probe", 2222),
+                                         [new SshCredential.Agent(SshAgent.PageantWindow)], Trusting, Stop);
+
+            Assert.True(transport.IsConnected, "the key behind the window did not open a session");
+            Assert.True(agent.Signatures > 0, "the server let the client in without a signature");
+        }
+        finally
+        {
+            Authorise(null);
+        }
+    }
+
+    /// <summary>With no Pageant window open, the carrier says so in Pageant's terms, not a pipe's.</summary>
+    [Fact]
+    public void NoPageantWindowIsSaidInPageantsTerms()
+    {
+        Assert.SkipWhen(FakePageant.AnotherIsOpen, "a real Pageant is open");
+
+        SshAgent mapped = new(SshAgent.PageantWindow);
+
+        Assert.False(mapped.IsRunning);
+
+        SshException refused = Assert.Throws<SshException>(() => mapped.Identities());
+
+        Assert.Contains("Pageant", refused.Means, StringComparison.Ordinal);
+        Assert.DoesNotContain("pipe", refused.Means, StringComparison.Ordinal);
+    }
+
     // ---- plumbing ----
 
     /// <summary>The algorithm a signature blob names, which is its first length-prefixed string.</summary>

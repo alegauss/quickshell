@@ -39,6 +39,13 @@ public sealed class SshAgent
     /// <summary>Where Windows' own OpenSSH agent listens.</summary>
     public const string OpenSshPipe = "openssh-ssh-agent";
 
+    /// <summary>
+    /// Pageant through its window and a shared mapping rather than a pipe: every Pageant has that
+    /// carrier, and before 0.78 it is the only one (QS114). Given where a pipe name goes; no pipe
+    /// can be named this, because a pipe name is not allowed the brackets.
+    /// </summary>
+    public const string PageantWindow = "[pageant window]";
+
     /// <summary>Ask for the identities the agent holds.</summary>
     private const byte RequestIdentities = 11;
 
@@ -87,8 +94,9 @@ public sealed class SshAgent
     /// the pipe to ask, so it is the same intrusion wearing a read-only name. Enumerating the pipe
     /// directory opens nothing.</para>
     /// </summary>
-    public bool IsRunning =>
-        Directory.EnumerateFiles(@"\\.\pipe\")
+    public bool IsRunning => _pipe == PageantWindow
+        ? PageantMemory.IsRunning
+        : Directory.EnumerateFiles(@"\\.\pipe\")
                  .Any(pipe => string.Equals(System.IO.Path.GetFileName(pipe), _pipe,
                                             StringComparison.OrdinalIgnoreCase));
 
@@ -162,16 +170,21 @@ public sealed class SshAgent
     /// <summary>One request, one answer, on a connection that lasts exactly that long.</summary>
     private byte[] Exchange(byte[] payload)
     {
+        byte[] framed = new byte[4 + payload.Length];
+
+        BinaryPrimitives.WriteUInt32BigEndian(framed, (uint)payload.Length);
+        payload.CopyTo(framed, 4);
+
         try
         {
+            if (_pipe == PageantWindow)
+            {
+                return PageantMemory.Exchange(framed);
+            }
+
             using NamedPipeClientStream pipe = new(".", _pipe, PipeDirection.InOut);
 
             pipe.Connect(2000);
-
-            byte[] framed = new byte[4 + payload.Length];
-
-            BinaryPrimitives.WriteUInt32BigEndian(framed, (uint)payload.Length);
-            payload.CopyTo(framed, 4);
 
             pipe.Write(framed);
             pipe.Flush();
@@ -197,13 +210,16 @@ public sealed class SshAgent
             return answer;
         }
         catch (Exception failure) when (failure is TimeoutException or IOException
-                                        or UnauthorizedAccessException)
+                                        or UnauthorizedAccessException
+                                        or System.ComponentModel.Win32Exception)
         {
             throw SshException.From(
                 SshFailureKind.NoMethodAccepted,
                 "No SSH agent answered.",
                 failure,
-                $"Nothing is listening on the {_pipe} pipe.",
+                _pipe == PageantWindow
+                    ? "No Pageant window took the request."
+                    : $"Nothing is listening on the {_pipe} pipe.",
                 "Start the agent, or point this client at a key file instead.");
         }
     }

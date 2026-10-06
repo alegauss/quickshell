@@ -6,6 +6,9 @@
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Quickshell.Transport.Tests</RootNamespace>
+    <!-- FakePageant is a window and a file mapping, declared through LibraryImport, whose generated
+         marshalling is unsafe by construction - the same reason the transport itself allows it. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

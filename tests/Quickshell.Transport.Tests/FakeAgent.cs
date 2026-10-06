@@ -134,8 +134,11 @@ internal sealed class FakeAgent : IAsyncDisposable
         }
     }
 
-    /// <summary>The protocol: list identities, or sign with the one there is.</summary>
-    private byte[] Answer(byte[] request)
+    /// <summary>
+    /// The protocol: list identities, or sign with the one there is. Internal so a second carrier —
+    /// <see cref="FakePageant"/> — answers with the very same agent.
+    /// </summary>
+    internal byte[] Answer(byte[] request)
     {
         const byte RequestIdentities = 11;
         const byte IdentitiesAnswer = 12;
