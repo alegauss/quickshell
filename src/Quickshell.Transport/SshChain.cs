@@ -56,7 +56,7 @@ public sealed class SshChain : ISshTransport
     /// library keeps private (QS119). Its public <c>Stop</c> closes every channel the port opened,
     /// the nested session included — measured, the session was gone the moment it returned.
     /// </summary>
-    private static readonly System.Reflection.MethodInfo? StopListening =
+    internal static readonly System.Reflection.MethodInfo? StopListening =
         typeof(ForwardedPortLocal).GetMethod("StopListener",
                                              System.Reflection.BindingFlags.NonPublic
                                              | System.Reflection.BindingFlags.Instance);

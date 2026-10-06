@@ -21,8 +21,12 @@
          "compile" and not "all", and the difference is not cosmetic: "all" withholds the runtime
          asset as well, so the library is not copied beside anything that references this project.
          That builds perfectly and then throws FileNotFoundException on the first connection, which
-         is how it was found here. Hiding the types is the goal; withholding the DLL is a bug. -->
-    <PackageReference Include="SSH.NET" Version="2026.0.0" PrivateAssets="compile" />
+         is how it was found here. Hiding the types is the goal; withholding the DLL is a bug.
+
+         Pinned, in brackets: a bare version is a minimum NuGet may move past, and members of this
+         library are reached by name (LibraryShape lists them, QS122). An upgrade is a decision made
+         by editing this number, and LibraryShapeTests is what says whether it held. -->
+    <PackageReference Include="SSH.NET" Version="[2026.0.0]" PrivateAssets="compile" />
 
     <!-- DPAPI. Not in the shared framework on .NET Core, so it is a package - and it is the floor
          under a saved password: ciphertext bound to the Windows account, so a copied file will not

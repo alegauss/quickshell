@@ -227,11 +227,11 @@ internal sealed class SshNetChannel : IPtyChannel
     /// <summary>Whether this version of the library still has the request <see cref="AskPeer"/> sends.</summary>
     internal bool CanAskPeer => Asking is not null && Session(_shell) is not null;
 
-    private static readonly System.Reflection.FieldInfo? SessionField =
+    internal static readonly System.Reflection.FieldInfo? SessionField =
         typeof(ShellStream).GetField("_channel",
                                      System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-    private static readonly System.Reflection.MethodInfo? Asking =
+    internal static readonly System.Reflection.MethodInfo? Asking =
         SessionField?.FieldType.GetMethod("SendEnvironmentVariableRequest", [typeof(string), typeof(string)]);
 
     /// <summary>A name no server is configured to accept, so the answer is a refusal.</summary>

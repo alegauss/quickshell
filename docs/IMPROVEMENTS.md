@@ -654,31 +654,6 @@ to a pane that is not one of them.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-### §QS122 Six names holding up a security property
-
-Sharing one connection between the shell and the file browser is not offered by
-SSH.NET's public API, so `SharedSftpSession` reaches for four members by name:
-`BaseClient.Session`, `SftpSession`, `SftpResponseFactory` and
-`SftpClient._sftpSession`. Two more, the session's own remove and rename requests, are
-reached for the same way.
-
-It fails loudly rather than falling back, which is the safe direction: a fallback would
-open a second connection and cost a second authentication without saying so. But loudly
-means at runtime, against a server. Every test that would catch a break skips when the
-fixture is not up, so `dotnet build` after an SSH.NET upgrade is clean and the break
-waits for a user.
-
-Two things would close the gap, and they are cheap next to what they guard.
-
-A test with no server in it, asserting only that the six members resolve on the
-referenced assembly. It runs everywhere, including in CI without docker, and it fails on
-the upgrade rather than on the user.
-
-A pinned version. The reflection is written against 2026.0.0 and nothing records that; a
-floating reference would move underneath it silently.
-
-Falsified when an SSH.NET upgrade that breaks the sharing passes a run with no fixture.
-
 ### §QS123 A link that cannot be read is a link that cannot be copied
 
 SFTP has `SSH_FXP_READLINK` and SSH.NET does not expose it: not on `SftpClient`, not on

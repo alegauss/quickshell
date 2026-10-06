@@ -29,10 +29,13 @@ namespace Quickshell.Transport;
 /// </summary>
 internal static class SharedSftpSession
 {
-    private const string SessionProperty = "Session";
-    private const string SftpSessionField = "_sftpSession";
-    private const string SftpSessionType = "Renci.SshNet.Sftp.SftpSession";
-    private const string ResponseFactoryType = "Renci.SshNet.Sftp.SftpResponseFactory";
+    // Internal so LibraryShape checks these very names, not a copy of them (QS122).
+    internal const string SessionProperty = "Session";
+    internal const string SftpSessionField = "_sftpSession";
+    internal const string SftpSessionType = "Renci.SshNet.Sftp.SftpSession";
+    internal const string ResponseFactoryType = "Renci.SshNet.Sftp.SftpResponseFactory";
+    internal const string RemoveRequest = "RequestRemoveAsync";
+    internal const string RenameRequest = "RequestRenameAsync";
 
     /// <summary>
     /// Opens an SFTP channel on a connected client's session and wraps it in a usable client.
@@ -118,7 +121,7 @@ internal static class SharedSftpSession
     /// paths belonging to the server.</para>
     /// </summary>
     public static Task RemoveAsync(object session, string path, CancellationToken cancellationToken) =>
-        (Task)Request(session, "RequestRemoveAsync")
+        (Task)Request(session, RemoveRequest)
             .Invoke(session, [path, cancellationToken])!;
 
     /// <summary>
@@ -127,7 +130,7 @@ internal static class SharedSftpSession
     /// </summary>
     public static Task RenameAsync(object session, string from, string to,
                                    CancellationToken cancellationToken) =>
-        (Task)Request(session, "RequestRenameAsync")
+        (Task)Request(session, RenameRequest)
             .Invoke(session, [from, to, cancellationToken])!;
 
     private static MethodInfo Request(object session, string name) =>
