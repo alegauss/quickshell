@@ -108,6 +108,80 @@ public sealed class ConPtyChannelTests
         Assert.Contains("typed-in-and-back", await Prompt(channel), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// QS110: cancelled reads leave the channel reading. A shell prints a file while every read is
+    /// cancelled after a millisecond, then sits idle under fifty more reads that are certain to be
+    /// pending when they are cancelled, and then a line typed afterwards has to come back. It was
+    /// believed that a cancelled pipe read silenced the channel for good; measured, it does not.
+    ///
+    /// <para><b>Not "every line arrives".</b> The console host renders what the program prints
+    /// rather than relaying it, and a line that scrolls past between two of its frames is never
+    /// sent at all, cancelled or not. What a cancelled read must not do is end the channel.</para>
+    /// </summary>
+    [Fact]
+    public async Task ReadsCancelledWhileOutputFlowsLeaveTheChannelReading()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"quickshell-lines-{Guid.NewGuid():N}.txt");
+        await File.WriteAllLinesAsync(path, Enumerable.Range(1, 20_000).Select(line => $"line-{line:D5}"),
+                                      TestContext.Current.CancellationToken);
+
+        try
+        {
+            await using ConPtyChannel channel = await Start("cmd.exe /q", 120, 30);
+
+            Assert.NotEqual(string.Empty, await Prompt(channel));
+
+            await channel.WriteAsync(Typed($"type \"{path}\""), TestContext.Current.CancellationToken);
+
+            byte[] buffer = new byte[4096];
+            int cancelled = 0;
+            long bytes = 0;
+
+            for (int attempt = 0; attempt < 400 && cancelled < 50; attempt++)
+            {
+                using CancellationTokenSource impatient = new(TimeSpan.FromMilliseconds(1));
+
+                try
+                {
+                    bytes += await channel.ReadAsync(buffer, impatient.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    cancelled++;
+                }
+            }
+
+            // Let the file finish. Then fifty reads on an idle pipe, each certainly pending when it
+            // is cancelled, which output that is flowing does not guarantee.
+            await Prompt(channel);
+
+            for (int idle = 0; idle < 50; idle++)
+            {
+                using CancellationTokenSource impatient = new(TimeSpan.FromMilliseconds(5));
+
+                try
+                {
+                    bytes += await channel.ReadAsync(buffer, impatient.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    cancelled++;
+                }
+            }
+
+            // And then something that can only come back on a channel that is still reading.
+            await channel.WriteAsync(Typed("echo still-reading-QS110"), TestContext.Current.CancellationToken);
+
+            Assert.True(cancelled > 0 && bytes > 0,
+                $"{cancelled} reads were cancelled and {bytes} bytes arrived among them, so this proved nothing");
+            Assert.Contains("still-reading-QS110", await Prompt(channel), StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     // ---- It says how it ended ----
 
     [Fact]

@@ -56,33 +56,6 @@ not work. An entry saying only that it worked has not been tested; it has been v
 
 Falsified when the matrix records a pass with no negotiated algorithm list beside it.
 
-### §QS110 The other half of the comparison
-
-QS37's design asks for throughput and allocations "both against the same figures taken
-locally". The remote half landed and is asserted on: 32 MB of `cat` through the fixture
-at **124.8 MB/s and 233 KB allocated per MB**, against QS5's 81–103 MB/s and 112–126 KB.
-The local half did not, and what stopped it is worth writing down rather than retrying
-blindly.
-
-Two things, both found by measurement. A line typed at `cmd.exe` behind a pseudo-console
-needs a carriage return; a line feed is accepted by a Unix pty in canonical mode and
-silently ignored here, so the command was never submitted and the reader waited out its
-whole deadline looking like a dead channel. And draining the login banner by cancelling
-a read after a few hundred milliseconds **aborts the pipe**: `ConPtyChannel.ReadAsync`
-hands the token to a Windows pipe read, and a cancelled one does not resume. After that
-the channel is open and permanently silent.
-
-The second is the interesting one, because it is a property of the shipped local channel
-and not of the test. Whether a cancelled read is recoverable is not stated anywhere and
-the session loop is entitled to assume either answer.
-
-What this needs: a local figure taken without cancelling anything, the two printed side
-by side, and `ConPtyChannel` either surviving a cancelled read or saying in its own
-words that it does not.
-
-Falsified when a local figure is quoted without saying which machine and which day
-produced it.
-
 ### §QS111 A keepalive that keeps and does not detect
 
 QS38's design says "protocol-level keepalive at a configurable interval detects a dead

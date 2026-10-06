@@ -318,6 +318,49 @@ public sealed class SshNetTransportTests
                     + "112-126 KB through the same library");
     }
 
+    /// <summary>
+    /// QS110: the local half, taken the same way, so a slow link and a slow client can be told
+    /// apart. Thirty-two megabytes of the same file shape typed by cmd through the pseudo-console,
+    /// with nothing cancelled. It needs no fixture, so it runs on every desk and says which.
+    ///
+    /// <para><b>The time to print the file, and not the bytes read.</b> The console host renders what
+    /// cmd prints instead of relaying it, and it sends fewer bytes than it was given: lines that
+    /// scroll past between its frames are never sent. So the figure is thirty-two megabytes of
+    /// source over the time until a marker typed after them comes back, which is what "how fast
+    /// does a local file print" means, and the reads are counted only for the allocation per
+    /// megabyte.</para>
+    /// </summary>
+    [Fact]
+    public async Task TheLocalPseudoConsoleIsMeasuredBesideTheRemote()
+    {
+        const long Bytes = 32 * 1024 * 1024;
+        string big = Big(Bytes);
+
+        try
+        {
+            (double megabytesPerSecond, double kilobytesPerMegabyte) =
+                await Printed(await LocalShell(), $"type \"{big}\" & echo QS110-END", "QS110-END", Bytes);
+
+            string line = string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                $"local {Environment.MachineName} {DateTime.Now:yyyy-MM-dd}: {megabytesPerSecond:F1} MB/s at "
+                + $"{kilobytesPerMegabyte:F0} KB allocated per MB");
+
+            TestContext.Current.TestOutputHelper?.WriteLine(line);
+            await File.WriteAllTextAsync(Path.Combine(Path.GetTempPath(), "quickshell-local-throughput.txt"),
+                                         line, Stop);
+
+            // Low on purpose: the figure is the point, and it is a fraction of the remote one because
+            // the console host renders what cmd prints line by line instead of relaying it. A bound
+            // that a working local session could fail would be measuring the host, not the channel.
+            Assert.True(megabytesPerSecond > 0.2,
+                        $"the local channel carried {megabytesPerSecond:F2} MB/s, which is not a pipe at all");
+        }
+        finally
+        {
+            File.Delete(big);
+        }
+    }
+
     // ---- Keepalive: telling a dead link from an idle one ----
 
     /// <summary>
@@ -393,6 +436,84 @@ public sealed class SshNetTransportTests
         }
 
         return path;
+    }
+
+    /// <summary>
+    /// How fast a local command gets through a file: the source's size over the time until a marker
+    /// printed after it comes back, with the allocation over the same span.
+    /// </summary>
+    private static async Task<(double Megabytes, double KilobytesPerMegabyte)> Printed(
+        IPtyChannel channel, string command, string marker, long source)
+    {
+        await using (channel)
+        {
+            byte[] wanted = Encoding.ASCII.GetBytes(marker);
+            Stopwatch clock = new();
+            long before = 0;
+
+            using CancellationTokenSource carrying = CancellationTokenSource.CreateLinkedTokenSource(Stop);
+            carrying.CancelAfter(TimeSpan.FromSeconds(120));
+
+            // Reading starts before anything is written, and that is the whole of why the first
+            // attempt hung. The pipes are unbuffered, so a write completes only once the console
+            // host reads it, and the host does not read input while it is blocked writing a screen
+            // nobody is draining. A session loop is always reading; a test has to be too.
+            Task<bool> reading = Task.Run(async () =>
+            {
+                byte[] buffer = new byte[64 * 1024];
+                List<byte> tail = [];
+
+                // The marker counts the second time: the first is the command line being echoed.
+                int sightings = 0;
+
+                while (sightings < 2)
+                {
+                    int got = await channel.ReadAsync(buffer, carrying.Token);
+
+                    if (got == 0)
+                    {
+                        return false;
+                    }
+
+                    tail.AddRange(buffer.AsSpan(0, got));
+
+                    int at;
+
+                    while ((at = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(tail).IndexOf(wanted)) >= 0)
+                    {
+                        sightings++;
+                        tail.RemoveRange(0, at + wanted.Length);
+                    }
+
+                    if (tail.Count > wanted.Length)
+                    {
+                        tail.RemoveRange(0, tail.Count - wanted.Length);
+                    }
+                }
+
+                return true;
+            }, Stop);
+
+            // The banner and the prompt, read and thrown away by the loop above.
+            await Task.Delay(1200, Stop);
+
+            before = GC.GetTotalAllocatedBytes(precise: true);
+            clock.Start();
+
+            // cmd behind a pseudo-console needs the carriage return and ignores a bare line feed.
+            await channel.WriteAsync(Encoding.ASCII.GetBytes(command + "\r\n"), Stop);
+
+            bool seen = await reading;
+
+            clock.Stop();
+
+            Assert.True(seen, "the marker never came back, so the file was never finished");
+
+            double megabytes = source / 1024.0 / 1024.0;
+            long allocated = GC.GetTotalAllocatedBytes(precise: true) - before;
+
+            return (megabytes / clock.Elapsed.TotalSeconds, allocated / megabytes / 1024.0);
+        }
     }
 
     private static async Task<(double Megabytes, double KilobytesPerMegabyte)> Carried(

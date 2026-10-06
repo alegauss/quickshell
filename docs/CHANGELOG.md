@@ -7,6 +7,7 @@
 - ✅ **QS37** **No remote host's output has ever reached the emulator** — A remote shell arrives through the same four members a local one does, carrying 124.8 MB/s at 233 KB allocated per megabyte against a real OpenSSH server.
 - ✅ **QS38 (the reconnect)** **A link that drops for ten seconds costs the whole session and its scrollback** — A dropped link costs a command rather than the scrollback: the model outlives the connection, backoff is bounded and visible, and an exit is not retried.
 - ✅ **QS39** **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — Eleven failures, each provoked against a real socket or server before its rule was written, and each carrying what happened, what it means and what to do.
+- ✅ **QS110** **Remote throughput has no local figure taken beside it, so a slow link and a slow client look alike** — Local prints at 1.0 MB/s through conhost beside remote's 124.8; a cancelled read was never the fault, a write with no reader was (design recorded in `docs/measurements/throughput.md`).
 
 ## Block B — Keys, agents, and the host you think you reached
 

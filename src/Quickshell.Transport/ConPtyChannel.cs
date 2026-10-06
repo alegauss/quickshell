@@ -138,11 +138,27 @@ public sealed class ConPtyChannel : IPtyChannel
         return channel;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Reads what the program wrote.
+    ///
+    /// <para><b>A cancelled read leaves the channel reading</b> — measured, QS110, because the
+    /// opposite was believed: a read cancelled while the pipe is idle or while output is flowing is
+    /// followed by reads that carry on, and a line typed afterwards comes back. What had looked like
+    /// a cancelled read silencing the channel for good was the write below, waiting on a reader that
+    /// was not there.</para>
+    /// </summary>
     public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
         _fromChild.ReadAsync(buffer, cancellationToken);
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Writes to the program, as if typed.
+    ///
+    /// <para><b>Somebody has to be reading while this writes.</b> The pipes carry no buffer of their
+    /// own, so a write completes only once the console host has read it, and the host does not read
+    /// input while it is blocked writing a screen that nobody is draining. A session loop is always
+    /// reading; a caller that writes before it starts to read waits for ever, and that is what QS37's
+    /// local measurement ran into and took for a dead channel (QS110).</para>
+    /// </summary>
     public async ValueTask WriteAsync(
         ReadOnlyMemory<byte> bytes,
         CancellationToken cancellationToken = default)
