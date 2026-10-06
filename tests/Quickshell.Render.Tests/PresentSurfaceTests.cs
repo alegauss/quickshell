@@ -37,6 +37,36 @@ public sealed class PresentSurfaceTests
     }
 
     /// <summary>
+    /// QS86's control arm: a swapchain made without the waitable object has no handle to wait on,
+    /// so the wait returns at once and Present is what blocks — and it still presents, numbered the
+    /// way DXGI numbers it.
+    /// </summary>
+    [Fact]
+    public void ASurfaceWithoutTheWaitableObjectHasNoHandleAndStillPresents()
+    {
+        using TestWindow window = new(320, 200);
+        using GraphicsDevice device = GraphicsDevice.Open(outputWindow: window.Handle);
+        using PresentSurface surface = PresentSurface.For(device, window.Handle, 320, 200,
+                                                          maximumFrameLatency: 3, waitable: false,
+                                                          buffers: 3);
+
+        Assert.Equal(nint.Zero, surface.FrameLatencyWaitHandle);
+        Assert.False(surface.Waitable);
+        Assert.Equal(3u, surface.Buffers);
+
+        surface.WaitForNextFrame();
+        device.Context.ClearRenderTargetView(surface.View, new Color4(0.02f, 0.02f, 0.08f, 1.0f));
+        surface.Present();
+
+        long first = surface.LastPresentId;
+
+        device.Context.ClearRenderTargetView(surface.View, new Color4(0.02f, 0.02f, 0.08f, 1.0f));
+        surface.Present();
+
+        Assert.Equal(first + 1, surface.LastPresentId);
+    }
+
+    /// <summary>
     /// The queue does not grow: the application never gets more than one frame ahead of the
     /// display.
     ///
@@ -71,13 +101,14 @@ public sealed class PresentSurfaceTests
     /// <para><b>What it deliberately does not claim.</b> Not that the wait is worth anything: two
     /// controls were tried and neither discriminated, because one clear per frame with a vsync
     /// present is a workload that can never get ahead of the display at all. The figure the flags
-    /// were bought for is input to photon, it needs a frame with real work in it, and it is QS86's
-    /// to measure rather than this test's to imply.</para>
+    /// were bought for is input to photon, it needs a frame with real work in it, and
+    /// <c>tools/Quickshell.Photon</c> measures it (QS86, <c>benchmarks/results/photon-h.md</c>):
+    /// about a frame under streaming output, and nothing at a prompt.</para>
     ///
     /// <para><b>And it cannot fire on this workload.</b> One clear per frame with a vsync present is
     /// a frame that cannot get ahead of the display, so the growth this asserts is growth nothing
-    /// here can produce — QS86 tried two controls and neither discriminated, for that reason. This
-    /// is a guard for the workload QS86 will bring, not a check that is proving anything today.</para>
+    /// here can produce. It is a guard against a renderer that stops waiting, not a check that is
+    /// proving anything about this loop.</para>
     /// </summary>
     [Fact]
     public void TheFrameQueueNeverGetsAheadOfTheDisplay()

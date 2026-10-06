@@ -1511,6 +1511,30 @@ rewrite the test against the real path: apply settings with another theme and re
 an open pane's palette is unchanged. Falsified when a model of the terminal's colours
 exists that no pane draws from.
 
+### §QS202 A read that lets the editor's move through
+
+Found shipping QS86: one full host run of `run-tests.cmd` failed
+`SettingsWatchTests.AFileReplacedByARenameIsReadAsWell` with
+`UnauthorizedAccessException` from `File.Move(temporary, file, overwrite: true)`, and
+the same test passed five runs out of five alone and in a full rerun of its assembly.
+
+A move over a file is refused while anyone holds that file open without
+`FILE_SHARE_DELETE`. Two readers can be holding it at that instant. The virus scanner
+reads `settings.json` straight after the test writes it, which is QS194's pattern. And
+`SettingsFile` reads with `File.ReadAllBytes`, which shares read only, so the client
+itself refuses a rename over the file for as long as a read lasts.
+
+The second reader is the one that matters to a user. Notepad, Vim and VS Code all save
+by writing beside the file and moving over it, so a save that lands while the client is
+reading the settings fails in the editor with an error that names no culprit.
+
+What to build: read the settings file, and the scheme files beside it, through a
+`FileStream` opened with `FileShare.ReadWrite | FileShare.Delete`, so the client never
+refuses an editor's save. Then make the test's move retry for a short bounded time on
+access denied, as editors do, so a scanner's read is not a red run. A test that holds
+the file open through the client's own read path and moves over it proves the first half
+without any timing involved.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
@@ -1619,32 +1643,6 @@ zero, and the suite checks it on every run already.
 
 Falsified when the gate is disabled to land a change and the disabling is not itself a
 filed line.
-
-### §QS86 The figure the flags were bought for
-
-QS7 bought the present path its three flags and proved one thing: with the waitable
-object the frame queue is one deep. What it could not prove is what that is worth, and
-the failed attempt is the useful part of this line.
-
-Two controls were run and neither discriminated: latency one against three both averaged
-0.98 frames queued, and waiting on the handle against not waiting also both averaged
-0.98. The reason is not the flags but the workload - one clear per frame with a vsync
-present, where `Present` blocks on the flip and the application can never get ahead of
-the display. A queue cannot be deep if nothing is ever queued.
-
-So the figure the budget opens with - input to photon - has never been measured on this
-client, and the flags that exist to bound it are an argument rather than a number.
-
-What closes this is a frame with real work in it: a grid drawn from an atlas, which is
-what QS9 lands. Then the two arms differ, because an application that spends
-milliseconds per frame is one the runtime can queue ahead of, and the wait is what stops
-it.
-
-The display bounds the absolute answer at 16.7 ms, as PERFORMANCE.md records, so what
-this line settles is the shape - one frame against several - not the eight milliseconds
-a 120 Hz panel would allow.
-
-Falsified when this repository quotes an input-to-photon figure with no run behind it.
 
 ### §QS135 The settings that are still only stored
 
@@ -1827,6 +1825,30 @@ publish the harness beside the client with the same runtime settings, or load th
 from the publish folder, then take a new baseline. Falsified when a runtime setting
 added only to the client's publish slows its emulate path and the release gate still
 reports emulate held.
+
+### §QS201 Where the second refresh interval goes
+
+QS86's run, in `benchmarks/results/photon-h.md`: at a prompt, with the queue empty, an
+echo reaches DXGI's vblank in a median of 33 ms on the 60 Hz panel, two intervals, in
+every swapchain arm. Waiting for the next vblank explains half an interval on average,
+so about one whole interval is spent after the present.
+
+That interval is the part a faster panel does not remove. At 120 Hz the same shape is
+about 17 ms, twice the 8.3 ms budget, so figure 1 fails on the reference machine's
+successor as well as on this one unless the second interval goes.
+
+The likely owner is composition. A windowed flip-model chain the compositor draws into
+the desktop is shown a frame after it is presented. Independent flip, or a hardware
+overlay plane, shows it at the next vblank, and the compositor grants those only under
+conditions of its own: the swapchain covering its window, no transform, and a host that
+does not redirect the window.
+
+What to build first: report the presentation mode beside the latency, from PresentMon or
+the DXGI and DWM events it reads, so each arm says composed or independent flip. Then
+time the client's real window host, the WPF child HWND, in the same tool, since the
+photon tool's popup is not that host. Only then choose the change, whether a
+DirectComposition visual, the child window's styles, or a non-goal that says 60 Hz
+composition is the floor.
 
 ## Block I — An error a user can act on
 

@@ -46,14 +46,31 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
     /// measurement can open a second surface at the runtime's default and have something to
     /// compare against.
     /// </summary>
+    /// <param name="graphics">The device the swapchain belongs to.</param>
+    /// <param name="window">The window it presents into.</param>
+    /// <param name="width">The back buffer's width.</param>
+    /// <param name="height">The back buffer's height.</param>
+    /// <param name="maximumFrameLatency">How many frames may queue ahead of the display.</param>
+    /// <param name="waitable">
+    /// Whether the swapchain is made with its waitable object. Every real surface is. Without it the
+    /// latency is the device's and <see cref="Present"/> is what blocks, which is the path a client
+    /// that never bought the flag is on — QS86's control arm, and nothing else.
+    /// </param>
+    /// <param name="buffers">
+    /// The swapchain's buffer count. Two for every real surface; a measurement opens three to see
+    /// what a deeper chain lets the queue do.
+    /// </param>
     public static PresentSurface For(GraphicsDevice graphics, nint window, uint width, uint height,
-                                     uint maximumFrameLatency = 1)
+                                     uint maximumFrameLatency = 1, bool waitable = true,
+                                     uint buffers = 2)
     {
         ArgumentNullException.ThrowIfNull(graphics);
 
         PresentSurface surface = new(graphics, window, width, height, SupportsTearing())
         {
             MaximumFrameLatency = maximumFrameLatency,
+            Waitable = waitable,
+            Buffers = buffers,
         };
 
         graphics.Register(surface);
@@ -62,6 +79,12 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
 
     /// <summary>How many frames the runtime may queue ahead. One, unless a measurement says otherwise.</summary>
     public uint MaximumFrameLatency { get; private init; } = 1;
+
+    /// <summary>Whether the swapchain has its waitable object. True unless a measurement says otherwise.</summary>
+    public bool Waitable { get; private init; } = true;
+
+    /// <summary>How many buffers the swapchain holds. Two, unless a measurement says otherwise.</summary>
+    public uint Buffers { get; private init; } = 2;
 
     /// <summary>Whether this machine reported <c>DXGI_FEATURE_PRESENT_ALLOW_TEARING</c>.</summary>
     public bool TearingAllowed { get; }
@@ -127,6 +150,33 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
         }
 
         return statistics.PresentCount;
+    }
+
+    /// <summary>
+    /// DXGI's own number for the present just made, in the numbering <see cref="OnGlass"/> answers
+    /// in. Not <see cref="Presented"/>: that counts from this surface's creation and DXGI counts from
+    /// its own, and the two differ by a phase QS87 measured.
+    /// </summary>
+    public long LastPresentId => _swapChain?.LastPresentCount ?? 0;
+
+    /// <summary>
+    /// The latest present DXGI says reached the glass, and the QPC instant of the vblank it was
+    /// shown at — the photon end of input to photon. False until statistics exist.
+    /// </summary>
+    public bool OnGlass(out long presentId, out long vblank)
+    {
+        presentId = 0;
+        vblank = 0;
+
+        if (_swapChain is null || _swapChain.GetFrameStatistics(out FrameStatistics statistics).Failure
+            || statistics.PresentCount == 0)
+        {
+            return false;
+        }
+
+        presentId = statistics.PresentCount;
+        vblank = statistics.SyncQPCTime;
+        return true;
     }
 
     /// <summary>Blocks until the swapchain is ready for the next frame.</summary>
@@ -197,7 +247,7 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
 
         // ResizeBuffers, never a stretch: the swapchain is Scaling.None, so a stretched frame is
         // not something this surface can accidentally show.
-        _swapChain.ResizeBuffers(0, width, height, Format.Unknown, Flags());
+        _swapChain.ResizeBuffers(0, width, height, Format.Unknown, Flags(Waitable));
 
         Width = width;
         Height = height;
@@ -215,22 +265,32 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
             Width = Width,
             Height = Height,
             Format = Format.B8G8R8A8_UNorm,
-            BufferCount = 2,
+            BufferCount = Buffers,
             BufferUsage = Usage.RenderTargetOutput,
             SwapEffect = SwapEffect.FlipDiscard,
             SampleDescription = new SampleDescription(1, 0),
             AlphaMode = Vortice.DXGI.AlphaMode.Ignore,
             Scaling = Scaling.None,
-            Flags = Flags(),
+            Flags = Flags(Waitable),
         };
 
         using IDXGISwapChain1 created = factory.CreateSwapChainForHwnd(device, _window, description);
         _swapChain = created.QueryInterface<IDXGISwapChain2>();
 
-        // One, and not the runtime's default of three. Everything above is a frame of somebody's
-        // typing sitting in a queue.
-        _swapChain.MaximumFrameLatency = MaximumFrameLatency;
-        FrameLatencyWaitHandle = _swapChain.FrameLatencyWaitableObject;
+        if (Waitable)
+        {
+            // One, and not the runtime's default of three. Everything above is a frame of somebody's
+            // typing sitting in a queue.
+            _swapChain.MaximumFrameLatency = MaximumFrameLatency;
+            FrameLatencyWaitHandle = _swapChain.FrameLatencyWaitableObject;
+        }
+        else
+        {
+            // Without the flag the swapchain has no latency of its own and the device's governs.
+            using IDXGIDevice1 dxgi = device.QueryInterface<IDXGIDevice1>();
+            dxgi.MaximumFrameLatency = MaximumFrameLatency;
+            FrameLatencyWaitHandle = nint.Zero;
+        }
 
         _view = CreateView(device, _swapChain);
         _presented = 0;
@@ -249,9 +309,9 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
     /// <summary>Releases the swapchain. The device it was registered with is not disposed here.</summary>
     public void Dispose() => ((IDeviceResource)this).Release();
 
-    private static SwapChainFlags Flags()
+    private static SwapChainFlags Flags(bool waitable)
     {
-        SwapChainFlags flags = SwapChainFlags.FrameLatencyWaitableObject;
+        SwapChainFlags flags = waitable ? SwapChainFlags.FrameLatencyWaitableObject : SwapChainFlags.None;
 
         if (SupportsTearing())
         {

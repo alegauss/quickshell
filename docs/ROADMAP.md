@@ -83,6 +83,7 @@
 - 📋 **QS174** (deps: —) **A settings value the client could not use is not mentioned anywhere the user will look** — A mistyped scheme path, an unreadable scheme file and a settings file that will not parse all load as the defaults in silence, and the client looks broken rather than misconfigured. → §QS174
 - 📋 **QS178** (deps: —) **Five command-line flags exist and no page names them, so a script author finds them by reading the source** — The client has no menu, so the command line is how another program asks it for anything, and a surface nobody documented is one nobody finds. → §QS178
 - 📋 **QS199** (deps: —) **The test that says a chrome theme leaves the terminal's colours alone checks a palette nothing draws with** — Appearance.Palette is a second model of the terminal's colours that no running code reads; the colours a pane draws come from Settings.Colours. → §QS199
+- 📋 **QS202** (deps: —) **An editor's save over the settings file can be refused while the client is reading it** — The read shares nothing but reading, so a move over the file fails for as long as it lasts, and one full test run went red on exactly that. → §QS202
 
 ## Block H — The reason to leave the incumbent
 
@@ -90,7 +91,6 @@
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS78** (deps: QS139) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - ⏳ **QS79** (deps: QS3 ✅, QS196, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
-- 📋 **QS86** (deps: QS7 ✅, QS9 ✅) **Input to photon is the first figure in the budget and the only one nothing has ever measured** — The present path was built to bound it and the one workload that exists cannot run ahead of the display, so the flags remain an argument rather than a number. → §QS86
 - 📋 **QS135** (deps: QS74 ✅) **Three settings are read, written and kept faithfully, and nothing acts on them** — The typeface, its size and the scrollback depth reach no pane, so a user who edits the file sees the theme change and the rest do nothing. → §QS135
 - 📋 **QS137** (deps: QS76 ✅) **The idle figure is measured on a window with no session and no render loop in it** — Zero core time over ten minutes is real and is not the connected-session number the budget will be read against, and nothing yet can put the client in that state. → §QS137
 - 📋 **QS190** (deps: —) **The window's constructor spends 230 ms of a 647 ms start building chrome the first frame does not show** — The tab strip and the find bar are built before the first paint although both are collapsed until somebody asks for them. → §QS190
@@ -99,6 +99,7 @@
 - 📋 **QS196** (deps: —) **Figure 3 of the budget, steady-state frame cost, is measured by nothing, so no gate can hold it** — The render arm reports stream throughput with parsing folded in, and no harness times one full grid drawn again and again on the CPU and the GPU. → §QS196
 - 📋 **QS197** (deps: —) **The parse figure spreads by a fifth between runs on the reference machine, so the gate lets a regression that big pass** — A 28 ms pass on a CPU with performance and efficient cores is timed wherever the scheduler put it, which moves the number more than the parser does. → §QS197
 - 📋 **QS200** (deps: —) **The release gate times parse and emulate on the replay harness's build, not on the assemblies being archived** — A runtime setting that exists only in the published client, such as tiered compilation, would slow what ships while the gate reports the figures held. → §QS200
+- 📋 **QS201** (deps: —) **An echo at a prompt reaches the glass two refresh intervals after it arrives, one more than the vblank wait explains** — At 120 Hz that shape is still 17 ms, twice figure 1, so a faster panel alone cannot meet the budget. → §QS201
 
 ## Block I — An error a user can act on
 

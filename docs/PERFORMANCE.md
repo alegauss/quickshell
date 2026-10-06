@@ -41,6 +41,11 @@ this figure cannot be observed at 120 Hz granularity here. Until a 120 Hz panel 
 desk, the instrumented path is what settles this number and the capture is what would
 confirm it — a run that used only the instrumented path says so.
 
+*Where it stands:* `tools/Quickshell.Photon` is the instrumented path, and its run of
+2026-10-06 is in `benchmarks/results/photon-h.md`. An echo at a prompt reaches the glass in a
+median of 33 ms, two refresh intervals, so the figure is not met. The interval count is the
+part a faster panel would not fix (QS201).
+
 ### 2. Sustained parse throughput — at least 400 MB/s
 
 A stream of mixed text and escape sequences, parsed end to end.
@@ -121,8 +126,8 @@ archive until a new baseline has been taken at or after that commit, because a t
 would go on excusing the figure by any amount. Switching the gate off is `release.cmd -Ungated`,
 which prints that it was.
 
-What it does not hold, said plainly: figure 3 has no measurement at all yet (QS196), figure 1 has
-none either (QS86), figures 4 and 6 are measured over minutes and days by their own tools rather
+What it does not hold, said plainly: figure 3 has no measurement at all yet (QS196), figure 1 is
+measured by its own tool and not gated, since it puts a window on the desk for minutes, figures 4 and 6 are measured over minutes and days by their own tools rather
 than in seconds, and the zero-allocation claim is exact rather than statistical and is checked by the
 suite on every run. The parse figure is noisy enough on the reference machine that its allowance is
 a fifth (QS197). Only this machine has a baseline, so a check anywhere else is refused rather than
