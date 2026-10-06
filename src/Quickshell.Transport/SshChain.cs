@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Renci.SshNet;
 
 namespace Quickshell.Transport;
@@ -47,7 +48,18 @@ public sealed class SshChain : ISshTransport
 {
     private readonly List<SshClient> _bastions = [];
     private readonly List<ForwardedPortLocal> _channels = [];
+    private readonly Dictionary<ForwardedPortLocal, StrongBox<int>> _arrivals = [];
     private readonly List<ProxyCommandChannel> _proxies = [];
+
+    /// <summary>
+    /// The forwarded port's own way to stop listening without ending what it carries, which the
+    /// library keeps private (QS119). Its public <c>Stop</c> closes every channel the port opened,
+    /// the nested session included — measured, the session was gone the moment it returned.
+    /// </summary>
+    private static readonly System.Reflection.MethodInfo? StopListening =
+        typeof(ForwardedPortLocal).GetMethod("StopListener",
+                                             System.Reflection.BindingFlags.NonPublic
+                                             | System.Reflection.BindingFlags.Instance);
     private readonly IReadOnlyList<SshHop> _through;
 
     private SshNetTransport? _last;
@@ -152,6 +164,8 @@ public sealed class SshChain : ISshTransport
 
                     _last = session;
 
+                    Seal();
+
                     return;
                 }
 
@@ -242,6 +256,9 @@ public sealed class SshChain : ISshTransport
         await bastion.ConnectAsync(reachable with { User = step.Endpoint.User }, step.Credentials,
                                    step.HostKey, cancellationToken).ConfigureAwait(false);
 
+        // This bastion may itself have come through the port the hop before it opened.
+        Seal();
+
         SshClient client = bastion.Client
             ?? throw new SshException(
                 SshFailureKind.Dropped,
@@ -253,13 +270,57 @@ public sealed class SshChain : ISshTransport
         // Port zero: the operating system chooses one that is free, so two chains in one process do
         // not fight over a number somebody picked.
         ForwardedPortLocal channel = new("127.0.0.1", 0, next.Host, (uint)next.Port);
+        StrongBox<int> arrived = new();
+
+        channel.RequestReceived += (_, _) => Interlocked.Increment(ref arrived.Value);
 
         client.AddForwardedPort(channel);
         channel.Start();
 
         _channels.Add(channel);
+        _arrivals[channel] = arrived;
 
         return SshEndpoint.For("127.0.0.1", next.User, (int)channel.BoundPort);
+    }
+
+    /// <summary>
+    /// Closes the newest jump's local port now that the hop it was opened for is through it, and
+    /// refuses the chain if anything else came through while it was open (QS119).
+    ///
+    /// <para><b>A bastion exists to be the only way in.</b> The port is how the library carries a
+    /// nested session, and while it listens it reaches the next machine for any process running as
+    /// this user — past the bastion, which is the control the user was relying on. It is needed for
+    /// exactly one connection, so it listens for exactly as long as that takes: the nested session's
+    /// handshake. What the port already carries is left alone; only the listening stops.</para>
+    ///
+    /// <para><b>An arrival beyond the one expected is somebody else's,</b> because a jump carries one
+    /// session and nothing in this client connects twice. It is refused by ending the chain with a
+    /// failure that says so, rather than carrying on beside a stranger's connection to the target.</para>
+    /// </summary>
+    private void Seal()
+    {
+        if (_channels.Count == 0)
+        {
+            return;
+        }
+
+        ForwardedPortLocal newest = _channels[^1];
+
+        if (!_arrivals.Remove(newest, out StrongBox<int>? arrived))
+        {
+            return;
+        }
+
+        StopListening?.Invoke(newest, null);
+
+        if (Volatile.Read(ref arrived.Value) > 1)
+        {
+            throw new SshException(
+                SshFailureKind.Unrecognised,
+                $"Something else connected through the jump's local port while this session was being opened, {arrived.Value} connections where one was expected.",
+                "The port reaches the next machine for anything on this desktop, and only this client should have used it.",
+                "Check what else is running as you, then connect again.");
+        }
     }
 
     /// <summary>

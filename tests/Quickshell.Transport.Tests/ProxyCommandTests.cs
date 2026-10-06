@@ -119,6 +119,43 @@ public sealed class ProxyCommandTests : IDisposable
                         StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// The port a proxy command's session comes in through takes that one connection and then stops
+    /// listening, so nothing else on this desktop can queue behind it (QS119).
+    /// </summary>
+    [Fact]
+    public async Task TheProxysLocalPortStopsListeningOnceTheSessionIsIn()
+    {
+        SkipWithoutFixture();
+        SkipWithoutOpenSsh();
+
+        await using ProxyCommandChannel proxy = await ProxyCommandChannel.StartAsync(
+            Through(), SshEndpoint.For(TargetOnTheNetwork, "probe", 22), Stop);
+
+        await using SshNetTransport session = new();
+
+        await session.ConnectAsync(proxy.Reachable with { User = "probe" }, [Key()], Trusting, Stop);
+
+        Assert.True(session.IsConnected);
+
+        using System.Net.Sockets.TcpClient second = new();
+
+        bool reached;
+
+        try
+        {
+            await second.ConnectAsync(proxy.Reachable.Host, proxy.Reachable.Port, Stop).AsTask()
+                        .WaitAsync(TimeSpan.FromSeconds(2), Stop);
+            reached = second.Connected;
+        }
+        catch (Exception failure) when (failure is System.Net.Sockets.SocketException or TimeoutException)
+        {
+            reached = false;
+        }
+
+        Assert.False(reached, $"a second connection reached the proxy's port {proxy.Reachable.Port}");
+    }
+
     // ---- Failing to run one ----
 
     /// <summary>

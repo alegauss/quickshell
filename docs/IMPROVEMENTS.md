@@ -608,32 +608,29 @@ recordings never did this, so it is likely a path only a resize stream reaches.
 
 Falsified when the guest suite runs ten times without this test counting a byte.
 
+### §QS215 A reference that is sometimes blank
+
+`ContrastTests.ThisRenderersInkIsMeasuredAgainstDirect2Ds` draws one run four ways
+through this renderer and through Direct2D and compares the light each put on the glass.
+In the guest suite on 2026-10-06 the fourth pass — dark on light, ClearType — came back
+with **Direct2D's ink at 0.0** against this renderer's 602.8, so the ratio was infinite
+and the test failed. The same tree's other guest runs that day measured 682.8 for that
+pass, and the three passes before it in the failing run were normal.
+
+So the reference sometimes draws nothing, and the test reads that as this renderer being
+infinitely bright. The likely shapes are a Direct2D target read back before its draw was
+flushed, or a device lost under the guest's software adapter between the draw and the
+read; neither is measured yet.
+
+What to do: make the reference say when it drew nothing — assert its ink is above zero
+before dividing, with a message naming the pass — so a red run says "the reference was
+blank" rather than "∞ is out of range". Then find which of the two it is by repeating
+the reference draw on a blank read and recording whether a second read of the same
+target has ink.
+
+Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
+
 ## Block D — The tree a user organises work in
-
-### §QS119 A door held open on the loopback
-
-SSH.NET offers no way to hand a session a stream, so both routes through a bastion end
-at the same shape: a `ForwardedPortLocal` bound to `127.0.0.1:0` for a jump, and a
-`TcpListener` on `127.0.0.1:0` for a proxy command. The nested session connects there
-and travels on inside the carrier. End to end the traffic is still the target's own
-encryption and the bastion sees none of it, so the confidentiality claim holds.
-
-What does not hold is exclusivity. While the session lasts, that port is open to every
-process running as this user. Anything connecting to it is speaking to the target's sshd
-— it must still authenticate, so this is no way past the target's own credentials, but
-it is a way past the bastion, which is the control the user was relying on. A machine
-reachable only through a jump host has, for the life of the session, a direct route from
-this desktop that nothing audited.
-
-The forwarded port is also accepted more than once. A jump is one nested session and a
-proxy command is exactly one, so a second connection is by definition not the client's.
-
-What would close it: bind and accept once, then refuse; or match the accepted socket's
-owning process against this one. Neither is offered by `ForwardedPortLocal`, so the jump
-path may need the same hand-built listener the proxy path already has.
-
-Falsified when a second process can connect to a live jump's bound port and reach the
-target.
 
 ### §QS121 Two finished halves with nothing between them
 

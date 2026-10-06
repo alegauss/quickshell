@@ -324,6 +324,10 @@ public sealed class ProxyCommandChannel : IAsyncDisposable
             using TcpClient client = await _listener.AcceptTcpClientAsync(_stopping.Token)
                                                     .ConfigureAwait(false);
 
+            // The one connection is in, so nothing else may queue behind it on a port anything
+            // running as this user could reach (QS119).
+            _listener.Stop();
+
             using NetworkStream socket = client.GetStream();
 
             Task upstream = socket.CopyToAsync(_process.StandardInput.BaseStream, _stopping.Token);

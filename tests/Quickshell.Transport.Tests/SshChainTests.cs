@@ -103,6 +103,55 @@ public sealed class SshChainTests
         Assert.Contains("target", await Until(channel, "target"), StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// QS119's falsification: once the chain is through, a second process cannot connect to the
+    /// jump's local port — and the session that port carried is still there to use.
+    ///
+    /// <para>The port is read from the chain's own forwarded port, which is the only place its number
+    /// exists; a process that wanted it would find it the same way it finds any listening port.</para>
+    /// </summary>
+    [Fact]
+    public async Task AJumpsLocalPortIsClosedOnceTheTargetIsThrough()
+    {
+        SkipWithoutFixture();
+
+        await using SshChain chain = new([Hop(Host, JumpPort), Hop(TargetOnTheNetwork, 22)]);
+
+        await chain.ConnectAsync(chain.Endpoint, [Key()], Trusting, Stop);
+
+        System.Collections.IList ports = (System.Collections.IList)typeof(SshChain)
+            .GetField("_channels", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .GetValue(chain)!;
+        object port = Assert.Single(ports.Cast<object>());
+        int bound = (int)(uint)port.GetType().GetProperty("BoundPort")!.GetValue(port)!;
+
+        Assert.False(await Reachable(bound), $"a second connection reached the jump's port {bound}");
+
+        // And closing it ended nothing it carried.
+        await using IPtyChannel channel = await chain.OpenShellAsync(80, 25, Stop);
+
+        await channel.WriteAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
+
+        Assert.Contains("target", await Until(channel, "target"), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Whether anything accepts a connection on this loopback port.</summary>
+    private static async Task<bool> Reachable(int port)
+    {
+        using System.Net.Sockets.TcpClient probe = new();
+
+        try
+        {
+            await probe.ConnectAsync("127.0.0.1", port, Stop).AsTask().WaitAsync(TimeSpan.FromSeconds(2), Stop);
+
+            return probe.Connected;
+        }
+        catch (Exception failure) when (failure is System.Net.Sockets.SocketException or TimeoutException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>One hop is a plain connection, through the same loop with one iteration.</summary>
     [Fact]
     public async Task OneHopIsAnOrdinaryConnection()
