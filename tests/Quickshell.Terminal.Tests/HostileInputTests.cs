@@ -211,19 +211,16 @@ public sealed class HostileInputTests
     }
 
     /// <summary>
-    /// How much the hostile sequence may still cost, and <b>this number is not zero on purpose</b>.
+    /// How much the hostile sequence may cost, which is nothing, the same as real output.
     ///
-    /// <para>Ninety-six bytes of it are real and unattributed: three of the twenty shapes cost
-    /// thirty-two bytes each, every pass, and only when the whole sequence runs — each of them
-    /// measures zero on its own and zero beside any one other shape. So something oscillates between
-    /// two states across the sequence. It is a fixed cost of the sequence and not a cost per byte:
-    /// seven hundred kilobytes of hostile input or seven megabytes both pay it once. QS101 is the
-    /// task to attribute and remove it.</para>
-    ///
-    /// <para>The ceiling is what makes this a gate anyway. A per-byte regression — the fifty-five
-    /// kilobytes per megabyte this path allocated before QS24 — cannot hide under it.</para>
+    /// <para><b>It was 256 until QS101.</b> Three shapes cost thirty-two bytes each per pass, and
+    /// only when a read ended in the middle of a character that the next read showed to be broken:
+    /// .NET's UTF-8 Decoder replaces bytes it held across calls through its fallback's legacy entry
+    /// point, which takes them as a <c>byte[]</c>, and a one-byte array is thirty-two bytes. Each
+    /// shape measured zero on its own because only the whole sequence put its read boundaries there.
+    /// <see cref="StreamDecoder"/> now holds a split character itself and decodes statelessly.</para>
     /// </summary>
-    private const long HostileAllocationCeiling = 256;
+    private const long HostileAllocationCeiling = 0;
 
     /// <summary>
     /// The same, over the pathological shapes rather than over real output — because "on any input"

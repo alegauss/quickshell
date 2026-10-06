@@ -21,7 +21,6 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 🛠 **QS101** (deps: —) **Ninety-six bytes of the parse path's allocation is measured but unattributed** — Three hostile shapes cost thirty-two bytes each per pass, only when the whole sequence runs, so something oscillates between two states and the zero-allocation claim carries a ceiling instead. → §QS101
 - 📋 **QS103** (deps: —) **Nothing answers a request for a rectangle's checksum, so an external suite cannot read the screen back** — It is how esctest checks a cell, so its absence fails two hundred and twenty-eight tests that are about something else entirely. → §QS103
 - 📋 **QS104** (deps: —) **A program asking whether a mode is set gets no answer, so it cannot tell off from unsupported** — DECRQM is how a program discovers what this terminal can do, and twenty-two esctest cases fail on the silence alone. → §QS104
 - 📋 **QS105** (deps: —) **Backspace at the left edge stops there instead of wrapping to the end of the line above** — A shell editing a command that wrapped moves the cursor back through the wrap, and a terminal that will not follow leaves the cursor and the shell disagreeing. → §QS105

@@ -323,31 +323,6 @@ than absorbed.
 Falsified when this repository claims cross-vendor correctness with no run behind it on
 any vendor's silicon.
 
-### §QS101 The ninety-six bytes QS24 could not name
-
-QS24 took the parse path from fifty-five kilobytes of allocation per megabyte of stream
-to zero on all five captured streams. On the twenty pathological shapes it reaches
-ninety-six bytes and stops there, and the gate is a ceiling of two hundred and fifty-six
-rather than the zero the design asked for.
-
-What is known: three shapes account for it — lone surrogates as UTF-8, truncated
-multi-byte characters, and one enormous line with no newline — at thirty-two bytes each,
-every pass. Each measures exactly zero fed on its own with a warm-up, and zero fed
-alternately with any single other shape. So the cost appears only when the full sequence
-runs, which says something oscillates between two states as the shapes change and pays
-thirty-two bytes on one of the transitions.
-
-Thirty-two bytes is a small object: a string of four characters, a boxed value, a short
-array. Ruled out by measurement already are the segmenter's buffer, the decoder's
-buffer, the tab stops, the cluster and link tables, the reply and command lists, and the
-clipboard buffers.
-
-It is a fixed cost of the sequence and not a cost per byte — seven hundred kilobytes of
-hostile input and seven megabytes both pay it once — so it cannot grow with a session.
-That is why it is a ceiling rather than a bug on the hot path.
-
-Falsified when the sequence allocates zero and the ceiling can be lowered to it.
-
 ### §QS103 The one sequence that makes the emulator testable from outside
 
 QS33 ran esctest against the model for the first time: 151 of 568 passed. Of the 375

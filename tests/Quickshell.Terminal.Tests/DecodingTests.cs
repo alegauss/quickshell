@@ -98,6 +98,61 @@ public sealed class DecodingTests
         Assert.False(decoder.HasPending);
     }
 
+    /// <summary>
+    /// QS101: a held byte the next read shows to be broken is replaced exactly as it would have been
+    /// inside one read. Every split of every sequence, valid and not, decodes to what the whole does.
+    /// </summary>
+    [Theory]
+    [InlineData(new byte[] { 0xC2, 0xC3, 0xA9 })]                    // a dangling lead, then é
+    [InlineData(new byte[] { 0xF0, 0x9F, 0xF0, 0x9F, 0x98, 0x80 })]  // a truncated emoji, then a whole one
+    [InlineData(new byte[] { 0xED, 0xA0, 0x80, 0x41 })]              // a surrogate, then A
+    [InlineData(new byte[] { 0xE1, 0x80, 0xE2, 0x41 })]              // two maximal subparts
+    [InlineData(new byte[] { 0x41, 0xE4, 0xB8, 0xAD, 0x42 })]        // A 中 B
+    [InlineData(new byte[] { 0xF0, 0x9F, 0x98 })]                    // three bytes of four, then the end
+    public void EverySplitDecodesAsTheWholeDoes(byte[] bytes)
+    {
+        StreamDecoder whole = new();
+        string expected = new string(whole.Decode(bytes)) + new string(whole.Flush());
+
+        for (int split = 0; split <= bytes.Length; split++)
+        {
+            StreamDecoder decoder = new();
+            string actual = new string(decoder.Decode(bytes.AsSpan(0, split)))
+                            + new string(decoder.Decode(bytes.AsSpan(split)))
+                            + new string(decoder.Flush());
+
+            Assert.True(expected == actual,
+                $"split at {split}: [{Hex(expected)}] whole against [{Hex(actual)}] split");
+        }
+    }
+
+    /// <summary>QS101's own measurement: a broken character split across reads costs nothing.</summary>
+    [Fact]
+    public void ABrokenCharacterSplitAcrossReadsAllocatesNothing()
+    {
+        StreamDecoder decoder = new();
+        byte[][] reads = [[0x41, 0xC2], [0xC3], [0xA9, 0xF0, 0x9F], [0xF0], [0x9F, 0x98, 0x80]];
+
+        foreach (byte[] read in reads)
+        {
+            decoder.Decode(read);
+        }
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+
+        for (int round = 0; round < 100; round++)
+        {
+            foreach (byte[] read in reads)
+            {
+                decoder.Decode(read);
+            }
+        }
+
+        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+    }
+
+    private static string Hex(string text) => string.Join(",", text.Select(ch => ((int)ch).ToString("X4")));
+
     // ---- Nothing a host can send may end the session ----
 
     [Theory]

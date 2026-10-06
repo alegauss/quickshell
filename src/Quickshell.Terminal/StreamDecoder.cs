@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text;
 
 namespace Quickshell.Terminal;
@@ -21,7 +22,16 @@ namespace Quickshell.Terminal;
 /// </summary>
 public sealed class StreamDecoder
 {
+    /// <summary>The longest UTF-8 sequence, and so the most a split character can leave behind.</summary>
+    private const int LongestSequence = 4;
+
     private readonly Decoder _decoder;
+    private readonly bool _utf8;
+
+    // UTF-8's split character, held here rather than inside a Decoder — QS101, below.
+    private readonly byte[] _tail = new byte[LongestSequence * 2];
+    private int _held;
+
     private char[] _buffer = new char[1024];
 
     /// <summary>Opens a decoder for an encoding, UTF-8 unless a session says otherwise.</summary>
@@ -33,6 +43,7 @@ public sealed class StreamDecoder
         Encoding = encoding ?? new UTF8Encoding(encoderShouldEmitUTF8Identifier: false,
                                                 throwOnInvalidBytes: false);
         _decoder = Encoding.GetDecoder();
+        _utf8 = Encoding.CodePage == Encoding.UTF8.CodePage;
     }
 
     /// <summary>The encoding this was told the stream is in.</summary>
@@ -47,7 +58,7 @@ public sealed class StreamDecoder
     /// </summary>
     public ReadOnlySpan<char> Decode(ReadOnlySpan<byte> bytes)
     {
-        int maximum = Encoding.GetMaxCharCount(bytes.Length);
+        int maximum = Encoding.GetMaxCharCount(bytes.Length + LongestSequence);
 
         if (_buffer.Length < maximum)
         {
@@ -59,10 +70,68 @@ public sealed class StreamDecoder
             _buffer = new char[Math.Max(_buffer.Length * 2, maximum)];
         }
 
+        if (_utf8)
+        {
+            return DecodeUtf8(bytes);
+        }
+
         _decoder.Convert(bytes, _buffer, false, out _, out int written, out bool complete);
         HasPending = !complete || bytes.Length > 0 && written == 0 && bytes.Length < 4;
 
         return _buffer.AsSpan(0, written);
+    }
+
+    /// <summary>
+    /// UTF-8 without a Decoder's state, which is QS101.
+    ///
+    /// <para><b>Why not the Decoder.</b> A byte a Decoder holds across reads, and which the next read
+    /// shows to be invalid, is replaced through the fallback's legacy entry point, and that takes the
+    /// unknown bytes as a <c>byte[]</c>: thirty-two bytes of garbage every time a host splits a broken
+    /// character across a read. Inside one read the same byte costs nothing. So this keeps the tail
+    /// itself, and decodes with <see cref="System.Text.Unicode.Utf8.ToUtf16"/>, which is stateless,
+    /// says where an incomplete tail starts instead of swallowing it, and replaces by the same
+    /// maximal-subpart rule.</para>
+    /// </summary>
+    private ReadOnlySpan<char> DecodeUtf8(ReadOnlySpan<byte> bytes)
+    {
+        int written = 0;
+
+        if (_held > 0)
+        {
+            // The held bytes and just enough of this read to finish them, decoded together.
+            int borrowed = Math.Min(bytes.Length, LongestSequence);
+            bytes[..borrowed].CopyTo(_tail.AsSpan(_held));
+
+            OperationStatus joined = System.Text.Unicode.Utf8.ToUtf16(
+                _tail.AsSpan(0, _held + borrowed), _buffer, out int read, out written,
+                replaceInvalidSequences: true, isFinalBlock: false);
+
+            if (joined == OperationStatus.NeedMoreData && borrowed == bytes.Length)
+            {
+                // Still not a whole character, and this read was all of it: keep what is left.
+                int left = _held + borrowed - read;
+
+                _tail.AsSpan(read, left).CopyTo(_tail);
+                _held = left;
+                HasPending = true;
+
+                return _buffer.AsSpan(0, written);
+            }
+
+            // What the joined decode took from this read is behind us; the rest decodes as usual.
+            bytes = bytes[Math.Max(0, read - _held)..];
+            _held = 0;
+        }
+
+        System.Text.Unicode.Utf8.ToUtf16(bytes, _buffer.AsSpan(written), out int consumed,
+                                         out int more, replaceInvalidSequences: true,
+                                         isFinalBlock: false);
+
+        bytes[consumed..].CopyTo(_tail);
+        _held = bytes.Length - consumed;
+        HasPending = _held > 0;
+
+        return _buffer.AsSpan(0, written + more);
     }
 
     /// <summary>
@@ -72,7 +141,19 @@ public sealed class StreamDecoder
     /// </summary>
     public ReadOnlySpan<char> Flush()
     {
-        _decoder.Convert([], _buffer, true, out _, out int written, out _);
+        int written;
+
+        if (_utf8)
+        {
+            System.Text.Unicode.Utf8.ToUtf16(_tail.AsSpan(0, _held), _buffer, out _, out written,
+                                             replaceInvalidSequences: true, isFinalBlock: true);
+            _held = 0;
+        }
+        else
+        {
+            _decoder.Convert([], _buffer, true, out _, out written, out _);
+        }
+
         HasPending = false;
 
         return _buffer.AsSpan(0, written);
@@ -82,6 +163,7 @@ public sealed class StreamDecoder
     public void Reset()
     {
         _decoder.Reset();
+        _held = 0;
         HasPending = false;
     }
 }
