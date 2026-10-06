@@ -22,4 +22,12 @@
     <PackageReference Include="xunit.v3" Version="4.0.0" />
   </ItemGroup>
 
+  <!-- QS99: every test assembly refuses to run when it is older than the source it is built from,
+       so a failed build cannot be followed by a green run of the binary it left behind. The project's
+       own path is written into the assembly for the check to start from. -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Freshness.cs" Link="Freshness.cs" />
+    <AssemblyMetadata Include="QuickshellTestProject" Value="$(MSBuildProjectFullPath)" />
+  </ItemGroup>
+
 </Project>
