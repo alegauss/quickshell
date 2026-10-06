@@ -1,3 +1,5 @@
+using System.IO;
+using System.IO.Compression;
 using Quickshell.Render;
 using Quickshell.Terminal;
 using Vortice.DirectWrite;
@@ -42,8 +44,21 @@ internal static class GoldenScenes
     /// <see cref="TextMean"/> — and the ceiling above is only the backstop for a change so localised
     /// that averaging hides it.
     /// </param>
+    /// <param name="Grid">
+    /// The grid the scene is drawn at, where it needs one of its own: a replayed capture is drawn at
+    /// the size it was recorded at, because a stream replayed into a smaller grid wraps differently
+    /// and is no longer the screen the program drew. Null is the fixed window above.
+    /// </param>
     internal sealed record Scene(string Name, FontSettings Font, Action<Painter> Paint,
-                                 int Ceiling = TextCeiling, double MeanTolerance = TextMean);
+                                 int Ceiling = TextCeiling, double MeanTolerance = TextMean,
+                                 (int Columns, int Rows)? Grid = null)
+    {
+        /// <summary>The window this scene is drawn into, in pixels, given its font's cell.</summary>
+        internal (uint Width, uint Height) Size(CellMetrics metrics) =>
+            Grid is { } grid
+                ? ((uint)(grid.Columns * metrics.Width), (uint)(grid.Rows * metrics.Height))
+                : (GoldenScenes.Width, GoldenScenes.Height);
+    }
 
     /// <summary>
     /// What a scene containing text may differ by <em>on average</em>, which is what actually
@@ -89,12 +104,18 @@ internal static class GoldenScenes
     /// <summary>The mean for a glyph-free scene, which is as near nothing as a whole picture gets.</summary>
     internal const double GlyphFreeMean = 0.01;
 
+    /// <summary>The grid every capture in <c>benchmarks/corpus</c> was recorded on a real pty at.</summary>
+    private static readonly (int Columns, int Rows) CaptureGrid = (200, 50);
+
     /// <summary>
     /// Every scene, in the order the design lists them.
     ///
-    /// <para>The design also asks for a screen of <c>htop</c> output replayed from a captured
-    /// corpus. There is no parser and no corpus yet, so that scene is not here and cannot be: it
-    /// belongs to the line that lands the pseudo-console.</para>
+    /// <para><b>The last three are screens real programs drew</b> (QS93): a captured stream from
+    /// <c>benchmarks/corpus/streams</c>, replayed whole into the emulator at the size it was
+    /// recorded at and painted the way the client paints. Every scene above them is a sentence
+    /// somebody chose, covering what its author thought of; these carry the adjacencies nobody
+    /// would write down — colour changing mid-run, box drawing meeting text, a curses repaint over
+    /// whatever was there.</para>
     /// </summary>
     internal static IReadOnlyList<Scene> All { get; } =
     [
@@ -110,6 +131,15 @@ internal static class GoldenScenes
         // the rules and the cursor shapes - all of which are this renderer's own arithmetic, and all
         // of which must therefore agree across drivers to within a level.
         new("no-glyphs", new FontSettings("Consolas", 16f, 96f), NoGlyphs, GlyphFree, GlyphFreeMean),
+
+        new("replay-htop", FontSettings.Default, painter => painter.Replay("htop"), Grid: CaptureGrid),
+        // Stopped halfway, while vim is on the alternate screen: the capture ends with :q, and its
+        // last screen is the empty one the session started on, which is a picture of nothing. The
+        // cut is just after the cursor-show that ends the thirty-first page's redraw, byte 121,251:
+        // a cut anywhere else is a screen vim was half way through drawing.
+        new("replay-vim-scroll", FontSettings.Default, painter => painter.Replay("vim-scroll", 121_251),
+            Grid: CaptureGrid),
+        new("replay-ls-color-r", FontSettings.Default, painter => painter.Replay("ls-color-r"), Grid: CaptureGrid),
     ];
 
     private static void NoGlyphs(Painter painter)
@@ -272,6 +302,50 @@ internal static class GoldenScenes
                 _cells[(row * _columns) + column + index] =
                     CellInstance.For(GlyphPlacement.Empty, foreground, background, flags, 1, underline);
             }
+        }
+
+        /// <summary>
+        /// Replays a captured stream into a real emulator at this grid's size and paints the screen
+        /// it leaves with the client's own painter — no cursor, so the picture is the program's and
+        /// not the blink phase's.
+        /// </summary>
+        /// <param name="stream">The capture's name in <c>benchmarks/corpus/streams</c>.</param>
+        /// <param name="upTo">How many of its bytes to replay; all of them where not given.</param>
+        internal void Replay(string stream, int upTo = int.MaxValue)
+        {
+            string path = Path.Combine(Root(), "benchmarks", "corpus", "streams", stream + ".raw.gz");
+
+            using FileStream file = File.OpenRead(path);
+            using GZipStream unzip = new(file, CompressionMode.Decompress);
+            using MemoryStream bytes = new();
+            unzip.CopyTo(bytes);
+
+            Emulator emulator = new(_columns, _rows);
+
+            // In 64 KB reads, the way a transport delivers them, so a sequence split across two
+            // reads is exercised exactly as it is in a session.
+            byte[] captured = bytes.ToArray()[..Math.Min(upTo, (int)bytes.Length)];
+
+            for (int offset = 0; offset < captured.Length; offset += 64 * 1024)
+            {
+                emulator.Feed(captured.AsSpan(offset, Math.Min(64 * 1024, captured.Length - offset)));
+            }
+
+            new GridPainter(_atlas, emulator.Palette)
+                .Paint(emulator.Buffer, _cells, -1, -1, CursorShape.None, _metrics);
+        }
+
+        private static string Root()
+        {
+            DirectoryInfo? directory = new(AppContext.BaseDirectory);
+
+            while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
+            {
+                directory = directory.Parent;
+            }
+
+            return directory?.FullName
+                   ?? throw new DirectoryNotFoundException("the repository root is not above this test");
         }
 
         internal void Cursor(int row, int column, char character, Rgb foreground, Rgb background,

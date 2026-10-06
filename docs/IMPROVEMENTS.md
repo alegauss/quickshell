@@ -348,30 +348,6 @@ than absorbed.
 Falsified when this repository claims cross-vendor correctness with no run behind it on
 any vendor's silicon.
 
-### §QS93 The screen no author would have written
-
-QS12's design asks for one scene more than QS12 shipped: a full screen of `htop` output
-replayed from a captured corpus. It could not be built, because there is no parser to
-replay bytes through and no corpus to replay.
-
-The seven scenes that exist are each a sentence somebody chose. That is exactly their
-weakness: they cover the attributes their author remembered, in the combinations their
-author thought of. A real screen from a real program is dense, has colour changes
-mid-run, box-drawing meeting text, wide characters against narrow ones, and the specific
-adjacencies nobody would think to write down.
-
-What this needs is the pseudo-console landing, so a program can be run locally and its
-byte stream captured; then a scene is a recorded stream replayed into the model and
-drawn once. The corpus is committed beside the references, because a scene whose input
-is regenerated is a reference that moves on its own.
-
-`htop` is the design's example and a good one - colour, box drawing, bars, rapid update.
-Worth having beside it: `git log --graph --oneline`, which is box-drawing meeting
-proportional-looking text, and `ls --color` in a directory of long unicode filenames.
-
-Falsified when a capture replays to a different screen than the one it was recorded
-from, which would make the corpus a picture of a bug rather than of a program.
-
 ### §QS101 The ninety-six bytes QS24 could not name
 
 QS24 took the parse path from fifty-five kilobytes of allocation per megabyte of stream

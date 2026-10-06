@@ -61,6 +61,7 @@
 - ✅ **QS187** **Pasting or composing more than sixteen accented or eight CJK characters throws instead of reaching the host** — The typist sizes its buffer in bytes, so a pasted Portuguese paragraph, a CJK phrase from the input method or an emoji reaches the host as its own UTF-8 instead of throwing.
 - ✅ **QS91** **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — A mark with no precomposed form is drawn over its base and a joined emoji as one glyph, each cluster shaped whole into one atlas entry (design superseded: no overlay: a cell is its instance index).
 - ✅ **QS204** **Erasing part of the screen fills it with the default background, so a curses program's full-width bars stop at text** — EL, ED and ECH leave the pen's background and nothing else of it, so htop's header and selected row reach the right edge; a copy still trims them.
+- ✅ **QS93** **Every golden scene is text somebody typed into the test, so none of them is a screen a real program drew** — Three golden scenes are now screens real programs drew: htop, vim and ls --color replayed from the corpus at 200x50 through the client's painter.
 
 ## Block D — The tree a user organises work in
 

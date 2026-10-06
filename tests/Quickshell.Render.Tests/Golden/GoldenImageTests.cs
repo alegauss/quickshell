@@ -63,7 +63,7 @@ public sealed class GoldenImageTests
     public void TheSceneMatchesItsReference(string name, bool warp)
     {
         GoldenScenes.Scene scene = GoldenScenes.All.Single(candidate => candidate.Name == name);
-        byte[] actual = Render(scene, warp);
+        (byte[] actual, uint drawnWidth, uint drawnHeight) = Render(scene, warp);
 
         if (Environment.GetEnvironmentVariable("QUICKSHELL_GOLDEN") == "write")
         {
@@ -71,8 +71,7 @@ public sealed class GoldenImageTests
             if (!warp)
             {
                 Directory.CreateDirectory(GoldenDirectory());
-                File.WriteAllBytes(ReferencePath(name),
-                                   Png.Encode(actual, (int)GoldenScenes.Width, (int)GoldenScenes.Height));
+                File.WriteAllBytes(ReferencePath(name), Png.Encode(actual, (int)drawnWidth, (int)drawnHeight));
             }
 
             return;
@@ -84,8 +83,8 @@ public sealed class GoldenImageTests
 
         byte[] reference = Png.Decode(File.ReadAllBytes(ReferencePath(name)), out int width, out int height);
 
-        Assert.Equal((int)GoldenScenes.Width, width);
-        Assert.Equal((int)GoldenScenes.Height, height);
+        Assert.Equal((int)drawnWidth, width);
+        Assert.Equal((int)drawnHeight, height);
 
         Comparison difference = Compare(reference, actual, width, height);
         double mean = difference.Mean(width, height);
@@ -340,41 +339,43 @@ public sealed class GoldenImageTests
         return directory;
     }
 
-    private static byte[] Render(GoldenScenes.Scene scene, bool warp)
+    private static (byte[] Frame, uint Width, uint Height) Render(GoldenScenes.Scene scene, bool warp)
     {
-        using TestWindow window = new((int)GoldenScenes.Width, (int)GoldenScenes.Height);
+        // The cell is measured first, because a scene drawn at its own grid needs it to know how big
+        // its window is.
+        using GlyphRasteriser rasteriser = new();
+        CellMetrics metrics = rasteriser.Measure(scene.Font);
+        (uint width, uint height) = scene.Size(metrics);
+
+        using TestWindow window = new((int)width, (int)height);
         using GraphicsDevice device = warp
             ? GraphicsDevice.Open(new WarpOnlyProbe())
             : GraphicsDevice.Open(outputWindow: window.Handle);
-        using PresentSurface surface = PresentSurface.For(device, window.Handle,
-                                                          GoldenScenes.Width, GoldenScenes.Height);
-        using GlyphRasteriser rasteriser = new();
+        using PresentSurface surface = PresentSurface.For(device, window.Handle, width, height);
         using GlyphAtlas atlas = GlyphAtlas.For(device, scene.Font, rasteriser: rasteriser);
-
-        CellMetrics metrics = rasteriser.Measure(scene.Font);
         using CellRenderer renderer = CellRenderer.For(device, atlas, metrics);
 
         // The blink phase is a clock, and a clock in a reference image is a test that fails at
         // random. Pinned to zero, which is the phase a cursor is showing in.
         renderer.Elapsed = TimeSpan.Zero;
 
-        (int columns, int rows) = metrics.GridFor(GoldenScenes.Width, GoldenScenes.Height);
+        (int columns, int rows) = metrics.GridFor(width, height);
         CellInstance[] cells = new CellInstance[columns * rows];
 
         scene.Paint(new GoldenScenes.Painter(cells, atlas, metrics, columns, rows));
         renderer.Draw(surface, cells, columns);
 
-        return ReadBack(device, surface);
+        return (ReadBack(device, surface, width, height), width, height);
     }
 
-    private static byte[] ReadBack(GraphicsDevice device, PresentSurface surface)
+    private static byte[] ReadBack(GraphicsDevice device, PresentSurface surface, uint width, uint height)
     {
         using ID3D11Resource resource = surface.View.Resource;
         using ID3D11Texture2D back = resource.QueryInterface<ID3D11Texture2D>();
         using ID3D11Texture2D staging = device.Device.CreateTexture2D(new Texture2DDescription
         {
-            Width = GoldenScenes.Width,
-            Height = GoldenScenes.Height,
+            Width = width,
+            Height = height,
             MipLevels = 1,
             ArraySize = 1,
             Format = Format.B8G8R8A8_UNorm,
@@ -387,14 +388,14 @@ public sealed class GoldenImageTests
         device.Context.CopyResource(staging, back);
 
         MappedSubresource mapped = device.Context.Map(staging, 0, MapMode.Read);
-        byte[] frame = new byte[GoldenScenes.Width * GoldenScenes.Height * 4];
+        byte[] frame = new byte[width * height * 4];
 
         try
         {
-            for (int row = 0; row < GoldenScenes.Height; row++)
+            for (int row = 0; row < height; row++)
             {
                 Marshal.Copy(mapped.DataPointer + (row * (int)mapped.RowPitch), frame,
-                             row * (int)GoldenScenes.Width * 4, (int)GoldenScenes.Width * 4);
+                             row * (int)width * 4, (int)width * 4);
             }
         }
         finally
