@@ -31,6 +31,8 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
+- ⏸ **QS81** (deps: QS80 ✅, QS116 ✅, QS126 ✅, QS217, QS218, QS219) **A user weighing the switch has nothing that says what they will and will not get** — set aside (Needs MobaXterm in the guest.): Its figures need MobaXterm measured where it may run, and the build it describes still lacks a password prompt. → §QS81
+
 ## Block K — The build and the harness — what a green run is evidence of
 
 - ⏸ **QS210** (deps: —) **The fuzzing campaign runs only when somebody types run-fuzz.cmd** — set aside (Waits for the owner to choose this desk, the guest or CI.): QS102's search is continuous only on a schedule, and where it runs is a standing change the owner has to choose. → §QS210

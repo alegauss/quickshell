@@ -96,7 +96,6 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- 📋 **QS81** (deps: QS80 ✅, QS116 ✅, QS126 ✅) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
 - 📋 **QS216** (deps: —) **Importing sessions writes over the whole session store, so sessions made since are lost without a word** — The import writes the imported tree alone, and since QS121 the store can hold sessions the user made here. → §QS216
 
 ## Block K — The build and the harness — what a green run is evidence of
