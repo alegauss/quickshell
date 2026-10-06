@@ -193,6 +193,22 @@ public sealed class SelectionTests
         Assert.Equal(string.Empty, Copy(emulator, selection));
     }
 
+    /// <summary>
+    /// QS204: a row ending in a coloured erase — htop's header bar — copies as its text, not as the
+    /// bar's trailing spaces, which were drawn and not written.
+    /// </summary>
+    [Fact]
+    public void ACopyDoesNotCarryTheSpacesOfAColouredErase()
+    {
+        Emulator emulator = new(20, 2, scrollback: 0);
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[30;42mPID USER\u001b[K\u001b[0m"));
+
+        Selection selection = new();
+        selection.Begin(emulator.Buffer, At(emulator, 0, 0), SelectionMode.Line);
+
+        Assert.Equal("PID USER", Copy(emulator, selection));
+    }
+
     // ---- Housekeeping ----
 
     [Fact]

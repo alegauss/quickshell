@@ -260,7 +260,7 @@ public sealed class TerminalDocument
         ReadOnlySpan<Cell> cells = _buffer.Line((int)(_buffer.TopLine - _buffer.ScrollbackLines) + row);
         int extent = cells.Length;
 
-        while (extent > 0 && cells[extent - 1].IsBlank)
+        while (extent > 0 && cells[extent - 1].IsErased)
         {
             extent--;
         }

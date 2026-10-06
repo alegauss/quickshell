@@ -376,7 +376,7 @@ public sealed class Selection
     /// <summary>Where the content ends, so a terminal's own padding is not copied as spaces.</summary>
     private static int Trimmed(ReadOnlySpan<Cell> row, int from, int to)
     {
-        while (to > from && row[to - 1].IsBlank)
+        while (to > from && row[to - 1].IsErased)
         {
             to--;
         }

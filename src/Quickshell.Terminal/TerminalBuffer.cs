@@ -393,23 +393,31 @@ public sealed class TerminalBuffer
         TouchScreen(row);
     }
 
-    /// <summary>Clears a run of a visible row, which is what every erase sequence reduces to.</summary>
-    public void Clear(int row, int from, int count)
+    /// <summary>
+    /// Clears a run of a visible row, which is what every erase sequence reduces to, leaving it in
+    /// <paramref name="background"/> — the pen's, for an erase the host asked for (QS204).
+    /// </summary>
+    public void Clear(int row, int from, int count, Colour background = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(from);
         ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         Span<Cell> line = MutableScreen(row);
-        line.Slice(from, Math.Min(count, line.Length - from)).Fill(Cell.Blank);
+        line.Slice(from, Math.Min(count, line.Length - from)).Fill(Cell.ErasedIn(background));
         TouchScreen(row);
     }
 
-    /// <summary>Clears the whole visible screen without touching what is behind it.</summary>
-    public void ClearScreen()
+    /// <summary>
+    /// Clears the whole visible screen without touching what is behind it, leaving it in
+    /// <paramref name="background"/>.
+    /// </summary>
+    public void ClearScreen(Colour background = default)
     {
+        Cell erased = Cell.ErasedIn(background);
+
         for (int row = 0; row < Rows; row++)
         {
-            MutableScreen(row).Fill(Cell.Blank);
+            MutableScreen(row).Fill(erased);
             _wrapped[RingRow(ScrollbackLines + row)] = false;
         }
 

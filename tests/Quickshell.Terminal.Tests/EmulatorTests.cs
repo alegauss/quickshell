@@ -193,6 +193,43 @@ public sealed class EmulatorTests
         Assert.Equal(2, emulator.Buffer.LineCount);
     }
 
+    /// <summary>
+    /// QS204: an erase leaves the pen's background behind, which is how htop's header and selected
+    /// row reach the right edge, and leaves nothing else of the pen — no foreground, no flags.
+    /// </summary>
+    [Theory]
+    [InlineData("\u001b[K")]
+    [InlineData("\u001b[2K")]
+    [InlineData("\u001b[J")]
+    [InlineData("\u001b[2J")]
+    [InlineData("\u001b[3X")]
+    public void AnEraseKeepsThePensBackgroundAndNothingElseOfIt(string erase)
+    {
+        Emulator emulator = new(6, 2, scrollback: 0);
+
+        // Bold red on green, then the cursor to the start of the row and the erase.
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[1;31;42mab\u001b[1;3H" + erase));
+
+        Cell erased = emulator.Buffer.Screen(0)[3];
+
+        Assert.Equal(' ', erased.Codepoint);
+        Assert.Equal(Colour.Indexed(2), erased.Background);
+        Assert.Equal(Colour.Default, erased.Foreground);
+        Assert.Equal(CellFlags.None, erased.Flags);
+        Assert.False(erased.IsBlank, "a cell erased in green is something drawn");
+        Assert.True(erased.IsErased, "and nothing anybody wrote");
+    }
+
+    /// <summary>Under the default pen an erase is exactly the blank it always was.</summary>
+    [Fact]
+    public void AnEraseUnderTheDefaultPenIsBlank()
+    {
+        Emulator emulator = new(6, 2, scrollback: 0);
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[42mabcdef\u001b[0m\u001b[1;3H\u001b[K"));
+
+        Assert.True(emulator.Buffer.Screen(0)[3].IsBlank);
+    }
+
     // ---- Editing ----
 
     [Fact]

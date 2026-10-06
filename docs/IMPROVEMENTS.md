@@ -2232,9 +2232,9 @@ first pane's layout, device and shell, all of which a desk still busy with the p
 assembly can slow. Five seconds is the engine's resolve timeout, not a figure anybody
 measured for this dialog.
 
-The first move is the measurement: how long the preview takes to appear from launch,
-over enough runs on a loaded and an idle desk to say what the wait has to be. A longer
-timeout chosen before that is a guess that happens to be generous.
+A guest run on 2026-10-06 found the dialog and failed anyway: `Button[order=right]`
+resolved to the dialog's own caption Close, disabled. The step names a position, not a
+button. Measure how long the preview takes to appear before choosing any wait.
 
 The second hazard is worth closing whatever the first finds: a step that looks for a
 dialog's button must not be able to land on the window behind it.

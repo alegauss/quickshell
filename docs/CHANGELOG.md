@@ -60,6 +60,7 @@
 - ✅ **QS143** **Grapheme clustering costs nine times everything that reaches it** — Two characters below U+0300 cannot join, so the first is a cluster without asking the rules — clustering fell from 23.2 ns to 3.53, and the ladder's segment arm from 60 MB/s to 259.
 - ✅ **QS187** **Pasting or composing more than sixteen accented or eight CJK characters throws instead of reaching the host** — The typist sizes its buffer in bytes, so a pasted Portuguese paragraph, a CJK phrase from the input method or an emoji reaches the host as its own UTF-8 instead of throwing.
 - ✅ **QS91** **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — A mark with no precomposed form is drawn over its base and a joined emoji as one glyph, each cluster shaped whole into one atlas entry (design superseded: no overlay: a cell is its instance index).
+- ✅ **QS204** **Erasing part of the screen fills it with the default background, so a curses program's full-width bars stop at text** — EL, ED and ECH leave the pen's background and nothing else of it, so htop's header and selected row reach the right edge; a copy still trims them.
 
 ## Block D — The tree a user organises work in
 

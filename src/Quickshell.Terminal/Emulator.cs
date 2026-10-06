@@ -694,7 +694,7 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'X':
-                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, count);
+                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, count, _pen.Background);
                 break;
 
             case (byte)'S':
@@ -799,18 +799,23 @@ public sealed partial class Emulator : IAnsiHandler
         }
     }
 
+    /// <summary>
+    /// ED. Every erase here, and EL and ECH beside it, leaves the pen's background behind and
+    /// nothing else of it — QS204, xterm's background colour erase.
+    /// </summary>
     private void EraseDisplay(int mode)
     {
         TerminalBuffer buffer = Buffer;
+        Colour ground = _pen.Background;
 
         switch (mode)
         {
             case 0:
-                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, buffer.Columns);
+                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, buffer.Columns, ground);
 
                 for (int row = buffer.CursorRow + 1; row < buffer.Rows; row++)
                 {
-                    buffer.Clear(row, 0, buffer.Columns);
+                    buffer.Clear(row, 0, buffer.Columns, ground);
                 }
 
                 break;
@@ -818,18 +823,18 @@ public sealed partial class Emulator : IAnsiHandler
             case 1:
                 for (int row = 0; row < buffer.CursorRow; row++)
                 {
-                    buffer.Clear(row, 0, buffer.Columns);
+                    buffer.Clear(row, 0, buffer.Columns, ground);
                 }
 
-                buffer.Clear(buffer.CursorRow, 0, buffer.CursorColumn + 1);
+                buffer.Clear(buffer.CursorRow, 0, buffer.CursorColumn + 1, ground);
                 break;
 
             case 2:
-                buffer.ClearScreen();
+                buffer.ClearScreen(ground);
                 break;
 
             case 3:
-                buffer.ClearScreen();
+                buffer.ClearScreen(ground);
                 buffer.DropScrollback();
                 break;
 
@@ -842,19 +847,20 @@ public sealed partial class Emulator : IAnsiHandler
     private void EraseLine(int mode)
     {
         TerminalBuffer buffer = Buffer;
+        Colour ground = _pen.Background;
 
         switch (mode)
         {
             case 0:
-                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, buffer.Columns);
+                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, buffer.Columns, ground);
                 break;
 
             case 1:
-                buffer.Clear(buffer.CursorRow, 0, buffer.CursorColumn + 1);
+                buffer.Clear(buffer.CursorRow, 0, buffer.CursorColumn + 1, ground);
                 break;
 
             case 2:
-                buffer.Clear(buffer.CursorRow, 0, buffer.Columns);
+                buffer.Clear(buffer.CursorRow, 0, buffer.Columns, ground);
                 break;
 
             default:

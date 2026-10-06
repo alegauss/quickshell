@@ -93,6 +93,21 @@ public readonly struct Cell : IEquatable<Cell>
     /// <summary>Whether anything was ever written here, as against a cell that is still blank.</summary>
     public bool IsBlank => _text == ' ' && _foreground == 0 && _background == 0 && Flags == CellFlags.None;
 
+    /// <summary>
+    /// Whether this cell holds no text a reader would copy: blank, or erased under a background
+    /// colour (QS204). Its colour is something drawn, so reflow keeps it; it is not something
+    /// written, so a copy and a screen reader trim it like any trailing space.
+    /// </summary>
+    public bool IsErased => _text == ' ' && _foreground == 0 && Flags == CellFlags.None;
+
+    /// <summary>
+    /// What an erase leaves behind: no character, no foreground, no flags, and the background the
+    /// pen had — xterm's background colour erase, which <c>xterm-256color</c> advertises and every
+    /// curses program's full-width bar is drawn with (QS204). Under the default background this is
+    /// exactly <see cref="Blank"/>.
+    /// </summary>
+    public static Cell ErasedIn(Colour background) => new(' ', 0, background.Packed, 1u << WidthShift);
+
     /// <summary>Builds a cell holding one codepoint.</summary>
     public static Cell For(int codepoint, Colour foreground, Colour background,
                            CellFlags flags = CellFlags.None,
