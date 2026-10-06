@@ -261,6 +261,13 @@ shortcut and the uninstall entry, starts the installed copy, and removes it thro
 command. An install on this machine is an app in its owner's list, so an installer change is proven
 there and not here.
 
+**`.\run-fuzz.cmd` searches where the suite only checks.** `HostileInputTests` runs a fixed list of
+mutations on every build; this instruments `Quickshell.Terminal.dll` with SharpFuzz and drives it
+with libFuzzer for as long as it is given (`-Seconds`, `-Jobs`), with a corpus that grows in
+`artifacts\fuzz\corpus` across runs. A crash lands in `artifacts\fuzz\findings` as the input that
+caused it, and is added to `HostileInputTests`' shapes in the commit that fixes it, so the build
+fails on it from then on.
+
 **`.\run-perf-gate.cmd` is the performance gate, and `release.cmd` runs it before it archives.** It
 times parse and emulate throughput and warm start against `benchmarks\gate\<machine>.json`, and fails
 a figure worse than that baseline's own noise allows unless a commit since then carries

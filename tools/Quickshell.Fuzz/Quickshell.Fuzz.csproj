@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Coverage-guided fuzzing of the parser and the model, QS102. A tool and not a test: a campaign
+       runs for as long as it is given, which the one test command cannot be. tools/fuzz.ps1 builds
+       this, instruments Quickshell.Terminal.dll beside it, and hands it to libFuzzer. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Quickshell.Fuzz</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SharpFuzz" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Quickshell.Terminal\Quickshell.Terminal.csproj" />
+  </ItemGroup>
+
+</Project>
