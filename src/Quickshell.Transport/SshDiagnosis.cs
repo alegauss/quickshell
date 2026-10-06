@@ -149,23 +149,45 @@ internal static partial class SshDiagnosis
     }
 
     /// <summary>
-    /// A timeout, which is as far as this can be narrowed.
+    /// A timeout, told apart by where it happened: before anything took the connection, or after
+    /// something took it and never identified itself as SSH.
     ///
-    /// <para><b>The design asks for a connect timeout and a handshake timeout to be told apart, and
-    /// through this library's asynchronous path they cannot be.</b> Measured: an address routed
-    /// nowhere and a socket that accepts and then says nothing both give
-    /// <c>SshOperationTimeoutException: "Connection has timed out."</c> — the same type and the same
-    /// sentence. The synchronous <c>Connect()</c> does distinguish them, with "Connection failed to
-    /// establish within N milliseconds" against "Socket read operation has timed out after N
-    /// milliseconds", but it takes no cancellation token, and a connection attempt a user cannot
-    /// abandon is a worse trade than a message that covers two readings.</para>
+    /// <para><b>Read from the library's own sentence, which is the only place the difference
+    /// is.</b> The transport connects through the synchronous <c>Connect()</c> for exactly this
+    /// (QS112): measured, an address routed nowhere gives "Connection failed to establish within N
+    /// milliseconds", and a socket that accepts and says nothing — or says something that is not an
+    /// SSH banner — gives "Socket read operation has timed out after N milliseconds". The
+    /// asynchronous path gives "Connection has timed out." for both.</para>
     ///
-    /// <para>So the message covers both rather than asserting the one it cannot know. A message that
-    /// confidently named the wrong one would send a user to check a firewall when the port is wrong,
-    /// which is worse than saying honestly that it is one of two things.</para>
+    /// <para>A sentence neither phrase matches, which is a library that changed its wording, gets
+    /// the message that covers both readings rather than a guess. Naming the wrong one confidently
+    /// would send a user to check a firewall when the port is wrong, which is worse than saying it
+    /// is one of two things.</para>
     /// </summary>
-    private static SshException FromTimeout(SshEndpoint endpoint, SshOperationTimeoutException timeout) =>
-        SshException.From(
+    private static SshException FromTimeout(SshEndpoint endpoint, SshOperationTimeoutException timeout)
+    {
+        if (timeout.Message.Contains("failed to establish", StringComparison.OrdinalIgnoreCase))
+        {
+            return SshException.From(
+                SshFailureKind.Unreachable,
+                $"Nothing at {endpoint.Host} took the connection on port {endpoint.Port}.",
+                timeout,
+                "The attempt went unanswered: no route to that address, or a firewall dropping it "
+                + "rather than refusing it.",
+                "Check the address, and then a VPN or a firewall between here and there.");
+        }
+
+        if (timeout.Message.Contains("read operation", StringComparison.OrdinalIgnoreCase))
+        {
+            return SshException.From(
+                SshFailureKind.NotResponding,
+                $"{endpoint.Host} took the connection on port {endpoint.Port} and never answered as an SSH server.",
+                timeout,
+                "Something is listening there, and it never identified itself as SSH.",
+                $"Check that port {endpoint.Port} is this host's SSH port.");
+        }
+
+        return SshException.From(
             SshFailureKind.NotResponding,
             $"{endpoint.Host} did not answer as an SSH server on port {endpoint.Port}.",
             timeout,
@@ -173,6 +195,7 @@ internal static partial class SshDiagnosis
             + "or no route — or something took it and never identified itself as SSH.",
             $"Check that port {endpoint.Port} is this host's SSH port, and then check a VPN or a "
             + "firewall between here and there.");
+    }
 
     /// <summary>
     /// A connection that ended, which before authentication is usually negotiation and afterwards is

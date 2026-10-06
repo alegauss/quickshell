@@ -29,34 +29,6 @@ not work. An entry saying only that it worked has not been tested; it has been v
 
 Falsified when the matrix records a pass with no negotiated algorithm list beside it.
 
-### §QS112 Two timeouts the async path cannot tell apart
-
-QS39's design asks for the connection timing out to be reported "distinguishing a
-connect timeout from a handshake timeout". Measured, that distinction is available and
-costs something QS39 was not willing to pay.
-
-Through `SshClient.ConnectAsync`, an address routed nowhere (192.0.2.1, TEST-NET-1) and
-a socket that accepts and then says nothing both produce `SshOperationTimeoutException`
-carrying the same sentence: **"Connection has timed out."** Same type, same wording,
-nothing to read.
-
-Through the synchronous `Connect()`, they differ: **"Connection failed to establish
-within 3000 milliseconds"** against **"Socket read operation has timed out after 4000
-milliseconds"**. That method takes no cancellation token, so choosing it would mean a
-connection attempt a user cannot abandon — which is a worse thing to be than a message
-that covers two readings.
-
-So the message covers both, honestly, and the remedy names both checks. Naming the wrong
-one confidently is what this avoids: sending somebody to inspect a firewall when the
-port is simply wrong wastes more of their time than saying it might be either.
-
-What would close it: `Connect()` on a thread with the token abandoning the wait rather
-than the connect, which is the same trade QS37 made for reading and is defensible here
-too; or a version of the library whose async path keeps the wording. Either way the
-measurement above is what says whether it worked.
-
-Falsified when the two are reported apart without a run showing they can be.
-
 ### §QS142 Taking it upstream, or not staying here
 
 QS139 measured the defect and found the trade: `ShellStream` resizes and buffers without

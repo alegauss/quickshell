@@ -167,17 +167,17 @@ public sealed class SshFailureTests
     }
 
     /// <summary>
-    /// A route to nowhere and a socket that never speaks are the same failure to this library, and
-    /// the message says so instead of guessing which.
+    /// A route to nowhere and a socket that never speaks are two failures with two remedies, and are
+    /// reported as two (QS112).
     ///
-    /// <para>This is the design's one request that could not be met. It asks for a connect timeout
-    /// and a handshake timeout to be distinguished; through <c>ConnectAsync</c> both arrive as
-    /// <c>"Connection has timed out."</c> — identical type, identical wording. The synchronous entry
-    /// point does tell them apart and takes no cancellation token, which is the worse trade. QS112
-    /// carries it.</para>
+    /// <para>Through <c>ConnectAsync</c> both arrive as <c>"Connection has timed out."</c>, identical
+    /// type and wording, so QS39 could only say it was one of the two. The transport now connects
+    /// through the synchronous entry point, which tells them apart, on a thread of its own so the
+    /// attempt can still be abandoned — <see cref="AbandoningAnAttemptIsItsOwnKind"/> holds that
+    /// half.</para>
     /// </summary>
     [Fact]
-    public async Task ARouteToNowhereAndASilentSocketAreTheSameFailureAndSaySo()
+    public async Task ARouteToNowhereAndASilentSocketAreToldApart()
     {
         // TEST-NET-1, reserved by RFC 5737 for documentation and routed nowhere. The first address
         // tried here was 10.255.255.1, which turned out to be WSL's own subnet on this machine and
@@ -190,12 +190,15 @@ public sealed class SshFailureTests
         SshException handshaking = await Refused(
             SshEndpoint.For("127.0.0.1", "probe", silent.Port), TimeSpan.FromSeconds(3));
 
-        Assert.Equal(SshFailureKind.NotResponding, connecting.Kind);
-        Assert.Equal(SshFailureKind.NotResponding, handshaking.Kind);
-
-        // Both readings are offered, because the client genuinely does not know which it was.
+        // Nothing took the connection: the address and the network are what to check, not the port.
+        Assert.Equal(SshFailureKind.Unreachable, connecting.Kind);
         Assert.Contains("firewall", connecting.Means, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("identified itself", connecting.Means, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("identified itself", connecting.Means, StringComparison.OrdinalIgnoreCase);
+
+        // Something took it and said nothing: the port is what to check, and no firewall is blamed.
+        Assert.Equal(SshFailureKind.NotResponding, handshaking.Kind);
+        Assert.Contains("identified itself", handshaking.Means, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("firewall", handshaking.Means + handshaking.Remedy, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Stopping is its own kind, and says nothing was left half-done.</summary>

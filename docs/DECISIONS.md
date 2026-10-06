@@ -6,6 +6,7 @@
 - ✅ **QS36** **Protocol library types would reach the terminal and the UI, so replacing that library means rewriting the client** — A protocol library may be named only inside Quickshell.Transport, and its package must carry PrivateAssets=all so it reaches nothing above.
 - ✅ **QS39** **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — A failure's classification rule is written against a run that produced it, never against documentation, and the run is named in the comment beside it.
 - ✅ **QS111** **A peer that stopped answering on a socket that stayed open is not noticed, so the session looks live for minutes** — Liveness is an env request on the shell channel, which wants a reply; SSH.NET's keepalive was rejected because it clears want_reply and can never be answered.
+- ✅ **QS112** **A dead route and a port that is not SSH read as one failure, so the remedy offered covers two things** — Connect through SSH.NET's synchronous Connect() on a thread, the token abandoning the wait; its async path was rejected because it words both timeouts alike.
 
 ## Block B — Keys, agents, and the host you think you reached
 

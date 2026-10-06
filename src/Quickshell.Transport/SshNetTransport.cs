@@ -172,7 +172,7 @@ public sealed class SshNetTransport : ISshTransport
 
         try
         {
-            await client.ConnectAsync(cancellationToken).ConfigureAwait(false);
+            await Reach(client, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -361,6 +361,43 @@ public sealed class SshNetTransport : ISshTransport
         _client?.Dispose();
         _client = null;
         _disconnected.TrySetResult(null);
+    }
+
+    /// <summary>
+    /// Connects through the library's synchronous entry point, on a thread of its own, with the
+    /// token abandoning the wait rather than the connect.
+    ///
+    /// <para><b>Synchronous because only that one says which timeout it was</b> (QS112). Through
+    /// <c>ConnectAsync</c> an address routed nowhere and a socket that accepts and says nothing both
+    /// arrive as "Connection has timed out."; through <c>Connect()</c> the first is "Connection
+    /// failed to establish within N milliseconds" and the second "Socket read operation has timed out
+    /// after N milliseconds", and <see cref="SshDiagnosis"/> turns those into two kinds with two
+    /// remedies.</para>
+    ///
+    /// <para><b>Cancelling still works, and costs a thread for at most <see cref="Timeout"/>.</b>
+    /// <c>Connect()</c> takes no token, so a cancelled attempt returns at once while the connect
+    /// carries on underneath until the caller's disposal of the client ends it or its own timeout
+    /// does. The same trade <see cref="SshNetChannel.ReadAsync"/> makes for a read that cannot be
+    /// cancelled; the abandoned attempt's failure is observed here so it never surfaces as an
+    /// unobserved exception.</para>
+    /// </summary>
+    private static async Task Reach(SshClient client, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        Task connecting = Task.Run(client.Connect, CancellationToken.None);
+
+        try
+        {
+            await connecting.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!connecting.IsCompleted)
+        {
+            _ = connecting.ContinueWith(abandoned => abandoned.Exception, CancellationToken.None,
+                                        TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+
+            throw;
+        }
     }
 
     /// <summary>
