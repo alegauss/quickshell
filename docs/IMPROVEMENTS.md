@@ -610,31 +610,6 @@ Falsified when the guest suite runs ten times without this test counting a byte.
 
 ## Block D — The tree a user organises work in
 
-### §QS117 A file that reads by hand and writes by machine
-
-QS55 committed to a format that is "human-readable, diffable and documented, so it can
-go under version control and be edited without this client running at all", and shipped
-half of it properly. Reading accepts comments and trailing commas, so a file somebody
-typed is a first-class one. Writing serialises the tree, so anything that is not the
-tree — every comment a person wrote to explain why the staging box uses a different jump
-host — is not in the output.
-
-The falsification QS55 was given is that the store cannot be edited by hand and
-reloaded, and that passes. The one this leaves is narrower and lands on the same user:
-somebody comments their file, renames a folder through the palette, and the comments are
-gone with no warning.
-
-Three ways out, in order of cost. Never write the file from the client, making every
-change an instruction the user applies — honest, and unusable. Keep the parsed document
-with its trivia and write back through it, which `System.Text.Json` cannot do and a
-format with a syntax tree can. Or move to a format whose .NET libraries round-trip
-trivia, which means a dependency and a migration for anybody who already has a store.
-
-Until then the behaviour is written where somebody editing the file will meet it, in
-`SessionTree`'s own summary.
-
-Falsified when a file with comments is written by the client and still has them.
-
 ### §QS119 A door held open on the loopback
 
 SSH.NET offers no way to hand a session a stream, so both routes through a bastion end

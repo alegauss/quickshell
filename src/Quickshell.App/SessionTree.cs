@@ -146,10 +146,10 @@ public sealed record ResolvedSession(string Path, string Host, Source<string>? U
 /// diffable and editable without this client running: indented JSON, with comments and trailing
 /// commas accepted on the way in so a hand-written file is a first-class one.</para>
 ///
-/// <para><b>What a write does not preserve is said here rather than discovered.</b> The writer emits
-/// the tree, so comments a user added are not in what it writes — a file edited by hand and then
-/// edited again through the client loses them. Reading is lossless; writing is not, and QS117
-/// carries it.</para>
+/// <para><b>A write keeps what a person wrote.</b> Comments in the file being replaced go back before
+/// the same property or session they stood before, a session found by its name so moving it does not
+/// orphan its note — see <see cref="StoreText"/>. A comment whose session was deleted or renamed goes
+/// with it, and whitespace is the writer's.</para>
 /// </summary>
 public sealed class SessionTree
 {
@@ -228,7 +228,13 @@ public sealed class SessionTree
             Directory.CreateDirectory(directory);
         }
 
-        File.WriteAllBytes(file, JsonSerializer.SerializeToUtf8Bytes(Root, Writing));
+        // The file being replaced is read first for the comments in it, which StoreText puts back
+        // where they were (QS117).
+        byte[] previous = File.Exists(file) ? File.ReadAllBytes(file) : [];
+
+        using JsonDocument tree = JsonSerializer.SerializeToDocument(Root, Writing);
+
+        File.WriteAllBytes(file, StoreText.Write(tree.RootElement, previous));
     }
 
     /// <summary>Every session in the tree, with its inherited values resolved.</summary>

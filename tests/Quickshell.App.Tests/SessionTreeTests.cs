@@ -1,6 +1,7 @@
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using Quickshell.App;
 using Xunit;
 
@@ -26,6 +27,13 @@ public sealed class SessionTreeTests : IDisposable
             Directory.Delete(_directory, recursive: true);
         }
     }
+
+    /// <summary>The options the store was written with before comments were carried (QS117).</summary>
+    private static readonly JsonSerializerOptions AsItWas = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
 
     /// <summary>A store as somebody would type it, comments and all.</summary>
     private const string ByHand = """
@@ -104,6 +112,88 @@ public sealed class SessionTreeTests : IDisposable
         Assert.Equal(3, again.Sessions().Count);
         Assert.Equal("postgres", again.Session("prod/db")!.User!.Value.Value);
         Assert.Equal(2222, again.Session("laptop")!.Port!.Value.Value);
+    }
+
+    /// <summary>
+    /// QS117's falsification: a file with comments, written by the client, still has them — each
+    /// before the same thing it stood before, a trailing one still at the end of its line, and the
+    /// note closing a folder still closing it after a session was added to that folder.
+    /// </summary>
+    [Fact]
+    public void ACommentedFileWrittenByTheClientKeepsItsComments()
+    {
+        string file = Write("annotated.json", """
+            // Sessions for the deploy rota. Ask ops before changing the bastion.
+            {
+              // Everything under here logs in as deploy unless it says otherwise.
+              "name": "",
+              "settings": { "user": "deploy", "port": 22 },
+              "children": [
+                {
+                  "name": "prod",
+                  "settings": {
+                    "jumpHost": "bastion.example", // the old one is gone since March
+                    "credential": "prod-key"
+                  },
+                  "children": [
+                    /* The primary. web2 is a warm spare and not listed on purpose. */
+                    { "name": "web", "host": "web1.prod.example" },
+                    { "name": "db", "host": "db1.prod.example" },
+                    // nothing else goes in prod without a ticket
+                  ]
+                }
+              ]
+            }
+            """);
+
+        SessionTree tree = SessionTree.ReadFrom(file);
+
+        // A person adds a session to the commented folder through the client.
+        tree.With("prod/api", new SessionNode { Name = "api", Host = "api1.prod.example" }).WriteTo(file);
+
+        string written = File.ReadAllText(file).ReplaceLineEndings("\n");
+        string[] lines = written.Split('\n');
+
+        int Line(string text) => Array.FindIndex(lines, line => line.Contains(text, StringComparison.Ordinal));
+
+        // Every comment is still there.
+        Assert.True(Line("// Sessions for the deploy rota.") == 0, written);
+        Assert.True(Line("// Everything under here logs in as deploy") >= 0, written);
+        Assert.True(Line("/* The primary. web2 is a warm spare") >= 0, written);
+        Assert.True(Line("// nothing else goes in prod without a ticket") >= 0, written);
+
+        // Each before what it stood before.
+        Assert.Equal(Line("// Everything under here") + 1, Line("\"Name\": \"\""));
+        Assert.Equal(Line("/* The primary.") + 1, Line("\"Name\": \"web\"") - 1);
+        Assert.True(Line("// nothing else goes in prod") > Line("\"Name\": \"api\""), written);
+
+        // A trailing note stays on the line it annotated.
+        Assert.Contains("\"JumpHost\": \"bastion.example\", // the old one is gone since March", written,
+                        StringComparison.Ordinal);
+
+        // And the file is still a store, with the new session in it.
+        SessionTree again = SessionTree.ReadFrom(file);
+
+        Assert.Equal("api1.prod.example", again.Session("prod/api")!.Host);
+        Assert.Equal(3, again.Sessions().Count);
+    }
+
+    /// <summary>
+    /// A store nobody annotated is written exactly as it was before comments were carried, so the
+    /// change costs nobody a diff.
+    /// </summary>
+    [Fact]
+    public void AStoreWithNoCommentsIsWrittenAsItAlwaysWas()
+    {
+        string file = Path.Combine(_directory, "plain.json");
+        SessionTree tree = SessionTree.ReadFrom(Write("source.json", ByHand));
+
+        tree.WriteTo(file);
+        tree.WriteTo(file);
+
+        byte[] expected = JsonSerializer.SerializeToUtf8Bytes(tree.Root, AsItWas);
+
+        Assert.Equal(Encoding.UTF8.GetString(expected), File.ReadAllText(file));
     }
 
     /// <summary>
