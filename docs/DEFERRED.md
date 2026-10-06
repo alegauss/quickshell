@@ -9,6 +9,7 @@
 - ⏸ **QS114** (deps: QS41 ✅) **A PuTTY user on Pageant older than 0.78 has an agent this client cannot reach at all** — set aside (Needs a real Pageant installed.): It has met only a window answering as Pageant does, since no real Pageant is installed here or in the guest. → §QS114
 - ⏸ **QS43** (deps: QS41 ✅, QS114 ✅) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — set aside (Needs a hardware token.): Both carriers now reach an agent, and no key on a hardware token has yet signed a session through either. → §QS43
 - ⏸ **QS45** (deps: QS43 ✅) **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — set aside (Needs a decision: upstream, library or non-goal.): SSH.NET 2026.0 has no agent forwarding at all, and adding it here means writing protocol a non-goal forbids. → §QS45
+- ⏸ **QS115** (deps: QS44 ✅) **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — set aside (Needs a person to accept the dependency.): .NET 10 still ships no Argon2 or scrypt, so closing it is accepting a third-party KDF. → §QS115
 
 ## Block C — Emulation that does not lie about the remote
 

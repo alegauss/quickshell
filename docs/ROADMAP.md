@@ -9,7 +9,6 @@
 ## Block B — Keys, agents, and the host you think you reached
 
 - ⏳ **QS113** (deps: QS41 ✅, QS46 ✅, QS126) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — The report reaches nothing a user sees until a remote session is in the window, which QS126 brings. → §QS113
-- 📋 **QS115** (deps: QS44 ✅) **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — The framework ships no memory-hard derivation, so the choice was a third-party dependency where a mistake is unrecoverable, or the strongest thing it has. → §QS115
 
 ## Block C — Emulation that does not lie about the remote
 
