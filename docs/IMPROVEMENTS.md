@@ -186,6 +186,27 @@ than break.
 
 Falsified when the derivation changes without a way to read what the old one wrote.
 
+### §QS218 A password has nowhere to be typed
+
+`RemoteShell` offers a session's key file, OpenSSH's default keys and the Windows agent,
+and nothing else. A host that takes a password, or asks its own questions through
+keyboard-interactive — a one-time code, a push to approve — refuses every connection the
+client makes to it, and the user is told only that no method was accepted.
+
+The pieces exist. `SshCredential.Interactive` hands each of the server's prompts to a
+callback with whether it may be echoed (QS41), and `SshCredential.Password` takes a
+`Secret`. `SecretStore` saves a secret against an endpoint under DPAPI (QS44), and a
+session's `Credential` names a saved one. What is missing is the window's half: a prompt
+that shows the server's own words, masks what must not be echoed, and offers to remember
+the answer in `SecretStore` — and `RemoteShell` offering a remembered password and the
+interactive callback after the keys, password last as QS41 orders them.
+
+The prompt is asked on the window's thread, which the connection waits for, the way
+`MainWindow.AskHostKey` already is.
+
+Falsified when a session to a host that takes only a password cannot be connected from
+the client, or when a password the user chose to remember is asked for again.
+
 ## Block C — Emulation that does not lie about the remote
 
 ### §QS92 The three environments this machine is not
@@ -775,6 +796,24 @@ it.
 Falsified when a file dropped with the modifier onto an SSH tab whose shell reported its
 directory does not arrive in that directory.
 
+### §QS219 A browser with a connection beside it and nothing listed
+
+QS60's file browser has a remote half that lists over a session's file channel, proven
+on fifty thousand entries, and it has never been opened on anything:
+`MainWindow.RemoteFiles` asks a tab for its remote side, and until QS126 no tab held an
+SSH session to answer with. Now one can — `RemoteShell.Transport` is the connection
+behind an SSH tab — and the browser still opens with an empty remote pane on it.
+
+What to build: the program sets `RemoteFiles` to answer, for a tab whose focused pane
+runs a `RemoteShell`, a remote side over `Transport.OpenFileTransferAsync` — a channel
+of the same connection, never a second one (QS59), so a hardware token is touched once.
+A local tab still answers nothing and the browser says so, as it does today. The channel
+closes with the browser, not with the shell, and a dropped connection ends the browser's
+listing with the reason rather than leaving it hung.
+
+Falsified when the browser opened over an SSH tab lists nothing from that host, or opens
+a second connection to list it.
+
 ## Block F — A forward is a lifecycle, not a checkbox
 
 ### §QS68 One forward that covers a network
@@ -888,30 +927,6 @@ direct-tcpip channel, speaking SOCKS here.
 Falsified when a hundred connects through the proxy all receive a well-formed reply.
 
 ## Block G — The clean interface, defended
-
-### §QS126 Machinery with no way in
-
-Counted on 2026-08-30 across `src/Quickshell.App/*.cs`. Not one file names `SshChain`,
-`SftpChannel`, `ScpChannel`, `IFileCopy`, `TransferQueue`, `TransferPlan`, `SyncPlan`,
-`LocalForward`, `SshAgent`, `KnownHosts` or `TrustOnFirstUse`. `SecretStore` appears
-once, in a doc comment. The application layer uses three transport types in total.
-
-So jump hosts, host-key trust, agents, saved credentials, the whole of file transfer and
-now port forwarding are shipped, tested against real servers, and reachable from nothing
-a user can run. QS121 said this about the session store and the dialog; the audit says
-it about four blocks.
-
-This is not a missing feature. It is a missing question: every line opened so far asked
-what a component must do and none asked who would open it. A component and its way in
-are two pieces of work, and only one of them has been on the roadmap.
-
-What closes it is not one task. It is a rule — a line that makes a component reachable
-is opened beside the line that builds it — plus the connecting work already outstanding.
-This line exists to hold the count and the rule until those are opened. QS60's browser
-is the twelfth: its remote half lists over a session's file channel, and no tab holds an
-SSH session yet.
-
-Falsified when a component ships with no line naming what will reach it.
 
 ### §QS151 A signal nothing is sleeping on
 
@@ -1176,6 +1191,25 @@ alone, is untested. The move is to delete TerminalPalette and Appearance.Palette
 rewrite the test against the real path: apply settings with another theme and read that
 an open pane's palette is unchanged. Falsified when a model of the terminal's colours
 exists that no pane draws from.
+
+### §QS217 Sessions in the palette
+
+QS126 made a saved session openable as an SSH tab, and the only way to ask for one is
+`quickshell --session <path>` on a command line. The palette, which is where every other
+action in this client is reached, lists none of them: a user with forty saved hosts has
+to know the path of the one they want and type it into a shortcut.
+
+What to build: an "Open session" entry in the palette that turns the palette into a list
+of the store's sessions — path, host and tags, searched the way `SessionTree.Search`
+already searches — and opens the chosen one through `MainWindow.OpensSession`, which the
+program already wires to `RemoteShell`. The store is read when the list opens, so a
+session saved a moment ago is in it. The most recently opened come first, as the palette
+already ranks its commands.
+
+A UI case reads it off the accessibility tree: the entry is listed, and typing part of a
+session's name brings that session to the top.
+
+Falsified when a saved session can only be opened by typing its path.
 
 ## Block H — The reason to leave the incumbent
 
