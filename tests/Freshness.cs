@@ -49,7 +49,7 @@ internal static class Freshness
             return;
         }
 
-        if (Newer(project, File.GetLastWriteTimeUtc(self.Location)) is { } edited)
+        if (Newer(project, Path.GetDirectoryName(self.Location)!) is { } edited)
         {
             throw new InvalidOperationException(
                 $"{Path.GetFileName(self.Location)} is older than {edited}, so it was not built from the "
@@ -59,29 +59,65 @@ internal static class Freshness
     }
 
     /// <summary>
-    /// The first source file feeding <paramref name="project"/> that was written after
-    /// <paramref name="built"/>, or null where there is none or the project is not on this disk.
+    /// The first source file feeding <paramref name="project"/> that was written after the output
+    /// built from it, or null where there is none or the project is not on this disk.
+    ///
+    /// <para><b>Each project against its own output, which is QS209.</b> The SDK builds reference
+    /// assemblies, so a referenced project whose public surface did not change spares the projects
+    /// above it a recompile: the test assembly keeps its old time and the fresh dependency is copied
+    /// in beside it. Measured against the test assembly alone, that ordinary edit read as a failed
+    /// build. So each project's sources are measured against that project's own DLL in
+    /// <paramref name="output"/>, and a project with no DLL there is not judged.</para>
     /// </summary>
-    internal static string? Newer(string project, DateTime built)
+    /// <param name="project">The test project, the start of the closure.</param>
+    /// <param name="output">The folder the test assembly and its dependencies were built into.</param>
+    internal static string? Newer(string project, string output)
     {
         if (!File.Exists(project))
         {
             return null;
         }
 
-        foreach (string file in Sources(project))
+        DateTime oldest = DateTime.MaxValue;
+        string? root = null;
+
+        foreach (string next in Closure(project))
         {
-            if (File.GetLastWriteTimeUtc(file) > built + Slack)
+            string built = Path.Combine(output, AssemblyName(next) + ".dll");
+
+            if (!File.Exists(built))
             {
-                return file;
+                continue;
+            }
+
+            DateTime time = File.GetLastWriteTimeUtc(built);
+            oldest = time < oldest ? time : oldest;
+            root ??= Path.GetDirectoryName(next);
+
+            foreach (string file in Sources(Path.GetDirectoryName(next)!))
+            {
+                if (File.GetLastWriteTimeUtc(file) > time + Slack)
+                {
+                    return file;
+                }
+            }
+        }
+
+        // The build files above the projects rebuild everything, so the oldest output is the one
+        // they have to be older than.
+        foreach (string build in root is null ? [] : BuildFiles(root))
+        {
+            if (File.GetLastWriteTimeUtc(build) > oldest + Slack)
+            {
+                return build;
             }
         }
 
         return null;
     }
 
-    /// <summary>Every input file of a project and of everything it references, each once.</summary>
-    private static IEnumerable<string> Sources(string project)
+    /// <summary>A project and everything it references, followed through their references, each once.</summary>
+    private static HashSet<string> Closure(string project)
     {
         HashSet<string> projects = new(StringComparer.OrdinalIgnoreCase);
         Stack<string> pending = new([Path.GetFullPath(project)]);
@@ -90,7 +126,7 @@ internal static class Freshness
         {
             string next = pending.Pop();
 
-            if (!projects.Add(next) || !File.Exists(next))
+            if (!File.Exists(next) || !projects.Add(next))
             {
                 continue;
             }
@@ -106,41 +142,51 @@ internal static class Freshness
             }
         }
 
-        foreach (string next in projects)
+        return projects;
+    }
+
+    /// <summary>The project's AssemblyName where it sets one — the client's is <c>quickshell</c> — and its file name otherwise.</summary>
+    private static string AssemblyName(string project) =>
+        XDocument.Load(project).Descendants("AssemblyName").FirstOrDefault()?.Value is { Length: > 0 } named
+            ? named
+            : Path.GetFileNameWithoutExtension(project);
+
+    /// <summary>Every input file in a project's folder, outside what the build writes.</summary>
+    private static IEnumerable<string> Sources(string directory)
+    {
+        foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
         {
-            string directory = Path.GetDirectoryName(next)!;
+            string relative = Path.GetRelativePath(directory, file);
 
-            foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+            if (relative.StartsWith("bin" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                || relative.StartsWith("obj" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                || !Inputs.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase))
             {
-                string relative = Path.GetRelativePath(directory, file);
-
-                if (relative.StartsWith("bin" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-                    || relative.StartsWith("obj" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-                    || !Inputs.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                yield return file;
+                continue;
             }
 
-            // The build files above the project shape it as much as its own do.
-            for (DirectoryInfo? above = new DirectoryInfo(directory).Parent; above is not null; above = above.Parent)
+            yield return file;
+        }
+    }
+
+    /// <summary>The Directory.Build files above a folder, up to the repository's root.</summary>
+    private static IEnumerable<string> BuildFiles(string directory)
+    {
+        for (DirectoryInfo? above = new DirectoryInfo(directory).Parent; above is not null; above = above.Parent)
+        {
+            foreach (string build in new[] { "Directory.Build.props", "Directory.Build.targets" })
             {
-                foreach (string build in new[] { "Directory.Build.props", "Directory.Build.targets" })
-                {
-                    string path = Path.Combine(above.FullName, build);
+                string path = Path.Combine(above.FullName, build);
 
-                    if (File.Exists(path))
-                    {
-                        yield return path;
-                    }
-                }
-
-                if (File.Exists(Path.Combine(above.FullName, "Quickshell.sln")))
+                if (File.Exists(path))
                 {
-                    break;
+                    yield return path;
                 }
+            }
+
+            if (File.Exists(Path.Combine(above.FullName, "Quickshell.sln")))
+            {
+                yield break;
             }
         }
     }
