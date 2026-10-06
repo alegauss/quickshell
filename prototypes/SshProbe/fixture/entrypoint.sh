@@ -62,4 +62,10 @@ if [ "$1" = "legacy" ]; then
     sed -i '1i KexAlgorithms sntrup761x25519-sha512@openssh.com' /etc/ssh/sshd_config
 fi
 
+# QS124: a service that answers only once its input has ended — it counts what it was sent and
+# says the number after the sender shuts its half. That is the shape of every protocol that sends,
+# shuts and waits, and a forward that drops both directions at the first EOF never hears it. On the
+# container network only, reached through a forward.
+socat TCP-LISTEN:7007,fork,reuseaddr EXEC:"wc -c" &
+
 exec /usr/sbin/sshd -D -e

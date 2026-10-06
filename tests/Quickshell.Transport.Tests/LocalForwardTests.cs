@@ -201,6 +201,44 @@ public sealed class LocalForwardTests
         }
     }
 
+    /// <summary>
+    /// QS124's falsification: a connection that shuts its sending half still receives what the far
+    /// end sends afterwards.
+    ///
+    /// <para>The fixture's port 7007 counts what it is sent and answers with the number only once
+    /// its input has ended — the shape of HTTP/1.0, of several database protocols, and of anything
+    /// built like <c>cat | remote-tool</c>. A forward that ends both directions at the first EOF
+    /// hands it a closed socket instead of the answer.</para>
+    /// </summary>
+    [Fact]
+    public async Task ShuttingTheSendingHalfStillGetsTheAnswer()
+    {
+        SkipWithoutFixture();
+
+        await using SshNetTransport session = await Connected();
+
+        await using LocalForward forward = LocalForward.Open(session, OnlyOverThere, 7007);
+
+        using Socket socket = await Dial(forward.BoundPort);
+
+        await socket.SendAsync(Encoding.ASCII.GetBytes("hello"), Stop);
+        socket.Shutdown(SocketShutdown.Send);
+
+        StringBuilder answer = new();
+        byte[] buffer = new byte[64];
+
+        using CancellationTokenSource waiting = CancellationTokenSource.CreateLinkedTokenSource(Stop);
+
+        waiting.CancelAfter(TimeSpan.FromSeconds(10));
+
+        for (int read; (read = await socket.ReceiveAsync(buffer, SocketFlags.None, waiting.Token)) > 0;)
+        {
+            answer.Append(Encoding.ASCII.GetString(buffer, 0, read));
+        }
+
+        Assert.Equal("5", answer.ToString().Trim());
+    }
+
     // ---- Three errors, three remedies ----
 
     /// <summary>

@@ -104,6 +104,7 @@
 
 - ✅ **QS66** **A port on the remote network cannot be reached from a local tool** — A port on the remote network is reached from a local tool, bound to loopback unless an address is named, and the operating system is asked where it is listening.
 - ✅ **QS67** **A service running locally cannot be reached from the remote host** — A service here is reached from the server, the port it chose comes back, and a refusal names the port asked for and the two settings that cause it.
+- ✅ **QS124** **A forward drops the whole connection when one direction half-closes, so protocols that shut and wait hang** — A forwarded connection that shuts its sending half still receives the answer, over a channel that says EOF and waits (design recorded in `src/Quickshell.Transport/LocalForward.cs`).
 
 ## Block G — The clean interface, defended
 

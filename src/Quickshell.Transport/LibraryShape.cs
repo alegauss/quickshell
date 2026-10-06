@@ -60,6 +60,13 @@ public static class LibraryShape
         Need(SshNetChannel.SessionField, "ShellStream._channel");
         Need(SshNetChannel.Asking, "IChannelSession.SendEnvironmentVariableRequest(string, string)");
 
+        // A local forward's own channel, so half of a close stays half (QS124).
+        Need(LocalForward.CreateChannel, "ISession.CreateChannelDirectTcpip()");
+        Need(LocalForward.OpenChannel, "ChannelDirectTcpip.Open(string, uint, IForwardedPort, Socket)");
+        Need(LocalForward.Pump, "ChannelDirectTcpip.Bind()");
+        Need(LocalForward.SayEnd, "IChannel.SendEof()");
+        Need(LocalForward.Live, "ChannelDirectTcpip.IsOpen");
+
         // A jump's local port, closed without ending what it carries (QS119).
         Need(SshChain.StopListening, "ForwardedPortLocal.StopListener()");
 

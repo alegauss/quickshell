@@ -860,32 +860,6 @@ This is a surface that survives the leanness argument, because the alternative t
 
 Falsified when a running forward does not appear in this view.
 
-### §QS124 Half of a close is not a close
-
-Measured on 2026-08-30 against the fixture: a socket through the forward that calls
-`Shutdown(Send)` finds the whole connection gone — `Connected` false, the next read
-returning zero — instead of the far end's answer. SSH.NET's `ForwardedPortLocal` treats
-either direction ending as the end of both.
-
-That breaks a real class of protocol. HTTP/1.0 without keep-alive, several database wire
-protocols, and anything shaped like `cat | remote-tool` send their request, shut the
-sending half to signal the end of input, and wait. Against this forward they get a
-closed socket and either hang until a timeout or report a network error, and the user
-has no way to tell that from a server that went away.
-
-The library offers no way to fix it from outside: the listener, the accept loop and the
-channel all live inside `ForwardedPortLocal`, and nothing on its surface carries an end
-of stream in one direction.
-
-What would answer it is our own listener over a direct-tcpip channel, which is what
-OpenSSH does. `ISession.CreateChannelDirectTcpip` exists and is internal, so this costs
-the same kind of reach into the library that sharing an SFTP session did — and buys,
-besides half-close, per-connection error reporting and a channel that fits the seam's
-own `IForwardedChannel`.
-
-Falsified when a connection that shuts its sending half still receives what the far end
-sent afterwards.
-
 ### §QS125 Three failures, one of them legible
 
 Measured on 2026-08-30. A forward to a port with nothing listening on the far side

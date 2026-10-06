@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Reflection;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 
@@ -104,32 +105,69 @@ public readonly record struct ForwardFailure(ForwardTrouble Trouble, string Reas
 /// hand.</para>
 ///
 /// <para><b>Each accepted connection is its own channel.</b> Twenty connections are twenty channels
-/// and closing one disturbs none of the others. What does not work is a half-close: SSH.NET tears
-/// the whole connection down when one direction shuts, which QS124 carries.</para>
+/// and closing one disturbs none of the others.</para>
+///
+/// <para><b>Half of a close is half (QS124).</b> SSH.NET's <c>ForwardedPortLocal</c> ended both
+/// directions the moment one shut, so a protocol that sends, shuts its sending half and waits —
+/// HTTP/1.0, several database wire protocols, anything shaped like <c>cat | remote-tool</c> — got a
+/// closed socket instead of its answer. So the listener here is this client's own, and each
+/// connection goes over a direct-tcpip channel the session opens for it. When the local side ends
+/// its input the channel says EOF and stays open, carrying the far end's answer back until the far
+/// end closes, which is what OpenSSH does. The channel is the library's; three of its members are
+/// reached by name, and <see cref="LibraryShape"/> checks them.</para>
 /// </summary>
 public sealed class LocalForward : IAsyncDisposable
 {
-    private readonly ForwardedPortLocal _port;
+    private const BindingFlags Hidden = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+
+    // The library's own channel and the session that opens one, reached by name (QS124). Internal
+    // so LibraryShape checks these very members.
+    internal static readonly MethodInfo? CreateChannel =
+        typeof(SshClient).Assembly.GetType("Renci.SshNet.ISession")?.GetMethod("CreateChannelDirectTcpip", Hidden);
+
+    internal static readonly Type? ChannelType =
+        typeof(SshClient).Assembly.GetType("Renci.SshNet.Channels.ChannelDirectTcpip");
+
+    internal static readonly MethodInfo? OpenChannel = ChannelType?.GetMethod("Open", Hidden);
+
+    internal static readonly MethodInfo? Pump = ChannelType?.GetMethod("Bind", Hidden, Type.EmptyTypes);
+
+    internal static readonly MethodInfo? SayEnd =
+        typeof(SshClient).Assembly.GetType("Renci.SshNet.Channels.IChannel")?.GetMethod("SendEof", Hidden, Type.EmptyTypes);
+
+    internal static readonly PropertyInfo? Live = ChannelType?.GetProperty("IsOpen", Hidden);
+
+    private readonly TcpListener _listener;
+    private readonly object _session;
+    private readonly ForwardedPortLocal _anchor;
+    private readonly CancellationTokenSource _stopping = new();
     private readonly List<ForwardFailure> _failures = [];
+    private readonly List<IDisposable> _carrying = [];
     private readonly Lock _guard = new();
 
+    private Task _accepting = Task.CompletedTask;
     private long _connections;
     private bool _disposed;
 
-    private LocalForward(ForwardedPortLocal port, string target, int targetPort,
+    private LocalForward(TcpListener listener, object session, string target, int targetPort,
                          ForwardBinding binding)
     {
-        _port = port;
+        _listener = listener;
+        _session = session;
         TargetHost = target;
         TargetPort = targetPort;
         Binding = binding;
+
+        // The channel subscribes to a forwarded port's closing to close itself; this one is never
+        // started and exists to be that, so a channel ends when this forward does.
+        _anchor = new ForwardedPortLocal(binding.Address, 0, target, (uint)targetPort);
     }
 
     /// <summary>The address the local listener accepts on.</summary>
-    public string BoundHost => _port.BoundHost;
+    public string BoundHost => Binding.Address;
 
     /// <summary>The local port, which is the one the system chose where zero was asked for.</summary>
-    public int BoundPort => (int)_port.BoundPort;
+    public int BoundPort => ((IPEndPoint)_listener.LocalEndpoint).Port;
 
     /// <summary>The host the far side connects to, spelled as the remote network spells it.</summary>
     public string TargetHost { get; }
@@ -141,7 +179,7 @@ public sealed class LocalForward : IAsyncDisposable
     public ForwardBinding Binding { get; }
 
     /// <summary>Whether the listener is up.</summary>
-    public bool IsOpen => !_disposed && _port.IsStarted;
+    public bool IsOpen => !_disposed && !_accepting.IsCompleted;
 
     /// <summary>How many connections have been carried.</summary>
     public long Connections => Interlocked.Read(ref _connections);
@@ -195,29 +233,32 @@ public sealed class LocalForward : IAsyncDisposable
                                       "There is no connection to carry a forward.",
                                       "The session is not open.");
 
-        // Named, never defaulted. The constructor that takes only a port binds somewhere this
-        // design does not want, and there is no way to correct it afterwards.
+        // Named, never defaulted: the listener binds exactly the address given, loopback unless a
+        // caller widened it.
         ForwardBinding where = binding ?? ForwardBinding.Loopback;
 
-        ForwardedPortLocal port =
-            new(where.Address, (uint)listenPort, targetHost, (uint)targetPort);
+        object session = typeof(BaseClient).GetProperty(SharedSftpSession.SessionProperty, Hidden)?.GetValue(client)
+            ?? throw new SshException(SshFailureKind.Dropped,
+                                      "There is no connection to carry a forward.",
+                                      "The session is not open.");
 
-        LocalForward forward = new(port, targetHost, targetPort, where);
+        if (CreateChannel is null || OpenChannel is null || Pump is null || SayEnd is null)
+        {
+            throw new SshException(
+                SshFailureKind.Unrecognised,
+                "This build of SSH.NET cannot carry a forward the way this client does.",
+                "A channel member quickshell reaches by name is not there; LibraryShape names which.",
+                "Report this with the SSH.NET version.");
+        }
 
-        port.Exception += forward.Trouble;
-        port.RequestReceived += forward.Accepted;
-
-        client.AddForwardedPort(port);
+        TcpListener listener = new(IPAddress.Parse(where.Address), listenPort);
 
         try
         {
-            port.Start();
+            listener.Start();
         }
         catch (SocketException taken)
         {
-            client.RemoveForwardedPort(port);
-            port.Dispose();
-
             throw new SshException(
                 SshFailureKind.Refused,
                 $"The local port {listenPort} could not be opened.",
@@ -226,7 +267,104 @@ public sealed class LocalForward : IAsyncDisposable
                 taken.Message);
         }
 
+        LocalForward forward = new(listener, session, targetHost, targetPort, where);
+
+        forward._accepting = forward.AcceptAsync();
+
+        // Nothing outlives the session: when it goes, so does every listener it was carrying.
+        _ = over.Disconnected.ContinueWith(_ => forward.DisposeAsync().AsTask(), TaskScheduler.Default);
+
         return forward;
+    }
+
+    /// <summary>Accepts until disposed, handing each connection to a channel of its own.</summary>
+    private async Task AcceptAsync()
+    {
+        while (!_stopping.IsCancellationRequested)
+        {
+            Socket accepted;
+
+            try
+            {
+                accepted = await _listener.AcceptSocketAsync(_stopping.Token).ConfigureAwait(false);
+            }
+            catch (Exception) when (_stopping.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (SocketException)
+            {
+                return;
+            }
+
+            accepted.NoDelay = true;
+
+            // On a thread of its own: the channel's pump blocks for the life of the connection.
+            _ = Task.Factory.StartNew(() => Carry(accepted), CancellationToken.None,
+                                      TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        }
+    }
+
+    /// <summary>
+    /// One connection, from open to the far end's close.
+    ///
+    /// <para>The pump returns when the local side's input ends — a full close or a half one, which a
+    /// socket cannot tell apart from here. Either way the far end is told EOF and the channel stays
+    /// open: what the far end still sends reaches the socket, and the channel's own handling of the
+    /// far end's EOF and close shuts the socket's sending half and then the socket.</para>
+    /// </summary>
+    private void Carry(Socket accepted)
+    {
+        IDisposable? channel = null;
+
+        try
+        {
+            channel = (IDisposable)CreateChannel!.Invoke(_session, null)!;
+
+            lock (_guard)
+            {
+                _carrying.Add(channel);
+            }
+
+            OpenChannel!.Invoke(channel, [TargetHost, (uint)TargetPort, _anchor, accepted]);
+
+            Interlocked.Increment(ref _connections);
+
+            Pump!.Invoke(channel, null);
+
+            if (Live?.GetValue(channel) is true)
+            {
+                SayEnd!.Invoke(channel, null);
+
+                // Until the far end closes, or this forward ends.
+                while (Live.GetValue(channel) is true && !_stopping.IsCancellationRequested)
+                {
+                    Thread.Sleep(20);
+                }
+            }
+        }
+        catch (TargetInvocationException failed) when (failed.InnerException is { } inner)
+        {
+            Trouble(inner);
+        }
+        catch (Exception failed) when (failed is ObjectDisposedException or SocketException)
+        {
+            // The connection or the forward went first, which is an ending and not a failure.
+        }
+        finally
+        {
+            if (channel is not null)
+            {
+                lock (_guard)
+                {
+                    _carrying.Remove(channel);
+                }
+
+                channel.Dispose();
+            }
+
+            accepted.Dispose();
+        }
     }
 
     /// <summary>
@@ -238,9 +376,9 @@ public sealed class LocalForward : IAsyncDisposable
     /// SSH.NET reports it exactly as it reports an ordinary close. So it is inferred, and the
     /// message says it is an inference rather than pretending to certainty.</para>
     /// </summary>
-    private void Trouble(object? sender, ExceptionEventArgs what)
+    private void Trouble(Exception what)
     {
-        ForwardFailure failure = what.Exception switch
+        ForwardFailure failure = what switch
         {
             SocketException socket => new ForwardFailure(
                 ForwardTrouble.TargetRefused,
@@ -266,39 +404,47 @@ public sealed class LocalForward : IAsyncDisposable
         }
     }
 
-    private void Accepted(object? sender, PortForwardEventArgs what) =>
-        Interlocked.Increment(ref _connections);
-
     /// <summary>
-    /// Closes the listener. No forward outlives the object that owns it.
+    /// Closes the listener and every channel it opened. No forward outlives the object that owns it.
     /// </summary>
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        lock (_guard)
         {
-            return ValueTask.CompletedTask;
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
         }
 
-        _disposed = true;
+        await _stopping.CancelAsync().ConfigureAwait(false);
 
-        _port.Exception -= Trouble;
-        _port.RequestReceived -= Accepted;
+        _listener.Stop();
 
-        try
+        await _accepting.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+
+        IDisposable[] open;
+
+        lock (_guard)
         {
-            if (_port.IsStarted)
+            open = [.. _carrying];
+        }
+
+        foreach (IDisposable channel in open)
+        {
+            try
             {
-                _port.Stop();
+                channel.Dispose();
+            }
+            catch (Exception)
+            {
+                // Already gone with the session, which is the ordinary way this ends.
             }
         }
-        catch (Exception)
-        {
-            // Already gone with the session, which is the ordinary way this ends.
-        }
 
-        _port.Dispose();
-
-        return ValueTask.CompletedTask;
+        _anchor.Dispose();
     }
 
     /// <summary>How a person writes it down.</summary>
