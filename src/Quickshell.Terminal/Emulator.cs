@@ -341,7 +341,7 @@ public sealed partial class Emulator : IAnsiHandler
         switch (control)
         {
             case 0x08:
-                buffer.CursorColumn = Math.Max(0, buffer.CursorColumn - 1);
+                Backspace(buffer);
                 break;
 
             case 0x09:
@@ -511,6 +511,7 @@ public sealed partial class Emulator : IAnsiHandler
     {
         _pen = Pen.Default;
         AutoWrap = true;
+        ReverseWrap = false;
         OriginMode = false;
         ApplicationCursorKeys = false;
         ApplicationKeypad = false;

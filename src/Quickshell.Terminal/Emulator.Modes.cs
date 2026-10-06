@@ -20,6 +20,38 @@ public sealed partial class Emulator
     /// <summary>DECAWM. With it off, the last column simply overwrites itself.</summary>
     public bool AutoWrap { get; private set; } = true;
 
+    /// <summary>
+    /// DECSET 45, reverse wrap: with it on, and autowrap on, a backspace at the left edge goes to the
+    /// last column of the row above instead of stopping (QS105). Off by default, as in xterm.
+    /// </summary>
+    public bool ReverseWrap { get; private set; }
+
+    /// <summary>
+    /// A backspace. One column left, and at the left edge, under reverse wrap, to the end of the row
+    /// above — never above the top margin, which is where the region the cursor is in begins.
+    ///
+    /// <para><b>xterm's rule and not a stricter one.</b> It does not ask whether the row above really
+    /// wrapped into this one: the reference does not, the suites written against it expect it not
+    /// to, and a shell that turns the mode on is the one telling the terminal where its lines
+    /// continue.</para>
+    /// </summary>
+    private void Backspace(TerminalBuffer buffer)
+    {
+        if (buffer.CursorColumn > 0)
+        {
+            buffer.CursorColumn--;
+            return;
+        }
+
+        int top = buffer.CursorRow >= MarginTop ? MarginTop : 0;
+
+        if (ReverseWrap && AutoWrap && buffer.CursorRow > top)
+        {
+            buffer.CursorRow--;
+            buffer.CursorColumn = buffer.Columns - 1;
+        }
+    }
+
     /// <summary>DECOM. With it on, row one means the top margin rather than the top of the screen.</summary>
     public bool OriginMode { get; private set; }
 
@@ -192,6 +224,10 @@ public sealed partial class Emulator
                     CursorVisible = set;
                     break;
 
+                case 45:
+                    ReverseWrap = set;
+                    break;
+
                 case 2004:
                     BracketedPaste = set;
                     break;
@@ -278,6 +314,7 @@ public sealed partial class Emulator
         6 => On(OriginMode),
         7 => On(AutoWrap),
         25 => On(CursorVisible),
+        45 => On(ReverseWrap),
         2004 => On(BracketedPaste),
         47 or 1047 or 1049 => On(Screens.IsAlternate),
         9 => On(_tracking == MouseTracking.PressOnly),

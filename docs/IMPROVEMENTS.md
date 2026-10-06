@@ -323,30 +323,6 @@ than absorbed.
 Falsified when this repository claims cross-vendor correctness with no run behind it on
 any vendor's silicon.
 
-### §QS105 The wrap a cursor has to be able to go back through
-
-Found by esctest in QS33, in the eight `BSTests` and two `CUBTests` failures that are
-not about the checksum: reverse wrap.
-
-Moving left from column one does not always stop. Where the row above continues into
-this one — which the wrapped flag already records, and which QS23 and QS30 both lean on
-— the cursor belongs at the end of that row instead. A shell editing a command longer
-than the terminal is wide does exactly this on every backspace over the wrap point, and
-a terminal that refuses leaves the cursor and the shell's own idea of the cursor in
-different places. Everything typed afterwards lands somewhere neither of them meant.
-
-It is a mode, DECSET 45, and off by default in xterm — but a client that never
-implements it cannot honour the mode either, and the tests that fail here are the ones
-that turn it on and then check.
-
-The interaction to be careful about is the left margin: with one set, reverse wrap goes
-to the margin and not to column one, and the row above is only a candidate if the wrap
-actually happened there. The pending-wrap state QS17 keeps is part of the same question,
-since a cursor owing a wrap is not yet in the row it appears to be in.
-
-Falsified when backspacing over a wrap point puts the cursor somewhere the host does not
-also think it is.
-
 ### §QS107 The half of the thinness that is not the coverage
 
 QS35 answered the stated cause — grayscale coverage — and left a second one standing

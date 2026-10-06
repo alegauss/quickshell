@@ -230,6 +230,52 @@ public sealed class EmulatorTests
         Assert.True(emulator.Buffer.Screen(0)[3].IsBlank);
     }
 
+    // ---- Reverse wrap (QS105) ----
+
+    /// <summary>The design's falsifier: a backspace over a wrap point lands where the shell put it.</summary>
+    [Fact]
+    public void UnderReverseWrapABackspaceAtTheLeftEdgeGoesToTheEndOfTheRowAbove()
+    {
+        Emulator emulator = new(10, 4, scrollback: 0);
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[?45h" + "0123456789ab\b\b\b"));
+
+        // "ab" wrapped onto row two; three backspaces go b, a, and then back through the wrap.
+        Assert.Equal((0, 9), (emulator.Buffer.CursorRow, emulator.Buffer.CursorColumn));
+    }
+
+    [Fact]
+    public void WithoutReverseWrapABackspaceStopsAtTheLeftEdge()
+    {
+        Emulator emulator = new(10, 4, scrollback: 0);
+        emulator.Feed(Encoding.UTF8.GetBytes("0123456789ab\b\b\b"));
+
+        Assert.Equal((1, 0), (emulator.Buffer.CursorRow, emulator.Buffer.CursorColumn));
+    }
+
+    /// <summary>xterm's rule: reverse wrap is a kind of wrap, so with autowrap off there is none.</summary>
+    [Fact]
+    public void ReverseWrapNeedsAutowrap()
+    {
+        Emulator emulator = new(10, 4, scrollback: 0);
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[?45h\u001b[?7l\u001b[2;1H\b"));
+
+        Assert.Equal((1, 0), (emulator.Buffer.CursorRow, emulator.Buffer.CursorColumn));
+    }
+
+    /// <summary>Not above the top of the scrolling region the cursor is in, nor above the screen.</summary>
+    [Fact]
+    public void ReverseWrapStopsAtTheTopMargin()
+    {
+        Emulator emulator = new(10, 6, scrollback: 0);
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[?45h\u001b[3;5r\u001b[3;1H\b"));
+
+        Assert.Equal((2, 0), (emulator.Buffer.CursorRow, emulator.Buffer.CursorColumn));
+
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[r\u001b[1;1H\b"));
+
+        Assert.Equal((0, 0), (emulator.Buffer.CursorRow, emulator.Buffer.CursorColumn));
+    }
+
     // ---- Editing ----
 
     [Fact]

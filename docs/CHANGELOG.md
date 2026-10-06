@@ -65,6 +65,7 @@
 - ✅ **QS101** **Ninety-six bytes of the parse path's allocation is measured but unattributed** — The hostile sequence allocates nothing: a split broken character no longer reaches .NET's byte[] fallback, and the ceiling is zero.
 - ✅ **QS103** **Nothing answers a request for a rectangle's checksum, so an external suite cannot read the screen back** — DECRQCRA answers with xterm's negated 16-bit sum, empty cells as spaces and no attributes, as esctest reads it; conhost hiding it is QS211.
 - ✅ **QS104** **A program asking whether a mode is set gets no answer, so it cannot tell off from unsupported** — DECRQM answers ANSI and DEC modes: set or reset by state, permanently off for what is refused, zero for the unknown and the unbuilt.
+- ✅ **QS105** **Backspace at the left edge stops there instead of wrapping to the end of the line above** — Under DECSET 45 with autowrap, a backspace at the left edge goes to the end of the row above, never past the top margin, as xterm does (design superseded: xterm does not check the wrapped flag).
 
 ## Block D — The tree a user organises work in
 
