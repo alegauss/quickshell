@@ -30,13 +30,20 @@ if exist "%REPORTS%" rd /s /q "%REPORTS%"
 mkdir "%REPORTS%" 2>nul
 
 echo Building Quickshell.sln (%CONFIG%)
-dotnet build Quickshell.sln --configuration %CONFIG% --nologo -v quiet
+rem Without node reuse, so MSBuild's workers leave with the build instead of idling for fifteen
+rem minutes beside the tests (QS108).
+dotnet build Quickshell.sln --configuration %CONFIG% --nologo -v quiet -nodeReuse:false
 if errorlevel 1 (
     echo.
     echo BUILD FAILED - no tests were run.
     popd
     exit /b 1
 )
+
+rem And the compiler server stopped before anything is timed. A build leaves VBCSCompiler resident,
+rem measured at 1.1 GB and two thousand CPU-seconds, and the suite's wall-clock latency tests were
+rem failing only on the runs that followed one: the build was what they measured (QS108).
+dotnet build-server shutdown >nul 2>&1
 
 set /a RAN=0
 set /a FAILED=0

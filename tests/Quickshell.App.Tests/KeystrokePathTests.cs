@@ -38,12 +38,17 @@ public sealed class KeystrokePathTests
 
         try
         {
-            TimeSpan atRest = await Slowest(load: null);
-            TimeSpan underLoad = await Slowest(load: big);
+            TimeSpan atRest = await NinetyFifth(load: null);
+            TimeSpan underLoad = await NinetyFifth(load: big);
 
-            // Five times the at-rest worst case, or two milliseconds, whichever is larger. A shared
+            // Five times the at-rest reading, or two milliseconds, whichever is larger. A shared
             // queue would put a keystroke behind whatever the host had pending, which at two
             // megabytes in is orders of magnitude and not a factor of five.
+            //
+            // The 95th percentile of each two hundred and not their worst, which is QS108: one write
+            // the scheduler delayed decided the worst case, and after a build that left its servers
+            // running that write was 20.8 ms against a 2.6 ms bound. A queue in front of the
+            // keystroke delays nearly every write, so the percentile still sees it.
             TimeSpan allowed = TimeSpan.FromTicks(
                 Math.Max(atRest.Ticks * 5, TimeSpan.FromMilliseconds(2).Ticks));
 
@@ -264,7 +269,8 @@ public sealed class KeystrokePathTests
     /// the load. Sharing one session made the loaded measurement measure an idle shell — which it
     /// passed, and which would have been a green run proving nothing.</para>
     /// </summary>
-    private static async Task<TimeSpan> Slowest(string? load)
+    /// <summary>The 95th percentile of two hundred keystroke writes, at rest or under a printing file.</summary>
+    private static async Task<TimeSpan> NinetyFifth(string? load)
     {
         await using ConPtyChannel channel = await ConPtyChannel.StartAsync(
             "cmd.exe /q", 120, 30, null, TestContext.Current.CancellationToken);
@@ -285,7 +291,7 @@ public sealed class KeystrokePathTests
 
         long before = pipeline.Work.Bytes;
         byte[] key = [0x00];
-        TimeSpan worst = TimeSpan.Zero;
+        List<TimeSpan> writes = new(200);
 
         for (int stroke = 0; stroke < 200; stroke++)
         {
@@ -296,12 +302,10 @@ public sealed class KeystrokePathTests
             await pipeline.TypeAsync(key, TestContext.Current.CancellationToken);
 
             clock.Stop();
-
-            if (clock.Elapsed > worst)
-            {
-                worst = clock.Elapsed;
-            }
+            writes.Add(clock.Elapsed);
         }
+
+        writes.Sort();
 
         if (load is not null)
         {
@@ -310,7 +314,7 @@ public sealed class KeystrokePathTests
                 "the host stopped printing during the measurement, so it measured an idle session");
         }
 
-        return worst;
+        return writes[(writes.Count * 95 / 100) - 1];
     }
 
     private static byte[] Typed(string line) =>

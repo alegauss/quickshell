@@ -67,6 +67,7 @@
 - ✅ **QS104** **A program asking whether a mode is set gets no answer, so it cannot tell off from unsupported** — DECRQM answers ANSI and DEC modes: set or reset by state, permanently off for what is refused, zero for the unknown and the unbuilt.
 - ✅ **QS105** **Backspace at the left edge stops there instead of wrapping to the end of the line above** — Under DECSET 45 with autowrap, a backspace at the left edge goes to the end of the row above, never past the top margin, as xterm does (design superseded: xterm does not check the wrapped flag).
 - ✅ **QS107** **ClearType coverage is drawn without the contrast enhancement Windows applies, so stems stay lighter than elsewhere** — Measured against Direct2D: this text is 4-7% heavier on dark grounds and 12-17% lighter on light ones; which to match is QS212 (design recorded in `docs/measurements/contrast.md`).
+- ✅ **QS108** **The suite builds the solution and then measures wall-clock latency against what that build left running** — run-tests.cmd stops its build servers before timing anything, and the keystroke test reads a 95th percentile, not one worst write.
 
 ## Block D — The tree a user organises work in
 

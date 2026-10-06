@@ -323,34 +323,6 @@ than absorbed.
 Falsified when this repository claims cross-vendor correctness with no run behind it on
 any vendor's silicon.
 
-### §QS108 Measured against the suite's own build
-
-Two wall-clock tests in `Quickshell.App.Tests` failed on 2026-08-30, one each on
-separate full-suite runs: `TheDelayBeforeAReadIsParsedDoesNotGrowWithTheFile` and
-`AKeystrokeLeavesAsFastUnderALargeFileAsAtRest` — the second at 20.8 ms against a 2.6 ms
-bound.
-
-What was measured rather than guessed. The assembly alone, three runs: no failures. The
-assembly alone straight after `dotnet build Quickshell.sln`, two runs: one failure. One
-test alone after a build, five runs: no failures. So the trigger is a build followed by
-the whole assembly's work, and `Quickshell.App.Tests` is the first directory
-`run-tests.cmd` iterates — it is the one that always runs into it.
-
-What a build leaves behind, counted: about thirty resident `dotnet` processes, MSBuild's
-node reuse keeping workers alive for fifteen minutes, and a `VBCSCompiler` holding 1.1
-GB with over two thousand CPU-seconds against it. Building with node reuse and shared
-compilation off gave three clean runs, which at that sample size against a roughly
-one-in-two failure rate is suggestive and not decisive.
-
-The fix has two halves and they are separable. The harness should not leave its own
-build resident while measuring. And a latency assertion should be able to say "the
-machine was busy" as something other than "the code regressed" — a floor on the at-rest
-reading, a retry that reports both, or a statistic sampled rather than a single worst
-case. [[QS106]] is the narrower flaw in one of the two.
-
-Falsified when a build with node reuse off still fails at the same rate over twenty
-runs.
-
 ### §QS139 Gigabytes waiting in a channel nobody is draining fast enough
 
 A host sending faster than its consumer buffers inside the channel, without bound.
