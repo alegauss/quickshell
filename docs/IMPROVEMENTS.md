@@ -323,31 +323,6 @@ than absorbed.
 Falsified when this repository claims cross-vendor correctness with no run behind it on
 any vendor's silicon.
 
-### §QS103 The one sequence that makes the emulator testable from outside
-
-QS33 ran esctest against the model for the first time: 151 of 568 passed. Of the 375
-failures, 228 are the same failure — the suite could not read the screen, so a test
-about backspace or about a scrolling region fails for a reason that has nothing to do
-with either.
-
-The mechanism is DECRQCRA, `CSI Ps ; Pu ; Pi ; Pt ; Pl ; Pb ; Pr * y`: the host asks for
-a checksum over a rectangle of cells and the terminal answers. It is the only way an
-automated suite can see a screen it does not own, which is why esctest leans on it for
-nearly everything.
-
-This is not a fidelity feature for its own sake. It is what turns three hundred and
-seventy-five failures into a number that means something: with it, each of those 228
-either passes or names a real defect, and telling those apart is the whole value of
-having run an external suite.
-
-The algorithm is xterm's and worth being exact about: the negated sum of the cells'
-characters, attributes optionally folded in, and the rectangle taken from the current
-margins where parameters are omitted. Arithmetic subtly wrong is worse than no answer,
-because the suite would report differences that are the checksum's rather than the
-terminal's.
-
-Falsified when a checksum reply differs from xterm's for a screen both have drawn.
-
 ### §QS104 Telling a program what is on, and what was never there
 
 QS20 taught the terminal to report a setting when asked in DECRQSS's syntax, and left
@@ -770,6 +745,31 @@ is small and is what xterm does with allowC132 set and no room to grow. If the a
 to ignore it, that is a non-goal and this line retires into it.
 
 Falsified when cut 010 is decided against without a line in the non-goals saying so.
+
+### §QS211 A judge with nothing in between
+
+Found shipping QS103. The emulator answered DECRQCRA correctly in its own tests, and the
+esctest run still read every checksum as zero. A probe sent `A`, then DECRQCRA, then DA1
+from WSL through the client's own `ConPtyChannel` and recorded what reached the
+emulator. It received `ESC P 7 ! ~ 0000 ESC \` and `ESC [ ? 61;6;7;… c` as text: the
+console host behind the pseudo-console had answered both queries itself and the tty
+echoed its answers. The queries never arrived.
+
+So `tools/Quickshell.Conformance` measures conhost for every sequence conhost
+intercepts: the device attributes, the cursor and status reports, DECRQCRA and likely
+DECRQM. The 151 of 568 in `docs/measurements/esctest-xps.md` is that mixture, and no
+change to the emulator can move the part that is conhost's.
+
+What to build, in order of preference. First, try `PSEUDOCONSOLE_PASSTHROUGH_MODE` (0x8)
+in `CreatePseudoConsole` for the conformance run only, and record whether this Windows
+build honours it; the in-box console host may not, since the flag arrived with the
+console host Windows Terminal ships. Second, take conhost out entirely: esctest runs in
+WSL on a Linux pty whose other end is a socket the conformance tool reads and writes, so
+every byte esctest sends reaches the emulator and every reply goes back unchanged.
+
+Then rerun esctest and rewrite the measurement, naming which path judged it.
+
+Falsified when an esctest reply is produced by anything other than this emulator.
 
 ## Block D — The tree a user organises work in
 

@@ -15,7 +15,7 @@ public sealed class ReplyTests
     /// <summary>Every question this terminal answers, and the two it refuses to.</summary>
     private const string EveryQuestion =
         E + "[c" + E + "[>c" + E + "[5n" + E + "[6n" + E + "[?6n"
-        + E + "[18t" + E + "[20t" + E + "[21t";
+        + E + "[18t" + E + "[20t" + E + "[21t" + E + "[7;1;1;1;24;80*y";
 
     // ---- The falsification ----
 
@@ -55,7 +55,8 @@ public sealed class ReplyTests
     public void EveryReplyByteComesFromTheClosedAlphabet()
     {
         Emulator emulator = Fed(E + "]2;a title\a" + EveryQuestion);
-        const string allowed = "\u001b[]?>;0123456789cnRt";
+        // P, ! and ~ frame DECRQCRA's answer, A to F are its hex digits and the backslash ends it.
+        const string allowed = "\u001b[]?>;0123456789cnRtP!~ABCDEF\\";
 
         foreach (byte sent in emulator.Reply)
         {
@@ -204,6 +205,56 @@ public sealed class ReplyTests
 
         Assert.Equal(string.Empty, emulator.ClipboardWrite);
         Assert.True(emulator.Unhandled > 0);
+    }
+
+    // ---- DECRQCRA, the checksum a suite reads the screen through (QS103) ----
+
+    /// <summary>
+    /// One cell, as esctest asks for it: the answer is the character negated in sixteen bits, so
+    /// 0x10000 minus it — esctest's own reading — is the character back.
+    /// </summary>
+    [Fact]
+    public void OneCellsChecksumIsItsCharacterNegated()
+    {
+        string sent = Sent(Fed("a" + E + "[1;1;1;1;1;1*y"));
+
+        Assert.Equal(E + "P1!~FF9F" + E + "\\", sent);
+        Assert.Equal('a', 0x10000 - Convert.ToInt32(sent[5..9], 16));
+    }
+
+    /// <summary>An empty cell is a space, which esctest reads back as empty.</summary>
+    [Fact]
+    public void AnEmptyCellCountsAsASpace() =>
+        Assert.Equal(E + "P2!~FFE0" + E + "\\", Sent(Fed(E + "[2;1;5;5;5;5*y")));
+
+    /// <summary>No rectangle is the whole screen: 80 by 24 spaces, 61,440, negated to 0x1000.</summary>
+    [Fact]
+    public void NoRectangleIsTheWholeScreen() =>
+        Assert.Equal(E + "P3!~1000" + E + "\\", Sent(Fed(E + "[3*y")));
+
+    /// <summary>A bold, underlined, inverse a is still an a to a suite asking which character it is.</summary>
+    [Fact]
+    public void AttributesAreNotInTheSum() =>
+        Assert.Equal(Sent(Fed("a" + E + "[4;1;1;1;1;1*y")),
+                     Sent(Fed(E + "[1;4;7ma" + E + "[0m" + E + "[4;1;1;1;1;1*y")));
+
+    /// <summary>Under origin mode the rectangle is counted from the top of the scrolling region.</summary>
+    [Fact]
+    public void UnderOriginModeTheRectangleIsRelativeToTheRegion()
+    {
+        Emulator emulator = Fed(E + "[5;10r" + E + "[?6h" + E + "[1;1Hz" + E + "[5;1;1;1;1;1*y");
+
+        Assert.Equal('z', emulator.Buffer.Screen(4)[0].Codepoint);
+        Assert.Equal(0x10000 - 'z', Convert.ToInt32(Sent(emulator)[5..9], 16));
+    }
+
+    /// <summary>A wide character counts once: its trailing half adds nothing.</summary>
+    [Fact]
+    public void AWideCharacterCountsOnce()
+    {
+        string sent = Sent(Fed("中" + E + "[6;1;1;1;1;2*y"));
+
+        Assert.Equal(-0x4E2D & 0xFFFF, Convert.ToInt32(sent[5..9], 16));
     }
 
     private static Emulator Fed(string stream)

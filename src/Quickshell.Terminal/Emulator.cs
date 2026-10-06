@@ -584,6 +584,14 @@ public sealed partial class Emulator : IAnsiHandler
             return;
         }
 
+        // DECRQCRA, the rectangle's checksum, which is how a suite that does not own the screen reads
+        // it back - QS103.
+        if (intermediates.Length == 1 && intermediates[0] == (byte)'*' && final == (byte)'y')
+        {
+            RectangleChecksum(parameters);
+            return;
+        }
+
         TerminalBuffer buffer = Buffer;
         PendingWrap = false;
 

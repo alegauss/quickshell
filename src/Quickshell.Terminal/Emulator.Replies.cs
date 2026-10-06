@@ -37,6 +37,13 @@ internal enum Answer : byte
 
     /// <summary>The same, released — which is a different final byte and nothing else.</summary>
     MouseSgrRelease,
+
+    /// <summary>
+    /// DECRQCRA's answer: the asker's id, then a rectangle's checksum as four hex digits. Both are
+    /// numbers this terminal computed; the id is the host's, but it is a number and is written as
+    /// one, so nothing the host chose as text reaches the reply.
+    /// </summary>
+    RectangleChecksum,
 }
 
 public sealed partial class Emulator
@@ -184,9 +191,91 @@ public sealed partial class Emulator
                 Literal(answer == Answer.MouseSgrRelease ? "m" : "M");
                 break;
 
+            case Answer.RectangleChecksum:
+                _reply.Add(Escape);
+                _reply.Add((byte)'P');
+                Number(first);
+                Literal("!~");
+                Hex4(second);
+                _reply.Add(Escape);
+                _reply.Add(Backslash);
+                break;
+
             default:
                 Unhandled++;
                 break;
+        }
+    }
+
+    /// <summary>
+    /// DECRQCRA: <c>CSI Pi ; Pg ; Pt ; Pl ; Pb ; Pr * y</c>, the checksum of a rectangle of the
+    /// screen, answered as <c>DCS Pi ! ~ XXXX ST</c> (QS103).
+    ///
+    /// <para><b>xterm's arithmetic, because xterm's is what a suite expects.</b> The sum of every cell's
+    /// character, negated, in sixteen bits. An empty cell counts as a space, which is xterm's rule
+    /// since patch #334 and the one esctest's default reading assumes: it takes 0x10000 minus the
+    /// answer as the character, and reads 32 as empty. The trailing half of a wide character adds
+    /// nothing, and a cluster counts as its base.</para>
+    ///
+    /// <para><b>Attributes are left out.</b> xterm can fold bold, underline, blink and inverse into
+    /// the sum, and a suite asking one cell at a time to learn its character would then read a bold
+    /// <c>a</c> as something else. What esctest asks this for is the character.</para>
+    ///
+    /// <para>The rectangle is one-based and inclusive, defaults to the whole screen, and under origin
+    /// mode is relative to the scrolling region and clamped inside it, as the cursor is.</para>
+    /// </summary>
+    private void RectangleChecksum(in CsiParameters parameters)
+    {
+        TerminalBuffer buffer = Buffer;
+
+        int id = parameters.Value(0, 0);
+        int firstRow = OriginMode ? MarginTop : 0;
+        int lastRow = OriginMode ? MarginBottom : buffer.Rows - 1;
+
+        int top = Math.Clamp(firstRow + Math.Max(1, parameters.Value(2, 1)) - 1, firstRow, lastRow);
+        int left = Math.Clamp(Math.Max(1, parameters.Value(3, 1)) - 1, 0, buffer.Columns - 1);
+        int bottom = parameters.Value(4, 0) > 0
+            ? Math.Clamp(firstRow + parameters.Value(4, 0) - 1, firstRow, lastRow)
+            : lastRow;
+        int right = parameters.Value(5, 0) > 0
+            ? Math.Clamp(parameters.Value(5, 0) - 1, 0, buffer.Columns - 1)
+            : buffer.Columns - 1;
+
+        int sum = 0;
+
+        for (int row = top; row <= bottom; row++)
+        {
+            ReadOnlySpan<Cell> line = buffer.Screen(row);
+
+            for (int column = left; column <= right && column < line.Length; column++)
+            {
+                Cell cell = line[column];
+
+                if (cell.Width == 0)
+                {
+                    continue;
+                }
+
+                sum += cell.IsCluster ? Base(buffer.TextOf(cell)) : cell.Codepoint;
+            }
+        }
+
+        Send(Answer.RectangleChecksum, id, -sum & 0xFFFF);
+    }
+
+    /// <summary>A cluster's first character, which is what it contributes to a checksum.</summary>
+    private static int Base(string cluster) =>
+        cluster.Length >= 2 && char.IsSurrogatePair(cluster[0], cluster[1])
+            ? char.ConvertToUtf32(cluster[0], cluster[1])
+            : cluster.Length > 0 ? cluster[0] : ' ';
+
+    /// <summary>Four upper-case hexadecimal digits, which is how DECRQCRA's checksum is written.</summary>
+    private void Hex4(int value)
+    {
+        for (int shift = 12; shift >= 0; shift -= 4)
+        {
+            int digit = (value >> shift) & 0xF;
+            _reply.Add((byte)(digit < 10 ? '0' + digit : 'A' + digit - 10));
         }
     }
 

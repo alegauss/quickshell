@@ -21,7 +21,6 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS103** (deps: —) **Nothing answers a request for a rectangle's checksum, so an external suite cannot read the screen back** — It is how esctest checks a cell, so its absence fails two hundred and twenty-eight tests that are about something else entirely. → §QS103
 - 📋 **QS104** (deps: —) **A program asking whether a mode is set gets no answer, so it cannot tell off from unsupported** — DECRQM is how a program discovers what this terminal can do, and twenty-two esctest cases fail on the silence alone. → §QS104
 - 📋 **QS105** (deps: —) **Backspace at the left edge stops there instead of wrapping to the end of the line above** — A shell editing a command that wrapped moves the cursor back through the wrap, and a terminal that will not follow leaves the cursor and the shell disagreeing. → §QS105
 - 📋 **QS107** (deps: QS35 ✅) **ClearType coverage is drawn without the contrast enhancement Windows applies, so stems stay lighter than elsewhere** — The coverage DirectWrite hands back is raw, and the curve its renderers apply on top is not published, so matching it needs a reference rather than a formula. → §QS107
@@ -41,6 +40,7 @@
 - 📋 **QS206** (deps: —) **Restoring the cursor does not restore the character set, so line drawing after ESC 8 prints letters** — DECSC saves the designations and shift state with the position, and a program that switched sets in between relies on getting them back. → §QS206
 - 📋 **QS207** (deps: —) **Insert mode is ignored, so text printed with CSI 4 h overwrites the row instead of pushing it right** — Editors and readline-style prompts use IRM to insert in place, and a terminal that overwrites shows the line the program did not draw. → §QS207
 - 📋 **QS208** (deps: —) **A request for 132 columns is ignored without its side effects, and nothing says whether that is the intent** — DECCOLM also clears the screen and resets the margins, so a program that asks gets neither the width nor the clean screen it assumes. → §QS208
+- 📋 **QS211** (deps: —) **esctest is judged through a pseudo-console that answers its queries itself, so the figure measures conhost** — A DECRQCRA sent through ConPtyChannel came back as conhost's 0000 and never reached the emulator, so 228 failures cannot move. → §QS211
 
 ## Block D — The tree a user organises work in
 

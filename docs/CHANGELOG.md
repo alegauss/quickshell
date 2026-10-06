@@ -63,6 +63,7 @@
 - ✅ **QS204** **Erasing part of the screen fills it with the default background, so a curses program's full-width bars stop at text** — EL, ED and ECH leave the pen's background and nothing else of it, so htop's header and selected row reach the right edge; a copy still trims them.
 - ✅ **QS93** **Every golden scene is text somebody typed into the test, so none of them is a screen a real program drew** — Three golden scenes are now screens real programs drew: htop, vim and ls --color replayed from the corpus at 200x50 through the client's painter.
 - ✅ **QS101** **Ninety-six bytes of the parse path's allocation is measured but unattributed** — The hostile sequence allocates nothing: a split broken character no longer reaches .NET's byte[] fallback, and the ceiling is zero.
+- ✅ **QS103** **Nothing answers a request for a rectangle's checksum, so an external suite cannot read the screen back** — DECRQCRA answers with xterm's negated 16-bit sum, empty cells as spaces and no attributes, as esctest reads it; conhost hiding it is QS211.
 
 ## Block D — The tree a user organises work in
 
