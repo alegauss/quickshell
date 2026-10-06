@@ -793,6 +793,30 @@ public sealed class WindowTests : IDisposable
         Assert.Contains("// added by hand while the dialog was open", written, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// QS129's falsification turned around: the running client says where its log is. The palette
+    /// offers it, and the entry opens the client's own log folder.
+    /// </summary>
+    [Fact]
+    public void ThePaletteOpensTheLogFolder()
+    {
+        (bool listed, string? shown) = OnStaThread(() =>
+        {
+            string? opened = null;
+            MainWindow window = new() { ShowsFolder = folder => opened = folder };
+
+            InputBinding entry = window.InputBindings.OfType<InputBinding>()
+                                       .Single(bound => bound.Command.GetType().Name == "Logging");
+
+            entry.Command.Execute(null);
+
+            return (window.Actions.Any(action => action.Name == "Open the log folder"), opened);
+        });
+
+        Assert.True(listed, "the palette does not offer the log folder");
+        Assert.Equal(Locations.Current.Logs, shown);
+    }
+
     /// <summary>Fills a session dialog's host, leaves the name empty, and presses Save.</summary>
     private static Func<SessionDialog, bool> Fill(string host) => dialog =>
     {

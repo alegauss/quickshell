@@ -55,11 +55,16 @@ public sealed class RemoteShell : IShellSession
     /// <param name="columns">The grid the pane settled on.</param>
     /// <param name="rows">Its rows.</param>
     /// <param name="cancellationToken">Gives up.</param>
+    /// <param name="log">
+    /// Where the connection records what happened — the client's own log, or a trace kept for this
+    /// session alone (QS129). Null records nothing.
+    /// </param>
     /// <exception cref="SshException">The connection did not happen, and why in words.</exception>
     public static async Task<RemoteShell> OpenAsync(ResolvedSession session, TrustOnFirstUse trust,
                                                     Emulator emulator, DamageSignal damage,
                                                     int columns, int rows,
-                                                    CancellationToken cancellationToken = default)
+                                                    CancellationToken cancellationToken = default,
+                                                    SessionLog? log = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(trust);
@@ -83,8 +88,8 @@ public sealed class RemoteShell : IShellSession
             ? new SshChain([
                 new SshHop(Through(jump.Value, target.User), credentials, trust.CheckAsync),
                 new SshHop(target, credentials, trust.CheckAsync),
-              ]) { KeepAlive = keepAlive, SignIn = signIn }
-            : new SshNetTransport { KeepAlive = keepAlive, SignIn = signIn };
+              ]) { KeepAlive = keepAlive, SignIn = signIn, Log = log }
+            : new SshNetTransport { KeepAlive = keepAlive, SignIn = signIn, Log = log };
 
         said.Line(session.JumpHost is { } through
             ? $"Connecting to {target} through {through.Value}..."
@@ -128,6 +133,12 @@ public sealed class RemoteShell : IShellSession
         catch
         {
             await transport.DisposeAsync().ConfigureAwait(false);
+
+            // Where the rest of the story is, said where the user is already looking (QS129).
+            if (log is not null)
+            {
+                said.Line($"The log for this connection is {log.Path}");
+            }
 
             throw;
         }

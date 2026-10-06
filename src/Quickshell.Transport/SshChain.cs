@@ -106,6 +106,9 @@ public sealed class SshChain : ISshTransport
     /// </remarks>
     public IProgress<SshSignInStep>? SignIn { get; set; }
 
+    /// <summary>Where every hop records what happened, or null to record nothing (QS129).</summary>
+    public SessionLog? Log { get; init; }
+
     /// <inheritdoc/>
     public Task<SshException?> Disconnected =>
         _last?.Disconnected ?? Task.FromResult<SshException?>(null);
@@ -156,7 +159,7 @@ public sealed class SshChain : ISshTransport
 
                 if (last)
                 {
-                    SshNetTransport session = new() { KeepAlive = KeepAlive, Timeout = Timeout, SignIn = SignIn };
+                    SshNetTransport session = new() { KeepAlive = KeepAlive, Timeout = Timeout, SignIn = SignIn, Log = Log };
 
                     await session.ConnectAsync(reachable with { User = step.Endpoint.User },
                                                step.Credentials, step.HostKey, cancellationToken)
@@ -251,7 +254,7 @@ public sealed class SshChain : ISshTransport
     private async ValueTask<SshEndpoint> Carry(SshHop step, SshEndpoint reachable, SshEndpoint next,
                                                CancellationToken cancellationToken)
     {
-        SshNetTransport bastion = new() { KeepAlive = KeepAlive, Timeout = Timeout, SignIn = SignIn };
+        SshNetTransport bastion = new() { KeepAlive = KeepAlive, Timeout = Timeout, SignIn = SignIn, Log = Log };
 
         await bastion.ConnectAsync(reachable with { User = step.Endpoint.User }, step.Credentials,
                                    step.HostKey, cancellationToken).ConfigureAwait(false);

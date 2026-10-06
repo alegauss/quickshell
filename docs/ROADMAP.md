@@ -83,12 +83,12 @@
 
 ## Block I — An error a user can act on
 
-- 📋 **QS129** (deps: QS71 ✅) **Nothing in the client says where its log is, or turns the trace on** — A log a user cannot find is a log that does not exist, and a trace that can only be enabled by editing code is one no bug report will ever carry. → §QS129
+- ⏳ **QS129** (deps: QS71 ✅, QS220) **Nothing in the client says where its log is, or turns the trace on** — An open tab cannot turn its trace on, since a trace records the handshake and the tab cannot reconnect until QS220. → §QS129
 - 📋 **QS130** (deps: QS71 ✅) **The log goes quiet exactly where a transfer or a tunnel failed** — A connection's own life is recorded and everything carried over it is not, so the reports hardest to reproduce are the ones the log has least to say about. → §QS130
 - 📋 **QS131** (deps: QS72 ✅) **The crash dialog mixes this client's English with Windows' own button words** — Two dialogs do it now, the crash report and the diagnostics bundle, and "Yes/No" names neither of the things their buttons actually do. → §QS131
 - 📋 **QS132** (deps: QS72 ✅) **A crash report cannot name the GPU, on the failures most likely to be about one** — The adapter line reads "no device is held at this level" because nothing above the pane holds one, so a driver report arrives without the driver. → §QS132
 - 📋 **QS133** (deps: QS73 ✅) **A recording has no bound and will fill a disk if it is left running** — The log rotates against a fixed total and a recording does not, so the one that writes every byte a host sends is the one with nothing stopping it. → §QS133
-- 📋 **QS134** (deps: QS73 ✅, QS129) **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The recorder and the title's indication both work, and the only caller that can begin one is a test, so the feature reaches no user. → §QS134
+- 📋 **QS134** (deps: QS73 ✅, QS129 ⏳) **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The recorder and the title's indication both work, and the only caller that can begin one is a test, so the feature reaches no user. → §QS134
 - 📋 **QS150** (deps: —) **A defect report about a black window says what an adapter probe found, not what the window did** — The bundle opens its own probe because nothing at that level held a device, and now the client holds one that has been drawing. → §QS150
 
 ## Block J — Leaving MobaXterm, proven by the switch
@@ -344,6 +344,12 @@
 - **Forwards come back after a reconnect, each said** An SSH tab whose link dropped
   reconnects with every forward it had started again, and the pane names any that did
   not come back and what holds its port.
+
+## Done when — QS129
+
+- **An open tab turns its trace on from the palette** The palette's trace entry
+  reconnects the tab with its session traced, the pane says where the trace is written,
+  and the next run starts untraced.
 
 ## Non-goals
 

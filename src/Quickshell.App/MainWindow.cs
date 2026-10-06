@@ -226,6 +226,9 @@ public sealed class MainWindow : Window
         // menu, and a chord for it would be spent on nobody afterwards.
         InputBindings.Add(new InputBinding(new Installing(this), new PaletteOnly()));
 
+        // Where the log is, from the palette (QS129): the one sentence a support reply needs.
+        InputBindings.Add(new InputBinding(new Logging(this), new PaletteOnly()));
+
         // A new session, from the palette (QS121). No chord: a session list is where this belongs
         // in the end, and a chord taken now is one that list may want for something else.
         InputBindings.Add(new InputBinding(new Creating(this), new PaletteOnly()));
@@ -2108,6 +2111,41 @@ public sealed class MainWindow : Window
 
     /// <summary>Who answers <see cref="AskHostKey"/> instead of a dialog, which is how a test answers.</summary>
     public Quickshell.Transport.HostKeyDecision? AskingHostKey { get; set; }
+
+    /// <summary>
+    /// How a folder is shown to the user: Explorer, unless a caller says otherwise — which is how a
+    /// test sees which folder without one opening (QS129).
+    /// </summary>
+    public Action<string>? ShowsFolder { get; set; }
+
+    /// <summary>
+    /// Opens the folder the client's session logs are written to, making it first where nothing has
+    /// been logged yet — an empty folder is an answer, a missing one is a question (QS129).
+    /// </summary>
+    /// <returns>The folder shown.</returns>
+    public string ShowLogFolder()
+    {
+        string folder = Locations.Current.Logs;
+
+        System.IO.Directory.CreateDirectory(folder);
+
+        (ShowsFolder ?? (shown => Process.Start(new ProcessStartInfo("explorer.exe", $"\"{shown}\"")
+        {
+            UseShellExecute = true,
+        })?.Dispose()))(folder);
+
+        return folder;
+    }
+
+    /// <summary>The log folder's palette entry.</summary>
+    private sealed class Logging(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Open the log folder";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.ShowLogFolder();
+    }
 
     /// <summary>The new-session palette entry.</summary>
     private sealed class Creating(MainWindow window) : Doing(window)

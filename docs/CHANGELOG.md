@@ -156,6 +156,7 @@
 - ✅ **QS72** **A crash takes the session, the scrollback and any explanation of what happened with it** — A crash writes a report naming the build, the machine and what was open, then tells the user where it is — and a lost graphics device is told apart from a defect.
 - ✅ **QS73** **A user reporting a defect has no way to say what their client was doing when it happened** — Ctrl+Shift+F1 writes one file holding the machine, the adapter, the settings with every value a secret could hide behind removed, the log and the crashes — and output records without keystrokes.
 - ✅ **QS154** **Naming a typeface on any WPF text kills the client, because invariant globalization refuses the culture WPF builds** — Invariant globalization is off, so a text box and a named typeface both survive; it saved no bytes on Windows and cost grapheme segmentation half its rate.
+- ✅ **QS129 (the log and where it is)** **Nothing in the client says where its log is, or turns the trace on** — Every saved session logs to the client's own folder, the palette opens it, a failure names it, and --trace keeps one session's trace.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 

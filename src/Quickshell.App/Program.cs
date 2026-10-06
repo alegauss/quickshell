@@ -109,7 +109,7 @@ public static class Entry
         // settings changed opens at what they are now rather than at what they were.
         window.Opens = () => Opened(window, window.Settings, share);
         window.Connects = leaf => _ = leaf.ConnectAsync();
-        window.OpensSession = path => OpenedSession(window, window.Settings, share, path);
+        window.OpensSession = path => OpenedSession(window, window.Settings, share, path, trace: false);
 
         // Only a copy that is not the installed one offers to install itself: the installed copy
         // installing itself would be a copy of a folder onto the same folder.
@@ -197,9 +197,15 @@ public static class Entry
         // `--session <path>` opens a saved session in a tab of its own, by its path in the store
         // (QS126). The same standing as `--tabs`: this client has no menu yet, so the command line is
         // how a shortcut, a script or a UI case asks for one host — and it is what a restart is.
+        //
+        // `--trace` beside it records that session's negotiation and channels at trace level, in a
+        // file of its own under the log folder (QS129). For this run only: a trace somebody turned
+        // on once to diagnose one host is not one this client should go on writing.
         if (Given(arguments, "--session") is { } saved)
         {
-            window.Dispatcher.BeginInvoke(() => OpenedSession(window, window.Settings, share, saved));
+            bool trace = arguments.Contains("--trace", StringComparer.Ordinal);
+
+            window.Dispatcher.BeginInvoke(() => OpenedSession(window, window.Settings, share, saved, trace));
         }
 
         // `--palette` opens what Ctrl+Shift+P opens, and for the same reason as `--import`: after
@@ -223,6 +229,17 @@ public static class Entry
         foreach (TerminalTab tab in window.Held.ToArray())
         {
             Close(tab);
+        }
+
+        // The logs after the sessions that wrote to them, so their last lines are on disk.
+        foreach (Quickshell.Transport.SessionLog trace in Traces)
+        {
+            trace.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+
+        if (Logged.IsValueCreated)
+        {
+            Logged.Value.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
 
         WindowPlacements.ReadFrom(Placements()).Remember(Screens(), window.Where());
@@ -298,7 +315,8 @@ public static class Entry
     /// key nobody has seen is asked about at this window. A path the store does not have is said in
     /// the tab rather than opening nothing.</para>
     /// </summary>
-    private static void OpenedSession(MainWindow window, Settings settings, TerminalShare share, string path)
+    private static void OpenedSession(MainWindow window, Settings settings, TerminalShare share, string path,
+                                      bool trace)
     {
         ResolvedSession? session;
 
@@ -330,9 +348,35 @@ public static class Entry
 
         Quickshell.Transport.TrustOnFirstUse trust = new(Quickshell.Transport.KnownHosts.ReadFrom(), window.AskHostKey);
 
+        Quickshell.Transport.SessionLog log = trace ? Traced(session.Host) : Logged.Value;
+
         _ = tab.Focused.ConnectAsync(async (emulator, damage, columns, rows, token) =>
-            await RemoteShell.OpenAsync(session, trust, emulator, damage, columns, rows, token)
+            await RemoteShell.OpenAsync(session, trust, emulator, damage, columns, rows, token, log)
                              .ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// The client's own session log, at the ordinary level, in <see cref="Locations.Logs"/> (QS129).
+    /// Opened by the first connection and not at start-up, so nothing on the way to the first paint
+    /// touches a disk.
+    /// </summary>
+    private static readonly Lazy<Quickshell.Transport.SessionLog> Logged =
+        new(() => Quickshell.Transport.SessionLog.InFolder(Locations.Current.Logs));
+
+    /// <summary>Every trace opened this run, closed when the process leaves.</summary>
+    private static readonly List<Quickshell.Transport.SessionLog> Traces = [];
+
+    /// <summary>A trace for one session, in a folder of its own so it is the only thing in it.</summary>
+    private static Quickshell.Transport.SessionLog Traced(string host)
+    {
+        string safe = string.Concat(host.Select(each => Path.GetInvalidFileNameChars().Contains(each) ? '_' : each));
+
+        Quickshell.Transport.SessionLog trace = Quickshell.Transport.SessionLog.InFolder(
+            Path.Combine(Locations.Current.Logs, "trace", safe), Quickshell.Transport.LogDetail.Trace);
+
+        Traces.Add(trace);
+
+        return trace;
     }
 
     /// <summary>

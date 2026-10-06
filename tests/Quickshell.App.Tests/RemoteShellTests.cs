@@ -211,6 +211,50 @@ public sealed class RemoteShellTests : IDisposable
         Assert.All(listening, port => Assert.Empty(LocalForward.ListeningOn(port)));
     }
 
+    /// <summary>
+    /// QS129: a connection records itself in the log it is given, and one that fails says in the pane
+    /// where that log is — which is where a user is looking when it happens.
+    /// </summary>
+    [Fact]
+    public async Task AConnectionIsLoggedAndAFailureSaysWhereTheLogIs()
+    {
+        SkipWithoutFixture();
+
+        string store = Store("""
+            { "Name": "", "Children": [
+                { "Name": "web", "Host": "127.0.0.1", "Settings": { "User": "probe", "Port": 2222, "Key": "KEY" } },
+                { "Name": "nowhere", "Host": "127.0.0.1", "Settings": { "User": "probe", "Port": 2, "Key": "KEY" } }
+            ] }
+            """);
+
+        SessionTree tree = SessionTree.ReadFrom(store);
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+
+        await using (SessionLog log = SessionLog.InFolder(Path.Combine(_here, "logs")))
+        {
+            await using (await RemoteShell.OpenAsync(tree.Session("web")!, trust, new Emulator(80, 25),
+                                                     new DamageSignal(), 80, 25, Stop, log))
+            {
+            }
+
+            Emulator failing = new(120, 25);
+
+            await Assert.ThrowsAsync<SshException>(async () =>
+                await RemoteShell.OpenAsync(tree.Session("nowhere")!, trust, failing, new DamageSignal(),
+                                            120, 25, Stop, log));
+
+            Assert.Contains($"The log for this connection is {log.Path}", Screen(failing).Replace("\n", string.Empty,
+                            StringComparison.Ordinal), StringComparison.Ordinal);
+        }
+
+        string written = await File.ReadAllTextAsync(Path.Combine(_here, "logs", "quickshell.log"), Stop);
+
+        Assert.Contains("connecting", written, StringComparison.Ordinal);
+        Assert.Contains("connected", written, StringComparison.Ordinal);
+        Assert.Contains("failed", written, StringComparison.Ordinal);
+    }
+
     /// <summary>A jump host is written as OpenSSH writes one, and every part of it is optional but the host.</summary>
     [Theory]
     [InlineData("bastion.example", "me", "bastion.example", 22)]
