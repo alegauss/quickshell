@@ -8,7 +8,7 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- ⏳ **QS113** (deps: QS41 ✅, QS46 ✅, QS126) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — The report reaches nothing a user sees until a remote session is in the window, which QS126 brings. → §QS113
+- ⏳ **QS113** (deps: QS41 ✅, QS46 ✅, QS126 ⏳) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — The report reaches nothing a user sees until a remote session is in the window, which QS126 brings. → §QS113
 
 ## Block C — Emulation that does not lie about the remote
 
@@ -36,11 +36,11 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-- 📋 **QS184** (deps: QS126) **The remote pane opens at the account's home while the shell beside it has already said where it is** — OSC 7 already records the shell's directory and nothing reads it, so a user who cd'd into a deployment finds the browser somewhere else. → §QS184
-- 📋 **QS185** (deps: QS60 ✅, QS126) **A remote file cannot be edited in a local editor, so changing a config is still a download, an edit and an upload** — It is why most people open a file browser at all, and the manual round trip is exactly what they want the client to do for them. → §QS185
+- 📋 **QS184** (deps: QS126 ⏳) **The remote pane opens at the account's home while the shell beside it has already said where it is** — OSC 7 already records the shell's directory and nothing reads it, so a user who cd'd into a deployment finds the browser somewhere else. → §QS184
+- 📋 **QS185** (deps: QS60 ✅, QS126 ⏳) **A remote file cannot be edited in a local editor, so changing a config is still a download, an edit and an upload** — It is why most people open a file browser at all, and the manual round trip is exactly what they want the client to do for them. → §QS185
 - 📋 **QS186** (deps: —) **A copy started from the browser shows nothing until it ends and cannot be stopped, so a large tree looks hung** — The queue under it reports each file's progress and can pause, cancel and retry, and none of that reaches the window. → §QS186
 - 📋 **QS188** (deps: —) **Nothing can be dragged out of the host's pane, so a file on the server reaches Explorer only through a copy** — Windows asks for a dragged file's data during the drop, and a server cannot always answer in that time, so it needs deferred rendering. → §QS188
-- 📋 **QS189** (deps: QS126) **A file dropped onto an SSH terminal can only be typed as its path, never sent to the directory the shell is in** — QS64 typed the path and left the modifier that transfers instead, which needs an SSH tab and the directory its shell reported. → §QS189
+- 📋 **QS189** (deps: QS126 ⏳) **A file dropped onto an SSH terminal can only be typed as its path, never sent to the directory the shell is in** — QS64 typed the path and left the modifier that transfers instead, which needs an SSH tab and the directory its shell reported. → §QS189
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
@@ -51,7 +51,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS126** (deps: QS121 ✅) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126
+- ⏳ **QS126** (deps: QS121 ✅) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — The palette has no session picker, no password is asked for, and a remote tab has no browser, transfers or forwards. → §QS126
 - 📋 **QS151** (deps: QS116 ✅) **A reconnecting session makes a new damage signal per connection, so a pane asleep on the first never repaints** — QS126 wires this up and inherits a window frozen at whatever frame it drew first. → §QS151
 - 📋 **QS152** (deps: QS116 ✅) **A shell that exits leaves the window holding its last frame, with nothing saying the session ended** — Typing exit is the ordinary way a session ends, and the client that answers it with a frozen picture reads as hung. → §QS152
 - 📋 **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — QS47 put the session in the tab and stopped there, so the one thing that arrangement was for is the one thing that cannot be done. → §QS160
@@ -94,7 +94,7 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- 📋 **QS81** (deps: QS80 ✅, QS116 ✅, QS126) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
+- 📋 **QS81** (deps: QS80 ✅, QS116 ✅, QS126 ⏳) **A user weighing the switch has nothing that says what they will and will not get** — The non-goals list is already written and honest, and a user deciding whether to move their fleet is exactly who needs to read it beforehand. → §QS81
 - 📋 **QS216** (deps: —) **Importing sessions writes over the whole session store, so sessions made since are lost without a word** — The import writes the imported tree alone, and since QS121 the store can hold sessions the user made here. → §QS216
 
 ## Block K — The build and the harness — what a green run is evidence of

@@ -22,7 +22,7 @@ namespace Quickshell.App;
 /// answer to a question already answered. QS50 is where the settings surface exists and where one
 /// belongs if it turns out to be wanted.</para>
 /// </summary>
-public sealed class LocalSession : IAsyncDisposable
+public sealed class LocalSession : IShellSession
 {
     private readonly ConPtyChannel _channel;
 

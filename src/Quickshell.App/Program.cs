@@ -109,6 +109,7 @@ public static class Entry
         // settings changed opens at what they are now rather than at what they were.
         window.Opens = () => Opened(window, window.Settings, share);
         window.Connects = leaf => _ = leaf.ConnectAsync();
+        window.OpensSession = path => OpenedSession(window, window.Settings, share, path);
 
         // Only a copy that is not the installed one offers to install itself: the installed copy
         // installing itself would be a copy of a folder onto the same folder.
@@ -191,6 +192,14 @@ public static class Entry
                 : null;
 
             window.Dispatcher.BeginInvoke(() => window.ImportSessions(from));
+        }
+
+        // `--session <path>` opens a saved session in a tab of its own, by its path in the store
+        // (QS126). The same standing as `--tabs`: this client has no menu yet, so the command line is
+        // how a shortcut, a script or a UI case asks for one host — and it is what a restart is.
+        if (Given(arguments, "--session") is { } saved)
+        {
+            window.Dispatcher.BeginInvoke(() => OpenedSession(window, window.Settings, share, saved));
         }
 
         // `--palette` opens what Ctrl+Shift+P opens, and for the same reason as `--import`: after
@@ -279,6 +288,51 @@ public static class Entry
         window.Sessions.Open(host, another: true);
 
         _ = tab.ConnectAsync();
+    }
+
+    /// <summary>
+    /// Opens a saved session in a tab of its own and connects it (QS126).
+    ///
+    /// <para>The store is read at this moment, so a session made a minute ago — through the dialog or
+    /// by hand — is there. Every hop's host key goes through the user's own <c>known_hosts</c>, and a
+    /// key nobody has seen is asked about at this window. A path the store does not have is said in
+    /// the tab rather than opening nothing.</para>
+    /// </summary>
+    private static void OpenedSession(MainWindow window, Settings settings, TerminalShare share, string path)
+    {
+        ResolvedSession? session;
+
+        try
+        {
+            session = SessionTree.ReadFrom(window.SessionsFile ?? Locations.Current.Sessions).Session(path);
+        }
+        catch (SessionStoreException unreadable)
+        {
+            MessageBox.Show(window, $"{unreadable.Message}\n\n{unreadable.Means}", "Sessions",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+
+            return;
+        }
+
+        if (session is null)
+        {
+            MessageBox.Show(window, $"There is no saved session called {path}.", "Sessions",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+
+            return;
+        }
+
+        TerminalTab tab = TerminalTab.Open(settings, share, session.Host);
+
+        window.Apply(settings);
+        window.Add(tab);
+        window.Sessions.Open(session.Host, another: true);
+
+        Quickshell.Transport.TrustOnFirstUse trust = new(Quickshell.Transport.KnownHosts.ReadFrom(), window.AskHostKey);
+
+        _ = tab.Focused.ConnectAsync(async (emulator, damage, columns, rows, token) =>
+            await RemoteShell.OpenAsync(session, trust, emulator, damage, columns, rows, token)
+                             .ConfigureAwait(false));
     }
 
     /// <summary>

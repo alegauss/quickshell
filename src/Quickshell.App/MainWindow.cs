@@ -2063,6 +2063,52 @@ public sealed class MainWindow : Window
         return written;
     }
 
+    /// <summary>
+    /// Opens a saved session in a tab of its own, by its path in the store — or null while nothing
+    /// can (QS126). The program sets it, because the tab needs the device every pane shares.
+    /// </summary>
+    public Action<string>? OpensSession { get; set; }
+
+    /// <summary>
+    /// Asks the person at this window about a host key nobody has seen, which is the one question a
+    /// connection cannot answer for itself (QS126).
+    ///
+    /// <para><b>Three answers, not two.</b> Remember it, trust it this once, or do not connect —
+    /// because "trust once" and "remember" are different decisions and a yes/no cannot tell them
+    /// apart. A changed key never reaches this: <see cref="Quickshell.Transport.TrustOnFirstUse"/> refuses it outright.
+    /// Asked on this window's thread, which a connection on its own thread waits for.</para>
+    /// </summary>
+    public ValueTask<Quickshell.Transport.SshHostKeyVerdict> AskHostKey(Quickshell.Transport.HostKeyQuestion question,
+                                                                      CancellationToken cancellationToken)
+    {
+        if (AskingHostKey is { } asking)
+        {
+            return asking(question, cancellationToken);
+        }
+
+        return new ValueTask<Quickshell.Transport.SshHostKeyVerdict>(Dispatcher.InvokeAsync(() =>
+        {
+            MessageBoxResult answer = MessageBox.Show(
+                this,
+                $"quickshell has not seen {question.Endpoint.Host}'s key before.\n\n"
+                + $"{question.Key.Algorithm} SHA256:{question.Key.Fingerprint}\n\n"
+                + "Compare it with the fingerprint the server's owner gave you.\n\n"
+                + "Yes: trust it and remember it.\nNo: trust it this time only.\nCancel: do not connect.",
+                "Unknown host key", MessageBoxButton.YesNoCancel, MessageBoxImage.Question,
+                MessageBoxResult.Cancel);
+
+            return answer switch
+            {
+                MessageBoxResult.Yes => Quickshell.Transport.SshHostKeyVerdict.AcceptAndRemember,
+                MessageBoxResult.No => Quickshell.Transport.SshHostKeyVerdict.Accept,
+                _ => Quickshell.Transport.SshHostKeyVerdict.Refuse,
+            };
+        }, System.Windows.Threading.DispatcherPriority.Normal, cancellationToken).Task);
+    }
+
+    /// <summary>Who answers <see cref="AskHostKey"/> instead of a dialog, which is how a test answers.</summary>
+    public Quickshell.Transport.HostKeyDecision? AskingHostKey { get; set; }
+
     /// <summary>The new-session palette entry.</summary>
     private sealed class Creating(MainWindow window) : Doing(window)
     {

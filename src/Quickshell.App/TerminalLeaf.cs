@@ -29,7 +29,7 @@ public sealed class TerminalLeaf : IAsyncDisposable
 {
     private readonly DamageSignal _damage;
 
-    private LocalSession? _session;
+    private IShellSession? _session;
     private long _seen;
     private bool _disposed;
     private bool _receiving;
@@ -214,14 +214,27 @@ public sealed class TerminalLeaf : IAsyncDisposable
     /// </summary>
     /// <param name="commandLine">What to run, or null for this user's own shell.</param>
     /// <param name="cancellationToken">Gives up on the pseudo-console's pipes connecting.</param>
-    public async Task ConnectAsync(string? commandLine = null,
-                                   CancellationToken cancellationToken = default)
+    public Task ConnectAsync(string? commandLine = null,
+                             CancellationToken cancellationToken = default) =>
+        ConnectAsync(async (emulator, damage, columns, rows, token) =>
+                         await LocalSession.OpenAsync(emulator, damage, columns, rows, commandLine, token)
+                                           .ConfigureAwait(false),
+                     cancellationToken);
+
+    /// <summary>
+    /// Starts whatever <paramref name="open"/> opens behind this pane — a saved session's remote
+    /// shell, or anything else that arrives as a pipeline — and joins the two ends of it (QS126).
+    /// </summary>
+    /// <param name="open">Opens the session once the grid is known.</param>
+    /// <param name="cancellationToken">Gives up on opening it.</param>
+    public async Task ConnectAsync(ShellOpener open, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(open);
+
         try
         {
-            LocalSession session = await LocalSession
-                .OpenAsync(Emulator, _damage, Emulator.Buffer.Columns, Emulator.Buffer.Rows,
-                           commandLine, cancellationToken)
+            IShellSession session = await open(Emulator, _damage, Emulator.Buffer.Columns, Emulator.Buffer.Rows,
+                                               cancellationToken)
                 .ConfigureAwait(false);
 
             _session = session;

@@ -128,6 +128,7 @@
 - ✅ **QS53** **The same command on eight hosts has to be typed eight times** — Ctrl+Shift+B types and pastes into every pane of the tab at once, the palette leaves any pane out, and only panes wearing an orange edge receive, until a switch, split, zoom or close ends it.
 - ✅ **QS83** **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — Every colour the client decides is declared once in Brand.cs, a test refuses one written elsewhere in src, and open windows follow a change of theme.
 - ✅ **QS202** **An editor's save over the settings file can be refused while the client is reading it** — A save that deletes the settings file and renames into place is not refused by the client's read; a move over an open file still is, by any reader.
+- ✅ **QS126 (a saved session as an SSH tab)** **Eleven shipped transport components are named by no code in the application, so none of them can be used** — A saved session opens as an SSH tab through its jump host, keys, agent and known_hosts, and connects again after a restart.
 
 ## Block H — The reason to leave the incumbent
 
