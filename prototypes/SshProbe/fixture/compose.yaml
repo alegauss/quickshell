@@ -65,3 +65,15 @@ services:
     volumes:
       - ./keys:/keys:ro
     command: ["noforward"]
+
+  # A server that exists to be frozen. QS111 pauses it to make a host that stops answering on a
+  # socket that stays open, and a container of its own is what lets that run beside every other
+  # test instead of freezing their server too.
+  frozen:
+    build: .
+    container_name: qs-sshd-frozen
+    hostname: qs-sshd-frozen
+    ports:
+      - "127.0.0.1:2227:22"
+    volumes:
+      - ./keys:/keys:ro

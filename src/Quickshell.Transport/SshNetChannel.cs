@@ -191,6 +191,61 @@ internal sealed class SshNetChannel : IPtyChannel
     }
 
     /// <summary>
+    /// Asks the far end something it must answer, and blocks until it does — or throws when the
+    /// library's own timeout runs out first. What the answer is does not matter: a refusal is as
+    /// much proof of life as an acceptance.
+    ///
+    /// <para><b>An <c>env</c> request on this channel, reached through the library's internals, and
+    /// both halves of that are forced.</b> SSH.NET sends its keepalive — the global request and the
+    /// channel one alike — with <c>want_reply</c> clear, so nothing can come back; its channel
+    /// version even waits for the reply it told the server not to send, and times out on a live
+    /// server (measured, QS111). Of the channel requests it can send that do want a reply,
+    /// <c>env</c> is the one with no effect once a shell has started: OpenSSH refuses it outright
+    /// after the shell request, and a server that accepted it would only be setting a variable for
+    /// processes that will never be started. <c>break</c> also wants a reply, and sends a real
+    /// break to the program.</para>
+    ///
+    /// <para>The channel session is internal to the library, so a version that renames it makes
+    /// <see cref="CanAskPeer"/> false rather than throwing, and the fixture test that pauses a
+    /// server is what fails.</para>
+    /// </summary>
+    internal bool AskPeer()
+    {
+        try
+        {
+            return (bool)Asking!.Invoke(Session(_shell), Liveness)!;
+        }
+        catch (System.Reflection.TargetInvocationException called) when (called.InnerException is { } thrown)
+        {
+            // The library's own exception, as though it had been called directly.
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(thrown);
+
+            throw;
+        }
+    }
+
+    /// <summary>Whether this version of the library still has the request <see cref="AskPeer"/> sends.</summary>
+    internal bool CanAskPeer => Asking is not null && Session(_shell) is not null;
+
+    private static readonly System.Reflection.FieldInfo? SessionField =
+        typeof(ShellStream).GetField("_channel",
+                                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+    private static readonly System.Reflection.MethodInfo? Asking =
+        SessionField?.FieldType.GetMethod("SendEnvironmentVariableRequest", [typeof(string), typeof(string)]);
+
+    /// <summary>A name no server is configured to accept, so the answer is a refusal.</summary>
+    private static readonly object[] Liveness = ["QUICKSHELL_LIVENESS", "1"];
+
+    private static object? Session(ShellStream shell) => SessionField?.GetValue(shell);
+
+    /// <summary>
+    /// The transport's verdict that the far end is gone, published as this channel's ending so a
+    /// reader waiting on <see cref="Closed"/> hears it too.
+    /// </summary>
+    internal void Lost(string reason) => End(PtyExit.Failed(reason));
+
+    /// <summary>
     /// Publishes the ending, once. A reader waiting on bytes that are not coming is woken by the
     /// stream's own disposal, which is what actually unblocks the read underneath it.
     ///

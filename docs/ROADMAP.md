@@ -4,9 +4,8 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-- ⏳ **QS38** (deps: QS37 ✅, QS111) **A link that drops for ten seconds costs the whole session and its scrollback** — A peer that stopped answering on a socket that stayed open is still invisible, because the library's keepalive keeps a NAT mapping rather than detecting a death. → §QS38
+- ⏳ **QS38** (deps: QS37 ✅, QS111 ✅) **A link that drops for ten seconds costs the whole session and its scrollback** — A peer that stopped answering on a socket that stayed open is still invisible, because the library's keepalive keeps a NAT mapping rather than detecting a death. → §QS38
 - 📋 **QS40** (deps: QS38 ⏳, QS39 ✅) **This client has met one server, so an appliance that negotiates differently is an unknown** — Interoperability failures are found by connecting to unusual servers and by no other method, so the unusual servers are enumerated and connected to deliberately. → §QS40
-- 📋 **QS111** (deps: QS37 ✅) **A peer that stopped answering on a socket that stayed open is not noticed, so the session looks live for minutes** — The library's keepalive sends without expecting an answer, so it keeps a NAT mapping alive and cannot tell a frozen host from a quiet one. → §QS111
 - 📋 **QS112** (deps: QS39 ✅) **A dead route and a port that is not SSH read as one failure, so the remedy offered covers two things** — The library's asynchronous connect gives both the same sentence, and the synchronous one that tells them apart takes no cancellation token. → §QS112
 - 📋 **QS142** (deps: QS139) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
 

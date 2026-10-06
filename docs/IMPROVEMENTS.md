@@ -56,33 +56,6 @@ not work. An entry saying only that it worked has not been tested; it has been v
 
 Falsified when the matrix records a pass with no negotiated algorithm list beside it.
 
-### §QS111 A keepalive that keeps and does not detect
-
-QS38's design says "protocol-level keepalive at a configurable interval detects a dead
-peer in seconds rather than in the operating system's own good time". Measured against
-the fixture, that is not what SSH.NET's `KeepAliveInterval` does.
-
-The run: connect with `KeepAlive` at one second, run a command to prove the link works,
-then `docker pause` the container — frozen rather than killed, because a killed process
-closes its socket and that is the easy case. A paused one leaves the connection exactly
-as a vanished network does, open and answering nothing. Thirty seconds later, twice:
-**the transport had not noticed, the channel had not noticed, and `IsConnected` still
-answered true.**
-
-The reason is structural rather than a setting. A keepalive that expects no reply cannot
-detect anything: sending succeeds because the kernel buffers it, and it will go on
-succeeding until TCP retransmission gives up, which is the operating-system timeout the
-design wanted to avoid. What detects a death is a request the server is obliged to
-answer — OpenSSH's own clients use a global request `keepalive@openssh.com` with
-`want_reply` set — and the library exposes no way to send one.
-
-What it does do is real and worth keeping: traffic on the socket holds a NAT mapping
-open, which is what stops an idle session dying after twenty minutes on a corporate
-link. That half is tested.
-
-Falsified when a frozen peer is reported as dead by anything that did not require an
-answer.
-
 ### §QS112 Two timeouts the async path cannot tell apart
 
 QS39's design asks for the connection timing out to be reported "distinguishing a

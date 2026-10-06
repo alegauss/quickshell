@@ -8,6 +8,7 @@
 - ✅ **QS38 (the reconnect)** **A link that drops for ten seconds costs the whole session and its scrollback** — A dropped link costs a command rather than the scrollback: the model outlives the connection, backoff is bounded and visible, and an exit is not retried.
 - ✅ **QS39** **A refused connection reports a library exception, so a user cannot tell a wrong port from a wrong key** — Eleven failures, each provoked against a real socket or server before its rule was written, and each carrying what happened, what it means and what to do.
 - ✅ **QS110** **Remote throughput has no local figure taken beside it, so a slow link and a slow client look alike** — Local prints at 1.0 MB/s through conhost beside remote's 124.8; a cancelled read was never the fault, a write with no reader was (design recorded in `docs/measurements/throughput.md`).
+- ✅ **QS111** **A peer that stopped answering on a socket that stayed open is not noticed, so the session looks live for minutes** — A host frozen on an open socket is reported Dropped within three keepalive intervals, by a request it must answer (design recorded in `src/Quickshell.Transport/SshNetTransport.cs`).
 
 ## Block B — Keys, agents, and the host you think you reached
 

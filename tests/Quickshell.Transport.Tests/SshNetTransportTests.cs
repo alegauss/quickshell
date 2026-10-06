@@ -22,6 +22,11 @@ public sealed class SshNetTransportTests
 
     private static readonly SshEndpoint Target = SshEndpoint.For(Host, "probe", TargetPort);
 
+    /// <summary>The fixture's server that exists to be paused (QS111).</summary>
+    private const int FrozenPort = 2227;
+
+    private static readonly SshEndpoint Frozen = SshEndpoint.For(Host, "probe", FrozenPort);
+
     private static CancellationToken Stop => TestContext.Current.CancellationToken;
 
     /// <summary>Trusts whatever the fixture presents, which is what a test against a fixture means.</summary>
@@ -364,6 +369,58 @@ public sealed class SshNetTransportTests
     // ---- Keepalive: telling a dead link from an idle one ----
 
     /// <summary>
+    /// QS111's whole claim: a host that stops answering on a socket that stays open is reported as
+    /// gone in seconds, through the same <see cref="ISshTransport.Disconnected"/> a closed socket
+    /// arrives through.
+    ///
+    /// <para><b>Paused, not stopped.</b> A killed sshd closes its socket and that is the easy case;
+    /// a paused container leaves the connection exactly as a vanished network does, open and
+    /// answering nothing. The library's own keepalive kept "connected" true for minutes under this.
+    /// The server is <c>frozen</c>, a container of its own, so the pause freezes nobody else's
+    /// test.</para>
+    /// </summary>
+    [Fact]
+    public async Task AFrozenPeerIsNoticedInSeconds()
+    {
+        SkipWithoutFixture();
+        SkipUnlessListening(FrozenPort, "frozen");
+
+        await using SshNetTransport transport = new() { KeepAlive = TimeSpan.FromMilliseconds(500) };
+
+        await transport.ConnectAsync(Frozen, [Key()], Trusting, Stop);
+
+        await using IPtyChannel channel = await transport.OpenShellAsync(80, 25, Stop);
+
+        await Type(channel, "echo alive");
+        await Until(channel, "alive");
+
+        await Docker("pause", "qs-sshd-frozen");
+
+        Stopwatch frozen = Stopwatch.StartNew();
+
+        try
+        {
+            Task first = await Task.WhenAny(transport.Disconnected, Task.Delay(TimeSpan.FromSeconds(20), Stop));
+
+            Assert.True(first == transport.Disconnected, "a frozen peer was still connected after twenty seconds");
+        }
+        finally
+        {
+            await Docker("unpause", "qs-sshd-frozen");
+        }
+
+        SshException? gone = await transport.Disconnected;
+
+        Assert.NotNull(gone);
+        Assert.Equal(SshFailureKind.Dropped, gone.Kind);
+        Assert.False(transport.IsConnected);
+        Assert.InRange(frozen.Elapsed, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(10));
+
+        // The channel hears it too, so a reader waiting on output learns why none is coming.
+        Assert.True(channel.Closed.IsCompleted, "the shell was not told its peer had gone");
+    }
+
+    /// <summary>
     /// And a keepalive does not itself end a session that is merely quiet, which is the failure a
     /// too-eager one would introduce: an idle prompt is not a dead peer.
     /// </summary>
@@ -638,6 +695,42 @@ public sealed class SshNetTransportTests
         Assert.SkipUnless(up && File.Exists(Path.Combine(FixtureKeys(), "probe_ed25519")),
             $"nothing is listening on {Host}:{TargetPort}: "
             + "run prototypes/SshProbe/fixture/up.sh to bring the servers up");
+    }
+
+    /// <summary>
+    /// Skips, by name, where the fixture is older than the server a test needs: up.sh brings every
+    /// one of them up, and an older run of it brought fewer.
+    /// </summary>
+    private static void SkipUnlessListening(int port, string service)
+    {
+        bool up;
+
+        try
+        {
+            using TcpClient probe = new();
+
+            up = probe.ConnectAsync(Host, port).Wait(TimeSpan.FromSeconds(2));
+        }
+        catch (Exception failure) when (failure is SocketException or AggregateException)
+        {
+            up = false;
+        }
+
+        Assert.SkipUnless(up, $"the fixture's {service} server is not on {Host}:{port}: run up.sh again");
+    }
+
+    /// <summary>Runs one docker command against the fixture and insists that it worked.</summary>
+    private static async Task Docker(string verb, string container)
+    {
+        using Process docker = Process.Start(new ProcessStartInfo("docker", [verb, container])
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        })!;
+
+        await docker.WaitForExitAsync(CancellationToken.None);
+
+        Assert.True(docker.ExitCode == 0, $"docker {verb} {container}: {await docker.StandardError.ReadToEndAsync(CancellationToken.None)}");
     }
 
     private static string RepositoryRoot()

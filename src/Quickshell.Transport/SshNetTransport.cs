@@ -49,15 +49,29 @@ public sealed class SshNetTransport : ISshTransport
     private readonly TaskCompletionSource<SshException?> _disconnected =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    /// <summary>
+    /// The least a keepalive waits for an answer before calling the peer gone, however short the
+    /// interval: a busy server on a slow link can take a second or two over a request, and a
+    /// session ended under a user for that is worse than one noticed late.
+    /// </summary>
+    private static readonly TimeSpan LeastPatience = TimeSpan.FromSeconds(3);
+
+    private readonly CancellationTokenSource _stopWatching = new();
+
     private SshNetChannel? _shell;
     private SshClient? _client;
+    private Task? _watching;
     private bool _disposed;
 
     /// <inheritdoc/>
     public SshEndpoint Endpoint { get; private set; }
 
     /// <inheritdoc/>
-    public bool IsConnected => _client is { IsConnected: true };
+    /// <remarks>
+    /// False once <see cref="Disconnected"/> has an answer, even where the library still holds an open
+    /// socket: a peer this transport has called gone is gone, whatever the socket says (QS111).
+    /// </remarks>
+    public bool IsConnected => _client is { IsConnected: true } && !_disconnected.Task.IsCompleted;
 
     /// <inheritdoc/>
     public Task<SshException?> Disconnected => _disconnected.Task;
@@ -242,6 +256,11 @@ public sealed class SshNetTransport : ISshTransport
 
             Log?.Channel(ChannelKind.Shell, opened: true);
 
+            if (KeepAlive > TimeSpan.Zero && _shell.CanAskPeer)
+            {
+                _watching = Watch(_shell, KeepAlive, _stopWatching.Token);
+            }
+
             return ValueTask.FromResult<IPtyChannel>(_shell);
         }
         catch (Exception failure)
@@ -315,6 +334,15 @@ public sealed class SshNetTransport : ISshTransport
 
         _disposed = true;
 
+        await _stopWatching.CancelAsync().ConfigureAwait(false);
+
+        if (_watching is not null)
+        {
+            await _watching.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+
+        _stopWatching.Dispose();
+
         if (_shell is not null)
         {
             await _shell.DisposeAsync().ConfigureAwait(false);
@@ -333,6 +361,62 @@ public sealed class SshNetTransport : ISshTransport
         _client?.Dispose();
         _client = null;
         _disconnected.TrySetResult(null);
+    }
+
+    /// <summary>
+    /// Asks the far end, every interval, something it has to answer, and calls the session dropped
+    /// when three intervals go by without one.
+    ///
+    /// <para><b>The library's own keepalive keeps and does not detect, and is left running for
+    /// that.</b> It sends without wanting a reply, so it holds a NAT mapping open and cannot tell a
+    /// frozen host from a quiet one: a paused server stayed "connected" for minutes under it
+    /// (QS111). This is the half that detects. Three missed intervals is OpenSSH's own
+    /// <c>ServerAliveCountMax</c>, with a floor of <see cref="LeastPatience"/>.</para>
+    ///
+    /// <para>Only a question that went unanswered is a death. Any other failure of the request —
+    /// the channel closed because the shell exited, the session already reported dropped — ends
+    /// the watch and leaves the telling to whatever noticed first.</para>
+    /// </summary>
+    private async Task Watch(SshNetChannel shell, TimeSpan interval, CancellationToken stop)
+    {
+        TimeSpan patience = interval * 3 > LeastPatience ? interval * 3 : LeastPatience;
+
+        while (!stop.IsCancellationRequested)
+        {
+            await Task.Delay(interval, stop).ConfigureAwait(false);
+
+            // On a thread of its own: the library's request blocks until the answer or its own
+            // timeout, and a frozen peer is exactly the case where neither comes soon.
+            Task<bool> asked = Task.Run(shell.AskPeer, CancellationToken.None);
+            Task first = await Task.WhenAny(asked, Task.Delay(patience, stop)).ConfigureAwait(false);
+
+            stop.ThrowIfCancellationRequested();
+
+            if (first == asked && asked.Exception?.InnerException is not SshOperationTimeoutException)
+            {
+                if (asked.IsFaulted)
+                {
+                    return;
+                }
+
+                continue;
+            }
+
+            SshException gone = new(
+                SshFailureKind.Dropped,
+                $"{Endpoint} stopped answering.",
+                $"Nothing came back for {patience.TotalSeconds:0.#} seconds, though the connection is still open: " +
+                "the host froze, or the network between went away without closing it.",
+                "Reconnect when the host is reachable again.");
+
+            Log?.Failed(Endpoint, gone.Kind, gone.Message);
+            Log?.Disconnected(Endpoint, expected: false);
+
+            _disconnected.TrySetResult(gone);
+            shell.Lost(gone.Message);
+
+            return;
+        }
     }
 
     /// <summary>
