@@ -202,6 +202,14 @@ public sealed class SessionEditor
                 wrong.Add("A session needs a host to connect to.");
             }
 
+            // A new session named like one already in its folder would replace it on save, and
+            // nobody asked for that from a dialog titled "New session".
+            if (IsNew && (Name.Length > 0 ? Name : Host.Trim()) is { Length: > 0 } called
+                && _tree.Find(Under(Path, called)) is not null)
+            {
+                wrong.Add($"There is already something called {called} here. Give this one another name.");
+            }
+
             if (Field(nameof(SessionSettings.Port)) is { IsOverridden: true, Own: { } port }
                 && !IsPort(port))
             {
@@ -303,7 +311,12 @@ public sealed class SessionEditor
             },
         };
 
-        return _tree.With(Path, saved);
+        // A new session goes where its final name says, not where the name it was opened with did:
+        // the dialog opens on a placeholder, and a session saved as "web" under a path ending in
+        // "New session" is one that path lookups by name never find again (QS121).
+        SavedAt = IsNew ? Under(Path, saved.Name) : Path;
+
+        return _tree.With(SavedAt, saved);
 
         string? Mine(string name) => Field(name) is { IsOverridden: true, Own: { Length: > 0 } own }
             ? own
@@ -321,6 +334,17 @@ public sealed class SessionEditor
                                out double value)
                 ? value
                 : null;
+    }
+
+    /// <summary>Where the last <see cref="Save"/> put the session, or <see cref="Path"/> before one.</summary>
+    public string SavedAt { get; private set; } = string.Empty;
+
+    /// <summary>The same folder as <paramref name="path"/>, ending in <paramref name="name"/> instead.</summary>
+    private static string Under(string path, string name)
+    {
+        int slash = path.LastIndexOf('/');
+
+        return slash < 0 ? name : $"{path[..slash]}/{name}";
     }
 
     private static bool IsPort(string text) =>

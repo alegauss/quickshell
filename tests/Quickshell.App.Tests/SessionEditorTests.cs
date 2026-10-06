@@ -201,6 +201,33 @@ public sealed class SessionEditorTests
         Assert.Contains("production", cache.Tags);
     }
 
+    /// <summary>
+    /// A new session lands under the name it was saved with, not the one the dialog opened on, and
+    /// one named like a session already in its folder is refused rather than replacing it (QS121).
+    /// </summary>
+    [Fact]
+    public void ANewSessionIsSavedUnderItsOwnNameAndNeverOverAnother()
+    {
+        SessionEditor editor = SessionEditor.Creating(Fleet(), "prod", "New session");
+
+        editor.Name = string.Empty;
+        editor.Host = "cache.prod.example";
+
+        SessionTree saved = editor.Save();
+
+        Assert.Equal("prod/cache.prod.example", editor.SavedAt);
+        Assert.Equal("cache.prod.example", saved.Session("prod/cache.prod.example")!.Host);
+        Assert.Null(saved.Find("prod/New session"));
+
+        SessionEditor clash = SessionEditor.Creating(saved, "prod", "New session");
+
+        clash.Name = "cache.prod.example";
+        clash.Host = "elsewhere.example";
+
+        Assert.False(clash.CanSave);
+        Assert.Contains(clash.Complaints, said => said.Contains("already something called", StringComparison.Ordinal));
+    }
+
     /// <summary>A port that is not a port is refused before it reaches the file.</summary>
     [Fact]
     public void APortThatIsNotAPortIsRefused()

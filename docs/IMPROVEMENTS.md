@@ -632,32 +632,6 @@ Falsified when the guest suite runs ten times with no pass reading 0.0 for Direc
 
 ## Block D — The tree a user organises work in
 
-### §QS121 Two finished halves with nothing between them
-
-QS55 built the tree and QS58 the dialog over it, and neither is reachable from the
-running application. `SessionTree.ReadFrom` and `WriteTo` take a path that nothing
-supplies, and `SessionDialog` is constructed by its tests and by nothing else. The
-window has no menu, no key bindings and no session list, so the roadmap's original
-symptom — the store can only be built by editing its file — is still true of the shipped
-program.
-
-Three decisions are missing, and each is a decision rather than plumbing.
-
-Where the file lives. It is the artefact a user builds over years, so it wants a path
-they can find, back up and put in a repository, and a default under `%APPDATA%` is a
-file most users never learn they have.
-
-What opens the dialog. A session list is the obvious answer and is a design in its own
-right: it is the tree made visible, with the folders that carry the inheritance QS58's
-fields report.
-
-When the file is written. Saving on every edit loses a hand-edit made while the client
-is running; writing on exit loses everything to a crash. QS117 already carries what a
-write does not preserve, and this decides when one happens at all.
-
-Falsified when a user can create a session, close the client, reopen it and connect to
-that session without touching a file.
-
 ### §QS179 A fleet chosen once
 
 QS53's design names three targets for broadcast typing: the panes in this tab, a

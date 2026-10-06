@@ -226,6 +226,10 @@ public sealed class MainWindow : Window
         // menu, and a chord for it would be spent on nobody afterwards.
         InputBindings.Add(new InputBinding(new Installing(this), new PaletteOnly()));
 
+        // A new session, from the palette (QS121). No chord: a session list is where this belongs
+        // in the end, and a chord taken now is one that list may want for something else.
+        InputBindings.Add(new InputBinding(new Creating(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
@@ -2004,6 +2008,82 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.Installs?.Invoke();
+    }
+
+    /// <summary>
+    /// How the session dialog is put on screen and whether it was saved. Modal over this window,
+    /// unless a caller says otherwise — which is how a test fills one in without a desk.
+    /// </summary>
+    public Func<SessionDialog, bool>? ShowsSessionDialog { get; set; }
+
+    /// <summary>
+    /// Makes a session in the store, through the dialog, and writes it.
+    ///
+    /// <para><b>The store is this client's file, <see cref="Locations.Sessions"/></b>, unless
+    /// <see cref="SessionsFile"/> says otherwise: under <c>%AppData%\quickshell</c>, or beside the
+    /// executable in portable mode, which is where a user's backup already looks.</para>
+    ///
+    /// <para><b>Written when the dialog is saved, into the file as it is then.</b> Not on every
+    /// keystroke, which would race a hand edit, and not on exit, which loses everything to a crash.
+    /// The file is read again at the moment of writing and only the new session is put into it, so a
+    /// hand edit made while the dialog was open survives — and <see cref="StoreText"/> keeps the
+    /// comments in it.</para>
+    /// </summary>
+    /// <param name="folder">Where in the tree the session goes; the top unless a caller says.</param>
+    /// <returns>The store as written, or null where the dialog was closed without saving.</returns>
+    /// <exception cref="SessionStoreException">The store is there and cannot be read.</exception>
+    public SessionTree? NewSession(string folder = "")
+    {
+        string file = SessionsFile ?? Locations.Current.Sessions;
+
+        // A placeholder name, cleared at once: the dialog defaults the name from the host when the
+        // user leaves it empty, and a name typed for them would have to be deleted first.
+        SessionEditor editor = SessionEditor.Creating(SessionTree.ReadFrom(file), folder, "New session");
+
+        editor.Name = string.Empty;
+
+        SessionDialog dialog = new(editor);
+
+        bool saved = (ShowsSessionDialog ?? (shown =>
+        {
+            shown.Owner = this;
+
+            return shown.ShowDialog() == true;
+        }))(dialog);
+
+        if (!saved || dialog.Saved?.Find(editor.SavedAt) is not { } made)
+        {
+            return null;
+        }
+
+        SessionTree written = SessionTree.ReadFrom(file).With(editor.SavedAt, made);
+
+        written.WriteTo(file);
+
+        return written;
+    }
+
+    /// <summary>The new-session palette entry.</summary>
+    private sealed class Creating(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "New session";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter)
+        {
+            try
+            {
+                Window.NewSession();
+            }
+            catch (SessionStoreException unreadable)
+            {
+                // Said, and nothing written: a store that will not read is one this must not
+                // replace with a file holding only the session just typed.
+                MessageBox.Show(Window, $"{unreadable.Message}\n\n{unreadable.Means}\n\n{unreadable.Remedy}",
+                                "Sessions", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
     }
 
     /// <summary>The import binding's command.</summary>

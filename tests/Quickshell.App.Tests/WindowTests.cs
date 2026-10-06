@@ -711,6 +711,100 @@ public sealed class WindowTests : IDisposable
         Assert.Equal(MobaXtermImport.Find() is not null, wroteOnAgreement);
     }
 
+    /// <summary>
+    /// QS121: a session made through the palette's entry is in the store's file, and a window opened
+    /// afterwards finds it there — which is the client being closed and reopened, as far as the store
+    /// is concerned. Named from its host where the name was left empty, as the dialog promises.
+    /// </summary>
+    [Fact]
+    public void ASessionMadeFromThePaletteIsInTheStoreNextTime()
+    {
+        string into = Path.Combine(_directory, "made.json");
+
+        (bool listed, string? host) = OnStaThread(() =>
+        {
+            Directory.CreateDirectory(_directory);
+
+            MainWindow window = new() { SessionsFile = into, ShowsSessionDialog = Fill("web1.example") };
+
+            InputBinding entry = window.InputBindings.OfType<InputBinding>()
+                                       .Single(bound => bound.Command is ICommand command
+                                                        && command.GetType().Name == "Creating");
+
+            entry.Command.Execute(null);
+
+            // The next run of the client, as far as the store can tell: nothing carried over but
+            // the file.
+            return (window.Actions.Any(action => action.Name == "New session"),
+                    SessionTree.ReadFrom(into).Session("web1.example")?.Host);
+        });
+
+        Assert.True(listed, "the palette does not offer a new session");
+        Assert.Equal("web1.example", host);
+    }
+
+    /// <summary>
+    /// The file is read again when the dialog saves, so what a person changed in it while the dialog
+    /// was open — a session added by hand, with a comment — is still there afterwards.
+    /// </summary>
+    [Fact]
+    public void SavingKeepsWhatWasTypedIntoTheFileWhileTheDialogWasOpen()
+    {
+        string into = Path.Combine(_directory, "shared.json");
+
+        string written = OnStaThread(() =>
+        {
+            Directory.CreateDirectory(_directory);
+            File.WriteAllText(into, """{ "Name": "", "Children": [ { "Name": "old", "Host": "old.example" } ] }""");
+
+            Func<SessionDialog, bool> fill = Fill("new.example");
+
+            MainWindow window = new()
+            {
+                SessionsFile = into,
+                ShowsSessionDialog = dialog =>
+                {
+                    // Somebody edits the file by hand while the dialog is up.
+                    File.WriteAllText(into, """
+                        {
+                          "Name": "",
+                          "Children": [
+                            { "Name": "old", "Host": "old.example" },
+                            // added by hand while the dialog was open
+                            { "Name": "hand", "Host": "hand.example" }
+                          ]
+                        }
+                        """);
+
+                    return fill(dialog);
+                },
+            };
+
+            window.NewSession();
+
+            return File.ReadAllText(into);
+        });
+
+        SessionTree store = SessionTree.ReadFrom(into);
+
+        Assert.NotNull(store.Session("old"));
+        Assert.NotNull(store.Session("hand"));
+        Assert.NotNull(store.Session("new.example"));
+        Assert.Contains("// added by hand while the dialog was open", written, StringComparison.Ordinal);
+    }
+
+    /// <summary>Fills a session dialog's host, leaves the name empty, and presses Save.</summary>
+    private static Func<SessionDialog, bool> Fill(string host) => dialog =>
+    {
+        ((TextBox)LogicalTreeHelper.FindLogicalNode(dialog, "Host")).Text = host;
+
+        Button save = (Button)LogicalTreeHelper.FindLogicalNode(dialog, "Save");
+
+        save.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        return dialog.Saved is not null;
+    };
+
     // ---- plumbing ----
 
     /// <summary>

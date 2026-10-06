@@ -94,6 +94,23 @@
           "reads": "name",
           "expect": "Equalise panes",
           "named": "and it is here, without anybody having added it to a second list"
+        },
+        {
+          "locator": "Edit",
+          "act": "set value",
+          "with": "new session",
+          "expect": "new session",
+          "reads": "value",
+          "named": "the way into the session store (QS121)"
+        },
+        {
+          // The session dialog had no way in at all until QS121: built and tested, and reachable
+          // from nothing a user could do. This is the entry that makes it a feature.
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "New session",
+          "named": "and a session can be made from the running client"
         }
       ]
     }

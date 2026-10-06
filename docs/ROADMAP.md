@@ -32,8 +32,7 @@
 
 ## Block D — The tree a user organises work in
 
-- 🛠 **QS121** (deps: QS55 ✅, QS58 ✅) **Nothing owns the session store file and nothing opens the session dialog, so neither is reachable** — A store with no owner and a dialog with no way in are two finished parts that a user cannot get to, which is the same to them as neither existing. → §QS121
-- 📋 **QS179** (deps: QS121) **A fleet has no saved group to broadcast to, so the same split is rebuilt by hand before every broadcast** — QS53 built the tab as its target and left the saved group, which needs a session store the running client can read, and that is QS121. → §QS179
+- 📋 **QS179** (deps: QS121 ✅) **A fleet has no saved group to broadcast to, so the same split is rebuilt by hand before every broadcast** — QS53 built the tab as its target and left the saved group, which needs a session store the running client can read, and that is QS121. → §QS179
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -56,7 +55,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS126** (deps: QS121) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126
+- 📋 **QS126** (deps: QS121 ✅) **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Four blocks of tested, working machinery are unreachable from the running program, so the feature count falls while the product does not move. → §QS126
 - 📋 **QS151** (deps: QS116 ✅) **A reconnecting session makes a new damage signal per connection, so a pane asleep on the first never repaints** — QS126 wires this up and inherits a window frozen at whatever frame it drew first. → §QS151
 - 📋 **QS152** (deps: QS116 ✅) **A shell that exits leaves the window holding its last frame, with nothing saying the session ended** — Typing exit is the ordinary way a session ends, and the client that answers it with a frozen picture reads as hung. → §QS152
 - 📋 **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — QS47 put the session in the tab and stopped there, so the one thing that arrangement was for is the one thing that cannot be done. → §QS160
@@ -351,6 +350,12 @@
 
 - **A recorded blank names its cause** A guest contrast.txt carries a reference retry
   line saying whether the second read of the same target had ink.
+
+## Done when — QS126
+
+- **A saved session connects after a restart** A session made with New session, after
+  the client is closed and reopened, opens as an SSH tab on its host. Moved here from
+  QS121, whose store and dialog now reach the user and whose connecting is this line's.
 
 ## Non-goals
 

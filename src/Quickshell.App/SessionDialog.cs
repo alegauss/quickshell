@@ -153,7 +153,13 @@ public sealed class SessionDialog : Window
         }
 
         Saved = _editor.Save();
-        DialogResult = true;
+
+        // Only a dialog shown modally has a result to set; one a test fills in without showing it
+        // has been saved all the same.
+        if (IsVisible)
+        {
+            DialogResult = true;
+        }
     }
 
     /// <summary>A field the dialog asks for outright, with no inheritance behind it.</summary>
