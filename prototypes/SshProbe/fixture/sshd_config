@@ -22,6 +22,9 @@ Subsystem sftp /usr/lib/openssh/sftp-server
 
 Match User twofactor
     AuthenticationMethods publickey,keyboard-interactive
+    # QS113: the server's own words before anything is authenticated, with an escape sequence in
+    # them, so a test sees both that a banner is reported and that what reaches a display is text.
+    Banner /etc/ssh/banner
 
 Match User probe
     AuthenticationMethods publickey

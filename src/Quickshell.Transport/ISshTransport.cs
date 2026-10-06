@@ -184,6 +184,17 @@ public interface ISshTransport : IAsyncDisposable
     TimeSpan Timeout { get; set; }
 
     /// <summary>
+    /// Where to report what happens while signing in — the server's banner, and a method accepted
+    /// with more still wanted — or null to report nothing.
+    ///
+    /// <para>A progress report and not a channel, so it is not a fourth thing crossing the seam: it
+    /// carries the server's words and the protocol's, and nothing of the library's. Set before
+    /// <see cref="ConnectAsync"/>; reports arrive during it, on whatever thread the implementation
+    /// is on, which is what <see cref="IProgress{T}"/> leaves to the reporter it was built with.</para>
+    /// </summary>
+    IProgress<SshSignInStep>? SignIn { get; set; }
+
+    /// <summary>
     /// Completes when the connection is gone, carrying why.
     ///
     /// <para>A task and not an event, for the reason <see cref="IPtyChannel.Closed"/> gives: a

@@ -88,6 +88,13 @@ public sealed class SshChain : ISshTransport
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Every hop reports, each step carrying the endpoint it came from: a bastion that wants a
+    /// second factor is as much a wait as the target that does.
+    /// </remarks>
+    public IProgress<SshSignInStep>? SignIn { get; set; }
+
+    /// <inheritdoc/>
     public Task<SshException?> Disconnected =>
         _last?.Disconnected ?? Task.FromResult<SshException?>(null);
 
@@ -137,7 +144,7 @@ public sealed class SshChain : ISshTransport
 
                 if (last)
                 {
-                    SshNetTransport session = new() { KeepAlive = KeepAlive, Timeout = Timeout };
+                    SshNetTransport session = new() { KeepAlive = KeepAlive, Timeout = Timeout, SignIn = SignIn };
 
                     await session.ConnectAsync(reachable with { User = step.Endpoint.User },
                                                step.Credentials, step.HostKey, cancellationToken)
@@ -230,7 +237,7 @@ public sealed class SshChain : ISshTransport
     private async ValueTask<SshEndpoint> Carry(SshHop step, SshEndpoint reachable, SshEndpoint next,
                                                CancellationToken cancellationToken)
     {
-        SshNetTransport bastion = new() { KeepAlive = KeepAlive, Timeout = Timeout };
+        SshNetTransport bastion = new() { KeepAlive = KeepAlive, Timeout = Timeout, SignIn = SignIn };
 
         await bastion.ConnectAsync(reachable with { User = step.Endpoint.User }, step.Credentials,
                                    step.HostKey, cancellationToken).ConfigureAwait(false);

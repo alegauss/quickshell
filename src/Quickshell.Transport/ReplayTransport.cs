@@ -75,6 +75,10 @@ public sealed class ReplayTransport : ISshTransport
     /// <inheritdoc/>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 
+    /// <inheritdoc/>
+    /// <remarks>A recording has no sign-in to report, so nothing reaches this.</remarks>
+    public IProgress<SshSignInStep>? SignIn { get; set; }
+
     /// <summary>Everything written to the shell channel, which is what a test asserts the client sent.</summary>
     public ReadOnlySpan<byte> Written => _written.ToArray();
 

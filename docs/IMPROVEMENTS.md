@@ -586,6 +586,47 @@ option is a profile: ink by coverage level, from the same two pictures.
 
 Falsified when a light theme is called fixed without the dark-on-light ratio near one.
 
+### §QS213 An allocation test that measures its own warm-up
+
+`CompositionTests.ComposingAllocatesNothing` measures the allocated bytes over a
+thousand composition updates and asserts zero. Run alone, it fails every time with
+**4,072 bytes**; run with the rest of its class it passes. The guest suite's run on
+2026-10-06 ordered it first and went red for it, on a tree that had not touched the
+terminal assembly.
+
+So what it counts is a one-time first-call allocation — a lazy static or a first look-up
+inside `Update`, `Cells` or `Candidate` — that lands inside the measured span whenever
+nothing has called those paths before. The claim the test makes is per keystroke, and a
+cost paid once per process is not a keystroke's.
+
+The fix is the shape every other allocation test here already has: run the measured body
+once before reading the counter, over every caret position the loop uses, and then
+measure. The claim stays zero; only what it is measured from changes.
+
+Falsified when the test, run alone, still counts a byte after the warm-up pass.
+
+### §QS214 A steady-state allocation only the guest sees
+
+`HostileInputTests.ReplayingARealStreamAllocatesNothingInSteadyState("tmux-resize")`
+feeds the recording once to warm up and asserts the second pass allocates nothing. In
+the guest on 2026-10-06 one full-suite run reported **7,288 bytes** in the second pass
+and the next run of the same tree passed. On the host it passes alone and in its class,
+every time.
+
+What is known: the emulator has no clock, so the parse path cannot branch on time;
+nothing in `Quickshell.Terminal` rents from `ArrayPool`; the measurement is
+`GC.GetAllocatedBytesForCurrentThread`, on a synchronous test, so another test's
+allocations are not counted. What differs is the machine — fewer cores and less memory
+than the host, and whatever the suite ran before it on that thread.
+
+What to do first is make it say where: on failure, repeat the second pass under an
+allocation listener (an `EventListener` on the runtime's `GCAllocationTick`, or a
+`dotnet-trace` session in the guest) and report the type allocated, so a red run carries
+its own diagnosis instead of a number. Then fix whatever that names — the other four
+recordings never did this, so it is likely a path only a resize stream reaches.
+
+Falsified when the guest suite runs ten times without this test counting a byte.
+
 ## Block D — The tree a user organises work in
 
 ### §QS117 A file that reads by hand and writes by machine

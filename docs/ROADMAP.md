@@ -10,7 +10,7 @@
 
 - ⏳ **QS43** (deps: QS41 ✅, QS114) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — Pageant older than 0.78 speaks over shared memory rather than a pipe, and that transport is the half of it this does not reach. → §QS43
 - 📋 **QS45** (deps: QS43 ⏳) **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — Forwarding hands a remote machine the ability to authenticate as the user everywhere, so it is decided per host rather than by a checkbox set once. → §QS45
-- 📋 **QS113** (deps: QS41 ✅, QS46 ✅) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — Partial success is a normal state of the protocol and nothing in this client reports it, so the one moment a user most wants progress is the one with none. → §QS113
+- ⏳ **QS113** (deps: QS41 ✅, QS46 ✅, QS126) **A key accepted with a second factor still to come looks the same as a connection that has stalled** — The report reaches nothing a user sees until a remote session is in the window, which QS126 brings. → §QS113
 - 📋 **QS114** (deps: QS41 ✅) **A PuTTY user on Pageant older than 0.78 has an agent this client cannot reach at all** — That version carries the same requests over shared memory and a window message, and this client speaks only the named pipe the newer one added. → §QS114
 - 📋 **QS115** (deps: QS44 ✅) **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — The framework ships no memory-hard derivation, so the choice was a third-party dependency where a mistake is unrecoverable, or the strongest thing it has. → §QS115
 
@@ -32,6 +32,8 @@
 - 📋 **QS207** (deps: —) **Insert mode is ignored, so text printed with CSI 4 h overwrites the row instead of pushing it right** — Editors and readline-style prompts use IRM to insert in place, and a terminal that overwrites shows the line the program did not draw. → §QS207
 - 📋 **QS208** (deps: —) **A request for 132 columns is ignored without its side effects, and nothing says whether that is the intent** — DECCOLM also clears the screen and resets the margins, so a program that asks gets neither the width nor the clean screen it assumes. → §QS208
 - 📋 **QS211** (deps: —) **esctest is judged through a pseudo-console that answers its queries itself, so the figure measures conhost** — A DECRQCRA sent through ConPtyChannel came back as conhost's 0000 and never reached the emulator, so 228 failures cannot move. → §QS211
+- 📋 **QS213** (deps: —) **The composition allocation test fails whenever it runs first, counting a one-time initialisation as a keystroke's** — Alone it counts 4,072 bytes and with its class none, so the guest suite goes red on test order. → §QS213
+- 📋 **QS214** (deps: —) **Replaying the tmux resize recording sometimes allocates in steady state in the guest, and the failure says no more** — One guest run counted 7,288 bytes and the next none, and a number with no type is a failure nobody can act on. → §QS214
 
 ## Block D — The tree a user organises work in
 
@@ -338,6 +340,12 @@
 - **Every server class the design names has a row** Windows OpenSSH, a network appliance
   and a commercial server each have a row in docs/measurements/compatibility.md with
   their negotiated algorithms.
+
+## Done when — QS113
+
+- **A two-step sign-in shows progress in the window** Connecting to the fixture's
+  twofactor account in the client shows the banner and the accepted key before the
+  second prompt appears.
 
 ## Non-goals
 

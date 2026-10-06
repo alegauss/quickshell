@@ -149,6 +149,89 @@ public sealed class AuthenticationTests
     }
 
     /// <summary>
+    /// QS113's falsification: a two-step sign-in does not show the same thing at second five as at
+    /// second one. Between connecting and the second factor's prompt the server's banner and the
+    /// key's partial success are reported, in that order, and both before the prompt.
+    ///
+    /// <para>The banner carries an escape sequence on purpose (the fixture's
+    /// <c>/etc/ssh/banner</c>): it is the far end's text, and what reaches a caller is its words
+    /// without the control characters a display would act on.</para>
+    /// </summary>
+    [Fact]
+    public async Task ASecondFactorStillToComeIsReportedBeforeItsPrompt()
+    {
+        SkipWithoutKey("probe_ed25519");
+
+        List<string> happened = [];
+        List<SshSignInStep> steps = [];
+
+        await using SshNetTransport transport = new()
+        {
+            SignIn = new Recorded(step =>
+            {
+                steps.Add(step);
+                happened.Add(step.GetType().Name);
+            }),
+        };
+
+        await transport.ConnectAsync(
+            Endpoint("twofactor"),
+            [
+                new SshCredential.PrivateKey(Key("probe_ed25519")),
+                new SshCredential.Interactive((_, _, _) =>
+                {
+                    happened.Add("prompt");
+
+                    return ValueTask.FromResult(SecondFactor);
+                }),
+            ],
+            Trusting, Stop);
+
+        Assert.True(transport.IsConnected, "the two-factor account did not let the client in");
+
+        // In the order a user lives it: the server's words, the key taken, then the question.
+        Assert.Equal(["Banner", "Partly", "prompt"], happened.Take(3));
+
+        SshSignInStep.Banner banner = Assert.Single(steps.OfType<SshSignInStep.Banner>());
+
+        Assert.Contains("Authorised use only.", banner.Text, StringComparison.Ordinal);
+        Assert.Contains("This line was red.", banner.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain('\e', banner.Text);
+
+        SshSignInStep.Partly partly = Assert.Single(steps.OfType<SshSignInStep.Partly>());
+
+        Assert.Equal("publickey", partly.Accepted);
+        Assert.Contains("keyboard-interactive", partly.StillWanted);
+        Assert.Equal("twofactor", partly.Endpoint.User);
+    }
+
+    /// <summary>A single-step sign-in has no partial success to report, and reports none.</summary>
+    [Fact]
+    public async Task ASingleStepSignInReportsNoPartialSuccess()
+    {
+        SkipWithoutKey("probe_ed25519");
+
+        List<SshSignInStep> steps = [];
+
+        await using SshNetTransport transport = new() { SignIn = new Recorded(steps.Add) };
+
+        await transport.ConnectAsync(Endpoint("probe"), [new SshCredential.PrivateKey(Key("probe_ed25519"))],
+                                     Trusting, Stop);
+
+        Assert.True(transport.IsConnected);
+        Assert.Empty(steps.OfType<SshSignInStep.Partly>());
+    }
+
+    /// <summary>
+    /// Reports as they happen, on the reporting thread. <see cref="Progress{T}"/> posts to a
+    /// context, which would make the order this asserts a race.
+    /// </summary>
+    private sealed class Recorded(Action<SshSignInStep> record) : IProgress<SshSignInStep>
+    {
+        public void Report(SshSignInStep value) => record(value);
+    }
+
+    /// <summary>
     /// Two methods, and the server decides the order. The client offers what it has and the server
     /// takes them in the order its own policy states — which is why both are handed over at once
     /// rather than tried one at a time by the client.

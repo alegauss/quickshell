@@ -91,6 +91,9 @@ public sealed class SshNetTransport : ISshTransport
     /// <inheritdoc/>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 
+    /// <inheritdoc/>
+    public IProgress<SshSignInStep>? SignIn { get; set; }
+
     /// <summary>
     /// The live client, for <see cref="SshChain"/> to open a channel on.
     ///
@@ -146,10 +149,28 @@ public sealed class SshNetTransport : ISshTransport
             throw;
         }
 
+        // Every method but none is watched for a partial success, which the library reaches and
+        // keeps to itself (QS113). None cannot partly succeed; it only asks what the server allows.
+        IProgress<SshSignInStep>? signIn = SignIn;
+
+        if (signIn is not null)
+        {
+            methods = [.. methods.Select(method => method is NoneAuthenticationMethod
+                ? method
+                : new Reported(method, (accepted, wanted) =>
+                    signIn.Report(new SshSignInStep.Partly(endpoint, accepted, wanted))))];
+        }
+
         ConnectionInfo connection = new(endpoint.Host, endpoint.Port, endpoint.User, methods)
         {
             Timeout = Timeout,
         };
+
+        if (signIn is not null)
+        {
+            connection.AuthenticationBanner += (_, banner) =>
+                signIn.Report(new SshSignInStep.Banner(endpoint, SshSignInStep.Printable(banner.BannerMessage)));
+        }
         SshClient client = new(connection);
 
         if (KeepAlive > TimeSpan.Zero)
@@ -683,6 +704,57 @@ public sealed class SshNetTransport : ISshTransport
         };
 
         return method;
+    }
+
+    /// <summary>
+    /// One of the library's authentication methods, run as it is, with a partial success reported
+    /// on the way out.
+    ///
+    /// <para><b>A wrapper because the library has nowhere else to say it.</b> It reaches
+    /// <c>PartialSuccess</c> — a key accepted, a second factor still wanted — and goes straight on
+    /// to the next method without raising anything. Its <c>Authenticate</c> is public and virtual
+    /// for exactly this kind of composition, so the method is still the library's own and none of
+    /// the protocol is written here.</para>
+    /// </summary>
+    private sealed class Reported : AuthenticationMethod
+    {
+        private readonly AuthenticationMethod _inner;
+        private readonly Action<string, IReadOnlyList<string>> _partly;
+
+        internal Reported(AuthenticationMethod inner, Action<string, IReadOnlyList<string>> partly)
+            : base(inner.Username)
+        {
+            _inner = inner;
+            _partly = partly;
+        }
+
+        public override string Name => _inner.Name;
+
+        public override AuthenticationResult Authenticate(Session session)
+        {
+            AuthenticationResult result = _inner.Authenticate(session);
+
+            // The library reads what is allowed next from the method that just ran, so the wrapper
+            // has to say it too or the second factor is never tried.
+            AllowedAuthentications = _inner.AllowedAuthentications;
+
+            if (result == AuthenticationResult.PartialSuccess)
+            {
+                _partly(Name, AllowedAuthentications ?? []);
+            }
+
+            return result;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _inner.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
     }
 
     /// <summary>

@@ -18,6 +18,7 @@
 - ✅ **QS42** **Nothing checks the host key, so a machine in the middle is indistinguishable from the server** — The user's own known_hosts decides, hashed entries and all, and a changed key is refused without ever being put to anybody as a question.
 - ✅ **QS43 (the OpenSSH agent)** **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — A key generated inside an agent, held nowhere else and readable by nothing, authenticates against a real OpenSSH server through a protocol written here.
 - ✅ **QS44** **A saved password would rest on disk where anything running as the user can read it** — A password lives in a pinned buffer that is zeroed and can never be a string, and rests in the user's own Credential Manager bound to their Windows account.
+- ✅ **QS113 (the transport's report)** **A key accepted with a second factor still to come looks the same as a connection that has stalled** — The banner and a key accepted with more wanted reach the caller through ISshTransport.SignIn, before the second prompt.
 
 ## Block C — Emulation that does not lie about the remote
 
