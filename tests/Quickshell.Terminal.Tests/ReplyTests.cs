@@ -15,7 +15,7 @@ public sealed class ReplyTests
     /// <summary>Every question this terminal answers, and the two it refuses to.</summary>
     private const string EveryQuestion =
         E + "[c" + E + "[>c" + E + "[5n" + E + "[6n" + E + "[?6n"
-        + E + "[18t" + E + "[20t" + E + "[21t" + E + "[7;1;1;1;24;80*y";
+        + E + "[18t" + E + "[20t" + E + "[21t" + E + "[7;1;1;1;24;80*y" + E + "[?7$p" + E + "[4$p";
 
     // ---- The falsification ----
 
@@ -56,7 +56,8 @@ public sealed class ReplyTests
     {
         Emulator emulator = Fed(E + "]2;a title\a" + EveryQuestion);
         // P, ! and ~ frame DECRQCRA's answer, A to F are its hex digits and the backslash ends it.
-        const string allowed = "\u001b[]?>;0123456789cnRtP!~ABCDEF\\";
+        // and $ and y close DECRQM's.
+        const string allowed = "\u001b[]?>;0123456789cnRtP!~ABCDEF\\$y";
 
         foreach (byte sent in emulator.Reply)
         {
@@ -206,6 +207,31 @@ public sealed class ReplyTests
         Assert.Equal(string.Empty, emulator.ClipboardWrite);
         Assert.True(emulator.Unhandled > 0);
     }
+
+    // ---- DECRQM, whether a mode is set (QS104) ----
+
+    [Theory]
+    [InlineData("", "[?7$p", "[?7;1$y")]            // autowrap, on by default
+    [InlineData("[?7l", "[?7$p", "[?7;2$y")]        // and off
+    [InlineData("[?2004h", "[?2004$p", "[?2004;1$y")]
+    [InlineData("[?1049h", "[?1049$p", "[?1049;1$y")]
+    [InlineData("[?1002h", "[?1000$p", "[?1000;2$y")] // a different tracking mode is live
+    [InlineData("[?1002h", "[?1002$p", "[?1002;1$y")]
+    [InlineData("", "[?1005$p", "[?1005;4$y")]      // refused on purpose: permanently off
+    [InlineData("", "[?80$p", "[?80;4$y")]          // sixel, a non-goal
+    [InlineData("", "[?12345$p", "[?12345;0$y")]    // never heard of
+    [InlineData("", "[4$p", "[4;0$y")]              // insert mode: planned, not built, so not "off"
+    public void AModeIsReportedWithOneOfItsFiveAnswers(string before, string asked, string answer)
+    {
+        string setup = before.Length == 0 ? string.Empty : E + before;
+
+        Assert.Equal(E + answer, Sent(Fed(setup + E + asked)));
+    }
+
+    /// <summary>The design's falsifier: a mode refused on purpose is never reported as merely off.</summary>
+    [Fact]
+    public void ARefusedModeIsNotReportedAsOffEvenAfterAHostTriesToSetIt() =>
+        Assert.Equal(E + "[?1005;4$y", Sent(Fed(E + "[?1005h" + E + "[?1005$p")));
 
     // ---- DECRQCRA, the checksum a suite reads the screen through (QS103) ----
 

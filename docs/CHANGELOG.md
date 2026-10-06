@@ -64,6 +64,7 @@
 - ✅ **QS93** **Every golden scene is text somebody typed into the test, so none of them is a screen a real program drew** — Three golden scenes are now screens real programs drew: htop, vim and ls --color replayed from the corpus at 200x50 through the client's painter.
 - ✅ **QS101** **Ninety-six bytes of the parse path's allocation is measured but unattributed** — The hostile sequence allocates nothing: a split broken character no longer reaches .NET's byte[] fallback, and the ceiling is zero.
 - ✅ **QS103** **Nothing answers a request for a rectangle's checksum, so an external suite cannot read the screen back** — DECRQCRA answers with xterm's negated 16-bit sum, empty cells as spaces and no attributes, as esctest reads it; conhost hiding it is QS211.
+- ✅ **QS104** **A program asking whether a mode is set gets no answer, so it cannot tell off from unsupported** — DECRQM answers ANSI and DEC modes: set or reset by state, permanently off for what is refused, zero for the unknown and the unbuilt.
 
 ## Block D — The tree a user organises work in
 

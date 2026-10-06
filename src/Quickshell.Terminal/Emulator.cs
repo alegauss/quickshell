@@ -545,6 +545,14 @@ public sealed partial class Emulator : IAnsiHandler
     {
         FlushText();
 
+        // DECRQM, asked about an ANSI mode or, with the private marker, a DEC one - QS104. Before
+        // the private branch below, which would otherwise take the question for a setting.
+        if (final == (byte)'p' && intermediates.Length > 0 && intermediates[^1] == (byte)'$')
+        {
+            ModeReport(parameters, dec: intermediates[0] == (byte)'?');
+            return;
+        }
+
         // The private marker arrives as an intermediate, and what follows it is a different
         // instruction set entirely - `CSI ?7h` is not `CSI 7h`.
         if (intermediates.Length > 0 && intermediates[0] == (byte)'?')

@@ -236,6 +236,65 @@ public sealed partial class Emulator
         }
     }
 
+    /// <summary>DECRQM's five answers, as the request's reply spells them.</summary>
+    private enum ModeState
+    {
+        /// <summary>A mode this terminal has never heard of.</summary>
+        Unrecognised = 0,
+
+        Set = 1,
+
+        Reset = 2,
+
+        /// <summary>Always on, and the host cannot turn it off.</summary>
+        PermanentlySet = 3,
+
+        /// <summary>Never on: a mode this client refuses on purpose.</summary>
+        PermanentlyReset = 4,
+    }
+
+    /// <summary>
+    /// DECRQM: <c>CSI Ps $ p</c>, or <c>CSI ? Ps $ p</c> for a private mode — whether a mode is set,
+    /// answered as <c>CSI [?] Ps ; Pm $ y</c> (QS104).
+    ///
+    /// <para><b>Five answers and not two.</b> A program told a mode is merely off will try to turn
+    /// it on; told it is permanently off, it falls back. So a mode this client refuses on purpose
+    /// answers four, a mode it honours answers one or two by its state, and anything it never heard
+    /// of answers zero — which is also the answer for a mode that is planned but not built, such as
+    /// insert mode (QS207) and 132 columns (QS208), because "off" would invite the program to set
+    /// it.</para>
+    /// </summary>
+    private void ModeReport(in CsiParameters parameters, bool dec)
+    {
+        int mode = parameters.Value(0, 0);
+        ModeState state = dec ? DecModeState(mode) : ModeState.Unrecognised;
+
+        Send(dec ? Answer.DecModeReport : Answer.AnsiModeReport, mode, (int)state);
+    }
+
+    private ModeState DecModeState(int mode) => mode switch
+    {
+        1 => On(ApplicationCursorKeys),
+        6 => On(OriginMode),
+        7 => On(AutoWrap),
+        25 => On(CursorVisible),
+        2004 => On(BracketedPaste),
+        47 or 1047 or 1049 => On(Screens.IsAlternate),
+        9 => On(_tracking == MouseTracking.PressOnly),
+        1000 => On(_tracking == MouseTracking.PressRelease),
+        1002 => On(_tracking == MouseTracking.ButtonMotion),
+        1003 => On(_tracking == MouseTracking.AnyMotion),
+        1006 => On(_encoding == MouseEncoding.Sgr),
+
+        // Refused on purpose, so permanently off: the UTF-8 mouse encoding, which SGR replaces
+        // unambiguously, and sixel display mode, which is a non-goal.
+        1005 or 80 => ModeState.PermanentlyReset,
+
+        _ => ModeState.Unrecognised,
+    };
+
+    private static ModeState On(bool set) => set ? ModeState.Set : ModeState.Reset;
+
     private void SwitchScreen(bool alternate)
     {
         if (alternate)

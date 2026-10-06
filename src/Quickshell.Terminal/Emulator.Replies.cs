@@ -44,6 +44,12 @@ internal enum Answer : byte
     /// one, so nothing the host chose as text reaches the reply.
     /// </summary>
     RectangleChecksum,
+
+    /// <summary>DECRQM's answer for an ANSI mode: the mode, then its state.</summary>
+    AnsiModeReport,
+
+    /// <summary>The same for a private mode, which carries the question mark it was asked with.</summary>
+    DecModeReport,
 }
 
 public sealed partial class Emulator
@@ -189,6 +195,16 @@ public sealed partial class Emulator
                 Literal(";");
                 Number(third);
                 Literal(answer == Answer.MouseSgrRelease ? "m" : "M");
+                break;
+
+            case Answer.AnsiModeReport:
+            case Answer.DecModeReport:
+                Csi();
+                Literal(answer == Answer.DecModeReport ? "?" : string.Empty);
+                Number(first);
+                Literal(";");
+                Number(second);
+                Literal("$y");
                 break;
 
             case Answer.RectangleChecksum:

@@ -323,29 +323,6 @@ than absorbed.
 Falsified when this repository claims cross-vendor correctness with no run behind it on
 any vendor's silicon.
 
-### §QS104 Telling a program what is on, and what was never there
-
-QS20 taught the terminal to report a setting when asked in DECRQSS's syntax, and left
-the other half undone: DECRQM, `CSI Ps $ p` and its private form, which asks whether a
-mode is currently set. Twenty-two esctest cases fail on the silence, and they are not
-the interesting part — what silence costs a real program is.
-
-A mode has four answers, not two: set, reset, permanently set, permanently reset. The
-last two are how a terminal says *this is not a thing I have* as distinct from *this is
-a thing I have and it is off*, and the difference decides whether a program falls back
-or waits. Answering everything as merely reset is worse than answering nothing: a
-program told a mode is off will try to turn it on.
-
-Two is the answer for modes this client honours and has on, one for honoured and off,
-four for the ones it will never have — which by now is a list it can state, a mouse
-encoding it refused, an inline-graphics protocol that is a non-goal. Zero is for a mode
-it has never heard of, and is the honest answer for anything not enumerated.
-
-The reply is built from a number and a constant, so it goes down the path QS19 built and
-carries no byte the host supplied.
-
-Falsified when a mode this client refuses on purpose is reported as merely off.
-
 ### §QS105 The wrap a cursor has to be able to go back through
 
 Found by esctest in QS33, in the eight `BSTests` and two `CUBTests` failures that are
