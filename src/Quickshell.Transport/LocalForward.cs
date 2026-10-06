@@ -148,20 +148,13 @@ public sealed class LocalForward : IAsyncDisposable
 
     internal static readonly PropertyInfo? ChannelNumber = ChannelType?.GetProperty("LocalChannelNumber", Hidden);
 
-    /// <summary>SSH_OPEN_ADMINISTRATIVELY_PROHIBITED: the server's policy said no.</summary>
-    private const uint Prohibited = 1;
-
-    /// <summary>SSH_OPEN_CONNECT_FAILED: the server tried and the target did not answer.</summary>
-    private const uint ConnectFailed = 2;
-
     private readonly TcpListener _listener;
     private readonly object _session;
     private readonly ForwardedPortLocal _anchor;
     private readonly CancellationTokenSource _stopping = new();
     private readonly List<ForwardFailure> _failures = [];
     private readonly List<IDisposable> _carrying = [];
-    private readonly Dictionary<uint, (uint Code, string Said)> _refusals = [];
-    private Delegate? _hearing;
+    private readonly ChannelRefusals _refusals;
     private readonly Lock _guard = new();
 
     private Task _accepting = Task.CompletedTask;
@@ -180,6 +173,9 @@ public sealed class LocalForward : IAsyncDisposable
         // The channel subscribes to a forwarded port's closing to close itself; this one is never
         // started and exists to be that, so a channel ends when this forward does.
         _anchor = new ForwardedPortLocal(binding.Address, 0, target, (uint)targetPort);
+
+        // Heard before anything can be refused.
+        _refusals = new ChannelRefusals(session);
     }
 
     /// <summary>The address the local listener accepts on.</summary>
@@ -292,15 +288,6 @@ public sealed class LocalForward : IAsyncDisposable
 
         LocalForward forward = new(listener, session, targetHost, targetPort, where);
 
-        // Heard before anything can be refused. The event's type is the library's own; a handler
-        // taking (object, EventArgs) binds to it because delegates accept a wider parameter.
-        if (OpenRefused?.EventHandlerType is { } handler)
-        {
-            forward._hearing = Delegate.CreateDelegate(
-                handler, forward, typeof(LocalForward).GetMethod(nameof(Heard), BindingFlags.NonPublic | BindingFlags.Instance)!);
-            OpenRefused.AddEventHandler(session, forward._hearing);
-        }
-
         forward._accepting = forward.AcceptAsync();
 
         // Nothing outlives the session: when it goes, so does every listener it was carrying.
@@ -409,29 +396,6 @@ public sealed class LocalForward : IAsyncDisposable
     }
 
     /// <summary>
-    /// Keeps what the server said about each channel it would not open, by channel number, until the
-    /// connection that asked reads it.
-    /// </summary>
-    private void Heard(object? sender, EventArgs what)
-    {
-        object? message = what.GetType().GetProperty("Message")?.GetValue(what);
-
-        if (message?.GetType() is not { } type
-            || type.GetProperty("LocalChannelNumber")?.GetValue(message) is not uint number)
-        {
-            return;
-        }
-
-        uint code = type.GetProperty("ReasonCode")?.GetValue(message) is uint reason ? reason : 0;
-        string said = type.GetProperty("Description")?.GetValue(message) as string ?? string.Empty;
-
-        lock (_guard)
-        {
-            _refusals[number] = (code, said);
-        }
-    }
-
-    /// <summary>
     /// A channel the server would not open, recorded as the failure its reason code says it was.
     ///
     /// <para><b>The three failures are now three.</b> A port in use here is caught where the listener
@@ -442,26 +406,18 @@ public sealed class LocalForward : IAsyncDisposable
     /// </summary>
     private void Refused(uint number)
     {
-        (uint code, string said) = (0u, string.Empty);
-
-        lock (_guard)
-        {
-            if (_refusals.Remove(number, out (uint, string) heard))
-            {
-                (code, said) = heard;
-            }
-        }
+        (uint code, string said) = _refusals.Take(number);
 
         string why = said.Length > 0 ? $" The server said: {said}." : string.Empty;
 
         ForwardFailure failure = code switch
         {
-            Prohibited => new ForwardFailure(
+            ChannelRefusals.Prohibited => new ForwardFailure(
                 ForwardTrouble.ServerRefused,
                 $"The server would not open a channel to {TargetHost}:{TargetPort}.{why}",
                 "The server forbids forwarding: AllowTcpForwarding in its sshd config."),
 
-            ConnectFailed => new ForwardFailure(
+            ChannelRefusals.ConnectFailed => new ForwardFailure(
                 ForwardTrouble.TargetRefused,
                 $"{TargetHost}:{TargetPort} did not accept the connection.{why}",
                 "Check the name and the port from the server: it is the server that resolves and dials them."),
@@ -533,11 +489,7 @@ public sealed class LocalForward : IAsyncDisposable
         await _stopping.CancelAsync().ConfigureAwait(false);
 
         _listener.Stop();
-
-        if (_hearing is not null)
-        {
-            OpenRefused?.RemoveEventHandler(_session, _hearing);
-        }
+        _refusals.Dispose();
 
         await _accepting.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 

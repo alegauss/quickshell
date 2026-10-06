@@ -106,6 +106,7 @@
 - ✅ **QS67** **A service running locally cannot be reached from the remote host** — A service here is reached from the server, the port it chose comes back, and a refusal names the port asked for and the two settings that cause it.
 - ✅ **QS124** **A forward drops the whole connection when one direction half-closes, so protocols that shut and wait hang** — A forwarded connection that shuts its sending half still receives the answer, over a channel that says EOF and waits (design recorded in `src/Quickshell.Transport/LocalForward.cs`).
 - ✅ **QS125** **A forward cannot tell a refused target from a normal close, and cannot be bound to every interface** — A refused target, a forbidden forward and a close each say so, from the server's reason code, and every interface can be asked for (design recorded in `src/Quickshell.Transport/LocalForward.cs`).
+- ✅ **QS127** **The library's SOCKS proxy answers about one request in six with something that is not a SOCKS reply** — A hundred connects through the SOCKS proxy each get a well-formed reply before the target's first byte (design recorded in `src/Quickshell.Transport/DynamicForward.cs`).
 
 ## Block G — The clean interface, defended
 
