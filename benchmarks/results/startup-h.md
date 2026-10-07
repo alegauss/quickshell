@@ -51,6 +51,27 @@ templates. ReadyToRun shortens it by a few milliseconds only, which says it is n
 **The device is on the critical path and cannot be moved off it**, as the design said: 119 ms from
 the window being shown to a swapchain existing, all of it after the first layout.
 
+## QS191: the device and the shell ahead of the window, in the guest
+
+Timed by `tools\run-startup-vm.ps1` in the VMware guest: a Release, self-contained, ReadyToRun
+publish, eleven starts, warm medians. **The guest is not the reference machine**, so these are
+compared with each other and not with the figures above.
+
+| milestone | before (two runs) | device ahead (three runs) | device and shell ahead |
+|---|---|---|---|
+| shown | 390, 420 ms | 448, 409, 418 ms | 363 ms |
+| prepared | — | 246, 224, 228 ms | 201 ms |
+| shell | 469, 499 ms | 527, 486, 489 ms | **142 ms** |
+| device | 581, 609 ms | 532, 492, 495 ms | 414 ms |
+| interactive | **609, 634 ms** | 555, 516, 505 ms | **435 ms** |
+
+The device, the atlas and the shaders open on the thread pool from the first line of `Main`. The
+first tab's pseudo-console and cmd start there too, into a model the tab adopts. Both were ready
+before the window was shown. What is left between `shown` and `interactive` is the first layout,
+the swapchain and one frame. The "before" columns were taken with the change stashed.
+The first "device ahead" run had a constructor about 40 ms slower than the others. That may be
+contention for the guest's cores.
+
 ## What was not measured, said plainly
 
 - **A cold file cache.** Arranging one means flushing the system's standby list, which needs

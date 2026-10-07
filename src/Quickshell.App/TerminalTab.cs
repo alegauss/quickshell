@@ -1,3 +1,5 @@
+using Quickshell.Terminal;
+
 namespace Quickshell.App;
 
 /// <summary>
@@ -195,13 +197,19 @@ public sealed class TerminalTab : IAsyncDisposable
     }
 
     /// <summary>Builds a tab with one pane in it, with a device and a loop but no session yet.</summary>
-    public static TerminalTab Open(Settings settings, TerminalShare share, string host)
+    /// <param name="settings">The font, its size and how much scrollback to keep.</param>
+    /// <param name="share">The one device, atlas and render loop every pane in the process uses.</param>
+    /// <param name="host">What it will be connected to.</param>
+    /// <param name="model">
+    /// A model a shell was already started into, ahead of the window (QS191), or null for a new one.
+    /// </param>
+    public static TerminalTab Open(Settings settings, TerminalShare share, string host, Emulator? model = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
         ArgumentNullException.ThrowIfNull(share);
 
-        return new TerminalTab(settings, host, share, TerminalLeaf.Open(settings, host, share));
+        return new TerminalTab(settings, host, share, TerminalLeaf.Open(settings, host, share, model));
     }
 
     /// <summary>Starts a shell behind the pane that has the keyboard.</summary>

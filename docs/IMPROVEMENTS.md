@@ -878,32 +878,6 @@ title bar first. That visible change is this line's decision.
 Falsified when the theme, moved after the first frame, does not make `interactive`
 measurably earlier in the guest across two runs each way.
 
-### §QS191 Three slow things, in parallel
-
-Measured by QS75 on the reference machine: in the release publish's 647 ms warm start
-the shell is started at 498 ms and the graphics device is ready at 617 ms, and both wait
-for the window — the shell for the synchronous work in the entry point after `Show()`,
-the device for the first layout. Neither needs the window for most of what it does.
-
-The device, the glyph atlas and the compiled shaders are process-wide since QS49 and ask
-nothing of a window: only the swapchain needs a handle. Opened on their own thread as
-the process starts, they would be ready while WPF spends its 230 ms building the first
-window. The pseudo-console and the shell are the same: nothing about them depends on a
-pixel, and cmd's start could overlap WPF's.
-
-What cannot move is the order a user sees: the window first, then the terminal in it.
-Starting work earlier changes nothing about that; it only stops two slow things from
-queueing behind a third.
-
-The risk is a failure surfacing earlier than there is a window to report it in, which
-the crash guard already covers by being armed before the window exists.
-
-Measured with `tools/Quickshell.Startup` before and after, and recorded in
-`benchmarks/results/startup-h.md`.
-
-Falsified when the device is still created after the first layout, or the shell still
-started after the window is shown, in a timed start of the release publish.
-
 ### §QS192 Bringing a portable copy's sessions into the installed one
 
 Found while shipping QS77. Installing from a portable copy copies its program files and

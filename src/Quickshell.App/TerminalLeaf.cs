@@ -36,6 +36,11 @@ public sealed class TerminalLeaf : IAsyncDisposable
     private bool _disposed;
     private bool _receiving;
 
+    // A model a shell was started into before this leaf existed (QS191), and the scrollback depth
+    // settings asked for before that shell's pipeline was this leaf's to tell.
+    private bool _adopted;
+    private int? _owedScrollback;
+
     private TerminalLeaf(Emulator emulator, TerminalPane pane, TerminalShare share,
                          Settings settings, string host)
     {
@@ -196,7 +201,12 @@ public sealed class TerminalLeaf : IAsyncDisposable
     /// <param name="settings">The font, its size and how much scrollback to keep.</param>
     /// <param name="host">What it will be connected to, for the title of last resort.</param>
     /// <param name="share">The one device, atlas and render loop every pane in the process uses.</param>
-    public static TerminalLeaf Open(Settings settings, string host, TerminalShare share)
+    /// <param name="model">
+    /// A model a shell was already started into, ahead of the window (QS191), or null for a new one.
+    /// Its scrollback depth is told to the shell's pipeline once the leaf has it, never to the model
+    /// under the parser.
+    /// </param>
+    public static TerminalLeaf Open(Settings settings, string host, TerminalShare share, Emulator? model = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
@@ -204,14 +214,14 @@ public sealed class TerminalLeaf : IAsyncDisposable
 
         // The size is a placeholder for one layout pass. The pane decides the real grid, and the
         // model is resized to it before a frame is drawn.
-        Emulator emulator = new(80, 25, settings.Scrollback);
+        Emulator emulator = model ?? new(80, 25, settings.Scrollback);
 
         // Before anything is drawn, so a pane opened after the scheme was chosen is not the one
         // pane wearing the defaults.
         settings.Colours.ApplyTo(emulator.Palette);
 
         return new TerminalLeaf(emulator, new TerminalPane { Reading = emulator.Buffer },
-                                share, settings, host);
+                                share, settings, host) { _adopted = model is not null };
     }
 
     /// <summary>
@@ -247,6 +257,12 @@ public sealed class TerminalLeaf : IAsyncDisposable
                 .ConfigureAwait(false);
 
             _session = session;
+
+            if (_owedScrollback is { } depth)
+            {
+                session.Pipeline.KeepScrollback(depth);
+                _owedScrollback = null;
+            }
 
             // The shell is running, which is when a timed start stops waiting on this client.
             StartupTimeline.Mark("shell");
@@ -379,6 +395,12 @@ public sealed class TerminalLeaf : IAsyncDisposable
             if (_session is { } session)
             {
                 session.Pipeline.KeepScrollback(settings.Scrollback);
+            }
+            else if (_adopted)
+            {
+                // A shell started ahead of the window is already writing this model (QS191), so the
+                // depth waits for its pipeline rather than reaching into the ring under the parser.
+                _owedScrollback = settings.Scrollback;
             }
             else
             {

@@ -84,6 +84,21 @@ public static class Entry
             };
         });
 
+        // And the first tab's shell, for the same reason (QS191): a pseudo-console and cmd need no
+        // pixel, so they start now, into a model of their own at the placeholder size every pane
+        // starts at, and the first tab takes both. The pane's real grid is sent once it is laid out,
+        // as it always was; the settings' scrollback depth goes through the shell's own pipeline.
+        Emulator early = new(80, 25, Settings.Default.Scrollback);
+        Task<LocalSession> earlyShell = Task.Run(async () =>
+        {
+            LocalSession started = await LocalSession.OpenAsync(early, share.Damage, 80, 25).ConfigureAwait(false);
+
+            // When it started, which is the milestone's meaning; the leaf marking it later changes nothing.
+            StartupTimeline.Mark("shell");
+
+            return started;
+        });
+
         // Armed before the window, because a failure while building one is a failure the user would
         // otherwise see as nothing happening at all. It reads no file and opens nothing, so it does
         // not spend the cold start this order exists to protect.
@@ -161,8 +176,9 @@ public static class Entry
 
         // The terminal itself, and it is deliberately the last thing: opening a device, compiling
         // two shaders and rasterising a font are the most expensive things this process does, and
-        // none of them is between the user and their first sight of the window.
-        Opened(window, settings, share);
+        // none of them is between the user and their first sight of the window. The first tab is the
+        // one whose shell started with the process.
+        Opened(window, settings, share, early, earlyShell);
 
         // `--tabs <n>` opens that many, which is what Ctrl+Shift+T opens n times. A real surface and
         // not a test hook, for the same reason `--import` is one: this client has no menu, so the
@@ -320,10 +336,16 @@ public static class Entry
     /// <para>The tab is registered as an open session in the same breath, because the window's
     /// closing question names what is open and a tab is what "open" now means.</para>
     /// </summary>
-    private static void Opened(MainWindow window, Settings settings, TerminalShare share)
+    /// <param name="window">The window the tab goes into.</param>
+    /// <param name="settings">What the tab is opened with.</param>
+    /// <param name="share">The one device and loop.</param>
+    /// <param name="model">A model a shell was started into ahead of the window, or null.</param>
+    /// <param name="started">That shell, or null to start one now.</param>
+    private static void Opened(MainWindow window, Settings settings, TerminalShare share,
+                               Emulator? model = null, Task<LocalSession>? started = null)
     {
         string host = Path.GetFileName(LocalSession.Shell);
-        TerminalTab tab = TerminalTab.Open(settings, share, host);
+        TerminalTab tab = TerminalTab.Open(settings, share, host, model);
 
         // Everything a pane reads live, applied to the one just opened as well as to the rest.
         window.Apply(settings);
@@ -331,7 +353,9 @@ public static class Entry
         window.Add(tab);
         window.Sessions.Open(host, another: true);
 
-        _ = tab.ConnectAsync();
+        _ = started is null
+            ? tab.ConnectAsync()
+            : tab.Focused.ConnectAsync(async (_, _, _, _, _) => await started.ConfigureAwait(false));
     }
 
     /// <summary>

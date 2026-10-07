@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Quickshell.App;
 using Quickshell.Terminal;
@@ -78,6 +79,48 @@ public sealed class SessionEndTests
 
         Assert.Null(ended);
         Assert.DoesNotContain("Nothing typed here", screen, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// QS191: a shell started before its pane existed keeps what it printed in the meantime, and the
+    /// settings' scrollback depth reaches it through its own pipeline once the pane has it.
+    /// </summary>
+    [Fact]
+    public void AShellStartedAheadOfItsPaneKeepsItsOutputAndTakesTheSettings()
+    {
+        (string screen, int kept) = OnSta(() =>
+        {
+            Emulator early = new(80, 5, scrollback: 1000);
+            PtyStub far = new();
+            IShellSession started = new Stubbed(SessionPipeline.Start(far, early, damage: Shared.Damage));
+
+            // The banner, and more history than the settings will keep.
+            StringBuilder printed = new("Microsoft Windows\r\n");
+
+            for (int line = 0; line < 60; line++)
+            {
+                printed.Append(CultureInfo.InvariantCulture, $"line {line}\r\n");
+            }
+
+            far.Produce(Encoding.ASCII.GetBytes(printed.ToString()));
+
+            Until(() => Text(early).Contains("line 59", StringComparison.Ordinal));
+
+            Settings settings = Settings.Default with { Scrollback = 10 };
+            TerminalLeaf leaf = TerminalLeaf.Open(settings, "cmd.exe", Shared, early);
+
+            // What the window does to every pane before the shell is the leaf's.
+            leaf.Apply(settings);
+
+            leaf.ConnectAsync((_, _, _, _, _) => Task.FromResult(started)).GetAwaiter().GetResult();
+
+            Until(() => leaf.Emulator.Buffer.ScrollbackLines <= 10);
+
+            return (Text(leaf.Emulator), leaf.Emulator.Buffer.ScrollbackLines);
+        });
+
+        Assert.Contains("line 59", screen, StringComparison.Ordinal);
+        Assert.InRange(kept, 1, 10);
     }
 
     // ---- plumbing ----
