@@ -196,8 +196,18 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
     /// property, because this renderer draws every pane in the process and only some of them are
     /// marked: a setting on the renderer would be whichever pane set it last.
     /// </param>
+    /// <param name="ground">
+    /// What the pixels no cell covers are cleared to, or null to leave the target as it is (QS177).
+    ///
+    /// <para>A pane is almost never a whole number of cells, and with a flip-discard swapchain the
+    /// strip past the last whole column and row comes back black whatever the scheme says — a band
+    /// down the right of every pane on a light scheme, and a gutter between two panes that looks
+    /// like a divider nobody drew. So the target is cleared to the scheme's background first. Not the
+    /// edge cells' own backgrounds painted outward: a host that coloured its last column would see
+    /// the colour smeared into pixels it never addressed.</para>
+    /// </param>
     public void Draw(PresentSurface surface, ReadOnlySpan<CellInstance> cells, int columns,
-                     bool outlined = false)
+                     bool outlined = false, Rgb? ground = null)
     {
         ArgumentNullException.ThrowIfNull(surface);
         ArgumentOutOfRangeException.ThrowIfLessThan(columns, 1);
@@ -219,6 +229,15 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
                             outlined);
 
         context.OMSetRenderTargets(surface.View);
+
+        // On a frame that is being drawn anyway, so an idle window still draws nothing.
+        if (ground is { } clear)
+        {
+            context.ClearRenderTargetView(surface.View,
+                                          new Vortice.Mathematics.Color4(clear.Red / 255f, clear.Green / 255f,
+                                                                         clear.Blue / 255f, 1f));
+        }
+
         context.RSSetViewport(0f, 0f, surface.Width, surface.Height);
         context.RSSetState(_rasteriser);
 

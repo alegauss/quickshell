@@ -314,28 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS177 The pixels no cell owns
-
-A pane is almost never a whole number of cells, and the pixels past the last whole
-column and the last whole row are drawn by nothing. The grid is one instance per cell
-and nothing clears the target first, so with a flip-discard swapchain those pixels come
-back black whatever the scheme says.
-
-Measured on the guest while shipping QS53: the scheme's background read (16, 18, 24)
-inside the grid and (0, 0, 0) in the strip under it, about fifteen pixels deep at that
-size. On a dark scheme it is a seam a careful eye finds; on a light scheme it is a black
-band down the right of every pane and along its bottom. Between two panes split side by
-side it is a dark gutter that looks like a divider nobody drew.
-
-The remedy is one clear to the palette's default background before the grid is drawn,
-which costs a fill of the target on a frame that is being drawn anyway and adds no frame
-to an idle window. Painting the edge cells' own background outward is the alternative
-and it is wrong: a host that coloured its last column would find the colour smeared into
-pixels it never addressed.
-
-Falsified when a pane whose size is not a whole number of cells shows any pixel outside
-its grid that is not the scheme's background.
-
 ### §QS183 A clipboard that is busy for a moment
 
 Measured while shipping QS180: on this desk CrossDeviceService and msrdc, the phone-link

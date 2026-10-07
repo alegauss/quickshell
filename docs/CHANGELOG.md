@@ -81,6 +81,7 @@
 - ✅ **QS155** **A program that asks for the mouse never gets one, and the wheel scrolls nothing at all** — A program with mouse tracking hears every button's press and release, drags and wheel notches; under a full-screen program without it the wheel sends arrow keys.
 - ✅ **QS156** **Grapheme segmentation runs at half its old rate, because every cluster now asks ICU where the boundary is** — Measured with ICU on: segmentation runs 270 MB/s on cat-log and 180 on ls-color-r, above the 181 and 83 it ran before QS154 (design superseded: QS143's pair rule had already shipped it).
 - ✅ **QS158** **Nothing says how far back the view is, so a reader who scrolled has no idea where they are or that output arrived** — A view scrolled into the history shows a thumb in the right-hand column and an arrow when output arrived below, drawn in the grid; the live screen carries neither.
+- ✅ **QS177** **The strip past the last whole cell is never painted, so every pane has a black band at its right and bottom edges** — Every frame clears the target to the scheme's background before the grid, so the strip past a pane's last whole cell is the scheme's colour, not black.
 
 ## Block D — The tree a user organises work in
 

@@ -35,6 +35,7 @@ public sealed class TerminalView : IDisposable
     private readonly PresentSurface _surface;
     private readonly CellRenderer _renderer;
     private readonly GridPainter _painter;
+    private readonly Palette _palette;
     private readonly RedrawGate _gate = new();
 
     private CellInstance[] _cells;
@@ -51,6 +52,7 @@ public sealed class TerminalView : IDisposable
         _surface = surface;
         _renderer = renderer;
         _painter = new GridPainter(atlas, palette);
+        _palette = palette;
 
         (int columns, int rows) = renderer.Metrics.GridFor(surface.Width, surface.Height);
 
@@ -446,7 +448,10 @@ public sealed class TerminalView : IDisposable
 
         long occluded = _surface.Occlusions;
 
-        _renderer.Draw(_surface, _cells.AsSpan(0, _painter.Painted), buffer.Columns, _outlined);
+        // Cleared to the scheme's own background first, read afresh each frame so a scheme changed
+        // under a live pane takes the strip past its last cell with it (QS177).
+        _renderer.Draw(_surface, _cells.AsSpan(0, _painter.Painted), buffer.Columns, _outlined,
+                       _palette.Resolve(Colour.Default, background: true));
         _surface.Present();
 
         _draws++;

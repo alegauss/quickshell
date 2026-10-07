@@ -375,6 +375,29 @@ public sealed class CellRendererTests
         Assert.Equal(new Rgb(10, 20, 30), Pixel(harness.ReadBack(), 1, 1));
     }
 
+    /// <summary>
+    /// QS177's falsification: no pixel outside the grid is anything but the scheme's background. One
+    /// cell drawn on a whole surface leaves the rest of it — the strip a pane has past its last whole
+    /// cell, at its largest — in the ground colour, and the cell its own.
+    /// </summary>
+    [Fact]
+    public void ThePixelsNoCellCoversAreTheSchemesBackground()
+    {
+        using Harness harness = new();
+
+        Rgb ground = new(200, 210, 220);
+        CellInstance[] cells = [CellInstance.For(GlyphPlacement.Empty, Rgb.White, new Rgb(10, 20, 30))];
+
+        harness.Renderer.Draw(harness.Surface, cells, 1, ground: ground);
+
+        byte[] frame = harness.ReadBack();
+
+        Assert.Equal(new Rgb(10, 20, 30), Pixel(frame, 1, 1));
+        Assert.Equal(ground, Pixel(frame, (int)Width - 1, (int)Height - 1));
+        Assert.Equal(ground, Pixel(frame, (int)Width - 1, 1));
+        Assert.Equal(ground, Pixel(frame, 1, (int)Height - 1));
+    }
+
     [Fact]
     public void AnAtlasWithMorePagesThanTheShaderReachesIsRefused()
     {
