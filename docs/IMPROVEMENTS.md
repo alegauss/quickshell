@@ -698,6 +698,28 @@ DeviceLost kind, and QS72 already reports that as being about the machine.
 
 Falsified when a pane goes black after a driver reset and stays black.
 
+### §QS223 A click on the strip that switches nothing
+
+Found while reading `MainWindow` for QS190. The strip is a `TabControl` whose items
+carry only a header. Which tab's panes are on screen is decided by `Active` and nothing
+else, and `Active` sets the strip's `SelectedIndex`. Nothing goes the other way: no
+handler listens for the strip's selection changing. Read this way, a click on a tab
+moves the strip's highlight while the terminal under it stays the tab that was showing.
+The keyboard and the palette then type into a session other than the one the highlight
+names. Only the chords (Ctrl+Tab, Alt+digit) switch tabs. The `Active` property's own
+comment says a click on the strip does the same as they do.
+
+What to build: handle the strip's `SelectionChanged` by setting `Active` to the selected
+index. Guard it so the assignment `Active` makes does not re-enter. Add a UI case that
+clicks the second tab's header in the guest and reads the focused pane's title from the
+accessibility tree.
+
+Confirm it first. A UIA invoke of the second `TabItem` with two tabs open should leave
+the window title naming the first tab's session if the reading is right.
+
+Falsified when clicking a tab's header leaves another tab's session on screen and
+receiving the keyboard.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
@@ -832,30 +854,29 @@ which is not much, and is worth knowing before it is spent.
 
 Falsified when the idle figure is quoted for a client that has never held a connection.
 
-### §QS190 Building what the first frame shows, and nothing else
+### §QS190 Where the window's 200 ms go, measured
 
-Measured by QS75 on the reference machine: the release publish reaches the prompt in 647
-ms warm, and the main window's constructor is the largest single step in that, 230 ms.
-Taking the theme assignment out of it saved 18 ms, so the cost is not the Fluent theme.
-It is WPF being asked to build, before the first paint, a window's worth of things the
-first paint does not show.
+QS75 measured the window's constructor as the largest step of a start: 230 ms of 647 on
+the reference desk. The first design blamed the collapsed tab strip and find bar. Built
+on demand, they moved nothing. `tools/run-startup-vm.ps1` timed eleven guest starts each
+way, and the step was 206 and 168 ms before and 200 ms after, within the spread of two
+runs of one tree. That design is falsified, and the change was not kept.
 
-The constructor builds a `TabControl` whose strip is collapsed while there is one tab,
-and a find bar — a text box, three buttons and their templates — that is collapsed until
-somebody presses `Ctrl+Shift+F`. Both are the window's argument about what is on screen
-by default, and both are paid for at start-up by every user who never opens either.
+Marks inside the constructor for one guest run located the time, as warm medians:
 
-The move is to build each the first time it is needed: the strip when a second tab
-opens, the find bar when it is asked for. The window's layout keeps a place for each so
-nothing shifts when it arrives. What a test checks about them — that the strip appears
-with a second tab, that the find bar takes the keyboard — does not change, and neither
-does anything a user sees.
+- About 100 ms passes before its first line: WPF's own `Window` and the field initialisers.
+- About 95 ms goes to setting `ThemeMode` to Fluent. QS75 measured 18 ms on a Debug build
+  on the reference desk, so take that figure there again.
+- About 40 ms goes to the find bar and the layout.
+- The share, the crash guard and the input bindings cost about nothing.
 
-It is measured with `tools/Quickshell.Startup` before and after, on the same publish,
-and the result goes into `benchmarks/results/startup-h.md` beside the figure it moved.
+The theme is next. The first frame shows a title bar and a terminal that D3D draws, and
+no Fluent control. Applied once that frame is up, the theme leaves the critical path.
+The user would see the title bar turn from light to dark, unless DWM is asked for a dark
+title bar first. That visible change is this line's decision.
 
-Falsified when the release publish's warm start is not measurably earlier at
-`constructed` once the hidden chrome is built on demand.
+Falsified when the theme, moved after the first frame, does not make `interactive`
+measurably earlier in the guest across two runs each way.
 
 ### §QS191 Three slow things, in parallel
 

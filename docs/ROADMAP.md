@@ -40,6 +40,7 @@
 - 📋 **QS199** (deps: —) **The test that says a chrome theme leaves the terminal's colours alone checks a palette nothing draws with** — Appearance.Palette is a second model of the terminal's colours that no running code reads; the colours a pane draws come from Settings.Colours. → §QS199
 - 📋 **QS217** (deps: QS126 ✅) **A saved session can only be opened by typing its path on a command line** — The palette reaches every other action and lists no session, so a user with forty hosts has to remember each one's path. → §QS217
 - 📋 **QS221** (deps: QS116 ✅) **A graphics driver reset leaves every pane frozen, and nothing in the client recovers or says so** — The device can recover and nothing asks it to, and a recovery would rebuild closed panes' swapchains because no resource ever leaves its list. → §QS221
+- 📋 **QS223** (deps: —) **Clicking a tab on the strip moves its highlight but leaves the other tab's terminal on screen** — Nothing handles the strip's selection changing, so only the chords switch tabs and a click points the keyboard at a session it does not show. → §QS223
 
 ## Block H — The reason to leave the incumbent
 
@@ -47,7 +48,6 @@
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS78** (deps: QS139 ⏸) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - ⏳ **QS79** (deps: QS3 ✅, QS196, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
-- 📋 **QS190** (deps: —) **The window's constructor spends 230 ms of a 647 ms start building chrome the first frame does not show** — The tab strip and the find bar are built before the first paint although both are collapsed until somebody asks for them. → §QS190
 - 📋 **QS191** (deps: —) **The graphics device and the shell both wait for the window, so a start runs three slow things one after another** — Neither the device, the atlas and the shaders nor the pseudo-console needs a window, and each could be ready while WPF builds one. → §QS191
 - 📋 **QS192** (deps: —) **A portable copy that installs itself leaves its saved sessions and settings behind in the copy it came from** — Somebody who tried the archive portable and imported their sessions opens an installed copy with none of them, and no word of where they went. → §QS192
 - 📋 **QS196** (deps: —) **Figure 3 of the budget, steady-state frame cost, is measured by nothing, so no gate can hold it** — The render arm reports stream throughput with parsing folded in, and no harness times one full grid drawn again and again on the CPU and the GPU. → §QS196
