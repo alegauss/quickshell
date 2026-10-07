@@ -102,70 +102,44 @@ public sealed class MouseReportingTests
     /// A shown window with one pane whose view has opened, its sending path captured, and the work
     /// done on its thread; answers what was sent.
     /// </summary>
-    private static string OnShownLeaf(Action<TerminalLeaf, CellMetrics> work)
+    private static string OnShownLeaf(Action<TerminalLeaf, CellMetrics> work) => Sta.Run(() =>
     {
-        string result = string.Empty;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
+        MainWindow window = new()
         {
-            MainWindow? window = null;
+            Width = 640,
+            Height = 360,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+        };
 
-            try
-            {
-                window = new MainWindow
-                {
-                    Width = 640,
-                    Height = 360,
-                    ShowInTaskbar = false,
-                    ShowActivated = false,
-                };
-
-                window.Add(TerminalTab.Open(Settings.Default, Shared, "cmd.exe"));
-                window.Show();
-                window.UpdateLayout();
-
-                TerminalLeaf leaf = window.Current!.Leaves[0];
-
-                Assert.NotNull(leaf.Terminal.View);
-
-                StringBuilder heard = new();
-
-                leaf.Terminal.Sending = bytes =>
-                {
-                    heard.Append(Encoding.ASCII.GetString(bytes.Span));
-
-                    return ValueTask.CompletedTask;
-                };
-
-                work(leaf, leaf.Terminal.View!.Renderer.Metrics);
-
-                result = heard.ToString();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                window?.Close();
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(60)), "the STA thread never finished");
-
-        if (failed is not null)
+        try
         {
-            throw new InvalidOperationException("the window could not be built", failed);
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "cmd.exe"));
+            window.Show();
+            window.UpdateLayout();
+
+            TerminalLeaf leaf = window.Current!.Leaves[0];
+
+            Assert.NotNull(leaf.Terminal.View);
+
+            StringBuilder heard = new();
+
+            leaf.Terminal.Sending = bytes =>
+            {
+                heard.Append(Encoding.ASCII.GetString(bytes.Span));
+
+                return ValueTask.CompletedTask;
+            };
+
+            work(leaf, leaf.Terminal.View!.Renderer.Metrics);
+
+            return heard.ToString();
         }
-
-        return result;
-    }
+        finally
+        {
+            window.Close();
+        }
+    });
 
     private const uint Moved = 0x0200;
     private const uint LeftDown = 0x0201;

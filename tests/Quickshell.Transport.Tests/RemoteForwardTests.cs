@@ -241,14 +241,10 @@ public sealed class RemoteForwardTests : IAsyncDisposable
     {
         SshNetTransport session = new();
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", port), [Key()], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", port), [Key()], SshFixture.Trusting, Stop);
 
         return session;
     }
-
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __,
-                                                         CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
 
     private static SshCredential.PrivateKey Key() =>
         new(Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys",
@@ -256,18 +252,7 @@ public sealed class RemoteForwardTests : IAsyncDisposable
 
     private static void SkipWithout(int port)
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, port).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(port);
 
         Assert.SkipUnless(up, $"nothing is listening on 127.0.0.1:{port}: run prototypes/SshProbe/fixture/up.sh");
     }

@@ -64,7 +64,7 @@ public sealed class SessionLogTests : IDisposable
 
             SshException told = await Assert.ThrowsAsync<SshException>(
                 async () => await refused.ConnectAsync(SshEndpoint.For(Host, "probe", Port),
-                                                       [password], Trusting, Stop));
+                                                       [password], SshFixture.Trusting, Stop));
 
             Assert.Contains(told.Kind,
                             (SshFailureKind[])[SshFailureKind.NoMethodAccepted,
@@ -77,7 +77,7 @@ public sealed class SessionLogTests : IDisposable
             SshCredential.PrivateKey locked =
                 new(Path.Combine(Fixture(), "probe_locked"), Passphrase);
 
-            await accepted.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [locked], Trusting,
+            await accepted.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [locked], SshFixture.Trusting,
                                         Stop);
 
             Assert.True(accepted.IsConnected);
@@ -114,7 +114,7 @@ public sealed class SessionLogTests : IDisposable
 
         await Assert.ThrowsAsync<SshException>(
             async () => await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [locked],
-                                                   Trusting, Stop));
+                                                   SshFixture.Trusting, Stop));
 
         string everything = await Everything(log);
 
@@ -143,7 +143,7 @@ public sealed class SessionLogTests : IDisposable
 
         try
         {
-            await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [password], Trusting,
+            await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [password], SshFixture.Trusting,
                                        Stop);
         }
         catch (SshException)
@@ -186,7 +186,7 @@ public sealed class SessionLogTests : IDisposable
         {
             // Chosen out of the range nothing is registered on, and on loopback so the answer is a
             // refusal rather than a wait.
-            await session.ConnectAsync(SshEndpoint.For(Host, "probe", 47_811), [password], Trusting,
+            await session.ConnectAsync(SshEndpoint.For(Host, "probe", 47_811), [password], SshFixture.Trusting,
                                        Stop);
         }
         catch (SshException)
@@ -373,7 +373,7 @@ public sealed class SessionLogTests : IDisposable
 
         await using SshNetTransport session = new() { Log = log, Timeout = TimeSpan.FromSeconds(3) };
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Frozen), [Key()], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Frozen), [Key()], SshFixture.Trusting, Stop);
 
         await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
 
@@ -420,7 +420,7 @@ public sealed class SessionLogTests : IDisposable
 
         await using (SshNetTransport session = new() { Log = log })
         {
-            await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+            await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], SshFixture.Trusting, Stop);
 
             await using LocalForward forward = LocalForward.Open(session, "127.0.0.1", 9);
 
@@ -448,18 +448,7 @@ public sealed class SessionLogTests : IDisposable
 
     private static void SkipUnlessListening(int port)
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, port).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception failure) when (failure is SocketException or AggregateException)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(port);
 
         Assert.SkipUnless(up, $"nothing is listening on {Host}:{port}: run the fixture's up.sh again");
     }
@@ -512,10 +501,6 @@ public sealed class SessionLogTests : IDisposable
         return all.ToString();
     }
 
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __,
-                                                         CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
-
     private static string Fixture() =>
         Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys");
 
@@ -523,18 +508,7 @@ public sealed class SessionLogTests : IDisposable
 
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, Port).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(Port);
 
         Assert.SkipUnless(up, "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
     }

@@ -24,9 +24,6 @@ public sealed class SshAgentTests
 {
     private static CancellationToken Stop => TestContext.Current.CancellationToken;
 
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __, CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
-
     // ---- The protocol ----
 
     /// <summary>Listing is the first of the two operations, and it names the key the way ssh-add does.</summary>
@@ -130,7 +127,7 @@ public sealed class SshAgentTests
             await using SshNetTransport transport = new();
 
             await transport.ConnectAsync(SshEndpoint.For("127.0.0.1", "probe", 2222),
-                                         [new SshCredential.Agent(agent.Pipe)], Trusting, Stop);
+                                         [new SshCredential.Agent(agent.Pipe)], SshFixture.Trusting, Stop);
 
             Assert.True(transport.IsConnected, "the agent's key did not open a session");
             Assert.True(agent.Signatures > 0, "the server let the client in without a signature");
@@ -165,7 +162,7 @@ public sealed class SshAgentTests
         SshException refused = await Assert.ThrowsAsync<SshException>(async () =>
             await wrong.ConnectAsync(SshEndpoint.For("127.0.0.1", "probe", 2222),
                                      [new SshCredential.Agent(agent.Pipe, "SHA256:not-that-one")],
-                                     Trusting, Stop));
+                                     SshFixture.Trusting, Stop));
 
         Assert.Equal(SshFailureKind.NoMethodAccepted, refused.Kind);
         Assert.Contains("not holding", refused.Message, StringComparison.OrdinalIgnoreCase);
@@ -261,7 +258,7 @@ public sealed class SshAgentTests
             await using SshNetTransport transport = new();
 
             await transport.ConnectAsync(SshEndpoint.For("127.0.0.1", "probe", 2222),
-                                         [new SshCredential.Agent(SshAgent.PageantWindow)], Trusting, Stop);
+                                         [new SshCredential.Agent(SshAgent.PageantWindow)], SshFixture.Trusting, Stop);
 
             Assert.True(transport.IsConnected, "the key behind the window did not open a session");
             Assert.True(agent.Signatures > 0, "the server let the client in without a signature");
@@ -324,18 +321,7 @@ public sealed class SshAgentTests
 
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync("127.0.0.1", 2222).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(2222);
 
         Assert.SkipUnless(up, "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
     }

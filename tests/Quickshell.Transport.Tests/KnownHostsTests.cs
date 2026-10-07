@@ -442,18 +442,7 @@ public sealed class KnownHostsTests : IDisposable
 
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync("127.0.0.1", 2222).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(2222);
 
         Assert.SkipUnless(up && System.IO.File.Exists(FixtureKey()),
             "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");

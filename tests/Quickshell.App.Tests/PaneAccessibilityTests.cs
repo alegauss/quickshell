@@ -79,60 +79,33 @@ public sealed class PaneAccessibilityTests
     /// <summary>
     /// Builds the client's window with a pane in it, on an STA thread, and hands the pane over.
     /// </summary>
-    private static T OnPane<T>(TerminalBuffer? reading, Func<TerminalPane, T> work)
+    private static T OnPane<T>(TerminalBuffer? reading, Func<TerminalPane, T> work) => Sta.Run(() =>
     {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
+        MainWindow client = new()
         {
-            Window? window = null;
+            Width = 480,
+            Height = 320,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+        };
 
-            try
-            {
-                MainWindow client = new()
-                {
-                    Width = 480,
-                    Height = 320,
-                    ShowInTaskbar = false,
-                    ShowActivated = false,
-                };
-
-                window = client;
-
-                // Before it is shown, because WPF builds an element's automation peer once and
-                // keeps it: a pane shown without a buffer publishes an empty terminal for good.
-                TerminalPane pane = new() { Reading = reading };
-
-                client.Show(pane);
-                client.Show();
-                client.UpdateLayout();
-
-                Assert.True(pane.PaneHandle != nint.Zero, "the pane never built a handle");
-
-                result = work(pane);
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                window?.Close();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(60)), "the STA thread never finished");
-
-        if (failed is not null)
+        try
         {
-            throw new InvalidOperationException("the pane could not be asked", failed);
+            // Before it is shown, because WPF builds an element's automation peer once and keeps
+            // it: a pane shown without a buffer publishes an empty terminal for good.
+            TerminalPane pane = new() { Reading = reading };
+
+            client.Show(pane);
+            client.Show();
+            client.UpdateLayout();
+
+            Assert.True(pane.PaneHandle != nint.Zero, "the pane never built a handle");
+
+            return work(pane);
         }
-
-        return result;
-    }
+        finally
+        {
+            client.Close();
+        }
+    });
 }

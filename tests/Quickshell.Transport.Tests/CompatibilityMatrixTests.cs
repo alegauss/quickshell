@@ -55,7 +55,7 @@ public sealed class CompatibilityMatrixTests : IDisposable
 
         await using SshNetTransport transport = new() { Log = log };
 
-        await transport.ConnectAsync(SshEndpoint.For(Host, "probe", port), [Key()], Trusting, Stop);
+        await transport.ConnectAsync(SshEndpoint.For(Host, "probe", port), [Key()], SshFixture.Trusting, Stop);
 
         string agreed = await Agreed(log);
 
@@ -100,7 +100,7 @@ public sealed class CompatibilityMatrixTests : IDisposable
 
         SshCredential.PrivateKey rsa = new(Path.Combine(Path.GetDirectoryName(Key().Path)!, "probe_rsa"));
 
-        await transport.ConnectAsync(SshEndpoint.For(Host, "probe", port), [rsa], Trusting, Stop);
+        await transport.ConnectAsync(SshEndpoint.For(Host, "probe", port), [rsa], SshFixture.Trusting, Stop);
 
         Assert.True(transport.IsConnected, $"{server} did not take an RSA key");
     }
@@ -182,26 +182,12 @@ public sealed class CompatibilityMatrixTests : IDisposable
         return seen.ToString();
     }
 
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __, CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
-
     private static SshCredential.PrivateKey Key() =>
         new(Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
 
     private static void SkipUnlessListening(int port, string server, string fixture)
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, port).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception failure) when (failure is SocketException or AggregateException)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(port);
 
         Assert.SkipUnless(up && File.Exists(Key().Path),
             $"{server} is not on {Host}:{port}: run prototypes/SshProbe/{fixture}/up.sh");

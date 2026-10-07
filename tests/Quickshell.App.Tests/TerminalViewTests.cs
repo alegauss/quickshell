@@ -336,58 +336,31 @@ public sealed class TerminalViewTests
     /// does not take the foreground: a test that stole the desk would be a test nobody could run
     /// while working.</para>
     /// </summary>
-    private static T OnPane<T>(Func<TerminalPane, T> work)
+    private static T OnPane<T>(Func<TerminalPane, T> work) => Sta.Run(() =>
     {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
+        MainWindow client = new()
         {
-            Window? window = null;
+            Width = 480,
+            Height = 320,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+        };
 
-            try
-            {
-                MainWindow client = new()
-                {
-                    Width = 480,
-                    Height = 320,
-                    ShowInTaskbar = false,
-                    ShowActivated = false,
-                };
-
-                window = client;
-
-                TerminalPane pane = new();
-
-                client.Show(pane);
-                client.Show();
-                client.UpdateLayout();
-
-                Assert.True(pane.PaneHandle != nint.Zero, "the pane never built a handle");
-
-                result = work(pane);
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                window?.Close();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(60)), "the STA thread never finished");
-
-        if (failed is not null)
+        try
         {
-            throw new InvalidOperationException("the pane could not be drawn into", failed);
+            TerminalPane pane = new();
+
+            client.Show(pane);
+            client.Show();
+            client.UpdateLayout();
+
+            Assert.True(pane.PaneHandle != nint.Zero, "the pane never built a handle");
+
+            return work(pane);
         }
-
-        return result;
-    }
+        finally
+        {
+            client.Close();
+        }
+    });
 }

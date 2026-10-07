@@ -46,7 +46,7 @@ public sealed class TransferPlanTests : IDisposable
 
         await using SshNetTransport session = new();
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], SshFixture.Trusting, Stop);
 
         await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
 
@@ -187,7 +187,7 @@ public sealed class TransferPlanTests : IDisposable
 
         await using SshNetTransport session = new();
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], SshFixture.Trusting, Stop);
 
         await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
 
@@ -255,7 +255,7 @@ public sealed class TransferPlanTests : IDisposable
 
         await using SshNetTransport session = new();
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], SshFixture.Trusting, Stop);
 
         await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
 
@@ -315,7 +315,7 @@ public sealed class TransferPlanTests : IDisposable
 
         await using SshNetTransport session = new();
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], SshFixture.Trusting, Stop);
 
         await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
 
@@ -372,7 +372,7 @@ public sealed class TransferPlanTests : IDisposable
 
         await using SshNetTransport session = new();
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], SshFixture.Trusting, Stop);
 
         await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
 
@@ -440,7 +440,7 @@ public sealed class TransferPlanTests : IDisposable
 
         await using SshNetTransport session = new();
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], SshFixture.Trusting, Stop);
 
         await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
 
@@ -487,7 +487,7 @@ public sealed class TransferPlanTests : IDisposable
 
         await using SshNetTransport session = new();
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], SshFixture.Trusting, Stop);
 
         await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
 
@@ -532,7 +532,7 @@ public sealed class TransferPlanTests : IDisposable
 
         await using SshNetTransport session = new();
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], SshFixture.Trusting, Stop);
 
         await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
 
@@ -657,28 +657,13 @@ public sealed class TransferPlanTests : IDisposable
         }
     }
 
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __,
-                                                         CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
-
     private static SshCredential.PrivateKey Key() =>
         new(Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys",
                          "probe_ed25519"));
 
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, Port).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(Port);
 
         Assert.SkipUnless(up, "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
     }

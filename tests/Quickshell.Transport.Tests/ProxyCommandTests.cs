@@ -26,9 +26,6 @@ public sealed class ProxyCommandTests : IDisposable
 
     private static CancellationToken Stop => TestContext.Current.CancellationToken;
 
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __, CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
-
     // ---- The tokens ----
 
     /// <summary>
@@ -103,11 +100,11 @@ public sealed class ProxyCommandTests : IDisposable
         SkipWithoutOpenSsh();
 
         await using SshChain chain = new([
-            new SshHop(SshEndpoint.For(TargetOnTheNetwork, "probe", 22), [Key()], Trusting,
+            new SshHop(SshEndpoint.For(TargetOnTheNetwork, "probe", 22), [Key()], SshFixture.Trusting,
                        ProxyCommand: Through()),
         ]);
 
-        await chain.ConnectAsync(chain.Endpoint, [Key()], Trusting, Stop);
+        await chain.ConnectAsync(chain.Endpoint, [Key()], SshFixture.Trusting, Stop);
 
         Assert.True(chain.IsConnected);
 
@@ -134,7 +131,7 @@ public sealed class ProxyCommandTests : IDisposable
 
         await using SshNetTransport session = new();
 
-        await session.ConnectAsync(proxy.Reachable with { User = "probe" }, [Key()], Trusting, Stop);
+        await session.ConnectAsync(proxy.Reachable with { User = "probe" }, [Key()], SshFixture.Trusting, Stop);
 
         Assert.True(session.IsConnected);
 
@@ -190,12 +187,12 @@ public sealed class ProxyCommandTests : IDisposable
     public async Task WhatTheProgramPrintedSurvivesIntoTheFailure()
     {
         await using SshChain chain = new([
-            new SshHop(SshEndpoint.For("example.test", "probe", 22), [Unused()], Trusting,
+            new SshHop(SshEndpoint.For("example.test", "probe", 22), [Unused()], SshFixture.Trusting,
                        ProxyCommand: "cmd /c \"echo the vpn is not up 1>&2 & exit 1\""),
         ]);
 
         SshException failed = await Assert.ThrowsAsync<SshException>(async () =>
-            await chain.ConnectAsync(chain.Endpoint, [Unused()], Trusting, Stop));
+            await chain.ConnectAsync(chain.Endpoint, [Unused()], SshFixture.Trusting, Stop));
 
         Assert.Contains("Hop 1 of 1", failed.Message, StringComparison.Ordinal);
         Assert.Contains("the vpn is not up", failed.Means, StringComparison.Ordinal);
@@ -335,18 +332,7 @@ public sealed class ProxyCommandTests : IDisposable
 
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, JumpPort).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(JumpPort);
 
         Assert.SkipUnless(up, "nothing is listening on 127.0.0.1:2223: run prototypes/SshProbe/fixture/up.sh");
     }

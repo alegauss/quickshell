@@ -23,9 +23,6 @@ public sealed class AuthenticationTests
 
     private static CancellationToken Stop => TestContext.Current.CancellationToken;
 
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __, CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
-
     // ---- Public key: every type and every format a user might hand over ----
 
     /// <summary>
@@ -98,7 +95,7 @@ public sealed class AuthenticationTests
         SshException failure = await Assert.ThrowsAsync<SshException>(async () =>
             await refused.ConnectAsync(Endpoint("probe"),
                                        [new SshCredential.PrivateKey(Key("probe_locked"))],
-                                       Trusting, Stop));
+                                       SshFixture.Trusting, Stop));
 
         Assert.Equal(SshFailureKind.CredentialRejected, failure.Kind);
         Assert.Contains("passphrase", failure.Means, StringComparison.OrdinalIgnoreCase);
@@ -137,7 +134,7 @@ public sealed class AuthenticationTests
                     return ValueTask.FromResult(SecondFactor);
                 }),
             ],
-            Trusting, Stop);
+            SshFixture.Trusting, Stop);
 
         Assert.True(transport.IsConnected, "the two-factor account did not let the client in");
         Assert.NotEmpty(prompts);
@@ -185,7 +182,7 @@ public sealed class AuthenticationTests
                     return ValueTask.FromResult(SecondFactor);
                 }),
             ],
-            Trusting, Stop);
+            SshFixture.Trusting, Stop);
 
         Assert.True(transport.IsConnected, "the two-factor account did not let the client in");
 
@@ -216,7 +213,7 @@ public sealed class AuthenticationTests
         await using SshNetTransport transport = new() { SignIn = new Recorded(steps.Add) };
 
         await transport.ConnectAsync(Endpoint("probe"), [new SshCredential.PrivateKey(Key("probe_ed25519"))],
-                                     Trusting, Stop);
+                                     SshFixture.Trusting, Stop);
 
         Assert.True(transport.IsConnected);
         Assert.Empty(steps.OfType<SshSignInStep.Partly>());
@@ -258,7 +255,7 @@ public sealed class AuthenticationTests
                 }),
                 new SshCredential.PrivateKey(Key("probe_ed25519")),
             ],
-            Trusting, Stop);
+            SshFixture.Trusting, Stop);
 
         // Both ran, in the server's order and not the one they were listed in. An account under
         // AuthenticationMethods publickey,keyboard-interactive lets nobody in on one of the two, so
@@ -281,7 +278,7 @@ public sealed class AuthenticationTests
         SshException failure = await Assert.ThrowsAsync<SshException>(async () =>
             await transport.ConnectAsync(Endpoint("twofactor"),
                                          [new SshCredential.PrivateKey(Key("probe_ed25519"))],
-                                         Trusting, Stop));
+                                         SshFixture.Trusting, Stop));
 
         Assert.Equal(SshFailureKind.NoMethodAccepted, failure.Kind);
         Assert.Contains("keyboard-interactive", failure.Means, StringComparison.Ordinal);
@@ -304,7 +301,7 @@ public sealed class AuthenticationTests
 
         SshException failure = await Assert.ThrowsAsync<SshException>(async () =>
             await transport.ConnectAsync(Endpoint("probe"),
-                                         [new SshCredential.Password(Secret.From("not it"))], Trusting, Stop));
+                                         [new SshCredential.Password(Secret.From("not it"))], SshFixture.Trusting, Stop));
 
         Assert.Equal(SshFailureKind.NoMethodAccepted, failure.Kind);
         Assert.Contains("publickey", failure.Means, StringComparison.Ordinal);
@@ -330,7 +327,7 @@ public sealed class AuthenticationTests
                 new SshCredential.Password(Secret.From("not it")),
                 new SshCredential.PrivateKey(Key("probe_ed25519")),
             ],
-            Trusting, Stop);
+            SshFixture.Trusting, Stop);
 
         Assert.True(transport.IsConnected, "the key was not reached past the password");
     }
@@ -351,7 +348,7 @@ public sealed class AuthenticationTests
         await transport.ConnectAsync(
             Endpoint("certonly"),
             [new SshCredential.PrivateKey(Key("probe_ed25519"), null, Key("probe_ed25519-cert.pub"))],
-            Trusting, Stop);
+            SshFixture.Trusting, Stop);
 
         Assert.True(transport.IsConnected);
     }
@@ -364,7 +361,7 @@ public sealed class AuthenticationTests
     {
         SshNetTransport transport = new();
 
-        await transport.ConnectAsync(Endpoint("probe"), [credential], Trusting, Stop);
+        await transport.ConnectAsync(Endpoint("probe"), [credential], SshFixture.Trusting, Stop);
 
         return transport;
     }
@@ -380,18 +377,7 @@ public sealed class AuthenticationTests
     /// </summary>
     private static void SkipWithoutKey(string name)
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, Port).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(Port);
 
         Assert.SkipUnless(up, "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
         Assert.SkipUnless(File.Exists(Key(name)),

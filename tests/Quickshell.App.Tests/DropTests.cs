@@ -216,55 +216,29 @@ public sealed class DropTests
     }
 
     /// <summary>Builds the client's window with one tab, shows it, and hands it over on its thread.</summary>
-    private static T OnShownTab<T>(Func<MainWindow, T> work)
+    private static T OnShownTab<T>(Func<MainWindow, T> work) => Sta.Run(() =>
     {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
+        MainWindow window = new()
         {
-            MainWindow? window = null;
+            Width = 640,
+            Height = 360,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+        };
 
-            try
-            {
-                window = new MainWindow
-                {
-                    Width = 640,
-                    Height = 360,
-                    ShowInTaskbar = false,
-                    ShowActivated = false,
-                };
-
-                window.Add(TerminalTab.Open(Settings.Default, Shared, "cmd.exe"));
-                window.Show();
-                window.UpdateLayout();
-
-                result = work(window);
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                window?.Close();
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(60)), "the STA thread never finished");
-
-        if (failed is not null)
+        try
         {
-            throw new InvalidOperationException("the window could not be built", failed);
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "cmd.exe"));
+            window.Show();
+            window.UpdateLayout();
+
+            return work(window);
         }
-
-        return result;
-    }
+        finally
+        {
+            window.Close();
+        }
+    });
 
     /// <summary>WM_DROPFILES, which is what Explorer sends a window that accepts files.</summary>
     private const uint DropFiles = 0x0233;

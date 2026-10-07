@@ -265,18 +265,7 @@ public sealed class DynamicForwardTests
 
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, Port).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception failure) when (failure is SocketException or AggregateException)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(Port);
 
         Assert.SkipUnless(up && File.Exists(Key().Path),
             $"nothing is listening on {Host}:{Port}: run prototypes/SshProbe/fixture/up.sh");

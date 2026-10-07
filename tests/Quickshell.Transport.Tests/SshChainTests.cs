@@ -26,14 +26,11 @@ public sealed class SshChainTests
 
     private static CancellationToken Stop => TestContext.Current.CancellationToken;
 
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __, CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
-
     private static SshCredential.PrivateKey Key() =>
         new(Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
 
     private static SshHop Hop(string host, int port, SshHostKeyCheck? check = null) =>
-        new(SshEndpoint.For(host, "probe", port), [Key()], check ?? Trusting);
+        new(SshEndpoint.For(host, "probe", port), [Key()], check ?? SshFixture.Trusting);
 
     /// <summary>
     /// A credential for a hop that never gets far enough to offer one.
@@ -63,7 +60,7 @@ public sealed class SshChainTests
             Hop(TargetOnTheNetwork, 22),
         ]);
 
-        await chain.ConnectAsync(chain.Endpoint, [Key()], Trusting, Stop);
+        await chain.ConnectAsync(chain.Endpoint, [Key()], SshFixture.Trusting, Stop);
 
         Assert.True(chain.IsConnected);
         Assert.Equal(2, chain.Hops);
@@ -91,7 +88,7 @@ public sealed class SshChainTests
             Hop(TargetOnTheNetwork, 22),
         ]);
 
-        await chain.ConnectAsync(chain.Endpoint, [Key()], Trusting, Stop);
+        await chain.ConnectAsync(chain.Endpoint, [Key()], SshFixture.Trusting, Stop);
 
         Assert.True(chain.IsConnected);
         Assert.Equal(3, chain.Hops);
@@ -117,7 +114,7 @@ public sealed class SshChainTests
 
         await using SshChain chain = new([Hop(Host, JumpPort), Hop(TargetOnTheNetwork, 22)]);
 
-        await chain.ConnectAsync(chain.Endpoint, [Key()], Trusting, Stop);
+        await chain.ConnectAsync(chain.Endpoint, [Key()], SshFixture.Trusting, Stop);
 
         System.Collections.IList ports = (System.Collections.IList)typeof(SshChain)
             .GetField("_channels", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
@@ -160,7 +157,7 @@ public sealed class SshChainTests
 
         await using SshChain chain = new([Hop(Host, TargetPort)]);
 
-        await chain.ConnectAsync(chain.Endpoint, [Key()], Trusting, Stop);
+        await chain.ConnectAsync(chain.Endpoint, [Key()], SshFixture.Trusting, Stop);
 
         Assert.True(chain.IsConnected);
         Assert.Equal(1, chain.Hops);
@@ -185,12 +182,12 @@ public sealed class SshChainTests
     public async Task AFailureAtTheFirstHopNamesTheFirstHop()
     {
         await using SshChain chain = new([
-            new SshHop(SshEndpoint.For("127.0.0.1", "probe", 2), [Unused()], Trusting),
+            new SshHop(SshEndpoint.For("127.0.0.1", "probe", 2), [Unused()], SshFixture.Trusting),
             Hop(TargetOnTheNetwork, 22),
         ]);
 
         SshException failed = await Assert.ThrowsAsync<SshException>(async () =>
-            await chain.ConnectAsync(chain.Endpoint, [Unused()], Trusting, Stop));
+            await chain.ConnectAsync(chain.Endpoint, [Unused()], SshFixture.Trusting, Stop));
 
         Assert.Contains("Hop 1 of 2", failed.Message, StringComparison.Ordinal);
         Assert.Contains("127.0.0.1", failed.Message, StringComparison.Ordinal);
@@ -208,11 +205,11 @@ public sealed class SshChainTests
 
         await using SshChain chain = new([
             Hop(Host, JumpPort),
-            new SshHop(SshEndpoint.For("no-such-host-on-the-network", "probe", 22), [Key()], Trusting),
+            new SshHop(SshEndpoint.For("no-such-host-on-the-network", "probe", 22), [Key()], SshFixture.Trusting),
         ]);
 
         SshException failed = await Assert.ThrowsAsync<SshException>(async () =>
-            await chain.ConnectAsync(chain.Endpoint, [Key()], Trusting, Stop));
+            await chain.ConnectAsync(chain.Endpoint, [Key()], SshFixture.Trusting, Stop));
 
         Assert.Contains("Hop 2 of 2", failed.Message, StringComparison.Ordinal);
         Assert.Contains("no-such-host-on-the-network", failed.Message, StringComparison.Ordinal);
@@ -251,7 +248,7 @@ public sealed class SshChainTests
             new SshHop(SshEndpoint.For(TargetOnTheNetwork, "probe", 22), [Key()], Recording("target")),
         ]);
 
-        await chain.ConnectAsync(chain.Endpoint, [Key()], Trusting, Stop);
+        await chain.ConnectAsync(chain.Endpoint, [Key()], SshFixture.Trusting, Stop);
 
         Assert.Equal(["jump", "target"], asked.Select(hop => hop.Which));
 
@@ -315,18 +312,7 @@ public sealed class SshChainTests
 
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, JumpPort).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(JumpPort);
 
         Assert.SkipUnless(up, "nothing is listening on 127.0.0.1:2223: run prototypes/SshProbe/fixture/up.sh");
     }

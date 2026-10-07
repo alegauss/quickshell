@@ -29,10 +29,6 @@ public sealed class SshNetTransportTests
 
     private static CancellationToken Stop => TestContext.Current.CancellationToken;
 
-    /// <summary>Trusts whatever the fixture presents, which is what a test against a fixture means.</summary>
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __, CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
-
     // ---- The symptom: a remote host's bytes ----
 
     /// <summary>
@@ -188,7 +184,7 @@ public sealed class SshNetTransportTests
 
         SshException refused = await Assert.ThrowsAsync<SshException>(async () =>
             await transport.ConnectAsync(Target, [new SshCredential.Password(Secret.From("not the password"))],
-                                         Trusting, Stop));
+                                         SshFixture.Trusting, Stop));
 
         Assert.Equal(SshFailureKind.NoMethodAccepted, refused.Kind);
         Assert.Contains(Target.ToString(), refused.Message, StringComparison.Ordinal);
@@ -212,7 +208,7 @@ public sealed class SshNetTransportTests
         await using SshNetTransport transport = new();
 
         SshException refused = await Assert.ThrowsAsync<SshException>(async () =>
-            await transport.ConnectAsync(SshEndpoint.For(Host, "probe", 2), [Unused()], Trusting,
+            await transport.ConnectAsync(SshEndpoint.For(Host, "probe", 2), [Unused()], SshFixture.Trusting,
                                          Stop));
 
         Assert.Equal(SshFailureKind.Refused, refused.Kind);
@@ -238,7 +234,7 @@ public sealed class SshNetTransportTests
         await using SshNetTransport transport = new();
 
         SshException refused = await Assert.ThrowsAsync<SshException>(async () =>
-            await transport.ConnectAsync(Target, [new SshCredential.Agent()], Trusting, Stop));
+            await transport.ConnectAsync(Target, [new SshCredential.Agent()], SshFixture.Trusting, Stop));
 
         Assert.Equal(SshFailureKind.NoMethodAccepted, refused.Kind);
         Assert.Contains("agent", refused.Message, StringComparison.OrdinalIgnoreCase);
@@ -387,7 +383,7 @@ public sealed class SshNetTransportTests
 
         await using SshNetTransport transport = new() { KeepAlive = TimeSpan.FromMilliseconds(500) };
 
-        await transport.ConnectAsync(Frozen, [Key()], Trusting, Stop);
+        await transport.ConnectAsync(Frozen, [Key()], SshFixture.Trusting, Stop);
 
         await using IPtyChannel channel = await transport.OpenShellAsync(80, 25, Stop);
 
@@ -431,7 +427,7 @@ public sealed class SshNetTransportTests
 
         await using SshNetTransport transport = new() { KeepAlive = TimeSpan.FromMilliseconds(500) };
 
-        await transport.ConnectAsync(Target, [Key()], Trusting, Stop);
+        await transport.ConnectAsync(Target, [Key()], SshFixture.Trusting, Stop);
 
         await using IPtyChannel channel = await transport.OpenShellAsync(80, 25, Stop);
 
@@ -455,7 +451,7 @@ public sealed class SshNetTransportTests
     {
         SshNetTransport transport = new();
 
-        await transport.ConnectAsync(Target, [Key()], Trusting, Stop);
+        await transport.ConnectAsync(Target, [Key()], SshFixture.Trusting, Stop);
 
         Assert.True(transport.IsConnected);
 
@@ -675,22 +671,7 @@ public sealed class SshNetTransportTests
     /// </summary>
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, TargetPort).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (SocketException)
-        {
-            up = false;
-        }
-        catch (AggregateException)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(TargetPort);
 
         Assert.SkipUnless(up && File.Exists(Path.Combine(FixtureKeys(), "probe_ed25519")),
             $"nothing is listening on {Host}:{TargetPort}: "
@@ -703,18 +684,7 @@ public sealed class SshNetTransportTests
     /// </summary>
     private static void SkipUnlessListening(int port, string service)
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, port).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception failure) when (failure is SocketException or AggregateException)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(port);
 
         Assert.SkipUnless(up, $"the fixture's {service} server is not on {Host}:{port}: run up.sh again");
     }

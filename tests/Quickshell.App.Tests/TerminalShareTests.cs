@@ -302,58 +302,32 @@ public sealed class TerminalShareTests
     }
 
     /// <summary>Builds a window with two tabs and hands the first one and the window to the work.</summary>
-    private static T OnTwoTabs<T>(Func<TerminalShare, TerminalTab, MainWindow, T> work)
+    private static T OnTwoTabs<T>(Func<TerminalShare, TerminalTab, MainWindow, T> work) => Sta.Run(() =>
     {
-        T result = default!;
-        Exception? failed = null;
+        TerminalShare share = new() { Looping = false };
+        MainWindow client = new();
 
-        Thread thread = new(() =>
+        try
         {
-            MainWindow? client = null;
-            TerminalShare share = new() { Looping = false };
+            TerminalTab first = TerminalTab.Open(Settings.Default, share, "cmd.exe");
 
-            try
-            {
-                client = new MainWindow();
+            client.Add(first);
+            client.Show();
+            client.UpdateLayout();
 
-                TerminalTab first = TerminalTab.Open(Settings.Default, share, "cmd.exe");
+            client.Add(TerminalTab.Open(Settings.Default, share, "cmd.exe"));
+            client.UpdateLayout();
 
-                client.Add(first);
-                client.Show();
-                client.UpdateLayout();
+            Assert.NotNull(first.Focused.Terminal.View);
 
-                client.Add(TerminalTab.Open(Settings.Default, share, "cmd.exe"));
-                client.UpdateLayout();
-
-                Assert.NotNull(first.Focused.Terminal.View);
-
-                result = work(share, first, client);
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                client?.Close();
-                share.Dispose();
-
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-        thread.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the work on the STA thread failed", failed);
+            return work(share, first, client);
         }
-
-        return result;
-    }
+        finally
+        {
+            client.Close();
+            share.Dispose();
+        }
+    });
 
     /// <summary>
     /// Builds a window with that many panes in it, opens a view on each, and hands them to the work.
@@ -362,73 +336,46 @@ public sealed class TerminalShareTests
     /// layout for a window that was never on screen. It does not take the foreground: a test that
     /// stole the desk would be a test nobody could run while working.</para>
     /// </summary>
-    private static T OnPanes<T>(int how, Func<TerminalShare, TerminalTab, TerminalView[], T> work)
+    private static T OnPanes<T>(int how, Func<TerminalShare, TerminalTab, TerminalView[], T> work) => Sta.Run(() =>
     {
-        T result = default!;
-        Exception? failed = null;
+        // Not looping: this counts what one pass draws, and a thread drawing them first would leave
+        // every pass with nothing to do. The client always loops; a measurement paces itself.
+        TerminalShare share = new() { Looping = false };
+        MainWindow client = new();
 
-        Thread thread = new(() =>
+        try
         {
-            MainWindow? client = null;
-            // Not looping: this counts what one pass draws, and a thread drawing them first would
-            // leave every pass with nothing to do. The client always loops; a measurement paces
-            // itself.
-            TerminalShare share = new() { Looping = false };
+            client.Add(TerminalTab.Open(Settings.Default, share, "cmd.exe"));
 
-            try
+            client.Show();
+            client.UpdateLayout();
+
+            // Through the window and not the tab, because it is the window that puts a new pane in
+            // the canvas — a pane the tree knows about and the canvas does not never gets a handle,
+            // and a pane with no handle has no swapchain.
+            for (int pane = 1; pane < how; pane++)
             {
-                client = new MainWindow();
-
-                client.Add(TerminalTab.Open(Settings.Default, share, "cmd.exe"));
-
-                client.Show();
+                client.SplitPane(Divide.Beside);
                 client.UpdateLayout();
-
-                // Through the window and not the tab, because it is the window that puts a new pane
-                // in the canvas — a pane the tree knows about and the canvas does not never gets a
-                // handle, and a pane with no handle has no swapchain.
-                for (int pane = 1; pane < how; pane++)
-                {
-                    client.SplitPane(Divide.Beside);
-                    client.UpdateLayout();
-                }
-
-                TerminalTab tab = client.Current!;
-
-                // The panes are laid out by the window, and each one's view opens on the first size
-                // it is given — so what is asked for here is the arrangement rather than a handle.
-                TerminalView[] views = [.. tab.Leaves
-                                             .Select(leaf => leaf.Terminal.View)
-                                             .Where(view => view is not null)
-                                             .Select(view => view!)];
-
-                Assert.Equal(how, views.Length);
-
-                result = work(share, tab, views);
             }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                client?.Close();
-                share.Dispose();
 
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
+            TerminalTab tab = client.Current!;
 
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-        thread.Join();
+            // The panes are laid out by the window, and each one's view opens on the first size it
+            // is given — so what is asked for here is the arrangement rather than a handle.
+            TerminalView[] views = [.. tab.Leaves
+                                         .Select(leaf => leaf.Terminal.View)
+                                         .Where(view => view is not null)
+                                         .Select(view => view!)];
 
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the work on the STA thread failed", failed);
+            Assert.Equal(how, views.Length);
+
+            return work(share, tab, views);
         }
-
-        return result;
-    }
+        finally
+        {
+            client.Close();
+            share.Dispose();
+        }
+    });
 }

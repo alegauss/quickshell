@@ -60,7 +60,7 @@ public sealed class ChannelBackpressureTests
 
         SshCredential.PrivateKey key = new(Path.Combine(Fixture(), "probe_ed25519"));
 
-        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [key], Trusting, Stop);
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [key], SshFixture.Trusting, Stop);
 
         IPtyChannel shell = await session.OpenShellAsync(200, 50, Stop);
 
@@ -106,27 +106,12 @@ public sealed class ChannelBackpressureTests
             : 0;
     }
 
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __,
-                                                         CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
-
     private static string Fixture() =>
         Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys");
 
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync(Host, Port).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(Port);
 
         Assert.SkipUnless(up, "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
     }

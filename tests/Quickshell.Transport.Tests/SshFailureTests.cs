@@ -30,9 +30,6 @@ public sealed class SshFailureTests
 
     private static CancellationToken Stop => TestContext.Current.CancellationToken;
 
-    private static ValueTask<SshHostKeyVerdict> Trusting(SshEndpoint _, SshHostKey __, CancellationToken ___) =>
-        ValueTask.FromResult(SshHostKeyVerdict.Accept);
-
     /// <summary>The falsification, word for word: no failure surfaces a library exception type.</summary>
     [Fact]
     public void NoFailureCarriesALibraryExceptionWhereAUserCouldReachIt()
@@ -134,7 +131,7 @@ public sealed class SshFailureTests
 
         SshException failure = await Assert.ThrowsAsync<SshException>(async () =>
             await transport.ConnectAsync(Fixture, [new SshCredential.Password(Secret.From("anything"))],
-                                         Trusting, Stop));
+                                         SshFixture.Trusting, Stop));
 
         Assert.Equal(SshFailureKind.NoMethodAccepted, failure.Kind);
         Assert.Contains("publickey", failure.Means, StringComparison.Ordinal);
@@ -159,7 +156,7 @@ public sealed class SshFailureTests
 
         SshException failure = await Assert.ThrowsAsync<SshException>(async () =>
             await transport.ConnectAsync(Fixture, [new SshCredential.PrivateKey(unauthorised)],
-                                         Trusting, Stop));
+                                         SshFixture.Trusting, Stop));
 
         Assert.Equal(SshFailureKind.CredentialRejected, failure.Kind);
         Assert.Contains("rejected", failure.Message, StringComparison.OrdinalIgnoreCase);
@@ -212,7 +209,7 @@ public sealed class SshFailureTests
 
         Task<SshException> failing = Assert.ThrowsAsync<SshException>(async () =>
             await transport.ConnectAsync(SshEndpoint.For("127.0.0.1", "probe", silent.Port),
-                                         [AnyCredential], Trusting, abandoning.Token));
+                                         [AnyCredential], SshFixture.Trusting, abandoning.Token));
 
         await abandoning.CancelAsync();
 
@@ -243,7 +240,7 @@ public sealed class SshFailureTests
         };
 
         return await Assert.ThrowsAsync<SshException>(async () =>
-            await transport.ConnectAsync(endpoint, [AnyCredential], Trusting, Stop));
+            await transport.ConnectAsync(endpoint, [AnyCredential], SshFixture.Trusting, Stop));
     }
 
     /// <summary>A socket that accepts, says its piece if it has one, and then waits.</summary>
@@ -289,18 +286,7 @@ public sealed class SshFailureTests
 
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync("127.0.0.1", 2222).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception)
-        {
-            up = false;
-        }
+        bool up = SshFixture.Listening(2222);
 
         Assert.SkipUnless(up && Directory.Exists(FixtureKeys()),
             "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
