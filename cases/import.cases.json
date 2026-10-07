@@ -4,9 +4,11 @@
   // This dialog is the one that could not be photographed: Windows declined foreground twenty-five
   // times running on an unattended desk. Reading it needs neither, which is QS147's whole point.
   //
-  // `--import` and not the keybinding, because `press` spells Tab and the arrows and not Ctrl+Shift+I
-  // (WW317, filed against the engine). The flag is not a test hook: a client with no menu has the
-  // command line as a real surface, and it is the only one a script or another program can reach.
+  // `--import <file>` and not Ctrl+Shift+I, though the engine can press the chord since winwright
+  // 1.0.0 (QS176): the chord previews whatever MobaXterm file this desk has, and the flag is the one
+  // route that names a file — so the same preview is read on every desk. The flag is not a test hook:
+  // a client with no menu has the command line as a real surface, and it is the only one a script or
+  // another program can reach.
 
   "fixtures": [
     {

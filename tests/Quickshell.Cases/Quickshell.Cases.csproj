@@ -21,8 +21,11 @@
          test sets one; this project only launches it by the path winwright.json spells. -->
   </PropertyGroup>
 
+  <!-- 1.0.0, from nuget.org (QS176). alpha.3 came from a machine's package cache and nowhere a clean
+       clone can reach, and it predates `press` spelling a chord (WW317) — which is why the case files
+       opened the palette, the import and the tabs by flag rather than by the chord a user presses. -->
   <ItemGroup>
-    <PackageReference Include="Winwright" Version="0.1.0-alpha.3" />
+    <PackageReference Include="Winwright" Version="1.0.0" />
   </ItemGroup>
 
 </Project>

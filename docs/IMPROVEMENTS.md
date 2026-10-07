@@ -1301,31 +1301,6 @@ sessions afterwards than it did before plus what was imported.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS176 A package a version behind the reason for its comments
-
-`Quickshell.Cases` references Winwright 0.1.0-alpha.3. WW317 — a chord that `press` can
-spell — shipped in the engine's own source after that, so the version this repository
-restores refuses `Ctrl+Shift+P` and names the traversal keys it does take.
-
-The cost is not the refusal, which is clear. It is that three case files now carry
-comments explaining that a flag was used *because the engine cannot do chords*, and that
-sentence became false without any of them changing. QS52's case was written against the
-chord first, on the strength of the engine's changelog, and only the run said otherwise.
-
-A case that opens the palette with `--palette` is checking a window this client can
-build. A case that opens it with `Ctrl+Shift+P` is checking the route a user takes, and
-for a palette — a surface whose entire purpose is the keyboard — that is the more
-interesting half by a distance. The same holds for `--tabs` and `--import`; QS53's
-broadcast case could not be written at all, this version refusing the `description`
-reading a pane's state is in.
-
-The move is to take a newer engine and delete the three workarounds with their comments.
-What makes it a task rather than a version bump is the bootstrap: `packages/` beside the
-engine holds alpha.2, this project restores alpha.3 from somewhere else, and nothing
-here records which feed that is. Finding out is most of the work.
-
-Falsified when a case explains itself by an engine limitation that no longer exists.
-
 ### §QS182 A picture of a desk that was not drawing
 
 The host suite runs with the guest suspended, because a running guest holds the host's
@@ -1418,3 +1393,23 @@ length, the coverage gained and any finding, so that "it has not run for a month
 visible.
 
 Falsified when a week passes with no campaign and nothing says so.
+
+### §QS222 The UI suite that passed by doing nothing
+
+`CasesRun.EveryUiCaseInThisRepositoryRuns` reads the desk first, and where it cannot be
+observed it calls `Assert.True(true, ...)` and returns. Its own comment says why: xUnit
+had no third verdict, so a pass that says it checked nothing was the closest honest
+thing.
+
+xunit.v3 has the word now, and QS136 made it matter. Every run ends with a table of what
+ran, passed, failed and skipped, and holds skips to `tests/skips.json`. A UI suite that
+ran nothing counts there as one passed test. It is exactly the quieter green that table
+exists to expose, and it would pass a desk that lost its observer between two runs
+without a line anywhere.
+
+So the test should skip with the desk's own reason: `Assert.Skip` with what
+`Desk.Read()` says is absent. It then shows in the table with a reason, and it is held
+to the budget. The guest can observe, so its runs do not change; a desk that cannot is
+told so, every time.
+
+Falsified when a run that drove no UI case counts it as passed.

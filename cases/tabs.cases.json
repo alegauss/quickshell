@@ -3,18 +3,16 @@
   // unlike the terminal beside it there is something here worth reading: a TabControl publishes its
   // items and their names, which is exactly the claim a tab makes.
   //
-  // `--tabs` and not Ctrl+Shift+T, for the reason the import case gives: `press` spells Tab and the
-  // arrows and not a modifier chord (WW317, filed against the engine). The flag is not a test hook —
-  // a client with no menu has the command line as a real surface, and it is the only one another
-  // program can reach.
+  // The second tab is opened with Ctrl+Shift+T, the route a user takes (QS176: until winwright 1.0.0,
+  // `press` spelled no chord, and this case started with `--tabs 2` instead).
 
   "fixtures": [
     {
-      // Two tabs, because one is the state that hides the strip. The whole claim here is about what
-      // appears when there is a choice to make.
-      "name": "a window with two tabs",
-      "arguments": ["--tabs", "2"],
-      "shareable": true
+      // One tab, which is the state that hides the strip; the case opens the second, because the
+      // whole claim is about what appears when there is a choice to make.
+      "name": "a window with one tab",
+      "arguments": [],
+      "shareable": false
     }
   ],
 
@@ -24,9 +22,16 @@
       "catches": "a client that opens two sessions and shows one, or shows a strip with nothing selectable in it — which every test running inside the process would pass",
       "filed": "QS47",
       "tags": ["smoke", "window", "tabs"],
-      "fixture": "a window with two tabs",
+      "fixture": "a window with one tab",
 
       "steps": [
+        {
+          // At the terminal, the one thing in a window of one tab.
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "press",
+          "with": "Ctrl+Shift+T",
+          "named": "a second tab is opened the way a user opens one"
+        },
         {
           // Both ends of the strip, which is how two items are read without a word for "how many":
           // a left and a right that both resolve is a strip with at least two things in it, and one

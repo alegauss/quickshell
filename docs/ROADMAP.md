@@ -75,10 +75,10 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS176** (deps: —) **The winwright this project restores is older than the engine beside it, so cases work around gaps that are closed** — Three case files explain why they use a flag instead of the chord a user presses, and the engine grew chords in a version this repository does not reference. → §QS176
 - 📋 **QS182** (deps: —) **A resumed guest can hold run-app-vm past its own deadline and then yield an all-black picture reported as a success** — The host suite needs the guest suspended, so every picture after the first resumes it, and both halves of that cycle failed while QS53 shipped. → §QS182
 - 📋 **QS193** (deps: —) **The release archive is built only by hand, so a change that breaks the self-contained publish passes CI** — CI builds the framework-dependent tree and runs the suite, while ReadyToRun, the runtime packs and the publish itself are exercised only by release.cmd. → §QS193
 - 📋 **QS195** (deps: —) **Each test class carries its own copy of the fixture plumbing, so a fault in one copy is a fault in all of them** — QS138 was one fault in two copies of one helper, and the STA runner, the fixture's trust and skip, and the repository walk are each copied sixteen to twenty-one times. → §QS195
+- 📋 **QS222** (deps: —) **A desk that cannot be observed runs no UI case, and the run counts it as a pass** — CasesRun passes with nothing run where it should skip with the desk's reason, so the QS136 table shows a green that covered nothing. → §QS222
 
 ## Done when — Block A
 
