@@ -27,6 +27,8 @@
 
 ## Block H — The reason to leave the incumbent
 
+- ⏸ **QS137** (deps: QS76 ✅) **The idle figure is measured on a window with no session and no render loop in it** — set aside (Needs the reference desk attended for ten connected minutes.): The client can now hold a session, and the figure is still the empty window's. → §QS137
+
 ## Block I — An error a user can act on
 
 - ⏸ **QS128** (deps: QS71 ✅) **A trace shows what this client offered and never what the server did** — set aside (A decision: parse KEXINIT here or wait.): SSH.NET 2026.0 raises the server's KEXINIT only on an internal session event no caller can reach in time, so the rest is reading it ourselves. → §QS128
