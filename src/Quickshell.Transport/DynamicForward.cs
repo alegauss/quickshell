@@ -61,6 +61,7 @@ public sealed class DynamicForward : IAsyncDisposable
     private readonly List<IDisposable> _carrying = [];
     private readonly Lock _guard = new();
     private readonly Lock _pairingGuard = new();
+    private SessionLog? _log;
 
     private Task _accepting = Task.CompletedTask;
     private long _connections;
@@ -149,7 +150,10 @@ public sealed class DynamicForward : IAsyncDisposable
 
         pairing.Start();
 
-        DynamicForward proxy = new(listener, pairing, session, where);
+        DynamicForward proxy = new(listener, pairing, session, where) { _log = over.Log };
+
+        // A proxy has no one remote port; zero says so (QS130).
+        proxy._log?.Forward(proxy.BoundPort, 0, started: true);
 
         proxy._accepting = proxy.AcceptAsync();
 
@@ -369,8 +373,10 @@ public sealed class DynamicForward : IAsyncDisposable
 
             if (LocalForward.Live?.GetValue(channel) is not true)
             {
-                (uint code, _) = _refusals.Take(
+                (uint code, string said) = _refusals.Take(
                     LocalForward.ChannelNumber?.GetValue(channel) is uint number ? number : uint.MaxValue);
+
+                _log?.ForwardFailed(BoundPort, $"{host}:{port} was refused ({code}) {said}".TrimEnd());
 
                 Reply(talk, code switch
                 {
@@ -508,8 +514,12 @@ public sealed class DynamicForward : IAsyncDisposable
 
         await _stopping.CancelAsync().ConfigureAwait(false);
 
+        int bound = BoundPort;
+
         _listener.Stop();
         _pairing.Stop();
+
+        _log?.Forward(bound, 0, started: false);
         _refusals.Dispose();
 
         await _accepting.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);

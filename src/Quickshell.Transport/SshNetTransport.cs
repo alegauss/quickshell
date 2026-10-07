@@ -302,7 +302,7 @@ public sealed class SshNetTransport : ISshTransport
 
         // A channel of this session and never a connection of its own: see SharedSftpSession for
         // why that takes doing, and SftpChannelTests for the server's own account of it.
-        return SftpChannel.OpenAsync(_client!, Timeout);
+        return SftpChannel.OpenAsync(_client!, Timeout, Log);
     }
 
     /// <summary>
@@ -328,7 +328,10 @@ public sealed class SshNetTransport : ISshTransport
         catch (SshException refused) when (refused.Kind == SshFailureKind.ShellRefused)
         {
             // The subsystem is not there, which is the one case scp exists for. Any other failure
-            // is a failure and is not quietly downgraded into a worse protocol.
+            // is a failure and is not quietly downgraded into a worse protocol. Recorded, so a log
+            // says which of the two carried the files (QS130).
+            Log?.Channel(ChannelKind.Command, opened: true);
+
             return new ScpFileCopy(new ScpChannel(_client!), refused.Message);
         }
     }

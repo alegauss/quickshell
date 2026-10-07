@@ -31,6 +31,7 @@ public sealed class RemoteForward : IAsyncDisposable
 
     private long _connections;
     private bool _disposed;
+    private SessionLog? _log;
 
     private RemoteForward(ForwardedPortRemote port, string localHost, int localPort, int asked)
     {
@@ -115,8 +116,16 @@ public sealed class RemoteForward : IAsyncDisposable
             client.RemoveForwardedPort(port);
             port.Dispose();
 
-            throw Refused(remotePort, refused.Message);
+            SshException told = Refused(remotePort, refused.Message);
+
+            over.Log?.ForwardFailed(localPort, told.Message);
+
+            throw told;
         }
+
+        // By its ports: here, and the one the server holds (QS130).
+        forward._log = over.Log;
+        forward._log?.Forward(localPort, forward.BoundPort, started: true);
 
         return forward;
     }
@@ -155,6 +164,8 @@ public sealed class RemoteForward : IAsyncDisposable
         _disposed = true;
 
         _port.RequestReceived -= Accepted;
+
+        _log?.Forward(LocalPort, BoundPort, started: false);
 
         try
         {

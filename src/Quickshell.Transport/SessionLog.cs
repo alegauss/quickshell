@@ -213,6 +213,26 @@ public sealed class SessionLog : IAsyncDisposable
     public void Moved(ChannelKind kind, long bytes) =>
         Say(LogDetail.Ordinary, "moved", ("kind", kind.ToString()), Number("bytes", bytes));
 
+    /// <summary>
+    /// A file transfer finished, by its path and its size at the end rather than per chunk — a
+    /// progress bar in a log file is a rotation nobody wanted (QS130). A path is a filename, which is
+    /// the user's business and not a credential.
+    /// </summary>
+    public void Transferred(string direction, string path, long bytes) =>
+        Say(LogDetail.Ordinary, "transfer-done", ("way", One(direction)), ("path", One(path)), Number("bytes", bytes));
+
+    /// <summary>
+    /// A file transfer that stopped, with how far it got and why: the report that otherwise arrives
+    /// as "it sometimes doesn't work" (QS130).
+    /// </summary>
+    public void TransferFailed(string direction, string path, long bytes, long of, string why) =>
+        Say(LogDetail.Ordinary, "transfer-failed", ("way", One(direction)), ("path", One(path)),
+            Number("bytes", bytes), Number("of", of), ("why", One(why)));
+
+    /// <summary>One connection a forward could not carry, by its port and the reason (QS130).</summary>
+    public void ForwardFailed(int localPort, string why) =>
+        Say(LogDetail.Ordinary, "forward-failed", Number("local", localPort), ("why", One(why)));
+
     // ---- The trace ----
 
     /// <summary>The two version strings, which are the first thing an old appliance disagrees on.</summary>

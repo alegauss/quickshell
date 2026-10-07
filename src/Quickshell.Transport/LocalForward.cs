@@ -156,6 +156,7 @@ public sealed class LocalForward : IAsyncDisposable
     private readonly List<IDisposable> _carrying = [];
     private readonly ChannelRefusals _refusals;
     private readonly Lock _guard = new();
+    private SessionLog? _log;
 
     private Task _accepting = Task.CompletedTask;
     private long _connections;
@@ -286,7 +287,11 @@ public sealed class LocalForward : IAsyncDisposable
                 taken.Message);
         }
 
-        LocalForward forward = new(listener, session, targetHost, targetPort, where);
+        LocalForward forward = new(listener, session, targetHost, targetPort, where) { _log = over.Log };
+
+        // By its ports, so a forward that went away an hour in has its start and its stop in the
+        // log beside whatever else ended then (QS130).
+        forward._log?.Forward(forward.BoundPort, targetPort, started: true);
 
         forward._accepting = forward.AcceptAsync();
 
@@ -432,6 +437,8 @@ public sealed class LocalForward : IAsyncDisposable
         {
             _failures.Add(failure);
         }
+
+        _log?.ForwardFailed(BoundPort, failure.Reason);
     }
 
     /// <summary>
@@ -469,6 +476,8 @@ public sealed class LocalForward : IAsyncDisposable
         {
             _failures.Add(failure);
         }
+
+        _log?.ForwardFailed(BoundPort, failure.Reason);
     }
 
     /// <summary>
@@ -488,8 +497,13 @@ public sealed class LocalForward : IAsyncDisposable
 
         await _stopping.CancelAsync().ConfigureAwait(false);
 
+        // Read before the listener goes, while it still has a port to say.
+        int bound = BoundPort;
+
         _listener.Stop();
         _refusals.Dispose();
+
+        _log?.Forward(bound, TargetPort, started: false);
 
         await _accepting.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 

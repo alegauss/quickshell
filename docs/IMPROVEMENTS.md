@@ -1518,30 +1518,6 @@ asked for.
 
 Falsified when a running client cannot tell a user where its log is.
 
-### §QS130 What crosses the connection, and not only the connection
-
-The log surface QS71 built already carries `Channel`, `Forward`, `Moved` and `Payload`.
-Nothing calls three of them. The transport records a shell channel opening and closing;
-the SFTP channel, the scp fallback, every forward and every byte counted are silent.
-
-That is the wrong half to have. A dropped connection is visible in the window and the
-user can say what happened. A transfer that stopped at 40% against one server, or a
-forward that went away an hour into a session, is precisely the report that arrives as
-"it sometimes doesn't work" — and the log is the only thing that could say the channel
-closed, when, and with what error.
-
-What to wire, all of it against methods that already exist: the file-transfer channel
-and the scp fallback as `channel-open` and `channel-close` with their kind; each
-forward's start and stop by its ports, including the one that stopped because the
-session did; transfers as byte counts at completion rather than per chunk, since a
-progress bar in a log file is a rotation nobody wanted.
-
-The rule QS71 established holds without restating it: these methods take counts and
-kinds, and there is no overload that takes a byte. A path being transferred is a
-filename, which is the user's business but not a credential — record it.
-
-Falsified when a transfer that failed halfway leaves nothing in the log.
-
 ### §QS131 The crash dialog says what its buttons do
 
 QS72 tells the user through `MessageBox`, which is the right amount of machinery for a

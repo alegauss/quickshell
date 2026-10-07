@@ -241,6 +241,12 @@ public sealed class TransferQueue
     }
 
     /// <summary>
+    /// Where each transfer's end is recorded — done with its size, or stopped with how far it got
+    /// and why — or null to record nothing (QS130).
+    /// </summary>
+    public SessionLog? Log { get; init; }
+
+    /// <summary>
     /// How many files move at once.
     ///
     /// <para>Low by default and configurable, because the right number is a property of the link
@@ -511,12 +517,21 @@ public sealed class TransferQueue
         {
             await CopyAsync(entry, stopping.Token).ConfigureAwait(false);
 
+            bool done;
+
             lock (_guard)
             {
-                if (entry.State == TransferState.Running)
+                done = entry.State == TransferState.Running;
+
+                if (done)
                 {
                     entry.State = TransferState.Done;
                 }
+            }
+
+            if (done)
+            {
+                Log?.Transferred(entry.Direction.ToString(), entry.Remote, entry.Moved);
             }
         }
         catch (OperationCanceledException)
@@ -531,14 +546,22 @@ public sealed class TransferQueue
                 }
             }
         }
-        catch (Exception failed) when (failed is SshException or IOException
-                                                 or UnauthorizedAccessException)
+        catch (Exception failed)
         {
+            // Every failure, and not only the ones this client translates. A read from the
+            // library's own stream fails with the library's exception: caught by type, it escaped,
+            // the queue dropped the faulted move unobserved and the entry said Running for ever —
+            // found by freezing a server mid-download (QS130). Only the message is kept, so no
+            // library type reaches whoever reads the entry.
             lock (_guard)
             {
                 entry.State = TransferState.Failed;
                 entry.Why = failed.Message;
             }
+
+            // The one record of a transfer that stopped halfway, which is the report that is
+            // otherwise least reproducible (QS130).
+            Log?.TransferFailed(entry.Direction.ToString(), entry.Remote, entry.Moved, entry.Length, failed.Message);
         }
         finally
         {

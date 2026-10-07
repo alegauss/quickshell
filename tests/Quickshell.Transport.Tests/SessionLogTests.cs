@@ -352,6 +352,130 @@ public sealed class SessionLogTests : IDisposable
         Assert.StartsWith(_here, log.Path, StringComparison.Ordinal);
     }
 
+    // ---- What crosses the connection (QS130) ----
+
+    /// <summary>
+    /// QS130's falsification: a transfer that failed halfway leaves its path, how far it got and why
+    /// in the log. The fixture's <c>frozen</c> server is paused partway through a 64 MB download, so
+    /// the failure is a real one in the middle of a real transfer.
+    /// </summary>
+    [Fact]
+    public async Task ATransferThatFailedHalfwayIsInTheLog()
+    {
+        SkipWithoutFixture();
+        SkipUnlessListening(Frozen);
+
+        // Sparse, so it costs the server nothing, and large enough that loopback cannot finish it
+        // before the pause lands: the 64 MB file did, in about half a second.
+        await Docker("exec", "qs-sshd-frozen", "truncate", "-s", "2G", "/srv/huge.bin");
+
+        await using SessionLog log = SessionLog.InFolder(_here);
+
+        await using SshNetTransport session = new() { Log = log, Timeout = TimeSpan.FromSeconds(3) };
+
+        await session.ConnectAsync(SshEndpoint.For(Host, "probe", Frozen), [Key()], Trusting, Stop);
+
+        await using IFileTransferChannel files = await session.OpenFileTransferAsync(Stop);
+
+        TransferQueue queue = new(files) { Log = log };
+        TransferEntry entry = queue.Enqueue(TransferDirection.Download, Path.Combine(_here, "huge.bin"), "/srv/huge.bin");
+
+        Task running = queue.RunAsync(Stop);
+
+        for (int wait = 0; wait < 200 && entry.Moved < 1_000_000; wait++)
+        {
+            await Task.Delay(25, Stop);
+        }
+
+        await Docker("pause", "qs-sshd-frozen");
+
+        try
+        {
+            await running.WaitAsync(TimeSpan.FromSeconds(30), Stop);
+        }
+        finally
+        {
+            await Docker("unpause", "qs-sshd-frozen");
+        }
+
+        Assert.Equal(TransferState.Failed, entry.State);
+
+        string written = await Everything(log);
+
+        Assert.Contains("channel-open kind=FileTransfer", written, StringComparison.Ordinal);
+        Assert.Contains("transfer-failed way=Download path=/srv/huge.bin", written, StringComparison.Ordinal);
+        Assert.Matches(@"transfer-failed .* bytes=[1-9]\d* of=2147483648 why=", written);
+    }
+
+    /// <summary>
+    /// A forward's start and stop are in the log by their ports, and so is each connection it could
+    /// not carry, with the reason (QS130).
+    /// </summary>
+    [Fact]
+    public async Task AForwardsLifeIsInTheLog()
+    {
+        SkipWithoutFixture();
+
+        await using SessionLog log = SessionLog.InFolder(_here);
+
+        await using (SshNetTransport session = new() { Log = log })
+        {
+            await session.ConnectAsync(SshEndpoint.For(Host, "probe", Port), [Key()], Trusting, Stop);
+
+            await using LocalForward forward = LocalForward.Open(session, "127.0.0.1", 9);
+
+            using (Socket socket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                await socket.ConnectAsync(System.Net.IPAddress.Loopback, forward.BoundPort, Stop);
+                await socket.ReceiveAsync(new byte[16], Stop);
+            }
+
+            for (int wait = 0; wait < 50 && forward.Failures.Count == 0; wait++)
+            {
+                await Task.Delay(100, Stop);
+            }
+        }
+
+        string written = await Everything(log);
+
+        Assert.Contains("forward-start local=", written, StringComparison.Ordinal);
+        Assert.Contains("forward-failed local=", written, StringComparison.Ordinal);
+        Assert.Contains("forward-stop local=", written, StringComparison.Ordinal);
+    }
+
+    /// <summary>The fixture's server that exists to be paused (QS111).</summary>
+    private const int Frozen = 2227;
+
+    private static void SkipUnlessListening(int port)
+    {
+        bool up;
+
+        try
+        {
+            using TcpClient probe = new();
+
+            up = probe.ConnectAsync(Host, port).Wait(TimeSpan.FromSeconds(2));
+        }
+        catch (Exception failure) when (failure is SocketException or AggregateException)
+        {
+            up = false;
+        }
+
+        Assert.SkipUnless(up, $"nothing is listening on {Host}:{port}: run the fixture's up.sh again");
+    }
+
+    private static async Task Docker(params string[] arguments)
+    {
+        using System.Diagnostics.Process docker = System.Diagnostics.Process.Start(
+            new System.Diagnostics.ProcessStartInfo("docker", arguments)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            })!;
+
+        await docker.WaitForExitAsync(CancellationToken.None);
+    }
+
     // ---- plumbing ----
 
     /// <summary>
@@ -394,6 +518,8 @@ public sealed class SessionLogTests : IDisposable
 
     private static string Fixture() =>
         Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys");
+
+    private static SshCredential.PrivateKey Key() => new(Path.Combine(Fixture(), "probe_ed25519"));
 
     private static void SkipWithoutFixture()
     {

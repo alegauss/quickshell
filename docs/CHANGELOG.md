@@ -157,6 +157,7 @@
 - ✅ **QS73** **A user reporting a defect has no way to say what their client was doing when it happened** — Ctrl+Shift+F1 writes one file holding the machine, the adapter, the settings with every value a secret could hide behind removed, the log and the crashes — and output records without keystrokes.
 - ✅ **QS154** **Naming a typeface on any WPF text kills the client, because invariant globalization refuses the culture WPF builds** — Invariant globalization is off, so a text box and a named typeface both survive; it saved no bytes on Windows and cost grapheme segmentation half its rate.
 - ✅ **QS129 (the log and where it is)** **Nothing in the client says where its log is, or turns the trace on** — Every saved session logs to the client's own folder, the palette opens it, a failure names it, and --trace keeps one session's trace.
+- ✅ **QS130** **The log goes quiet exactly where a transfer or a tunnel failed** — A transfer that failed halfway, a forward's start, stop and failures, and the file channels are now in the log by path and port.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 

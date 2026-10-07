@@ -46,6 +46,9 @@ internal sealed class SftpChannel : IFileTransferChannel
     /// <inheritdoc/>
     public int ProtocolVersion { get; private set; }
 
+    /// <summary>Where this channel's close is recorded, beside its open (QS130).</summary>
+    private SessionLog? Log { get; init; }
+
     /// <inheritdoc/>
     public string WorkingDirectory => _client.WorkingDirectory;
 
@@ -54,13 +57,20 @@ internal sealed class SftpChannel : IFileTransferChannel
     /// </summary>
     /// <param name="over">The connected client whose session carries it.</param>
     /// <param name="timeout">How long one operation may take.</param>
+    /// <param name="log">Where its open and its close are recorded, or null.</param>
     /// <exception cref="SshException">The channel could not be opened on this session.</exception>
-    internal static ValueTask<IFileTransferChannel> OpenAsync(SshClient over, TimeSpan timeout)
+    internal static ValueTask<IFileTransferChannel> OpenAsync(SshClient over, TimeSpan timeout,
+                                                              SessionLog? log = null)
     {
         (SftpClient client, IDisposable session) = SharedSftpSession.OpenOn(over, timeout);
 
+        // Its open and its close, so a transfer that died with its channel has the channel's end
+        // beside it in the log (QS130).
+        log?.Channel(ChannelKind.FileTransfer, opened: true);
+
         SftpChannel channel = new(client, session)
         {
+            Log = log,
             ProtocolVersion = Version(session),
         };
 
@@ -317,6 +327,8 @@ internal sealed class SftpChannel : IFileTransferChannel
         // The channel and not the connection: the session belongs to whoever opened it, and the
         // shell on it carries on. Closing that session is what closes this.
         _session.Dispose();
+
+        Log?.Channel(ChannelKind.FileTransfer, opened: false);
 
         await ValueTask.CompletedTask.ConfigureAwait(false);
     }
