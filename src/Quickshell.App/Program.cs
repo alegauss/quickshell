@@ -27,6 +27,10 @@ public static class Entry
     /// <summary>When this process started, for the one line of a crash report that says how long.</summary>
     private static readonly long Started = Stopwatch.GetTimestamp();
 
+    /// <summary>The DPI of the primary monitor, which is where a window with nowhere remembered opens.</summary>
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetDpiForSystem();
+
     /// <summary>
     /// Opens the window, runs until it closes, and remembers where it was.
     /// </summary>
@@ -66,6 +70,19 @@ public static class Entry
         // process opens — QS49. It holds nothing yet: the device is opened by the first pane that
         // has a handle, because which adapter to use is decided by the window the output goes to.
         using TerminalShare share = new();
+
+        // Opened now, on the pool, while WPF spends its first window on this thread (QS191). The
+        // settings are read there too, which is no read on the way to the first paint: this thread
+        // does not wait for it, and the first pane checks the guess before it uses any of it.
+        share.Prepare(() =>
+        {
+            Settings guessed = SettingsFile.ReadFrom(Locations.Current.Settings);
+
+            return new Quickshell.Render.FontSettings(guessed.FontFamily, (float)guessed.FontSize, GetDpiForSystem())
+            {
+                Ligatures = guessed.Ligatures,
+            };
+        });
 
         // Armed before the window, because a failure while building one is a failure the user would
         // otherwise see as nothing happening at all. It reads no file and opens nothing, so it does

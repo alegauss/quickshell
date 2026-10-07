@@ -257,6 +257,44 @@ public sealed class TerminalViewTests
     }
 
     /// <summary>
+    /// QS191: the device opened ahead of the window is the one the first pane draws with, in the font
+    /// that pane asked for even where the guess was another.
+    /// </summary>
+    [Fact]
+    public void TheFirstPaneTakesWhatWasPreparedAheadOfTheWindow()
+    {
+        (bool used, FontSettings? font, bool drew) = OnPane(pane =>
+        {
+            using TerminalShare share = new() { Looping = false };
+
+            // A different size from the one the pane asks for: the guess is corrected, not trusted.
+            share.Prepare(() => new FontSettings("Consolas", 12f, 96f));
+
+            TerminalView view = Open(share, pane);
+            Emulator emulator = new(view.Columns, view.Rows);
+
+            return (share.UsedPrepared, share.Atlas?.Font, view.DrawIfNeeded(emulator));
+        });
+
+        Assert.True(used, "the first pane opened a second device instead of the prepared one");
+        Assert.Equal(new FontSettings("Consolas", 16f, 96f), font);
+        Assert.True(drew, "the prepared device drew nothing");
+    }
+
+    /// <summary>What was prepared and never taken is released with the share, and nothing is left open.</summary>
+    [Fact]
+    public void APreparedDeviceNoPaneTookIsReleased()
+    {
+        TerminalShare share = new() { Looping = false };
+
+        share.Prepare(() => new FontSettings("Consolas", 12f, 96f));
+        share.Dispose();
+
+        Assert.False(share.UsedPrepared);
+        Assert.Null(share.Device);
+    }
+
+    /// <summary>
     /// Waits for the loop to have drawn at least this many frames, and answers how many it drew.
     /// </summary>
     private static long Settled(TerminalView view, long atLeast)

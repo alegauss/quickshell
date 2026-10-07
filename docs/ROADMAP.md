@@ -48,7 +48,7 @@
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS78** (deps: QS139 ⏸) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - ⏳ **QS79** (deps: QS3 ✅, QS196, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
-- 📋 **QS191** (deps: —) **The graphics device and the shell both wait for the window, so a start runs three slow things one after another** — Neither the device, the atlas and the shaders nor the pseudo-console needs a window, and each could be ready while WPF builds one. → §QS191
+- ⏳ **QS191** (deps: —) **The graphics device and the shell both wait for the window, so a start runs three slow things one after another** — The shell still starts after the window is shown, since its pseudo-console is opened by a leaf that needs laid-out panes. → §QS191
 - 📋 **QS192** (deps: —) **A portable copy that installs itself leaves its saved sessions and settings behind in the copy it came from** — Somebody who tried the archive portable and imported their sessions opens an installed copy with none of them, and no word of where they went. → §QS192
 - 📋 **QS196** (deps: —) **Figure 3 of the budget, steady-state frame cost, is measured by nothing, so no gate can hold it** — The render arm reports stream throughput with parsing folded in, and no harness times one full grid drawn again and again on the CPU and the GPU. → §QS196
 - 📋 **QS197** (deps: —) **The parse figure spreads by a fifth between runs on the reference machine, so the gate lets a regression that big pass** — A 28 ms pass on a CPU with performance and efficient cores is timed wherever the scheduler put it, which moves the number more than the parser does. → §QS197
@@ -69,6 +69,7 @@
 - 📋 **QS193** (deps: —) **The release archive is built only by hand, so a change that breaks the self-contained publish passes CI** — CI builds the framework-dependent tree and runs the suite, while ReadyToRun, the runtime packs and the publish itself are exercised only by release.cmd. → §QS193
 - 📋 **QS195** (deps: —) **Each test class carries its own copy of the fixture plumbing, so a fault in one copy is a fault in all of them** — QS138 was one fault in two copies of one helper, and the STA runner, the fixture's trust and skip, and the repository walk are each copied sixteen to twenty-one times. → §QS195
 - 📋 **QS222** (deps: —) **A desk that cannot be observed runs no UI case, and the run counts it as a pass** — CasesRun passes with nothing run where it should skip with the desk's reason, so the QS136 table shows a green that covered nothing. → §QS222
+- 📋 **QS224** (deps: —) **A guest run asked to carry HEAD alone carries the working tree's uncommitted edits to tracked files** — Send-Tree takes HEAD's file list and reads each file from disk, so a before-and-after measured with it compares the change with itself. → §QS224
 
 ## Done when — Block A
 
@@ -327,6 +328,13 @@
   gives an SSH tab its remote pane: run-app-vm opens the browser in the guest, a
   winwright case drags a file from the host's pane onto an Explorer folder, and the file
   there is compared with the server's.
+
+## Done when — QS191
+
+- **The shell is started before the window is shown** tools/run-startup-vm.ps1 reports
+  the shell milestone earlier than shown, warm median over eleven starts, with a
+  pseudo-console opened at a guessed size and resized in order once the pane is laid
+  out.
 
 ## Non-goals
 

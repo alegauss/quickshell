@@ -26,7 +26,11 @@ namespace Quickshell.Startup;
 public static class Startup
 {
     /// <summary>The milestones a start reports, in the order they happen.</summary>
-    private static readonly string[] Milestones = ["main", "application", "constructed", "shown", "shell", "device", "frame", "interactive"];
+    /// <remarks>
+    /// "prepared" is the device, the atlas and the shaders opened ahead of the window (QS191), and a
+    /// build that does not report it simply has no row for it.
+    /// </remarks>
+    private static readonly string[] Milestones = ["main", "application", "constructed", "shown", "prepared", "shell", "device", "frame", "interactive"];
 
     /// <summary>Runs the starts and prints the report.</summary>
     public static int Main(string[] arguments)

@@ -35,7 +35,12 @@ public sealed class TerminalShare : IDisposable
     private GlyphAtlas? _atlas;
     private CellRenderer? _renderer;
     private Task _loop = Task.CompletedTask;
+    private Task<Prepared?>? _preparing;
     private bool _disposed;
+
+    /// <summary>What <see cref="Prepare"/> opened ahead of any window.</summary>
+    private sealed record Prepared(GraphicsDevice Device, GlyphRasteriser Rasteriser, GlyphAtlas Atlas,
+                                   CellRenderer Renderer);
 
     // A font asked for and not yet applied. Written on WPF's thread and taken on the loop's, under
     // the guard, because the atlas and the renderer it changes are the loop's alone.
@@ -88,6 +93,64 @@ public sealed class TerminalShare : IDisposable
             ? ($"no device: opening one failed ({failed.GetType().Name}: {failed.Message})", 0)
             : ("no device yet: no pane had been laid out", 0);
     }
+
+    /// <summary>
+    /// Opens the device, the atlas and the shaders on the thread pool now, so they are ready while
+    /// WPF builds the window instead of after its first layout (QS191).
+    ///
+    /// <para><b>Ahead of the window, and only kept if the window agrees.</b> The adapter is the
+    /// default one, since there is no window yet to ask; the first pane checks it against the
+    /// adapter its own monitor is on and opens afresh where they differ — a second GPU driving the
+    /// monitor the window landed on — so the guess never decides where the output is drawn. A font
+    /// that differs from the one guessed — the settings changed it, or the monitor's DPI is not the
+    /// system's — is applied to what was opened, as a font change is.</para>
+    ///
+    /// <para><b>A failure here is nobody's.</b> It is kept off the window's path: the first pane
+    /// opens the device the way it always did and reports what happens then.</para>
+    /// </summary>
+    /// <param name="font">The font the first pane is expected to ask for, worked out on the pool too.</param>
+    public void Prepare(Func<FontSettings> font)
+    {
+        ArgumentNullException.ThrowIfNull(font);
+
+        if (_preparing is not null || _renderer is not null)
+        {
+            return;
+        }
+
+        _preparing = Task.Run(() =>
+        {
+            GraphicsDevice? device = null;
+            GlyphRasteriser? rasteriser = null;
+
+            try
+            {
+                FontSettings guessed = font();
+
+                device = GraphicsDevice.Open();
+                rasteriser = new GlyphRasteriser();
+
+                GlyphAtlas atlas = GlyphAtlas.For(device, guessed, rasteriser: rasteriser);
+                Prepared ready = new(device, rasteriser, atlas,
+                                     CellRenderer.For(device, atlas, rasteriser.Measure(guessed)));
+
+                // Where QS75's timeline can see it: before "device" is what this was for.
+                StartupTimeline.Mark("prepared");
+
+                return ready;
+            }
+            catch (Exception)
+            {
+                rasteriser?.Dispose();
+                device?.Dispose();
+
+                return null;
+            }
+        });
+    }
+
+    /// <summary>Whether what <see cref="Prepare"/> opened was taken by the first pane.</summary>
+    public bool UsedPrepared { get; private set; }
 
     /// <summary>How many panes this share is drawing.</summary>
     public int Panes
@@ -239,6 +302,16 @@ public sealed class TerminalShare : IDisposable
         _rasteriser?.Dispose();
         _device?.Dispose();
 
+        // Prepared and never taken: no pane was ever laid out.
+        if (Interlocked.Exchange(ref _preparing, null) is { } preparing
+            && preparing.GetAwaiter().GetResult() is { } prepared)
+        {
+            prepared.Renderer.Dispose();
+            prepared.Atlas.Dispose();
+            prepared.Rasteriser.Dispose();
+            prepared.Device.Dispose();
+        }
+
         _stop.Dispose();
     }
 
@@ -260,6 +333,11 @@ public sealed class TerminalShare : IDisposable
         if (Failed is not null)
         {
             return false;
+        }
+
+        if (Adopt(window, font))
+        {
+            return true;
         }
 
         try
@@ -284,6 +362,47 @@ public sealed class TerminalShare : IDisposable
 
             return false;
         }
+    }
+
+    /// <summary>
+    /// Takes what <see cref="Prepare"/> opened, waiting for it if it is still opening, where it is on
+    /// the adapter this window's monitor uses; otherwise lets it go.
+    /// </summary>
+    private bool Adopt(nint window, FontSettings font)
+    {
+        if (Interlocked.Exchange(ref _preparing, null) is not { } preparing
+            || preparing.GetAwaiter().GetResult() is not { } prepared)
+        {
+            return false;
+        }
+
+        AdapterInfo? wanted = new DxgiAdapterProbe().ForOutputWindow(window);
+
+        // No adapter owns the window: the chain falls to the default one, which is what was opened.
+        if (wanted is not null && wanted != prepared.Device.Adapter.Adapter)
+        {
+            prepared.Renderer.Dispose();
+            prepared.Atlas.Dispose();
+            prepared.Rasteriser.Dispose();
+            prepared.Device.Dispose();
+
+            return false;
+        }
+
+        _device = prepared.Device;
+        _rasteriser = prepared.Rasteriser;
+        _atlas = prepared.Atlas;
+        _renderer = prepared.Renderer;
+
+        if (_atlas.Font != font)
+        {
+            _atlas.UseFont(font);
+            _renderer.UseMetrics(_rasteriser.Measure(font));
+        }
+
+        UsedPrepared = true;
+
+        return true;
     }
 
     /// <summary>

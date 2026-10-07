@@ -859,8 +859,8 @@ Falsified when the idle figure is quoted for a client that has never held a conn
 QS75 measured the window's constructor as the largest step of a start: 230 ms of 647 on
 the reference desk. The first design blamed the collapsed tab strip and find bar. Built
 on demand, they moved nothing. `tools/run-startup-vm.ps1` timed eleven guest starts each
-way, and the step was 206 and 168 ms before and 200 ms after, within the spread of two
-runs of one tree. That design is falsified, and the change was not kept.
+way, and the step was 206 ms before, 200 and 168 ms after (one "before" run carried the
+change, QS224). Noise; the 40 ms below caps any saving. Not kept.
 
 Marks inside the constructor for one guest run located the time, as warm medians:
 
@@ -1225,3 +1225,24 @@ to the budget. The guest can observe, so its runs do not change; a desk that can
 told so, every time.
 
 Falsified when a run that drove no UI case counts it as passed.
+
+### §QS224 HEAD only, read from disk
+
+Found while timing QS191. `Send-Tree -CommittedOnly` in `tools/vm-guest.ps1` is
+documented as "carry HEAD alone". It takes HEAD's list of files from `git ls-files -c`,
+then packs each file with `CreateEntryFromFile` from the working tree on disk. A tracked
+file with uncommitted edits therefore goes to the guest edited. A "before" run of an
+uncommitted change was the change itself: QS191's HEAD run reported a milestone that
+only the uncommitted code writes. A QS190 figure was recorded the same way and had to be
+corrected.
+
+What to build: with `-CommittedOnly`, read each file's contents from HEAD rather than
+from disk. Either `git archive --format=zip HEAD` straight into the stage, which is one
+call and is what HEAD means, or `git show HEAD:<path>` per file. Have the script print
+which it carried, as it does now. Untracked files are already excluded.
+
+`run-tests-vm.ps1`, `run-app-vm.ps1` and `run-startup-vm.ps1` all take the switch
+through Send-Tree, so one fix covers all three.
+
+Falsified when a guest run with `-CommittedOnly` builds a tracked file's uncommitted
+edit.
