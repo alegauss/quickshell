@@ -14,7 +14,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS158** (deps: QS31 ✅) **Nothing says how far back the view is, so a reader who scrolled has no idea where they are or that output arrived** — QS31 gave the viewport a wheel and a find and left it with no indicator, and the reading it already answers reaches nobody. → §QS158
 - 📋 **QS177** (deps: —) **The strip past the last whole cell is never painted, so every pane has a black band at its right and bottom edges** — No instance covers those pixels and nothing clears the target, so they come back black on every scheme, and on a light one the band is plain to see. → §QS177
 - 📋 **QS183** (deps: —) **A paste pressed while another process holds the clipboard open does nothing and says nothing** — Phone Link and WSLg's bridge open the clipboard just after every change, so a paste landing then reads empty and the keystroke is simply lost. → §QS183
 - 📋 **QS198** (deps: —) **A scheme's cursor colour and OSC 12 are stored and never drawn, so every pane's cursor is the same grey** — The renderer draws a process-wide constant and never reads the palette's cursor, while SETTINGS.md tells users a scheme sets it. → §QS198

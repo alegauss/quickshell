@@ -314,29 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS158 A scrollbar with nowhere to be drawn
-
-`Viewport` already answers all three questions: how far back the view is, how much
-history there is, and whether output arrived while somebody was reading.
-`PaneAttachment.Where` returns them. Nothing shows them.
-
-Where it goes is the whole difficulty and is why QS31 shipped without it. A WPF
-scrollbar beside the pane is chrome, and `Chrome.Default` says a default installation
-shows a title bar and a terminal — a claim QS46 shipped and `WindowTests` holds. A
-scrollbar over the pane is not possible at all: the pane is a child HWND with a
-swapchain presenting into it, so WPF cannot draw on top of it.
-
-That leaves the answer every terminal reaches on its own, which is also the one this
-client is best placed to take: draw it in the grid. A column of cells at the right edge,
-in the session's own palette, sized by the same metrics as the text — no chrome, no
-airspace, and it scales with the font because it is the font.
-
-The unseen-output half is the part worth getting right. Somebody reading is not to be
-interrupted, so it is a mark and never a jump: the whole point of the anchor is that new
-output moves nothing.
-
-Falsified when a reader scrolled into the history cannot tell that output arrived.
-
 ### §QS177 The pixels no cell owns
 
 A pane is almost never a whole number of cells, and the pixels past the last whole

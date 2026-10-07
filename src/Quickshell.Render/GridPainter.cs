@@ -154,6 +154,12 @@ public sealed class GridPainter
             }
         }
 
+        // Where the view is, while it is anywhere but the bottom (QS158).
+        if (viewport is { IsAtBottom: false })
+        {
+            Mark(buffer, viewport, into, top, oldest, columns, rows, metrics);
+        }
+
         // Over the cells just painted rather than after them: an instance's place in the grid is its
         // index, so the composition replaces the cells it covers. Only where the cursor is on screen,
         // because that is where the text being typed is going.
@@ -161,6 +167,61 @@ public sealed class GridPainter
         {
             Overlay(composing, into, caret, Math.Clamp(cursorColumn, 0, columns - 1), columns, rows,
                     cursor, metrics);
+        }
+    }
+
+    /// <summary>The down arrow a scrolled-back view shows when output arrived below it.</summary>
+    private const int Arrived = 0x2193;
+
+    /// <summary>
+    /// A scrollbar drawn in the grid, because there is nowhere else to draw one (QS158).
+    ///
+    /// <para><b>In the grid and not beside it</b>: a WPF scrollbar is chrome a default installation
+    /// does not show, and nothing can be drawn over the pane, which is a child window a swapchain
+    /// presents into. So the right-hand column's cells carry it — the rows the view spans of the whole
+    /// history have their two colours swapped, as a selection's are, so the text under it still
+    /// reads.</para>
+    ///
+    /// <para><b>Output that arrived is a mark and never a jump.</b> Somebody reading is not moved: the
+    /// bottom-right cell shows an arrow, which is all it takes to know the screen below has changed.
+    /// </para>
+    ///
+    /// <para>Only while the view is scrolled back. At the bottom there is nothing to say, and the
+    /// live screen is never drawn over.</para>
+    /// </summary>
+    private void Mark(TerminalBuffer buffer, Viewport viewport, Span<CellInstance> into, long top,
+                      long oldest, int columns, int rows, CellMetrics metrics)
+    {
+        long total = Math.Max(rows, buffer.LineCount);
+        int edge = columns - 1;
+
+        // The thumb: as many rows as the screen is of the history, at least one, placed where the top
+        // of the view is in it.
+        int size = (int)Math.Clamp(rows * (long)rows / total, 1, rows);
+        int from = (int)Math.Clamp((top - oldest) * rows / total, 0, rows - size);
+
+        for (int row = from; row < from + size; row++)
+        {
+            CellInstance cell = into[(row * columns) + edge];
+
+            // The two colours' low 24 bits change places; everything above them — flags, span,
+            // page, underline, cursor — stays where it is.
+            into[(row * columns) + edge] = cell with
+            {
+                Foreground = (cell.Foreground & 0xFF000000u) | (cell.Background & 0x00FFFFFFu),
+                Background = (cell.Background & 0xFF000000u) | (cell.Foreground & 0x00FFFFFFu),
+            };
+        }
+
+        if (viewport.HasUnseenOutput)
+        {
+            Rgb foreground = _palette.Resolve(Colour.Default);
+            Rgb background = _palette.Resolve(Colour.Default, background: true);
+
+            // Inverted, so it reads whatever is behind it.
+            into[((rows - 1) * columns) + edge] = CellInstance.For(
+                _atlas.Cache(Arrived, FontWeight.Normal, FontStyle.Normal, maximumAdvance: metrics.Width),
+                background, foreground);
         }
     }
 

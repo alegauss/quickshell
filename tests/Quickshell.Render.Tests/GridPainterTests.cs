@@ -311,6 +311,59 @@ public sealed class GridPainterTests
     }
 
     /// <summary>
+    /// QS158's falsification: a reader scrolled into the history can see where they are, and can
+    /// tell that output arrived — and the live screen carries neither mark.
+    /// </summary>
+    [Fact]
+    public void AScrolledViewSaysWhereItIsAndThatOutputArrived()
+    {
+        using Harness harness = new();
+
+        Emulator emulator = new(10, 4, scrollback: 100);
+        emulator.Feed(Encoding.UTF8.GetBytes(string.Concat(Enumerable.Range(0, 40).Select(line => $"r{line}\r\n"))));
+
+        TerminalBuffer buffer = emulator.Buffer;
+        Viewport viewport = new();
+        GridPainter painter = new(harness.Atlas, emulator.Palette);
+
+        CellInstance[] live = new CellInstance[10 * 4];
+        CellInstance[] cells = new CellInstance[10 * 4];
+
+        painter.Paint(buffer, live, -1, -1, CursorShape.None, Box);
+
+        uint foreground = emulator.Palette.Resolve(Colour.Default).Packed & 0x00FFFFFFu;
+        uint ground = emulator.Palette.Resolve(Colour.Default, background: true).Packed & 0x00FFFFFFu;
+
+        // At the bottom, the screen is exactly the live one: nothing is drawn over it.
+        painter.Paint(buffer, cells, -1, -1, CursorShape.None, Box, viewport: viewport);
+        Assert.Equal(live, cells);
+
+        // Back to the oldest line: the thumb is the top row's right-hand cell, colours swapped.
+        viewport.ScrollBy(buffer, -1000);
+        painter.Paint(buffer, cells, -1, -1, CursorShape.None, Box, viewport: viewport);
+
+        Assert.Equal(foreground, cells[9].Background & 0x00FFFFFFu);
+        Assert.Equal(ground, cells[9].Foreground & 0x00FFFFFFu);
+        Assert.Equal(ground, cells[19].Background & 0x00FFFFFFu);
+
+        CellInstance quiet = cells[39];
+
+        // Output arrives while somebody reads: the view does not move, and the corner says so.
+        long top = viewport.Top(buffer);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("more\r\n"));
+        viewport.Produced();
+        painter.Paint(buffer, cells, -1, -1, CursorShape.None, Box, viewport: viewport);
+
+        Assert.Equal(top, viewport.Top(buffer));
+        Assert.NotEqual(quiet, cells[39]);
+        Assert.Equal(CellInstance.For(harness.Atlas.Cache(0x2193, maximumAdvance: Box.Width),
+                                      emulator.Palette.Resolve(Colour.Default, background: true),
+                                      emulator.Palette.Resolve(Colour.Default)),
+                     cells[39]);
+    }
+
+    /// <summary>
     /// Painting a frame allocates nothing, which is Block C's criterion where a frame is built.
     /// </summary>
     [Fact]
