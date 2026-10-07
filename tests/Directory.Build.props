@@ -30,4 +30,10 @@
     <AssemblyMetadata Include="QuickshellTestProject" Value="$(MSBuildProjectFullPath)" />
   </ItemGroup>
 
+  <!-- QS167: an allocation assertion measures its steady-state pass more than once and reads the
+       least, so a one-off from the runtime is not reported as the code allocating. -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Allocations.cs" Link="Allocations.cs" />
+  </ItemGroup>
+
 </Project>

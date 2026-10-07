@@ -313,14 +313,13 @@ public sealed class AnsiParserTests
             parser.Parse(stream, ref counter);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-
-        for (int pass = 0; pass < 1000; pass++)
+        long allocated = Quickshell.Tests.Allocations.Least(() =>
         {
-            parser.Parse(stream, ref counter);
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            for (int pass = 0; pass < 1000; pass++)
+            {
+                parser.Parse(stream, ref counter);
+            }
+        });
 
         Assert.True(counter.Events > 0, "the stream produced no events, so this measured nothing");
         Assert.True(allocated == 0,

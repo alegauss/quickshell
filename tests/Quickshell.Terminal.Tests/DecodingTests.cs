@@ -138,17 +138,18 @@ public sealed class DecodingTests
             decoder.Decode(read);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-
-        for (int round = 0; round < 100; round++)
+        long allocated = Quickshell.Tests.Allocations.Least(() =>
         {
-            foreach (byte[] read in reads)
+            for (int round = 0; round < 100; round++)
             {
-                decoder.Decode(read);
+                foreach (byte[] read in reads)
+                {
+                    decoder.Decode(read);
+                }
             }
-        }
+        });
 
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, allocated);
     }
 
     private static string Hex(string text) => string.Join(",", text.Select(ch => ((int)ch).ToString("X4")));

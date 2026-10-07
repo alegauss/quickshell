@@ -383,14 +383,13 @@ public sealed class GridPainterTests
         // Once to warm the atlas: caching a glyph the first time is real work and is not per frame.
         painter.Paint(emulator.Buffer, cells, -1, -1, CursorShape.None, Box);
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-
-        for (int frame = 0; frame < 10; frame++)
+        long allocated = Quickshell.Tests.Allocations.Least(() =>
         {
-            painter.Paint(emulator.Buffer, cells, -1, -1, CursorShape.None, Box);
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            for (int frame = 0; frame < 10; frame++)
+            {
+                painter.Paint(emulator.Buffer, cells, -1, -1, CursorShape.None, Box);
+            }
+        });
 
         Assert.True(allocated == 0, $"ten frames allocated {allocated} bytes");
     }

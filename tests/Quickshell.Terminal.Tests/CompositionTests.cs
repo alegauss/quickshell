@@ -322,16 +322,17 @@ public sealed class CompositionTests
             _ = composition.Candidate(10, 3, 80);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-
-        for (int keystroke = 0; keystroke < 1000; keystroke++)
+        long allocated = Quickshell.Tests.Allocations.Least(() =>
         {
-            composition.Update("にほんご", keystroke % 5);
-            _ = composition.Cells;
-            _ = composition.Candidate(10, 3, 80);
-        }
+            for (int keystroke = 0; keystroke < 1000; keystroke++)
+            {
+                composition.Update("にほんご", keystroke % 5);
+                _ = composition.Cells;
+                _ = composition.Candidate(10, 3, 80);
+            }
+        });
 
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0, allocated);
     }
 
     private static string Row(Emulator emulator, int row)

@@ -241,11 +241,9 @@ public sealed class HostileInputTests
         // the second one finds already grown.
         Feed(emulator, stream, 64 * 1024);
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-
-        Feed(emulator, stream, 64 * 1024);
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        // The least of up to three steady passes: a per-call allocation shows in every one of them,
+        // and a one-off from the runtime does not (QS167).
+        long allocated = Quickshell.Tests.Allocations.Least(() => Feed(emulator, stream, 64 * 1024));
 
         Assert.True(
             allocated == 0,
@@ -281,14 +279,13 @@ public sealed class HostileInputTests
             Feed(emulator, shape, 4096);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-
-        foreach (byte[] shape in shapes)
+        long allocated = Quickshell.Tests.Allocations.Least(() =>
         {
-            Feed(emulator, shape, 4096);
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            foreach (byte[] shape in shapes)
+            {
+                Feed(emulator, shape, 4096);
+            }
+        });
 
         Assert.True(
             allocated <= HostileAllocationCeiling,
@@ -311,17 +308,16 @@ public sealed class HostileInputTests
             Feed(emulator, shape, 4096);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-
-        for (int round = 0; round < 10; round++)
+        long allocated = Quickshell.Tests.Allocations.Least(() =>
         {
-            foreach (byte[] shape in shapes)
+            for (int round = 0; round < 10; round++)
             {
-                Feed(emulator, shape, 4096);
+                foreach (byte[] shape in shapes)
+                {
+                    Feed(emulator, shape, 4096);
+                }
             }
-        }
-
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        });
 
         Assert.True(
             allocated <= HostileAllocationCeiling * 10,
