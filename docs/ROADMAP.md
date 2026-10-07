@@ -27,7 +27,7 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-- 📋 **QS188** (deps: —) **Nothing can be dragged out of the host's pane, so a file on the server reaches Explorer only through a copy** — Windows asks for a dragged file's data during the drop, and a server cannot always answer in that time, so it needs deferred rendering. → §QS188
+- ⏳ **QS188** (deps: QS219) **Nothing can be dragged out of the host's pane, so a file on the server reaches Explorer only through a copy** — A real drop onto Explorer is untried: no SSH tab has a remote pane until QS219, and then the guest drags one. → §QS188
 - 📋 **QS189** (deps: QS126 ✅) **A file dropped onto an SSH terminal can only be typed as its path, never sent to the directory the shell is in** — QS64 typed the path and left the modifier that transfers instead, which needs an SSH tab and the directory its shell reported. → §QS189
 - 📋 **QS219** (deps: QS126 ✅) **The file browser opened over an SSH tab shows nothing on the host's side** — Its remote half asks the tab for a file channel and nothing answers, though the tab now holds the connection one opens on. → §QS219
 
@@ -321,6 +321,13 @@
 - **A tab detached into its own window keeps its connection** Checked by detaching a tab
   with a live SSH session into a new window and asserting the transport is the same
   object, no reconnect was logged, and the shell answers a keystroke in the new window.
+
+## Done when — QS188
+
+- **A file dragged from the host's pane lands in Explorer byte for byte** Once QS219
+  gives an SSH tab its remote pane: run-app-vm opens the browser in the guest, a
+  winwright case drags a file from the host's pane onto an Explorer folder, and the file
+  there is compared with the server's.
 
 ## Non-goals
 

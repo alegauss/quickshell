@@ -549,6 +549,7 @@ public sealed class FileBrowser : Window
     {
         private readonly DirectoryPane _pane;
         private readonly FileBrowser _browser;
+        private Point? _pressed;
         private readonly TextBox _path = new() { VerticalContentAlignment = VerticalAlignment.Center };
         private readonly Button _back = Tool("←", "Back");
         private readonly Button _forward = Tool("→", "Forward");
@@ -663,6 +664,11 @@ public sealed class FileBrowser : Window
             };
             _list.MouseDoubleClick += (_, _) => OpenSelected();
 
+            // Dragged out of the host's pane, the selected files go wherever they are dropped,
+            // read from the server as the drop reads them (QS188).
+            _list.PreviewMouseLeftButtonDown += (_, e) => _pressed = e.GetPosition(_list);
+            _list.PreviewMouseMove += (_, e) => DragOut(e);
+
             // Enter opens and Backspace goes up, which is what a keyboard does in every file list
             // on this platform; Alt with an arrow walks the history, as it does in a browser.
             _list.PreviewKeyDown += (sender, e) =>
@@ -724,6 +730,44 @@ public sealed class FileBrowser : Window
             action();
 
             return true;
+        }
+
+        /// <summary>
+        /// Starts a drag of the selected files out of the host's pane, once the pointer has moved
+        /// far enough with the button down to be a drag and not a click. Directories stay behind: a
+        /// tree is listed before it can be described, and the drop cannot wait for that.
+        /// </summary>
+        private void DragOut(MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || _pressed is not { } from
+                || _pane.Side is not RemoteFiles host)
+            {
+                return;
+            }
+
+            Vector moved = e.GetPosition(_list) - from;
+
+            if (Math.Abs(moved.X) < SystemParameters.MinimumHorizontalDragDistance
+                && Math.Abs(moved.Y) < SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+
+            _pressed = null;
+
+            (string, FileItem)[] files =
+                [.. _pane.Selected.Where(item => !item.IsDirectory).Select(item => (host.Into(_pane.Path, item.Name), item))];
+
+            if (files.Length == 0 || !RemoteDrag.Drag(host.Channel, files))
+            {
+                return;
+            }
+
+            string dragged = $"Dragged {BrowserActions.Entries(files.Length)} out";
+
+            _pane.Say(files.Length == _pane.Selected.Count
+                ? dragged + "; the copy is the drop's to show."
+                : dragged + "; directories are copied with F5.");
         }
 
         private void OpenSelected()

@@ -521,10 +521,10 @@ is allowed to take.
 The mechanism is deferred rendering. The pane offers a data object carrying
 `CFSTR_FILEDESCRIPTOR` — the names, sizes and times, which it already has from the
 listing — and `CFSTR_FILECONTENTS`, whose stream for each file is read from the
-session's file channel only when Explorer asks for it. A file large enough that reading
-it would stall the drop is not read there: it is queued as an ordinary download into the
-directory the drop landed in, and the drop completes against a placeholder the queue
-replaces, which is how the queue's guarantee about half-written files keeps holding.
+session's file channel only when Explorer asks for it. Landed as `RemoteDrag`: no
+placeholder or queued download is needed, because the object offers the shell's
+asynchronous capability and Explorer copies on its own thread after the drop returns;
+the object is served from a thread of its own, so the reads never hold the window.
 
 The same drag source is what dragging between two browsers needs, one per tab, on two
 hosts. That copy goes through this client, and it says so, because a user may reasonably
