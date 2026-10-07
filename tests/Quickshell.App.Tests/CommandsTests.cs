@@ -155,6 +155,35 @@ public sealed class CommandsTests
         Assert.Contains("Move tab right", inMiddle, StringComparer.Ordinal);
     }
 
+    /// <summary>
+    /// QS164: splitting stops at sixteen panes, however long the chord is held, and the palette stops
+    /// offering it there.
+    /// </summary>
+    [Fact]
+    public void SplittingStopsAtSixteenPanes()
+    {
+        (int panes, bool lastSplit, string[] offered) = OnStaThread<(int, bool, string[])>(() =>
+        {
+            MainWindow window = new();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "alpha"));
+
+            bool split = true;
+
+            for (int held = 0; held < 20; held++)
+            {
+                split = window.SplitPane(held % 2 == 0 ? Divide.Beside : Divide.Below);
+            }
+
+            return (window.Current!.Layout.Count, split, [.. window.Actions.Select(entry => entry.Name)]);
+        });
+
+        Assert.Equal(MainWindow.MaximumPanes, panes);
+        Assert.False(lastSplit);
+        Assert.DoesNotContain("Split pane right", offered, StringComparer.Ordinal);
+        Assert.DoesNotContain("Split pane down", offered, StringComparer.Ordinal);
+    }
+
     /// <summary>A tab is listed by what it is called, not only by where it sits.</summary>
     [Fact]
     public void ATabIsListedByItsName()

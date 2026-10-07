@@ -803,26 +803,6 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS164 The device per pane that splitting made cheap to ask for
-
-`TerminalLeaf.Open` attaches a view, and a view opens a `GraphicsDevice`, a
-`GlyphAtlas`, two shaders and a swapchain. Before QS48 a client had one. Now it has one
-per pane, and a pane is Ctrl+Shift+backslash away.
-
-Block G's criterion says sixteen open panes share one glyph atlas, and QS49 is the line
-that makes them. What changed is not the plan but the exposure: the criterion was a
-claim about a future with splits in it, and the splits arrived first. Sixteen panes
-today is sixteen devices, sixteen atlases and sixteen copies of the same rasterised
-font, and nothing between a user and that but their patience.
-
-Two things follow and only one of them is QS49. The sharing is QS49's. The other is that
-this client has no ceiling anywhere: `--panes` clamps at sixteen because a command line
-is a surface a script drives, and the chord clamps at nothing at all. A ceiling is not a
-substitute for the sharing, but it is what stops a held key from being a way to exhaust
-a graphics driver.
-
-Falsified when a client with sixteen panes open holds sixteen devices.
-
 ### §QS168 The font that is built into an atlas and a grid
 
 QS50's design says changes apply live, and gives the reason in the same breath: *a font

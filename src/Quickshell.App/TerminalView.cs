@@ -52,7 +52,13 @@ public sealed class TerminalView : IDisposable
         _renderer = renderer;
         _painter = new GridPainter(atlas, palette);
 
-        (Columns, Rows) = renderer.Metrics.GridFor(surface.Width, surface.Height);
+        (int columns, int rows) = renderer.Metrics.GridFor(surface.Width, surface.Height);
+
+        // Clamped as a resize clamps it: a pane narrower than one cell — sixteen splits in a small
+        // window are — is still a grid of one, because some programs divide by it and the model
+        // refuses a grid of none (QS164, where a held chord made exactly this pane).
+        Columns = Math.Max(1, columns);
+        Rows = Math.Max(1, rows);
 
         _cells = new CellInstance[Math.Max(1, Columns * Rows)];
     }

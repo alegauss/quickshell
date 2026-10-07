@@ -187,6 +187,20 @@ public sealed class TerminalShareTests
     }
 
     /// <summary>
+    /// QS164's falsification: a client with sixteen panes open holds one device and one atlas, not
+    /// sixteen.
+    /// </summary>
+    [Fact]
+    public void SixteenPanesHoldOneDevice()
+    {
+        (int panes, int devices) = OnPanes(MainWindow.MaximumPanes, (share, _, views) =>
+            (views.Length, views.Select(view => view.Device).Distinct().Count()));
+
+        Assert.Equal(16, panes);
+        Assert.Equal(1, devices);
+    }
+
+    /// <summary>
     /// QS132's falsification: a device-loss report says which adapter was lost, and how many losses
     /// came before it.
     ///

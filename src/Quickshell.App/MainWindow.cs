@@ -873,12 +873,28 @@ public sealed class MainWindow : Window
     /// <summary>Who gives a freshly split pane a session, or null while nothing can.</summary>
     public Action<TerminalLeaf>? Connects { get; set; }
 
+    /// <summary>
+    /// The most panes one tab holds (QS164): sixteen, which is what the block's own criterion is
+    /// stated for and what <c>--panes</c> already clamps to.
+    ///
+    /// <para>Not a substitute for the sharing — every pane draws with the one device and atlas since
+    /// QS49 — but every pane is still a shell, a swapchain and a pseudo-console, and a held chord
+    /// should not be a way to open a hundred of them.</para>
+    /// </summary>
+    public const int MaximumPanes = 16;
+
     /// <summary>Splits the pane that has the keyboard, and gives the new one a session.</summary>
-    public void SplitPane(Divide how)
+    /// <returns>Whether a pane was made, which is false at <see cref="MaximumPanes"/>.</returns>
+    public bool SplitPane(Divide how)
     {
+        if (Current is { } full && full.Layout.Count >= MaximumPanes)
+        {
+            return false;
+        }
+
         if (Current?.Split(how) is not { } made)
         {
-            return;
+            return false;
         }
 
         Hold(made);
@@ -886,6 +902,8 @@ public sealed class MainWindow : Window
         Retitle();
 
         Connects?.Invoke(made);
+
+        return true;
     }
 
     /// <summary>
@@ -2057,6 +2075,10 @@ public sealed class MainWindow : Window
         /// <inheritdoc/>
         public override string Name =>
             how == Divide.Beside ? "Split pane right" : "Split pane down";
+
+        /// <summary>Not past <see cref="MaximumPanes"/>, so the palette stops offering it there.</summary>
+        public override bool CanExecute(object? parameter) =>
+            Window.Current is not { } tab || tab.Layout.Count < MaximumPanes;
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.SplitPane(how);
