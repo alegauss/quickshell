@@ -624,11 +624,11 @@ public sealed class WindowTests : IDisposable
     }
 
     /// <summary>
-    /// Ctrl+Shift+F1 writes the bundle. Asserted through the binding the window actually carries,
-    /// since a method nothing is bound to is a feature no user can reach.
+    /// The palette's entry writes the bundle. Asserted through the entry the window actually offers,
+    /// since a method nothing reaches is a feature no user can reach.
     /// </summary>
     [Fact]
-    public void CtrlShiftF1WritesADiagnosticBundle()
+    public void ThePalettesEntryWritesADiagnosticBundle()
     {
         string written = OnStaThread(() =>
         {
@@ -638,14 +638,8 @@ public sealed class WindowTests : IDisposable
                 Wrote = _ => { },
             };
 
-            KeyBinding binding = window.InputBindings
-                                       .OfType<KeyBinding>()
-                                       .Single(bound => bound.Key == System.Windows.Input.Key.F1);
-
-            Assert.Equal(ModifierKeys.Control | ModifierKeys.Shift, binding.Modifiers);
-
-            // Through the command the binding holds, which is the path a keypress takes.
-            binding.Command.Execute(null);
+            // Through the command the entry holds, which is the path picking it takes.
+            window.Actions.Single(entry => entry.Name == "Write a diagnostic report").Run();
 
             return Directory.GetFiles(_directory, "quickshell-diagnostics-*.txt").Single();
         });
@@ -654,6 +648,52 @@ public sealed class WindowTests : IDisposable
 
         Assert.Contains("quickshell diagnostics", bundle, StringComparison.Ordinal);
         Assert.Contains("has not been sent to anybody", bundle, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// QS172's falsification: the help chord shows help — the palette, every action and its keys —
+    /// and not a diagnostic report, which it used to write.
+    /// </summary>
+    [Fact]
+    public void TheHelpChordShowsEveryActionAndWritesNothing()
+    {
+        (int offered, bool chordsListed, int bundles) = OnStaThread(() =>
+        {
+            int shown = 0;
+            bool keyed = false;
+
+            MainWindow window = new()
+            {
+                DiagnosticsFolder = _directory,
+                Wrote = _ => { },
+                Choosing = (actions, _) =>
+                {
+                    shown = actions.Count;
+                    keyed = actions.Any(action => action.Chord == "Ctrl+Shift+T");
+
+                    return null;
+                },
+            };
+
+            KeyBinding help = window.InputBindings
+                                    .OfType<KeyBinding>()
+                                    .Single(bound => bound.Key == System.Windows.Input.Key.F1);
+
+            Assert.Equal(ModifierKeys.Control | ModifierKeys.Shift, help.Modifiers);
+
+            help.Command.Execute(null);
+
+            // A folder nothing was written to may not exist at all, which is also nothing written.
+            int written = Directory.Exists(_directory)
+                ? Directory.GetFiles(_directory, "quickshell-diagnostics-*.txt").Length
+                : 0;
+
+            return (shown, keyed, written);
+        });
+
+        Assert.True(offered > 10, $"help listed {offered} actions");
+        Assert.True(chordsListed, "help did not name the keys that do things");
+        Assert.Equal(0, bundles);
     }
 
     /// <summary>

@@ -803,29 +803,6 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS172 The one chord a user guesses, pointed at the wrong thing
-
-Ctrl+Shift+F1 collects a diagnostic report. The comment where it is bound argues F1
-because *that is where a person looks for help* — which is exactly the argument for it
-not being this. A user who has never read anything about this client and wants to know
-what it can do will press it, and will be shown a folder of logs.
-
-QS162 wrote docs/KEYS.md, so there is now something to show. It is a file in the
-repository that a user who installed a binary has no path to at all, which makes the
-reference half a surface: it answers the question for anybody reading the source and
-nobody else.
-
-The cheap answer is that help is the chord and the report moves. The report is a
-maintenance action reached deliberately, and moving it costs nothing because nobody has
-it in their fingers yet — this client has no users. Delaying is what makes it expensive.
-
-What help opens is the smaller question and should stay small: the keys, and a way to
-reach the settings file. Not a manual, not a window this client has to lay out. A shell
-that opens the reference and a chrome-free view of the same table are both defensible; a
-help system is not, and would be the surface Block G exists to refuse.
-
-Falsified when a user presses the help chord and is shown something that is not help.
-
 ### §QS174 The difference between broken and misconfigured
 
 Three things in the settings path fail quietly by design, and each design is right on

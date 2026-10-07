@@ -150,7 +150,7 @@ reopening.
 
 **Contrast is reported, never enforced.** A scheme is loaded as written even where some of it is
 hard to read — many are that way deliberately. Which colours those are is named in the diagnostic
-report (**Ctrl+Shift+F1**), because *the text went invisible* is a support question and that is where
+report (*Write a diagnostic report*, in the palette), because *the text went invisible* is a support question and that is where
 support questions are answered.
 
 A path that leads nowhere, or a file this cannot read, is the built-in scheme and no error. This is

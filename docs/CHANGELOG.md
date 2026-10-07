@@ -145,6 +145,7 @@
 - ✅ **QS168** **Changing the font in the settings file does nothing until the client is restarted** — A font changed in the settings file redraws every open pane at the new size without a restart, as a test asserts against real panes (design superseded: QS135 had already shipped it).
 - ✅ **QS170** **Every setting has to be found and typed by hand, because the surface over the file was never built** — Ctrl+Shift+, opens a window with a control per documented key that writes the file on each change, keeping its comments, and never over a file that does not parse.
 - ✅ **QS171** **Splitting a pane is bound to one Oem key, and which character that is depends on the layout** — Punctuation chords are bound to the character their key types on the active layout, one binding each, checked against every installed layout and written in KEYS.md.
+- ✅ **QS172** **A user looking for help presses Ctrl+Shift+F1 and gets a defect report** — Ctrl+Shift+F1 opens help, the palette listing every action with its keys; the diagnostic report moved to a palette entry reached on purpose.
 
 ## Block H — The reason to leave the incumbent
 

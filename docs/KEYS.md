@@ -78,7 +78,7 @@ keyboard. Nothing is copied: a drop onto a terminal is the path as an argument.
 | `Ctrl+Shift+,` | Opens the settings window. Each change is written to [the settings file](SETTINGS.md) as you make it, and applied at once. |
 | `Ctrl+Shift+R` | Rereads [the settings file](SETTINGS.md). Saving it is normally enough; this is what to press when it was not. |
 | `Ctrl+Shift+I` | Imports sessions from another client. |
-| `Ctrl+Shift+F1` | Collects a diagnostic report. |
+| `Ctrl+Shift+F1` | Help: opens the palette, which lists everything this client can do and the keys that do it. The diagnostic report is in there too, as *Write a diagnostic report*. |
 
 ## In the file browser
 

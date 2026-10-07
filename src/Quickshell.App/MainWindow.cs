@@ -104,13 +104,18 @@ public sealed class MainWindow : Window
 
         Content = layout;
 
-        // The one action that collects a defect report. A binding and not a menu item, because this
-        // window has no menu and gaining one to hold a maintenance command would spend the argument
-        // it makes. Ctrl+Shift+F1: F1 is where a person looks for help, and the two modifiers keep
-        // it away from anything the terminal owes the host — an unmodified F1 belongs to the program
-        // on the far side and always will.
-        InputBindings.Add(new KeyBinding(new Diagnose(this), Key.F1,
+        // Help, on the chord a person guesses for it (QS172): Ctrl+Shift+F1, because F1 is where help
+        // is looked for, with the two modifiers that keep it away from anything the terminal owes the
+        // host — an unmodified F1 belongs to the program on the far side and always will. What it
+        // opens is the palette: every action this client has, with the keys that do it, read off the
+        // real bindings — the keys reference a user can reach without the repository.
+        InputBindings.Add(new KeyBinding(new Helping(this), Key.F1,
                                          ModifierKeys.Control | ModifierKeys.Shift));
+
+        // The diagnostic report, from the palette and from no key (QS172). It is a maintenance action
+        // somebody reaches for deliberately, usually because somebody asked them to, and it was on
+        // the help chord — which is where a person who wanted help was shown a folder of logs.
+        InputBindings.Add(new InputBinding(new Diagnose(this), new PaletteOnly()));
 
         // Importing the incumbent's sessions. Ctrl+Shift+I for the same reason as F1 above: two
         // modifiers keep it away from anything the terminal owes the host, and an unmodified key
@@ -1233,7 +1238,7 @@ public sealed class MainWindow : Window
     /// <summary>
     /// Writes one bundle and says where it went.
     ///
-    /// <para>Reached from Ctrl+Shift+F1, and from nowhere automatic: this reads files and asks DXGI
+    /// <para>Reached from the palette, and from nowhere automatic: this reads files and asks DXGI
     /// a question, neither of which belongs on a path a user did not ask for. Nothing is sent, and
     /// the file is the user's to read first.</para>
     /// </summary>
@@ -1944,6 +1949,16 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public abstract void Execute(object? parameter);
+    }
+
+    /// <summary>Help: the palette, which lists every action and its keys.</summary>
+    private sealed class Helping(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Help: every action and its keys";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.ShowPalette();
     }
 
     /// <summary>The binding's command, which is the whole of what a command is here.</summary>
