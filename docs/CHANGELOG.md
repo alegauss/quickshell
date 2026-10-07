@@ -176,6 +176,7 @@
 - ✅ **QS135** **Three settings are read, written and kept faithfully, and nothing acts on them** — A scrollback depth changed in the settings reaches every open pane in order with its output, dropping only the oldest lines when it shrinks.
 - ✅ **QS191** **The graphics device and the shell both wait for the window, so a start runs three slow things one after another** — The device and the first tab's shell now start with the process; in the guest a start reached its prompt at 435 ms against 609 and 634.
 - ✅ **QS192** **A portable copy that installs itself leaves its saved sessions and settings behind in the copy it came from** — Installing from a portable copy copies its settings and saved sessions into a profile with none, leaves one with its own untouched, and says which.
+- ✅ **QS196** **Figure 3 of the budget, steady-state frame cost, is measured by nothing, so no gate can hold it** — The replay harness times one filled 200x50 grid redrawn 2000 times, CPU and GPU apart; the reference desk drew it at 0.11 ms GPU and 0.016 ms CPU median.
 
 ## Block I — An error a user can act on
 

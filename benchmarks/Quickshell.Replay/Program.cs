@@ -12,6 +12,9 @@ using Quickshell.Replay;
 //
 //   Quickshell.Replay [corpus] [--only cat-log:parse,cat-log:emulate] [--json <file>]
 //
+// `<stream>:frame` names figure 3's measurement (QS196): a grid filled from that stream and drawn
+// again and again, timed per frame on the CPU and the GPU. A full run takes it on the largest stream.
+//
 // `--only` replays just the pairs named, and then the results file is left alone: a table of two
 // rows written over the table of thirty-six would be a report that shrank because somebody asked a
 // narrower question. `--json` writes what was measured where a program can read it, which is how
@@ -189,6 +192,54 @@ foreach (Corpus stream in streams)
             Console.WriteLine($"{string.Empty,-16} {string.Empty,8}     {string.Empty,-14} {note}");
         }
     }
+}
+
+// Figure 3 (QS196): not a throughput, so not a row of the table above. One grid, filled once from a
+// stream, drawn again and again; `--only <stream>:frame` asks for it alone, and a full run measures it
+// on the largest stream, which fills the grid the way a long session does.
+const int Frames = 2000;
+
+Corpus? framed = wanted is null
+    ? streams.MaxBy(stream => stream.Bytes.Length)
+    : streams.FirstOrDefault(stream => wanted.Contains($"{stream.Name}:frame"));
+
+if (framed is not null)
+{
+    using FrameCost frame = new();
+
+    (double[] cpu, double[] gpu) = frame.Measure(framed.Bytes, Frames);
+
+    double cpuMedian = FrameCost.Percentile(cpu, 0.5);
+    double cpuTail = FrameCost.Percentile(cpu, 0.99);
+    double gpuMedian = FrameCost.Percentile(gpu, 0.5);
+    double gpuTail = FrameCost.Percentile(gpu, 0.99);
+
+    report.AppendLine();
+    report.AppendLine("## Figure 3: one frame, redrawn");
+    report.AppendLine();
+    report.AppendLine(CultureInfo.InvariantCulture,
+        $"A {FrameCost.Columns} by {FrameCost.Rows} grid filled from `{framed.Name}` through the emulator, then drawn {Frames} times with nothing new arriving, on {frame.Adapter}. Per frame, never presented; the GPU's clock is a pair of timestamp queries around the same work.");
+    report.AppendLine();
+    report.AppendLine("| clock | median ms | 99th percentile ms | frames timed |");
+    report.AppendLine("|---|---|---|---|");
+    report.AppendLine(CultureInfo.InvariantCulture, $"| CPU | {cpuMedian:F3} | {cpuTail:F3} | {cpu.Length} |");
+    report.AppendLine(CultureInfo.InvariantCulture, $"| GPU | {gpuMedian:F3} | {gpuTail:F3} | {gpu.Length} |");
+
+    measured.Add(new Dictionary<string, object>
+    {
+        ["stream"] = framed.Name,
+        ["consumer"] = "frame",
+        ["adapter"] = frame.Adapter,
+        ["cpuMedianMilliseconds"] = cpuMedian,
+        ["cpuP99Milliseconds"] = cpuTail,
+        ["gpuMedianMilliseconds"] = gpuMedian,
+        ["gpuP99Milliseconds"] = gpuTail,
+        ["gpuFramesTimed"] = gpu.Length,
+    });
+
+    Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
+        "{0,-16} frame {1}x{2}: CPU {3:F3} ms median, {4:F3} ms p99; GPU {5:F3} ms median, {6:F3} ms p99 ({7} of {8} timed)",
+        framed.Name, FrameCost.Columns, FrameCost.Rows, cpuMedian, cpuTail, gpuMedian, gpuTail, gpu.Length, Frames));
 }
 
 if (notes.Count > 0)

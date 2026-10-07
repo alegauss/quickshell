@@ -821,7 +821,9 @@ how, and what it does not hold.
 What is left needs a machine this repository does not have: the same gate run by CI on
 every commit, on a runner that is the same machine each time, so drift is read per
 commit without anybody remembering to run it. A hosted runner is a different machine
-every run. Frame cost joins the gate once QS196 has measured it.
+every run. Frame cost joins it through the replay's `--only cat-log:frame` arm (QS196):
+its JSON entry carries CPU and GPU median and 99th-percentile milliseconds, lower being
+better.
 
 The allocation assertion is not part of it: it is exact rather than statistical, zero is
 zero, and the suite checks it on every run already.
@@ -877,29 +879,6 @@ title bar first. That visible change is this line's decision.
 
 Falsified when the theme, moved after the first frame, does not make `interactive`
 measurably earlier in the guest across two runs each way.
-
-### §QS196 A frame, timed on both sides
-
-Found building QS79's gate. Figure 3 of the budget is steady-state frame cost: one
-filled 200 by 50 grid redrawn continuously, under 2 ms of GPU and CPU time on the
-reference machine, and never the first frame. Nothing in this repository measures it.
-The replay harness's `render` arm reports megabytes of stream per second through the
-glyph path, which is a throughput and folds parsing in; the render tests assert what is
-drawn and that an idle pane draws nothing. So the gate holds parse, emulate and start,
-and the figure a second pane most depends on is the one it cannot hold.
-
-The measurement belongs in the replay harness beside `render`, as its own arm: a grid
-filled once from a real stream and then drawn a few thousand times without new input,
-timed on the CPU around each `Draw` and on the GPU with timestamp queries around the
-same work, so the two halves of the figure are read separately. It never presents, for
-the reason the render arm never does: a vsync-locked present measures the display. The
-report gives the median and the 99th percentile per frame, since a frame budget is
-broken by the slow frame and not by the average one.
-
-Once it exists the gate reads it as a fourth figure, lower being better, with a
-threshold derived from its samples like the others.
-
-Falsified when figure 3 is quoted anywhere without a run of that arm behind it.
 
 ### §QS197 A pass too short to time on a hybrid CPU
 
