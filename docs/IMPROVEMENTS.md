@@ -798,6 +798,9 @@ without qualification.
 Most-recently-used order is the third gesture, and the cheapest: a list the active
 setter appends to.
 
+Found reordering: `Hold` hooks a pane's `Mouse` and `Dropped` to its window, `Program`
+wires one window's surfaces, and closing the first window ends the process.
+
 Falsified when detaching a tab reconnects its session.
 
 ### §QS163 The divider that is a gap between two child windows

@@ -27,6 +27,8 @@
 
 ## Block G — The clean interface, defended
 
+- ⏸ **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — set aside (Needs a decision on what closing one of several windows ends.): Tabs cannot yet be dragged, detached without reconnecting, or ordered by recent use. → §QS160
+
 ## Block H — The reason to leave the incumbent
 
 - ⏸ **QS137** (deps: QS76 ✅) **The idle figure is measured on a window with no session and no render loop in it** — set aside (Needs the reference desk attended for ten connected minutes.): The client can now hold a session, and the figure is still the empty window's. → §QS137
