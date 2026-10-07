@@ -85,9 +85,19 @@ public sealed class GridPainter
     /// drawn only where the line it sits on is one of the lines being shown. A cursor kept at its
     /// row number would be a caret blinking in the middle of somebody's scrollback.</para>
     /// </param>
+    /// <param name="composing">
+    /// What an input method is composing, or null for nothing (QS153).
+    ///
+    /// <para>Drawn into the grid at the cursor, in the session's own font and colours and
+    /// underlined, the convention every terminal follows — and not in the box an input method draws
+    /// over a surface it cannot see, in a font nobody chose. It wraps at the right edge as the text
+    /// under it does, because it is the same grid, and the cursor moves to the composition's own
+    /// caret.</para>
+    /// </param>
     public void Paint(TerminalBuffer buffer, Span<CellInstance> into, int cursorRow,
                       int cursorColumn, CursorShape cursor, CellMetrics metrics,
-                      Selection? selection = null, Viewport? viewport = null)
+                      Selection? selection = null, Viewport? viewport = null,
+                      Composition? composing = null)
     {
         ArgumentNullException.ThrowIfNull(buffer);
 
@@ -142,6 +152,104 @@ public sealed class GridPainter
                     glyph, foreground, background, cell.Flags, Math.Max(1, span), cell.Underline,
                     row == caret && column == cursorColumn ? cursor : CursorShape.None);
             }
+        }
+
+        // Over the cells just painted rather than after them: an instance's place in the grid is its
+        // index, so the composition replaces the cells it covers. Only where the cursor is on screen,
+        // because that is where the text being typed is going.
+        if (composing is { IsActive: true } && caret >= 0 && caret < rows && !composing.Text.IsEmpty)
+        {
+            Overlay(composing, into, caret, Math.Clamp(cursorColumn, 0, columns - 1), columns, rows,
+                    cursor, metrics);
+        }
+    }
+
+    /// <summary>
+    /// The composition, cell by cell from the cursor: underlined, in the default colours, wide
+    /// characters across two cells, wrapping to the next row at the edge, and the cursor on the
+    /// composition's caret — which may be the cell just past it.
+    /// </summary>
+    private void Overlay(Composition composing, Span<CellInstance> into, int row, int column,
+                         int columns, int rows, CursorShape cursor, CellMetrics metrics)
+    {
+        Rgb foreground = _palette.Resolve(Colour.Default);
+        Rgb background = _palette.Resolve(Colour.Default, background: true);
+
+        ReadOnlySpan<char> text = composing.Text;
+        int before = composing.CellsBeforeCaret;
+        int drawn = 0;
+        int caretAt = -1;
+
+        for (int at = 0; at < text.Length;)
+        {
+            if (Rune.DecodeFromUtf16(text[at..], out Rune rune, out int used) != OperationStatus.Done)
+            {
+                break;
+            }
+
+            at += used;
+
+            int width = Math.Min(CharacterWidth.Of(rune.Value), CellInstance.MaximumSpan);
+
+            if (width == 0)
+            {
+                continue;
+            }
+
+            // A wide character never straddles the edge: it starts the next row, as the host's would.
+            if (column + width > columns)
+            {
+                column = 0;
+                row++;
+            }
+
+            if (row >= rows)
+            {
+                break;
+            }
+
+            int index = (row * columns) + column;
+
+            if (drawn == before)
+            {
+                caretAt = index;
+            }
+
+            GlyphPlacement glyph = rune.Value == ' '
+                ? GlyphPlacement.Empty
+                : _atlas.Cache(rune.Value, FontWeight.Normal, FontStyle.Normal, maximumAdvance: metrics.Width * width);
+
+            into[index] = CellInstance.For(glyph, foreground, background, CellFlags.None, width,
+                                           UnderlineStyle.Single);
+
+            if (width == 2)
+            {
+                into[index + 1] = CellInstance.For(GlyphPlacement.Empty, foreground, background,
+                                                   CellFlags.None, 0, UnderlineStyle.Single);
+            }
+
+            column += width;
+            drawn += width;
+
+            if (column >= columns)
+            {
+                column = 0;
+                row++;
+            }
+        }
+
+        // A caret at the end of the composition sits on the cell after it, which is the buffer's.
+        if (caretAt < 0 && drawn <= before && row < rows)
+        {
+            caretAt = (row * columns) + column;
+        }
+
+        if (caretAt >= 0 && cursor != CursorShape.None)
+        {
+            CellInstance under = into[caretAt];
+
+            // The cursor's two bits, at the top of the background word, replaced and nothing else.
+            into[caretAt] = under with { Background = (under.Background & ~(3u << 30)) | ((uint)cursor << 30) };
         }
     }
 

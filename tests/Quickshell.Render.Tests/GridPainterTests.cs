@@ -234,6 +234,83 @@ public sealed class GridPainterTests
     }
 
     /// <summary>
+    /// QS153's falsification read off the cells: the text being composed is in the grid at the
+    /// cursor, in the session's own atlas and colours, underlined, two cells for a wide character,
+    /// and the cursor on the composition's caret — not a box in a font nobody chose.
+    /// </summary>
+    [Fact]
+    public void ACompositionIsDrawnIntoTheGridAtTheCursor()
+    {
+        using Harness harness = new();
+
+        Emulator emulator = new(10, 3);
+        emulator.Feed(Encoding.UTF8.GetBytes("ab"));
+
+        Composition composing = new();
+        composing.Start();
+
+        // Two wide characters and a narrow one, with the caret before the narrow one.
+        composing.Update(string.Concat(char.ConvertFromUtf32(0x65E5), char.ConvertFromUtf32(0x672C), "x"), 2);
+
+        CellInstance[] cells = new CellInstance[10 * 3];
+
+        new GridPainter(harness.Atlas, emulator.Palette)
+            .Paint(emulator.Buffer, cells, 0, 2, CursorShape.Block, Box, composing: composing);
+
+        Rgb foreground = emulator.Palette.Resolve(Colour.Default);
+        Rgb ground = emulator.Palette.Resolve(Colour.Default, background: true);
+
+        // What the host wrote is untouched, and no longer carries the cursor.
+        Assert.Equal(CellInstance.For(harness.Atlas.Cache('a', maximumAdvance: Box.Width), foreground, ground), cells[0]);
+
+        Assert.Equal(CellInstance.For(harness.Atlas.Cache(0x65E5, maximumAdvance: Box.Width * 2), foreground, ground,
+                                      CellFlags.None, 2, UnderlineStyle.Single), cells[2]);
+        Assert.Equal(CellInstance.For(GlyphPlacement.Empty, foreground, ground, CellFlags.None, 0,
+                                      UnderlineStyle.Single), cells[3]);
+        Assert.Equal(CellInstance.For(harness.Atlas.Cache(0x672C, maximumAdvance: Box.Width * 2), foreground, ground,
+                                      CellFlags.None, 2, UnderlineStyle.Single), cells[4]);
+
+        // Four cells in, which is where the caret is, and the cursor with it.
+        Assert.Equal(CellInstance.For(harness.Atlas.Cache('x', maximumAdvance: Box.Width), foreground, ground,
+                                      CellFlags.None, 1, UnderlineStyle.Single, CursorShape.Block), cells[6]);
+    }
+
+    /// <summary>
+    /// A composition reaching the right edge wraps as the text under it does, and a wide character
+    /// starts the next row rather than straddling the edge. One that has ended draws nothing at all.
+    /// </summary>
+    [Fact]
+    public void ACompositionWrapsAtTheEdgeAndLeavesNothingWhenItEnds()
+    {
+        using Harness harness = new();
+
+        Emulator emulator = new(4, 2);
+        emulator.Feed(Encoding.UTF8.GetBytes("abc"));
+
+        Composition composing = new();
+        composing.Start();
+        composing.Update(char.ConvertFromUtf32(0x65E5), 1);
+
+        CellInstance[] plain = new CellInstance[4 * 2];
+        CellInstance[] cells = new CellInstance[4 * 2];
+
+        GridPainter painter = new(harness.Atlas, emulator.Palette);
+
+        painter.Paint(emulator.Buffer, plain, 0, 3, CursorShape.None, Box);
+        painter.Paint(emulator.Buffer, cells, 0, 3, CursorShape.None, Box, composing: composing);
+
+        // The last cell of the first row is the buffer's; the character went to the next row.
+        Assert.Equal(plain[3], cells[3]);
+        Assert.Equal(2, (int)(cells[4].Foreground >> 30));
+
+        composing.Cancel();
+
+        painter.Paint(emulator.Buffer, cells, 0, 3, CursorShape.None, Box, composing: composing);
+
+        Assert.Equal(plain, cells);
+    }
+
+    /// <summary>
     /// Painting a frame allocates nothing, which is Block C's criterion where a frame is built.
     /// </summary>
     [Fact]

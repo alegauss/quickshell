@@ -128,6 +128,22 @@ public sealed class TerminalView : IDisposable
     public Viewport Viewport { get; } = new();
 
     /// <summary>
+    /// What an input method is composing into this pane, drawn into the grid at the cursor — or
+    /// null for nothing (QS153).
+    ///
+    /// <para>Set on WPF's thread and read on the loop's, as the selection is: a frame draws whatever
+    /// it holds at the instant it is asked, and whoever changes it calls <see cref="Moved"/> so the
+    /// frame is owed.</para>
+    /// </summary>
+    public Composition? Composing
+    {
+        get => Volatile.Read(ref _composing);
+        set => Volatile.Write(ref _composing, value);
+    }
+
+    private Composition? _composing;
+
+    /// <summary>
     /// The selection changed, so the picture is wrong even though the model is not.
     ///
     /// <para>A selection is invisible to the terminal: nothing was printed and no damage was raised,
@@ -415,7 +431,8 @@ public sealed class TerminalView : IDisposable
         Viewport.Produced();
 
         _painter.Paint(buffer, _cells, caret ? damage.CursorRow : -1, damage.CursorColumn,
-                       caret ? Cursor : CursorShape.None, _renderer.Metrics, Selection, Viewport);
+                       caret ? Cursor : CursorShape.None, _renderer.Metrics, Selection, Viewport,
+                       Composing);
 
         // Waited for here and not at the top of the loop: the wait is for a queue slot, and a
         // wake-up with nothing to draw should not be parked on the swapchain.

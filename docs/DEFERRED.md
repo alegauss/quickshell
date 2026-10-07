@@ -17,6 +17,7 @@
 - ⏸ **QS212** (deps: —) **Dark text on a light theme carries 12 to 17 % less ink than Windows draws, while light-on-dark carries more** — set aside (Owner's call: symmetric or Windows' weight.): The linear blend weighs both polarities alike and Direct2D does not; matching it gives up QS9's symmetry. → §QS212
 - ⏸ **QS215** (deps: —) **The contrast test's Direct2D reference sometimes draws nothing in the guest, and the failure reads as infinite ink** — set aside (Waits on a guest run with a blank.): No guest run has yet recorded a blank since, so whether it was an unflushed read or a lost draw is still unknown. → §QS215
 - ⏸ **QS139** (deps: —) **A host sending faster than the parser consumes buffers gigabytes inside the channel** — set aside (Needs a decision on which of three bounds to take.): The bytes sit in the transport, not the emulator, so an unread session grows without limit. → §QS139
+- ⏸ **QS153** (deps: QS29 ✅) **The text being composed is a box the input method draws over the grid, not underlined text inside it** — set aside (Needs a person typing through an IME.): Not yet watched with a real input method, which must stop drawing its box and still commit. → §QS153
 
 ## Block D — The tree a user organises work in
 

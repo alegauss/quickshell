@@ -71,6 +71,25 @@ public sealed class InputMethod
     public long Placements { get; private set; }
 
     /// <summary>
+    /// The composition started, changed or ended — which is when the pane drawing it owes a frame,
+    /// since nothing the host sent has changed (QS153).
+    /// </summary>
+    public event Action<Composition>? Changed;
+
+    /// <summary>WM_IME_SETCONTEXT, where a window says which of the input method's windows it draws itself.</summary>
+    public const int SettingContext = 0x0281;
+
+    /// <summary>ISC_SHOWUICOMPOSITIONWINDOW: the input method draws the text being composed.</summary>
+    private const long ShowsComposition = 0x80000000;
+
+    /// <summary>
+    /// The context flags with the composition window taken out, which is how a window that draws the
+    /// composition itself tells the input method not to (QS153). Everything else stays — the
+    /// candidate list is still the input method's to draw, where QS29 places it.
+    /// </summary>
+    public static nint DrawingItsOwnComposition(nint flags) => (nint)((long)flags & ~ShowsComposition);
+
+    /// <summary>
     /// The cell a candidate list belongs at, given where the cursor is and how big a cell is.
     ///
     /// <para><b>The arithmetic this whole class exists for, kept apart from the interop so it can be
@@ -102,11 +121,13 @@ public sealed class InputMethod
             case StartComposition:
                 Composition.Start();
                 Place(window);
+                Changed?.Invoke(Composition);
 
                 return true;
 
             case Composing:
                 Compose(window, (int)low);
+                Changed?.Invoke(Composition);
 
                 return true;
 
@@ -114,6 +135,7 @@ public sealed class InputMethod
                 // Nothing to erase, because nothing was ever written into the buffer. That is the
                 // whole reason Composition holds this apart from the model.
                 Composition.Cancel();
+                Changed?.Invoke(Composition);
 
                 return true;
 

@@ -24,6 +24,41 @@ public sealed class InputMethodTests
     private static readonly CellMetrics Box = new(8, 17, 13);
 
     /// <summary>
+    /// QS153: the window tells the input method it draws the composition itself — that flag and no
+    /// other is taken out, so the candidate list and the rest stay the input method's.
+    /// </summary>
+    [Fact]
+    public void TheWindowTakesTheCompositionAndLeavesTheCandidateList()
+    {
+        // ISC_SHOWUICOMPOSITIONWINDOW, the candidate windows' bits and the guide line's.
+        nint offered = unchecked((nint)0xC000000FL);
+
+        Assert.Equal((nint)0x4000000FL, InputMethod.DrawingItsOwnComposition(offered));
+
+        // Asked again, nothing further changes.
+        Assert.Equal((nint)0x4000000FL,
+                     InputMethod.DrawingItsOwnComposition(InputMethod.DrawingItsOwnComposition(offered)));
+    }
+
+    /// <summary>
+    /// Every step of a composition says so, ending included, so the pane drawing it owes a frame for
+    /// each and draws nothing once it is over.
+    /// </summary>
+    [Fact]
+    public void EveryStepOfACompositionIsAnnounced()
+    {
+        InputMethod input = new();
+        List<bool> heard = [];
+
+        input.Changed += composing => heard.Add(composing.IsActive);
+
+        input.Handle(0, InputMethod.StartComposition, 0);
+        input.Handle(0, InputMethod.EndComposition, 0);
+
+        Assert.Equal([true, false], heard);
+    }
+
+    /// <summary>
     /// The candidate list lands on the cursor's own cell when nothing has been composed yet.
     /// </summary>
     [Fact]

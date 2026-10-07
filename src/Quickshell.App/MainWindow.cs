@@ -457,10 +457,23 @@ public sealed class MainWindow : Window
     /// </summary>
     private nint Hooked(nint window, int message, nint wide, nint low, ref bool handled)
     {
+        // The one message answered here rather than passed on, and passed on all the same: the
+        // flags are handed to Windows with the composition window taken out, because this client
+        // draws the text being composed into its own grid (QS153). The candidate list is left in.
+        if (message == InputMethod.SettingContext)
+        {
+            handled = true;
+
+            return DefWindowProc(window, message, wide, InputMethod.DrawingItsOwnComposition(low));
+        }
+
         Input.Handle(window, message, low);
 
         return nint.Zero;
     }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "DefWindowProcW")]
+    private static extern nint DefWindowProc(nint window, int message, nint wide, nint low);
 
     /// <summary>
     /// Who this window's keystrokes belong to, or null while nothing is listening. While the tab is

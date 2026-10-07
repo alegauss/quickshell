@@ -124,6 +124,19 @@ public static class Entry
         window.EndsPane = leaf => _ = leaf.DisposeAsync().AsTask();
 
         window.Input.Placing = composing => Placed(window, composing);
+
+        // The composition is drawn by the pane with the keyboard, into its own grid (QS153): handed
+        // to that pane's view while it is active and taken back when it ends, and the frame forgotten
+        // either way, since nothing the host sent has changed.
+        window.Input.Changed += composing =>
+        {
+            if (Pane(window)?.Terminal.View is { } view)
+            {
+                view.Composing = composing.IsActive ? composing : null;
+                view.Moved();
+                share.Damage.Set();
+            }
+        };
         window.Selected = () => Pane(window)?.Terminal.Selected() ?? string.Empty;
         window.Scrolling = lines => Pane(window)?.Terminal.ScrollBy(lines);
         window.Finding = (needle, forward, exactly) =>

@@ -14,7 +14,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS153** (deps: QS29 ✅) **The text being composed is a box the input method draws over the grid, not underlined text inside it** — QS29 placed that box on the cursor and stopped there, so a phrase being typed sits on top of the line it belongs in. → §QS153
 - 📋 **QS155** (deps: QS21 ✅, QS30 ✅) **A program that asks for the mouse never gets one, and the wheel scrolls nothing at all** — QS21's encoder and QS22's viewport are named by no code in the client, so both shipped features are unreachable from the running program. → §QS155
 - 📋 **QS156** (deps: QS154 ✅) **Grapheme segmentation runs at half its old rate, because every cluster now asks ICU where the boundary is** — QS154 turned invariant globalization off to keep the client alive, and StringInfo stopped using the runtime's own simple breaking. → §QS156
 - 📋 **QS158** (deps: QS31 ✅) **Nothing says how far back the view is, so a reader who scrolled has no idea where they are or that output arrived** — QS31 gave the viewport a wheel and a find and left it with no indicator, and the reading it already answers reaches nobody. → §QS158
@@ -331,6 +330,13 @@
 - **An open tab turns its trace on from the palette** The palette's trace entry
   reconnects the tab with its session traced, the pane says where the trace is written,
   and the next run starts untraced.
+
+## Done when — QS153
+
+- **A phrase composed with a real input method shows no box of its own** Checked by
+  typing Japanese through Microsoft IME into a running client: the phrase is underlined
+  in the pane with no floating box, the candidate list sits beside it, and the committed
+  text reaches the shell once.
 
 ## Non-goals
 
