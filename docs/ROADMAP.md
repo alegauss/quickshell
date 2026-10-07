@@ -4,7 +4,7 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-- 📋 **QS142** (deps: QS139) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
+- 📋 **QS142** (deps: QS139 ⏸) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
 - 📋 **QS220** (deps: QS151) **An SSH tab whose link drops stays ended, though the session that reconnects was built for it** — RemoteShell connects once and RemoteSession, which reconnects and keeps the scrollback, is reached by nothing. → §QS220
 
 ## Block B — Keys, agents, and the host you think you reached
@@ -13,9 +13,8 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS139** (deps: —) **A host sending faster than the parser consumes buffers gigabytes inside the channel** — The bytes sit in the transport rather than in the emulator, so an unread session grows without limit while a headless parse of 64 MB retains under 8 MB. → §QS139
 - 📋 **QS140** (deps: —) **The reply buffer exceeds the maximum its own constant states** — The cap is checked before an answer is appended rather than after, so a hostile host reaches 4098 bytes against a stated 4096 and the constant is not the bound. → §QS140
-- ⏳ **QS141** (deps: QS139) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
+- ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
 - 📋 **QS153** (deps: QS29 ✅) **The text being composed is a box the input method draws over the grid, not underlined text inside it** — QS29 placed that box on the cursor and stopped there, so a phrase being typed sits on top of the line it belongs in. → §QS153
 - 📋 **QS155** (deps: QS21 ✅, QS30 ✅) **A program that asks for the mouse never gets one, and the wheel scrolls nothing at all** — QS21's encoder and QS22's viewport are named by no code in the client, so both shipped features are unreachable from the running program. → §QS155
 - 📋 **QS156** (deps: QS154 ✅) **Grapheme segmentation runs at half its old rate, because every cluster now asks ICU where the boundary is** — QS154 turned invariant globalization off to keep the client alive, and StringInfo stopped using the runtime's own simple breaking. → §QS156
@@ -70,7 +69,7 @@
 
 - ⏳ **QS75** (deps: QS2 ✅, QS46 ✅, the incumbent closed on the reference desk) **Nothing has been measured starting, so the cold start figure is an aspiration** — The incumbent has not been started beside it on the same machine, so the comparison the figure exists for is not made. → §QS75
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
-- ⏳ **QS78** (deps: QS139) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
+- ⏳ **QS78** (deps: QS139 ⏸) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - ⏳ **QS79** (deps: QS3 ✅, QS196, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
 - 📋 **QS190** (deps: —) **The window's constructor spends 230 ms of a 647 ms start building chrome the first frame does not show** — The tab strip and the find bar are built before the first paint although both are collapsed until somebody asks for them. → §QS190
 - 📋 **QS191** (deps: —) **The graphics device and the shell both wait for the window, so a start runs three slow things one after another** — Neither the device, the atlas and the shaders nor the pseudo-console needs a window, and each could be ready while WPF builds one. → §QS191

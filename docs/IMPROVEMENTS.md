@@ -258,8 +258,10 @@ client owns, which is backpressure out of public parts alone — has no
 `Shell` gives bounded memory and no resize. Writing the channel layer here is what the
 non-goal forbids.
 
-Hence the order. The exposure bites when the reader stops, and it stops because the
-parser is slow — QS141. Fixing that shrinks it to the hostile case without closing it.
+In 2026.0.0 `Channel.OnData` adjusts the window on arrival, then raises `DataReceived`
+on the session's one loop thread into `ShellStream._readBuffer`. The choice: block that
+thread (every channel stalls), steer `LocalWindowSize` by reflection, or change the
+library.
 
 Falsified when an unread session grows without limit.</body>
 
