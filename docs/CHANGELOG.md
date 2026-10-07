@@ -143,6 +143,7 @@
 - ✅ **QS163** **A divider cannot be dragged, so the only sizes a split has are the halves it was created with** — Split panes leave a gap holding a handle that drags its divider, and Ctrl+Alt+Shift+Arrow nudges the divider beside the focused pane.
 - ✅ **QS164** **Four panes open four graphics devices, and nothing in the client stops a user opening sixteen** — Sixteen panes hold one device, as asserted against real swapchains; splitting stops at sixteen, and a pane narrower than a cell no longer crashes its layout.
 - ✅ **QS168** **Changing the font in the settings file does nothing until the client is restarted** — A font changed in the settings file redraws every open pane at the new size without a restart, as a test asserts against real panes (design superseded: QS135 had already shipped it).
+- ✅ **QS170** **Every setting has to be found and typed by hand, because the surface over the file was never built** — Ctrl+Shift+, opens a window with a control per documented key that writes the file on each change, keeping its comments, and never over a file that does not parse.
 
 ## Block H — The reason to leave the incumbent
 

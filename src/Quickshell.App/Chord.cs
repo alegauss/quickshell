@@ -69,6 +69,7 @@ public static class Chord
         Key.OemBackslash or Key.Oem5 => "\\",
         Key.OemMinus or Key.Subtract => "-",
         Key.OemPlus or Key.Add => "+",
+        Key.OemComma => ",",
         >= Key.D0 and <= Key.D9 => ((char)('0' + (key - Key.D0))).ToString(),
         _ => key.ToString(),
     };

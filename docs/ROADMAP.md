@@ -45,7 +45,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS170** (deps: QS50 ✅) **Every setting has to be found and typed by hand, because the surface over the file was never built** — QS50 shipped the file and its reference and left the half a user meets first, so discovering a setting means reading a document about a file. → §QS170
 - 📋 **QS171** (deps: —) **Splitting a pane is bound to one Oem key, and which character that is depends on the layout** — Splitting beside was bound twice because the backslash moves between layouts; splitting below was bound once, and nothing tested the keyboards it moves on. → §QS171
 - 📋 **QS172** (deps: —) **A user looking for help presses Ctrl+Shift+F1 and gets a defect report** — F1 is where a person looks for help, this client binds it to collecting a diagnostic bundle, and the keys reference it should open is a file in the repository. → §QS172
 - 📋 **QS174** (deps: —) **A settings value the client could not use is not mentioned anywhere the user will look** — A mistyped scheme path, an unreadable scheme file and a settings file that will not parse all load as the defaults in silence, and the client looks broken rather than misconfigured. → §QS174

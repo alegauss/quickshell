@@ -169,6 +169,11 @@ public sealed class MainWindow : Window
         InputBindings.Add(new KeyBinding(new Step(this, by: -1), Key.Tab,
                                          ModifierKeys.Control | ModifierKeys.Shift));
 
+        // The window over the settings file (QS170), on the comma every editor puts settings on, with
+        // Shift added as every chord here has, because Ctrl+comma alone is the program's.
+        InputBindings.Add(new KeyBinding(new Configuring(this), Key.OemComma,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
         // Moving the tab itself, on the chord browsers and editors use for it (QS160). Shift alone on
         // a page key is the scrollback's, and the bare key is the program's.
         InputBindings.Add(new KeyBinding(new Moving(this, by: -1), Key.PageUp,
@@ -1018,6 +1023,40 @@ public sealed class MainWindow : Window
                                         (_, _) => Retitle(), Dispatcher);
 
         _watching.Start();
+    }
+
+    /// <summary>The settings file the settings window writes. The client's own unless a caller says.</summary>
+    public string? SettingsPath { get; set; }
+
+    private SettingsWindow? _settingsWindow;
+
+    /// <summary>
+    /// Opens the window over the settings file, or brings it forward where it is already open
+    /// (QS170). Owned by this one, so it takes this window's theme and closes with it.
+    /// </summary>
+    public SettingsWindow ShowSettings()
+    {
+        if (_settingsWindow is { IsLoaded: true } open)
+        {
+            open.Reload();
+            open.Activate();
+
+            return open;
+        }
+
+        SettingsWindow made = new(SettingsPath ?? Locations.Current.Settings) { ThemeMode = ThemeMode };
+
+        if (IsLoaded)
+        {
+            made.Owner = this;
+        }
+
+        made.Closed += (_, _) => _settingsWindow = null;
+
+        _settingsWindow = made;
+        made.Show();
+
+        return made;
     }
 
     /// <summary>
@@ -2000,6 +2039,16 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.Active += by;
+    }
+
+    /// <summary>The settings window's command.</summary>
+    private sealed class Configuring(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Settings";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.ShowSettings();
     }
 
     /// <summary>The divider beside the focused pane, one step the arrow's way.</summary>

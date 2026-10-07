@@ -128,6 +128,21 @@
           "reads": "name",
           "expect": "Move tab left",
           "named": "and only the move that can happen is offered"
+        },
+        {
+          "locator": "Edit",
+          "act": "set value",
+          "with": "settings",
+          "expect": "settings",
+          "reads": "value",
+          "named": "the window over the settings file (QS170)"
+        },
+        {
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Settings",
+          "named": "is reachable from the palette as well as its chord"
         }
       ]
     }

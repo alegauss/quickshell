@@ -161,6 +161,35 @@ public static class SettingsFile
     }
 
     /// <summary>
+    /// Whether the file can be read as settings: missing (the defaults), or JSON with an object at
+    /// its root. A surface that writes the file asks this first (QS170), because an unreadable file
+    /// reads as the defaults — and writing those back over it would replace somebody's half-finished
+    /// edit with nothing of theirs.
+    /// </summary>
+    public static bool Readable(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        if (!File.Exists(path))
+        {
+            return true;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(
+                Shared(path),
+                new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+
+            return document.RootElement.ValueKind == JsonValueKind.Object;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Reads the file, migrating it forward where it is older than this build.
     /// </summary>
     /// <param name="path">The file. A missing one is the defaults and is not an error.</param>

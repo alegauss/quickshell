@@ -803,28 +803,6 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS170 A window over the file, and the file still in charge
-
-QS50's design asks for both halves: *settings are a file the user can edit and a UI over
-that same file, with the file as the source of truth.* The file landed, documented,
-applying live and keeping the notes a user writes in it. The window did not.
-
-The hard prerequisite is done and it is the one that made the sentence conditional —
-*the UI writes it back preserving comments, or the UI is not worth having.*
-`SettingsFile.WriteTo` edits values where they sit, so a window over it inherits that
-for free.
-
-What is left is the window, and it is small if it stays small: one dialog on a chord,
-one control per documented key, and a write on each change rather than an OK button —
-because the file is the truth and a dialog holding unsaved state is a second copy of it.
-It also has an obligation the file does not: every control has to say what the key
-means, which is `docs/SETTINGS.md`'s sentences and not new prose, or the two drift.
-
-What it must not become is the place new settings appear. A control is cheaper to add
-than a key, which is exactly why the reference test is on the key.
-
-Falsified when a setting can be changed in the window and not in the file.
-
 ### §QS171 Chords built on keys that are not where you left them
 
 Ctrl+Shift+\ is bound to both `Key.OemBackslash` and `Key.Oem5` because those are the

@@ -15,6 +15,10 @@ through untouched, so a newer build's settings survive being opened by an older 
 button. It waits a moment for the file to stop moving first, because one save arrives as several
 writes and reading between them would find a file that is half there.
 
+**Ctrl+Shift+,** opens a window over the same file: one control per key below, each written to the
+file as you change it. The file stays the setting — the window is a way of typing into it, and it
+will not write over a file that does not parse.
+
 If nothing happens, **Ctrl+Shift+R** rereads it. That is worth knowing about rather than a fallback
 nobody should need: a settings file on a network share is one this client may not be able to watch,
 and the chord works whether the watch armed or not.
