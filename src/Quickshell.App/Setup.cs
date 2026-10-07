@@ -39,8 +39,8 @@ public static class Setup
 
     /// <summary>Whether a command line asks for setup rather than a window.</summary>
     public static bool Asked(string[] arguments) =>
-        arguments.Contains("--install", StringComparer.Ordinal)
-        || arguments.Contains("--uninstall", StringComparer.Ordinal);
+        arguments.Contains(CommandLine.Install, StringComparer.Ordinal)
+        || arguments.Contains(CommandLine.Uninstall, StringComparer.Ordinal);
 
     /// <summary>
     /// Does what the command line asked, and says how it went.
@@ -50,9 +50,9 @@ public static class Setup
     {
         ArgumentNullException.ThrowIfNull(arguments);
 
-        bool quiet = arguments.Contains("--quiet", StringComparer.Ordinal);
-        bool everyone = arguments.Contains("--all-users", StringComparer.Ordinal);
-        bool uninstalling = arguments.Contains("--uninstall", StringComparer.Ordinal);
+        bool quiet = arguments.Contains(CommandLine.Quiet, StringComparer.Ordinal);
+        bool everyone = arguments.Contains(CommandLine.AllUsers, StringComparer.Ordinal);
+        bool uninstalling = arguments.Contains(CommandLine.Uninstall, StringComparer.Ordinal);
 
         // An installed copy uninstalls itself, which is what the list of installed apps asks of it.
         // Any other copy uninstalls the installation the flags name.
@@ -225,7 +225,8 @@ public static class Setup
     {
         ProcessStartInfo asking = new(Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, Installation.ProgramName))
         {
-            Arguments = (uninstalling ? "--uninstall" : "--install") + " --all-users" + (quiet ? " --quiet" : string.Empty),
+            Arguments = (uninstalling ? CommandLine.Uninstall : CommandLine.Install) + " " + CommandLine.AllUsers
+                        + (quiet ? " " + CommandLine.Quiet : string.Empty),
             UseShellExecute = true,
             Verb = "runas",
         };

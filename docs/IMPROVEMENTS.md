@@ -781,25 +781,6 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS178 A surface with no reference
-
-The client has no menu on purpose, and the command line is where that decision put
-everything a script or another program might ask of it: `--tabs`, `--panes`,
-`--broadcast`, `--import [file]` and `--palette` today. Each is parsed where it is used
-in the entry point, and each is explained by a comment beside that line, which is the
-one place a user will never read.
-
-KEYS.md solved the same problem for chords, and the shape carries over: the flags become
-one list in code that the entry point reads rather than five separate lookups, and a
-test holds a reference page to that list in both directions, so a flag nobody documented
-fails the build and so does a flag the page describes that nothing parses.
-
-Nothing about this is a help screen. The client is a windowed program with no console to
-print one into, and a `--help` that opened a dialog would be the client choosing to put
-a window in front of a script.
-
-Falsified when the entry point acts on a flag the reference does not name.
-
 ### §QS199 One model of the terminal's colours
 
 Found while shipping QS83. Appearance carries a TerminalPalette with a foreground,

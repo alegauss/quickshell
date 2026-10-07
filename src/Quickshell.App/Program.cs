@@ -50,7 +50,7 @@ public static class Entry
 
         // `--startup-report <file>` times this start and writes the milestones there once the shell
         // is on screen — QS75's instrument, and first so that it sees everything after the runtime.
-        if (Given(arguments, "--startup-report") is { } report)
+        if (Given(arguments, CommandLine.StartupReport) is { } report)
         {
             StartupTimeline.Arm(report);
             StartupTimeline.Mark("main");
@@ -151,7 +151,7 @@ public static class Entry
         // not a test hook, for the same reason `--import` is one: this client has no menu, so the
         // command line is the only way another program can ask it for anything — and it is what
         // lets a UI case read a strip that a chord cannot yet be spelled to open.
-        if (Asked(arguments, "--tabs") is { } more)
+        if (Asked(arguments, CommandLine.Tabs) is { } more)
         {
             for (int tab = 1; tab < Math.Clamp(more, 1, 16); tab++)
             {
@@ -162,7 +162,7 @@ public static class Entry
         // `--panes <n>` splits the tab that many ways, which is what Ctrl+Shift+\ does n-1 times.
         // Same standing as `--tabs`, and the same reason: it is how another program asks, and how a
         // UI case reads an arrangement no chord can yet be spelled to make.
-        if (Asked(arguments, "--panes") is { } across)
+        if (Asked(arguments, CommandLine.Panes) is { } across)
         {
             for (int pane = 1; pane < Math.Clamp(across, 1, 16); pane++)
             {
@@ -174,14 +174,14 @@ public static class Entry
         // the split and not before it, because a split ends broadcasting — and it is asked for on
         // this command line every time, so it is still a mode somebody chose rather than one this
         // client remembered.
-        if (arguments.Contains("--broadcast", StringComparer.Ordinal))
+        if (arguments.Contains(CommandLine.Broadcast, StringComparer.Ordinal))
         {
             window.Broadcast();
         }
 
         // `--browse` opens the file browser the palette opens, after the window for the reason
         // `--import` gives below.
-        if (arguments.Contains("--browse", StringComparer.Ordinal))
+        if (arguments.Contains(CommandLine.Browse, StringComparer.Ordinal))
         {
             window.Dispatcher.BeginInvoke(() => window.BrowseFiles());
         }
@@ -193,7 +193,7 @@ public static class Entry
         // `--import <file>` previews that file instead of looking in MobaXterm's usual places: a
         // session file somebody copied off another machine, and a UI case that needs the same
         // preview on every desk rather than whatever this one has installed (QS181).
-        int import = Array.IndexOf(arguments, "--import");
+        int import = Array.IndexOf(arguments, CommandLine.Import);
 
         if (import >= 0)
         {
@@ -211,9 +211,9 @@ public static class Entry
         // `--trace` beside it records that session's negotiation and channels at trace level, in a
         // file of its own under the log folder (QS129). For this run only: a trace somebody turned
         // on once to diagnose one host is not one this client should go on writing.
-        if (Given(arguments, "--session") is { } saved)
+        if (Given(arguments, CommandLine.Session) is { } saved)
         {
-            bool trace = arguments.Contains("--trace", StringComparer.Ordinal);
+            bool trace = arguments.Contains(CommandLine.Trace, StringComparer.Ordinal);
 
             window.Dispatcher.BeginInvoke(() => OpenedSession(window, window.Settings, share, saved, trace));
         }
@@ -226,7 +226,7 @@ public static class Entry
         // yet — `press` in the pinned winwright takes Tab and the arrows and no modifier chord. It
         // can in the engine's own source, where WW317 shipped; the package this repository restores
         // is older than that, which is QS176.
-        if (arguments.Contains("--palette", StringComparer.Ordinal))
+        if (arguments.Contains(CommandLine.Palette, StringComparer.Ordinal))
         {
             window.Dispatcher.BeginInvoke(() => window.ShowPalette());
         }
