@@ -142,6 +142,7 @@
 - ✅ **QS160 (reordering from the keyboard and palette)** **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — Ctrl+Shift+PageUp/PageDown and the palette move the tab on screen along the strip; no session or pane is touched.
 - ✅ **QS163** **A divider cannot be dragged, so the only sizes a split has are the halves it was created with** — Split panes leave a gap holding a handle that drags its divider, and Ctrl+Alt+Shift+Arrow nudges the divider beside the focused pane.
 - ✅ **QS164** **Four panes open four graphics devices, and nothing in the client stops a user opening sixteen** — Sixteen panes hold one device, as asserted against real swapchains; splitting stops at sixteen, and a pane narrower than a cell no longer crashes its layout.
+- ✅ **QS168** **Changing the font in the settings file does nothing until the client is restarted** — A font changed in the settings file redraws every open pane at the new size without a restart, as a test asserts against real panes (design superseded: QS135 had already shipped it).
 
 ## Block H — The reason to leave the incumbent
 

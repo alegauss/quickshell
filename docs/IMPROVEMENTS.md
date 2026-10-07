@@ -803,26 +803,6 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS168 The font that is built into an atlas and a grid
-
-QS50's design says changes apply live, and gives the reason in the same breath: *a font
-size that needs a restart is a font size nobody experiments with, and experimenting is
-the entire reason to expose it.* The cursor and the blink do apply live, because the
-loop reads both every frame. The font does not.
-
-It cannot yet, and QS49 is why rather than an oversight. The atlas was rasterised at a
-size, the cell was measured from it, and every pane's grid came out of that measurement
-— so a new font is a new atlas, a new set of metrics, and a resize of every pane in the
-process at once. All three belong to the share, which is exactly the right place for
-them and exactly why a leaf cannot do it alone.
-
-What the work is: the share rebuilds its atlas and its renderer, every view takes the
-new metrics and recomputes its grid, and each grid change goes to its model and out to
-its far end the way QS32 settled. The last part is already built — `GridChanged` does it
-for a window drag — so this is a new reason for a path that exists.
-
-Falsified when a font size changed in the file needs a restart to be seen.
-
 ### §QS170 A window over the file, and the file still in charge
 
 QS50's design asks for both halves: *settings are a file the user can edit and a UI over

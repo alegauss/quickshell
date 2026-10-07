@@ -337,10 +337,9 @@ public sealed class TerminalLeaf : IAsyncDisposable
     /// Takes settings that have changed, on a pane that is already open and drawing.
     ///
     /// <para><b>The cursor and the blink reach the glass at once</b>, because both are read by the
-    /// loop every frame and neither is built into anything. The font is the one that cannot be: the
-    /// atlas rasterised at a size and the grid was measured from it, so changing it is a new atlas
-    /// and a new grid for every pane at once — QS168, and it is the share's to do rather than a
-    /// pane's.</para>
+    /// loop every frame and neither is built into anything. The font is built into the atlas and the
+    /// grid, so it is handed to the share, which re-points the atlas and refits every pane's grid on
+    /// the loop's own thread (QS135, QS168).</para>
     ///
     /// <para><b>The colour scheme repaints the scrollback with it</b>, which is QS51's falsification
     /// and works only because a cell stores the colour role the host asked for. It is applied before
