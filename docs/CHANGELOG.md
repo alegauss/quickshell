@@ -109,6 +109,7 @@
 - ✅ **QS123** **A symbolic link on the server cannot be copied, because nothing here can read where it points** — Remote links are read with READLINK and recreated relative as they were (design recorded in `src/Quickshell.Transport/TransferPlan.cs`).
 - ✅ **QS184** **The remote pane opens at the account's home while the shell beside it has already said where it is** — The remote pane opens at the directory the shell reported on the session's own host and follows later reports until the user navigates it; QS219 brings the pane to SSH tabs.
 - ✅ **QS185** **A remote file cannot be edited in a local editor, so changing a config is still a download, an edit and an upload** — A remote file opens in its local program and each save goes back, asking first if the server's copy changed, moving the old file aside and restoring its mode; QS219 wires SSH tabs.
+- ✅ **QS186** **A copy started from the browser shows nothing until it ends and cannot be stopped, so a large tree looks hung** — A copy is a line under the panes with what is moving, the rate, the time left and a stop; one that stops short stays with its reason and a retry that resumes.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

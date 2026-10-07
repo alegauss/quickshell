@@ -81,6 +81,7 @@ public sealed record ModeQuestion(FileItem Entry, string Current, bool OnlyWrita
 public sealed class BrowserActions
 {
     private readonly Action<Action> _post;
+    private readonly List<CopyProgress> _copies = [];
 
     /// <summary>The operations over a browser's two panes.</summary>
     /// <param name="local">This computer's pane.</param>
@@ -156,6 +157,7 @@ public sealed class BrowserActions
 
         TransferQueue queue = new(host.Channel) { OnCollision = OnCollision };
         List<string> left = [];
+        CopyProgress copy = Track(queue, $"{to.Path} on {to.Side.Title}");
 
         try
         {
@@ -187,12 +189,113 @@ public sealed class BrowserActions
         }
         catch (Exception failed) when (failed is not OperationCanceledException)
         {
+            Ended(copy);
             Tell(to, $"The copy stopped: {Sentence(failed)}", refresh: true);
 
             return;
         }
 
+        Ended(copy);
         Tell(to, Copied(queue.Entries, left), refresh: true);
+    }
+
+    /// <summary>
+    /// The copies on the strip under the panes: each one running, and each one that stopped short
+    /// and is kept there with its retry until it is retried or dismissed (QS186).
+    /// </summary>
+    public IReadOnlyList<CopyProgress> Copies
+    {
+        get
+        {
+            lock (_copies)
+            {
+                return [.. _copies];
+            }
+        }
+    }
+
+    /// <summary>Raised, on whatever thread changed it, when a copy joins or leaves the strip or stops running.</summary>
+    public event Action? CopiesChanged;
+
+    /// <summary>
+    /// Runs a stopped or failed copy's unfinished files again, each resumed from where it got to where
+    /// that can be shown to be safe — the queue's own rule — and started over where it cannot.
+    /// </summary>
+    /// <param name="copy">A copy on the strip.</param>
+    /// <param name="cancellationToken">Stops the run, as the strip's stop does.</param>
+    public async Task RetryAsync(CopyProgress copy, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(copy);
+
+        if (copy.Running)
+        {
+            return;
+        }
+
+        copy.Queue.RetryAll();
+        copy.Running = true;
+        CopiesChanged?.Invoke();
+
+        try
+        {
+            await copy.Queue.RunAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            Ended(copy);
+        }
+    }
+
+    /// <summary>Takes a copy that has stopped off the strip, leaving what it moved where it is.</summary>
+    public void Dismiss(CopyProgress copy)
+    {
+        ArgumentNullException.ThrowIfNull(copy);
+
+        if (copy.Running)
+        {
+            return;
+        }
+
+        lock (_copies)
+        {
+            _copies.Remove(copy);
+        }
+
+        CopiesChanged?.Invoke();
+    }
+
+    /// <summary>Puts a copy on the strip as it starts.</summary>
+    private CopyProgress Track(TransferQueue queue, string to)
+    {
+        CopyProgress copy = new(queue, to);
+
+        lock (_copies)
+        {
+            _copies.Add(copy);
+        }
+
+        CopiesChanged?.Invoke();
+
+        return copy;
+    }
+
+    /// <summary>
+    /// A copy stopped running: off the strip where everything landed, and kept there with its retry
+    /// where anything failed or was stopped.
+    /// </summary>
+    private void Ended(CopyProgress copy)
+    {
+        copy.Running = false;
+
+        if (!copy.Unfinished)
+        {
+            lock (_copies)
+            {
+                _copies.Remove(copy);
+            }
+        }
+
+        CopiesChanged?.Invoke();
     }
 
     /// <summary>
@@ -227,6 +330,7 @@ public sealed class BrowserActions
             {
                 TransferQueue queue = new(host.Channel) { OnCollision = OnCollision };
                 List<string> left = [];
+                CopyProgress copy = Track(queue, $"{onto.Path} on {host.Title}");
 
                 foreach (string path in paths)
                 {
@@ -246,7 +350,14 @@ public sealed class BrowserActions
                     }
                 }
 
-                await queue.RunAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await queue.RunAsync(cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    Ended(copy);
+                }
 
                 Tell(onto, Copied(queue.Entries, left), refresh: true);
 

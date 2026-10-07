@@ -510,31 +510,6 @@ Falsified when the guest suite runs ten times with no pass reading 0.0 for Direc
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-### §QS186 A copy you can watch and stop
-
-QS60's operations run a copy through `TransferQueue`, and the browser says one thing
-about it: a sentence when it is over. The queue knows much more — each entry's bytes
-against its length, a rate over a short window rather than since the start, and whether
-it is waiting, running, paused, failed or skipped — and it can pause, cancel and retry
-any entry or all of them. None of that reaches the window.
-
-So a tree of a few gigabytes over a slow link is a browser that shows nothing for
-minutes, indistinguishable from one that hung, and the only way to stop it is to close
-the window. That is the shape a person gives up on and repeats from a shell.
-
-The move is a strip under the panes that exists only while a copy does: one line per
-copy with what is moving, how far it has got, the rate and the time left, and a button
-that stops it. A failed entry stays there with its reason and a retry instead of being
-folded into the closing sentence. The queue does not change; this is its state, read at
-the rate the strip is drawn.
-
-It answers to the block's criterion that an interrupted transfer resumes without
-producing a file unlike the source: stopping from the strip is an interruption, and the
-retry is the resume.
-
-Falsified when a copy that has moved bytes for a second shows no progress in the
-browser.
-
 ### §QS188 A drag that starts on the server
 
 Carried out of QS64's design, which shipped the drops into the client and left the

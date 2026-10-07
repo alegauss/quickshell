@@ -35,6 +35,8 @@ public sealed class FileBrowser : Window
     public const string NoRemote = "This tab is a local shell, so there is no remote side to list.";
 
     private readonly Button _copy = Action("Copy", "F5");
+    private readonly StackPanel _strip = new() { Margin = new Thickness(0, 8, 0, 0) };
+    private readonly System.Windows.Threading.DispatcherTimer _drawing;
 
     /// <summary>Builds the browser. Nothing is listed until it is shown.</summary>
     /// <param name="local">This machine.</param>
@@ -81,9 +83,20 @@ public sealed class FileBrowser : Window
         StackPanel bar = Bar();
 
         DockPanel.SetDock(bar, Dock.Bottom);
+        DockPanel.SetDock(_strip, Dock.Bottom);
+
+        AutomationProperties.SetName(_strip, "Copies");
 
         layout.Children.Add(bar);
+        layout.Children.Add(_strip);
         layout.Children.Add(panes);
+
+        // Drawn when a copy joins, stops or leaves, and four times a second while any is on it.
+        _drawing = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background,
+                                                                Dispatcher) { Interval = TimeSpan.FromMilliseconds(250) };
+        _drawing.Tick += (_, _) => DrawCopies();
+        Actions.CopiesChanged += () => Post(DrawCopies);
+        Closed += (_, _) => _drawing.Stop();
 
         Content = layout;
 
@@ -194,6 +207,80 @@ public sealed class FileBrowser : Window
         Focused(Local);
 
         return bar;
+    }
+
+    /// <summary>The lines the strip under the panes shows now, one per copy, for whoever reads it.</summary>
+    public IReadOnlyList<string> CopyLines =>
+        [.. _strip.Children.OfType<DockPanel>().Select(row => row.Children.OfType<TextBlock>().Single().Text)];
+
+    /// <summary>
+    /// Draws the strip under the panes: one row per copy, with what is moving, how far it has got,
+    /// the rate and the time left, a bar, and the button that stops it — or, for a copy that stopped
+    /// short, its reason and a retry (QS186). There only while a copy is.
+    /// </summary>
+    public void DrawCopies()
+    {
+        IReadOnlyList<CopyProgress> copies = Actions.Copies;
+
+        _strip.Children.Clear();
+
+        foreach (CopyProgress copy in copies)
+        {
+            _strip.Children.Add(Row(copy));
+        }
+
+        if (copies.Any(copy => copy.Running))
+        {
+            _drawing.Start();
+        }
+        else
+        {
+            _drawing.Stop();
+        }
+    }
+
+    /// <summary>One copy's row on the strip.</summary>
+    private DockPanel Row(CopyProgress copy)
+    {
+        DockPanel row = new() { Margin = new Thickness(0, 0, 0, 4) };
+        StackPanel buttons = new() { Orientation = Orientation.Horizontal };
+
+        if (copy.Running)
+        {
+            buttons.Children.Add(Small("Stop", copy.Stop));
+        }
+        else
+        {
+            buttons.Children.Add(Small("Retry", () => _ = Actions.RetryAsync(copy)));
+            buttons.Children.Add(Small("Dismiss", () => Actions.Dismiss(copy)));
+        }
+
+        ProgressBar bar = new() { Width = 160, Height = 10, Maximum = 1, Value = copy.Fraction,
+                                  Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+
+        AutomationProperties.SetName(bar, "Copy progress");
+
+        TextBlock line = new() { Text = copy.Line, TextTrimming = TextTrimming.CharacterEllipsis,
+                                 VerticalAlignment = VerticalAlignment.Center, ToolTip = copy.Line };
+
+        DockPanel.SetDock(buttons, Dock.Right);
+        DockPanel.SetDock(bar, Dock.Right);
+
+        // The line last, so it is the child that fills what the buttons and the bar leave.
+        row.Children.Add(buttons);
+        row.Children.Add(bar);
+        row.Children.Add(line);
+
+        return row;
+
+        static Button Small(string what, Action does)
+        {
+            Button button = new() { Content = what, Padding = new Thickness(10, 1, 10, 1), Margin = new Thickness(0, 0, 4, 0) };
+
+            button.Click += (_, _) => does();
+
+            return button;
+        }
     }
 
     /// <summary>A button named for its operation, with the key that also does it beside the name.</summary>
