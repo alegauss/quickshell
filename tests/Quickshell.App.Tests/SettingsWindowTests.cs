@@ -27,7 +27,7 @@ public sealed partial class SettingsWindowTests : IDisposable
 
         Assert.Equal(keys.Order(), SettingsWindow.Keys.Select(entry => entry.Key).Order());
 
-        string reference = Flat(File.ReadAllText(Path.Combine(RepositoryRoot(), "docs", "SETTINGS.md")));
+        string reference = Flat(File.ReadAllText(Path.Combine(Repository.Root, "docs", "SETTINGS.md")));
 
         foreach ((string key, _, string means) in SettingsWindow.Keys)
         {
@@ -153,16 +153,4 @@ public sealed partial class SettingsWindowTests : IDisposable
         {
             RoutedEvent = Keyboard.LostKeyboardFocusEvent,
         });
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Quickshell.sln was not found above the test.");
-    }
 }

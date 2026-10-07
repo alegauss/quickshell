@@ -261,7 +261,7 @@ public sealed class DynamicForwardTests
     }
 
     private static SshCredential.PrivateKey Key() =>
-        new(Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
+        new(Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
 
     private static void SkipWithoutFixture()
     {
@@ -280,17 +280,5 @@ public sealed class DynamicForwardTests
 
         Assert.SkipUnless(up && File.Exists(Key().Path),
             $"nothing is listening on {Host}:{Port}: run prototypes/SshProbe/fixture/up.sh");
-    }
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Quickshell.sln was not found above the test.");
     }
 }

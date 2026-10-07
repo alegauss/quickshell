@@ -291,7 +291,7 @@ public sealed class ProxyCommandTests : IDisposable
     }
 
     private static string KeyFile() =>
-        Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519");
+        Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519");
 
     private static SshCredential.PrivateKey Key() => new(KeyFile());
 
@@ -364,18 +364,4 @@ public sealed class ProxyCommandTests : IDisposable
     private static void SkipWithoutOpenSsh() =>
         Assert.SkipUnless(File.Exists(OpenSsh()),
                           "the Windows OpenSSH client is not installed, so there is no real proxy command to run");
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-
-        return directory.FullName;
-    }
 }

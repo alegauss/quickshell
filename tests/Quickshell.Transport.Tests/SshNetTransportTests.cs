@@ -667,7 +667,7 @@ public sealed class SshNetTransportTests
     }
 
     private static string FixtureKeys() =>
-        Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys");
+        Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys");
 
     /// <summary>
     /// Skips where the fixture is not running, saying how to start it. A remote test that quietly
@@ -731,19 +731,5 @@ public sealed class SshNetTransportTests
         await docker.WaitForExitAsync(CancellationToken.None);
 
         Assert.True(docker.ExitCode == 0, $"docker {verb} {container}: {await docker.StandardError.ReadToEndAsync(CancellationToken.None)}");
-    }
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-
-        return directory.FullName;
     }
 }

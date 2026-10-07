@@ -372,7 +372,7 @@ public sealed class AuthenticationTests
     private static string Key(string name) => Path.Combine(FixtureKeys(), name);
 
     private static string FixtureKeys() =>
-        Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys");
+        Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys");
 
     /// <summary>
     /// Skips where the fixture or this particular key is absent, saying which. A key that is simply
@@ -396,19 +396,5 @@ public sealed class AuthenticationTests
         Assert.SkipUnless(up, "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
         Assert.SkipUnless(File.Exists(Key(name)),
                           $"the fixture has no {name}: run prototypes/SshProbe/fixture/up.sh");
-    }
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-
-        return directory.FullName;
     }
 }

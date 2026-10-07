@@ -311,7 +311,7 @@ public sealed class RemoteShellTests : IDisposable
     }
 
     private static string Key() =>
-        Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519");
+        Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519");
 
     private static void SkipWithoutFixture()
     {
@@ -330,17 +330,5 @@ public sealed class RemoteShellTests : IDisposable
 
         Assert.SkipUnless(up && File.Exists(Key()),
             "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
-    }
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Quickshell.sln was not found above the test.");
     }
 }

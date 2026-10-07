@@ -49,7 +49,7 @@ public sealed class CasesRun
             return;
         }
 
-        string repository = Repository();
+        string repository = Repository.Root;
 
         ProjectDeclaration project = ProjectDeclaration.Find(repository);
         IReadOnlyList<CaseDeclaration> declared =
@@ -97,21 +97,5 @@ public sealed class CasesRun
         }
 
         return string.Join(Environment.NewLine, lines);
-    }
-
-    /// <summary>The checkout, found by the file that names the solution.</summary>
-    private static string Repository()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null
-               && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-
-        return directory.FullName;
     }
 }

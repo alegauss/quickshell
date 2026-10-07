@@ -49,7 +49,7 @@ public sealed class VttestTests
     [Fact]
     public void EveryVttestScreenIsDrawnAsXtermDrawsIt()
     {
-        string folder = Path.Combine(Root(), "tests", "Quickshell.Terminal.Tests", "Vttest");
+        string folder = Path.Combine(Repository.Root, "tests", "Quickshell.Terminal.Tests", "Vttest");
         byte[] stream = Unzipped(Path.Combine(folder, "vttest.raw.gz"));
         using JsonDocument listed = JsonDocument.Parse(File.ReadAllText(Path.Combine(folder, "cuts.json")));
         Cut[] cuts = [.. listed.RootElement.EnumerateArray().Select(
@@ -126,18 +126,6 @@ public sealed class VttestTests
         unzip.CopyTo(bytes);
 
         return bytes.ToArray();
-    }
-
-    private static string Root()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("the repository root is not above this test");
     }
 
     private sealed record Cut(string Name, int Offset);

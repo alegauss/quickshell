@@ -133,23 +133,10 @@ public sealed partial class ColourTests
 
     /// <summary>The client's own sources, markup included, less build output.</summary>
     private static IEnumerable<string> Sources() =>
-        Directory.EnumerateFiles(Path.Combine(RepositoryRoot(), "src"), "*.*", SearchOption.AllDirectories)
+        Directory.EnumerateFiles(Path.Combine(Repository.Root, "src"), "*.*", SearchOption.AllDirectories)
             .Where(path => Path.GetExtension(path) is ".cs" or ".xaml")
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                            && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
 
-    private static string Relative(string path) => Path.GetRelativePath(RepositoryRoot(), path);
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-        return directory.FullName;
-    }
+    private static string Relative(string path) => Path.GetRelativePath(Repository.Root, path);
 }

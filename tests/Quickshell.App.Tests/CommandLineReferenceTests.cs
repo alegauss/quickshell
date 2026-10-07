@@ -23,7 +23,7 @@ public sealed partial class CommandLineReferenceTests
     [Fact]
     public void ThePageAndTheListAreTheSameFlags()
     {
-        Dictionary<string, (string Takes, string Means)> written = Row.Matches(File.ReadAllText(Path.Combine(Root(), "docs", "COMMAND-LINE.md")))
+        Dictionary<string, (string Takes, string Means)> written = Row.Matches(File.ReadAllText(Path.Combine(Repository.Root, "docs", "COMMAND-LINE.md")))
             .ToDictionary(row => row.Groups[1].Value,
                           // The page's backticks are markup and the list's sentences are plain.
                           row => (row.Groups[2].Value.Trim().Trim('`'),
@@ -49,7 +49,7 @@ public sealed partial class CommandLineReferenceTests
     {
         HashSet<string> listed = [.. CommandLine.All.Select(flag => flag.Name)];
 
-        string[] stray = [.. Directory.EnumerateFiles(Path.Combine(Root(), "src", "Quickshell.App"), "*.cs", SearchOption.AllDirectories)
+        string[] stray = [.. Directory.EnumerateFiles(Path.Combine(Repository.Root, "src", "Quickshell.App"), "*.cs", SearchOption.AllDirectories)
                                       .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
                                       .SelectMany(file => Literal.Matches(File.ReadAllText(file))
                                                                  .Select(found => found.Groups[1].Value))
@@ -57,17 +57,5 @@ public sealed partial class CommandLineReferenceTests
                                       .Distinct(StringComparer.Ordinal)];
 
         Assert.Empty(stray);
-    }
-
-    private static string Root()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Quickshell.sln was not found above the test.");
     }
 }

@@ -285,7 +285,7 @@ public sealed class SshFailureTests
     }
 
     private static string FixtureKeys() =>
-        Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys");
+        Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys");
 
     private static void SkipWithoutFixture()
     {
@@ -304,19 +304,5 @@ public sealed class SshFailureTests
 
         Assert.SkipUnless(up && Directory.Exists(FixtureKeys()),
             "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
-    }
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-
-        return directory.FullName;
     }
 }

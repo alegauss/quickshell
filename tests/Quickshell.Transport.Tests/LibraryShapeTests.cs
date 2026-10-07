@@ -31,7 +31,7 @@ public sealed partial class LibraryShapeTests
     [Fact]
     public void TheLibraryIsPinnedToOneVersion()
     {
-        string project = File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "Quickshell.Transport",
+        string project = File.ReadAllText(Path.Combine(Repository.Root, "src", "Quickshell.Transport",
                                                         "Quickshell.Transport.csproj"));
 
         Match reference = Reference().Match(project);
@@ -42,16 +42,4 @@ public sealed partial class LibraryShapeTests
 
     [GeneratedRegex("""<PackageReference Include="SSH\.NET" Version="(?<version>[^"]+)""")]
     private static partial Regex Reference();
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Quickshell.sln was not found above the test.");
-    }
 }

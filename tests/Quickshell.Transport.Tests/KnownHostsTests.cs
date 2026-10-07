@@ -416,7 +416,7 @@ public sealed class KnownHostsTests : IDisposable
     private string ReadBack(string name) => System.IO.File.ReadAllText(File(name));
 
     private static string FixtureKey() =>
-        Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519");
+        Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519");
 
     /// <summary>Runs the OpenSSH client, which is the judge this test exists to consult.</summary>
     private static (int Code, string Output) Ssh(string arguments)
@@ -457,19 +457,5 @@ public sealed class KnownHostsTests : IDisposable
 
         Assert.SkipUnless(up && System.IO.File.Exists(FixtureKey()),
             "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
-    }
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !System.IO.File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-
-        return directory.FullName;
     }
 }

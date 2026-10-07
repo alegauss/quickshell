@@ -313,7 +313,7 @@ internal static class GoldenScenes
         /// <param name="upTo">How many of its bytes to replay; all of them where not given.</param>
         internal void Replay(string stream, int upTo = int.MaxValue)
         {
-            string path = Path.Combine(Root(), "benchmarks", "corpus", "streams", stream + ".raw.gz");
+            string path = Path.Combine(Repository.Root, "benchmarks", "corpus", "streams", stream + ".raw.gz");
 
             using FileStream file = File.OpenRead(path);
             using GZipStream unzip = new(file, CompressionMode.Decompress);
@@ -333,19 +333,6 @@ internal static class GoldenScenes
 
             new GridPainter(_atlas, emulator.Palette)
                 .Paint(emulator.Buffer, _cells, -1, -1, CursorShape.None, _metrics);
-        }
-
-        private static string Root()
-        {
-            DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-            while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-            {
-                directory = directory.Parent;
-            }
-
-            return directory?.FullName
-                   ?? throw new DirectoryNotFoundException("the repository root is not above this test");
         }
 
         internal void Cursor(int row, int column, char character, Rgb foreground, Rgb background,

@@ -51,25 +51,11 @@ internal static class Crashing
         string framework = here.Name;
         string configuration = here.Parent?.Name ?? "Debug";
 
-        string path = Path.Combine(Root(), "tools", "Quickshell.CrashProbe", "bin", configuration,
+        string path = Path.Combine(Repository.Root, "tools", "Quickshell.CrashProbe", "bin", configuration,
                                    framework, "Quickshell.CrashProbe.exe");
 
         Assert.True(File.Exists(path), $"{path} is not there — the solution build should make it");
 
         return path;
-    }
-
-    private static string Root()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-
-        return directory.FullName;
     }
 }

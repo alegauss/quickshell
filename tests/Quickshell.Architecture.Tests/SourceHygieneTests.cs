@@ -57,7 +57,7 @@ public sealed class SourceHygieneTests
 
             if (found > 0)
             {
-                offenders.Add($"{Path.GetRelativePath(RepositoryRoot(), file)} ({found})");
+                offenders.Add($"{Path.GetRelativePath(Repository.Root, file)} ({found})");
             }
         }
 
@@ -101,7 +101,7 @@ public sealed class SourceHygieneTests
 
             if (mangled.Length > 0)
             {
-                offenders.Add($"{Path.GetRelativePath(RepositoryRoot(), file)}:{mangled[0] + 1} " +
+                offenders.Add($"{Path.GetRelativePath(Repository.Root, file)}:{mangled[0] + 1} " +
                               $"({mangled.Length} lines)");
             }
         }
@@ -194,7 +194,7 @@ public sealed class SourceHygieneTests
     /// </summary>
     private static IEnumerable<string> Prose()
     {
-        string root = RepositoryRoot();
+        string root = Repository.Root;
 
         foreach ((string folder, string pattern, SearchOption depth) in
                  ((string, string, SearchOption)[])
@@ -230,7 +230,7 @@ public sealed class SourceHygieneTests
     /// </summary>
     private static IEnumerable<string> Sources()
     {
-        string root = RepositoryRoot();
+        string root = Repository.Root;
 
         foreach (string folder in (string[])["src", "tests"])
         {
@@ -240,18 +240,5 @@ public sealed class SourceHygieneTests
                 yield return file;
             }
         }
-    }
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-        return directory!.FullName;
     }
 }

@@ -64,7 +64,7 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- ⏳ **QS195** (deps: —) **Each test class carries its own copy of the fixture plumbing, so a fault in one copy is a fault in all of them** — The transport fixture's trust and skip, the repository walk, and the pane-building STA helpers are each still copied per class. → §QS195
+- ⏳ **QS195** (deps: —) **Each test class carries its own copy of the fixture plumbing, so a fault in one copy is a fault in all of them** — The transport fixture's host-key trust and skip, and the pane-building STA helpers, are each still copied per class. → §QS195
 - 📋 **QS222** (deps: —) **A desk that cannot be observed runs no UI case, and the run counts it as a pass** — CasesRun passes with nothing run where it should skip with the desk's reason, so the QS136 table shows a green that covered nothing. → §QS222
 - 📋 **QS224** (deps: —) **A guest run asked to carry HEAD alone carries the working tree's uncommitted edits to tracked files** — Send-Tree takes HEAD's file list and reads each file from disk, so a before-and-after measured with it compares the change with itself. → §QS224
 

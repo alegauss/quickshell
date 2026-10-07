@@ -312,7 +312,7 @@ public sealed class GoldenImageTests
     private static string WriteFailureImages(string name, bool warp, byte[] reference, byte[] actual,
                                              int width, int height)
     {
-        string directory = Path.Combine(RepositoryRoot(), "TestResults", "golden");
+        string directory = Path.Combine(Repository.Root, "TestResults", "golden");
         Directory.CreateDirectory(directory);
 
         string adapter = warp ? "warp" : "adapter";
@@ -424,18 +424,5 @@ public sealed class GoldenImageTests
     /// seven PNGs in among the C# files.
     /// </summary>
     private static string GoldenDirectory() =>
-        Path.Combine(RepositoryRoot(), "tests", "Quickshell.Render.Tests", "references");
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-        return directory!.FullName;
-    }
+        Path.Combine(Repository.Root, "tests", "Quickshell.Render.Tests", "references");
 }

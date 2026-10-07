@@ -60,7 +60,7 @@ public sealed class ContrastTests
             }
         }
 
-        string results = Path.Combine(Root(), "TestResults");
+        string results = Path.Combine(Repository.Root, "TestResults");
         Directory.CreateDirectory(results);
         File.WriteAllLines(Path.Combine(results, "contrast.txt"), lines);
 
@@ -252,17 +252,5 @@ public sealed class ContrastTests
     {
         double value = encoded / 255.0;
         return value <= 0.04045 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4);
-    }
-
-    private static string Root()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("no repository root above this test");
     }
 }

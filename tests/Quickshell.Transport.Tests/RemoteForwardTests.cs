@@ -251,7 +251,7 @@ public sealed class RemoteForwardTests : IAsyncDisposable
         ValueTask.FromResult(SshHostKeyVerdict.Accept);
 
     private static SshCredential.PrivateKey Key() =>
-        new(Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys",
+        new(Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys",
                          "probe_ed25519"));
 
     private static void SkipWithout(int port)
@@ -270,19 +270,5 @@ public sealed class RemoteForwardTests : IAsyncDisposable
         }
 
         Assert.SkipUnless(up, $"nothing is listening on 127.0.0.1:{port}: run prototypes/SshProbe/fixture/up.sh");
-    }
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-
-        return directory.FullName;
     }
 }

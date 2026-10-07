@@ -62,18 +62,5 @@ public sealed class LayeringTests
     }
 
     private static string ProjectFile(string project) =>
-        Path.Combine(RepositoryRoot(), "src", project, project + ".csproj");
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-        return directory!.FullName;
-    }
+        Path.Combine(Repository.Root, "src", project, project + ".csproj");
 }

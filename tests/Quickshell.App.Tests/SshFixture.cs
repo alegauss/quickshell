@@ -83,19 +83,5 @@ internal static class SshFixture
     }
 
     private static SshCredential.PrivateKey Key() =>
-        new(Path.Combine(RepositoryRoot(), "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-
-        return directory.FullName;
-    }
+        new(Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
 }

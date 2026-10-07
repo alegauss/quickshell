@@ -282,12 +282,12 @@ public sealed class SeamTests
         || type.Namespace.StartsWith("Microsoft", StringComparison.Ordinal);
 
     private static IEnumerable<string> Projects() =>
-        Directory.EnumerateFiles(RepositoryRoot(), "*.csproj", SearchOption.AllDirectories)
+        Directory.EnumerateFiles(Repository.Root, "*.csproj", SearchOption.AllDirectories)
             .Where(path => !Buried(path));
 
     /// <summary>Every source file this rule judges, which is all of them but this one.</summary>
     private static IEnumerable<string> Sources() =>
-        Directory.EnumerateFiles(RepositoryRoot(), "*.cs", SearchOption.AllDirectories)
+        Directory.EnumerateFiles(Repository.Root, "*.cs", SearchOption.AllDirectories)
             .Where(path => !Buried(path))
             .Where(path => !path.Contains(Path.Combine("src", TransportProject), StringComparison.Ordinal))
             .Where(path => !string.Equals(Path.GetFileName(path), "SeamTests.cs", StringComparison.Ordinal));
@@ -306,18 +306,5 @@ public sealed class SeamTests
         || path.Contains($"{Path.DirectorySeparatorChar}prototypes{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
 
     private static string Relative(string path) =>
-        Path.GetRelativePath(RepositoryRoot(), path);
-
-    private static string RepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Quickshell.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-        return directory.FullName;
-    }
+        Path.GetRelativePath(Repository.Root, path);
 }

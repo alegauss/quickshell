@@ -36,4 +36,10 @@
     <Compile Include="$(MSBuildThisFileDirectory)Allocations.cs" Link="Allocations.cs" />
   </ItemGroup>
 
+  <!-- QS195: the repository's root, found once rather than walked to by a copy in every class. -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Repository.cs" Link="Repository.cs" />
+    <Using Include="Quickshell.Tests" />
+  </ItemGroup>
+
 </Project>
