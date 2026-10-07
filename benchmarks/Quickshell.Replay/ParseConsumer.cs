@@ -20,6 +20,12 @@ public sealed class ParseConsumer : IStreamConsumer
 
     public long Result => _handler.Events;
 
+    /// <summary>
+    /// Eight times per pass: at a gigabyte a second the 32 MB stream is a 28 ms pass, short enough
+    /// that where and when it ran decided the figure by a fifth (QS197).
+    /// </summary>
+    public int Repeats => 8;
+
     public void Reset()
     {
         _parser.Reset();

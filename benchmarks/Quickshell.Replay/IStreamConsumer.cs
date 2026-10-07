@@ -35,6 +35,13 @@ public interface IStreamConsumer
     /// <para>Empty by default, so an arm with nothing to add says nothing.</para>
     /// </summary>
     string Note => string.Empty;
+
+    /// <summary>
+    /// How many times the stream is fed per timed pass (QS197). One for every arm slow enough that a
+    /// pass is long already; more for an arm so fast that a single pass is over before a moment's
+    /// interruption stops being most of it.
+    /// </summary>
+    int Repeats => 1;
 }
 
 /// <summary>

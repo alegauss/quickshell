@@ -6,6 +6,8 @@
     <RootNamespace>Quickshell.Replay</RootNamespace>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <ServerGarbageCollection>false</ServerGarbageCollection>
+    <!-- QS197: the CPU-set table that says which cores are the performance ones is read in place. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
 

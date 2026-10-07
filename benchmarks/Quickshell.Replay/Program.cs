@@ -54,6 +54,11 @@ for (int at = 0; at < args.Length; at++)
     }
 }
 
+// Before anything is timed: where the passes run is part of what they measure (QS197).
+string pinned = Pinning.Apply();
+
+Console.WriteLine(pinned);
+
 string corpusDirectory = corpusArgument ?? Corpus.Find();
 IReadOnlyList<Corpus> streams = Corpus.Load(corpusDirectory);
 
@@ -103,7 +108,7 @@ report.AppendLine();
 report.AppendLine(CultureInfo.InvariantCulture,
     $"Captured streams replayed through every consumer that exists. Run on {Environment.MachineName}, " +
     $".NET {Environment.Version}, {Environment.ProcessorCount} logical cores, " +
-    $"{DateTimeOffset.Now:yyyy-MM-dd}. Best of {Runs} after {Warmups} warmup, {ChunkSize / 1024} KB chunks.");
+    $"{DateTimeOffset.Now:yyyy-MM-dd}. Best of {Runs} after {Warmups} warmup, {ChunkSize / 1024} KB chunks, {pinned}.");
 report.AppendLine();
 report.AppendLine("| stream | MB | consumer | MB/s | alloc KB/MB | gen0 |");
 report.AppendLine("|---|---|---|---|---|---|");
@@ -133,10 +138,13 @@ foreach (Corpus stream in streams)
             long allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
             Stopwatch clock = Stopwatch.StartNew();
 
-            for (int offset = 0; offset < stream.Bytes.Length; offset += ChunkSize)
+            for (int repeat = 0; repeat < consumer.Repeats; repeat++)
             {
-                int length = Math.Min(ChunkSize, stream.Bytes.Length - offset);
-                consumer.Feed(stream.Bytes.AsSpan(offset, length));
+                for (int offset = 0; offset < stream.Bytes.Length; offset += ChunkSize)
+                {
+                    int length = Math.Min(ChunkSize, stream.Bytes.Length - offset);
+                    consumer.Feed(stream.Bytes.AsSpan(offset, length));
+                }
             }
 
             clock.Stop();
@@ -154,7 +162,7 @@ foreach (Corpus stream in streams)
                 continue;
             }
 
-            double megabytesPerSecond = stream.Megabytes / clock.Elapsed.TotalSeconds;
+            double megabytesPerSecond = stream.Megabytes * consumer.Repeats / clock.Elapsed.TotalSeconds;
 
             if (megabytesPerSecond > best)
             {
@@ -166,21 +174,21 @@ foreach (Corpus stream in streams)
 
         report.AppendLine(CultureInfo.InvariantCulture,
             $"| `{stream.Name}` | {stream.Megabytes:F2} | {consumer.Name} | {best:F0} | " +
-            $"{bestAllocated / Math.Max(0.001, stream.Megabytes) / 1024.0:F1} | {bestGen0} |");
+            $"{bestAllocated / Math.Max(0.001, stream.Megabytes * consumer.Repeats) / 1024.0:F1} | {bestGen0} |");
 
         measured.Add(new Dictionary<string, object>
         {
             ["stream"] = stream.Name,
             ["consumer"] = consumer.Name,
             ["megabytesPerSecond"] = best,
-            ["allocatedKilobytesPerMegabyte"] = bestAllocated / Math.Max(0.001, stream.Megabytes) / 1024.0,
+            ["allocatedKilobytesPerMegabyte"] = bestAllocated / Math.Max(0.001, stream.Megabytes * consumer.Repeats) / 1024.0,
             ["gen0"] = bestGen0,
         });
 
         Console.WriteLine(string.Format(CultureInfo.InvariantCulture,
             "{0,-16} {1,8:F2} MB  {2,-14} {3,8:F0} MB/s  {4,7:F1} KB/MB",
             stream.Name, stream.Megabytes, consumer.Name, best,
-            bestAllocated / Math.Max(0.001, stream.Megabytes) / 1024.0));
+            bestAllocated / Math.Max(0.001, stream.Megabytes * consumer.Repeats) / 1024.0));
 
         // What the arm noticed about its own subsystem, where it has one to notice with. Read from
         // the last run rather than the fastest, which is the same shape of work either way.

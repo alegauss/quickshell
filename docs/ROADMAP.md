@@ -48,7 +48,6 @@
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS78** (deps: QS139 ⏸) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
-- 📋 **QS197** (deps: —) **The parse figure spreads by a fifth between runs on the reference machine, so the gate lets a regression that big pass** — A 28 ms pass on a CPU with performance and efficient cores is timed wherever the scheduler put it, which moves the number more than the parser does. → §QS197
 - 📋 **QS200** (deps: —) **The release gate times parse and emulate on the replay harness's build, not on the assemblies being archived** — A runtime setting that exists only in the published client, such as tiered compilation, would slow what ships while the gate reports the figures held. → §QS200
 - 📋 **QS201** (deps: —) **An echo at a prompt reaches the glass two refresh intervals after it arrives, one more than the vblank wait explains** — At 120 Hz that shape is still 17 ms, twice figure 1, so a faster panel alone cannot meet the budget. → §QS201
 
@@ -323,6 +322,12 @@
   gives an SSH tab its remote pane: run-app-vm opens the browser in the guest, a
   winwright case drags a file from the host's pane onto an Explorer folder, and the file
   there is compared with the server's.
+
+## Done when — QS197
+
+- **The gate's baseline derives a parse threshold under ten per cent** run-perf-gate.cmd
+  takes a new baseline on the attended reference desk with the guest suspended, and
+  benchmarks/results/gate-xps.md shows the parse threshold it derived below 10%.
 
 ## Non-goals
 

@@ -33,6 +33,7 @@
 
 - ⏸ **QS137** (deps: QS76 ✅) **The idle figure is measured on a window with no session and no render loop in it** — set aside (Needs the reference desk attended for ten connected minutes.): The client can now hold a session, and the figure is still the empty window's. → §QS137
 - ⏸ **QS190** (deps: —) **The window's constructor takes about 200 ms of a start, half of it the Fluent theme** — set aside (Waits on a person accepting that visible change.): Applying the theme after the first frame would cut it, at the cost of a title bar seen turning dark. → §QS190
+- ⏸ **QS197** (deps: —) **The parse figure spreads by a fifth between runs on the reference machine, so the gate lets a regression that big pass** — set aside (Needs the reference desk attended.): The gate's baseline is not retaken with the steadier arm, which starts the client eleven times on the desk. → §QS197
 
 ## Block I — An error a user can act on
 
