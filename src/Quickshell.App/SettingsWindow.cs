@@ -43,7 +43,7 @@ public sealed class SettingsWindow : Window
 
     private readonly string _path;
     private readonly Dictionary<string, FrameworkElement> _controls = new(StringComparer.Ordinal);
-    private readonly TextBlock _refused = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) };
+    private readonly TextBlock _refused = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12), Name = "Unused" };
 
     private bool _loading;
 
@@ -96,6 +96,9 @@ public sealed class SettingsWindow : Window
         Reload();
     }
 
+    /// <summary>What the window is saying about the file, which is empty where the file is all used.</summary>
+    public string Unused => _refused.Text;
+
     /// <summary>The control for one key, for a caller that reads or changes it.</summary>
     public FrameworkElement ControlFor(string key) => _controls[key];
 
@@ -105,13 +108,7 @@ public sealed class SettingsWindow : Window
     /// </summary>
     public void Reload()
     {
-        bool readable = SettingsFile.Readable(_path);
-
-        _refused.Text = readable
-            ? string.Empty
-            : "The file does not parse, so nothing here will be written over it. Fix it by hand — "
-              + "the last thing written to it was probably mid-edit — and reopen this window.";
-        _refused.Visibility = readable ? Visibility.Collapsed : Visibility.Visible;
+        bool readable = Say();
 
         Settings now = SettingsFile.ReadFrom(_path);
 
@@ -155,7 +152,33 @@ public sealed class SettingsWindow : Window
 
         SettingsFile.WriteTo(_path, edit(SettingsFile.ReadFrom(_path)));
 
+        // A scheme path typed here that leads nowhere is said here, at once.
+        Say();
+
         return true;
+    }
+
+    /// <summary>
+    /// Says what the file asked for that this client could not use, one line each and nothing else in
+    /// the way (QS174) — the difference between a feature that does not work and a value with a typo
+    /// in it, said where somebody looking at their settings is looking.
+    /// </summary>
+    /// <returns>Whether the file parses at all.</returns>
+    private bool Say()
+    {
+        bool readable = SettingsFile.Readable(_path);
+        List<string> said = [.. SettingsFile.Unused(_path)];
+
+        if (!readable)
+        {
+            said.Add("Nothing here will be written over it. Fix it by hand — the last thing written to it "
+                     + "was probably mid-edit — and reopen this window.");
+        }
+
+        _refused.Text = string.Join(Environment.NewLine, said);
+        _refused.Visibility = said.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+
+        return readable;
     }
 
     private FrameworkElement Control(string key) => key switch

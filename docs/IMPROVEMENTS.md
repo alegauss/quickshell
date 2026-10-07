@@ -803,31 +803,6 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS174 The difference between broken and misconfigured
-
-Three things in the settings path fail quietly by design, and each design is right on
-its own. A file that will not parse loads as the defaults, because overwriting what
-somebody was editing is worse. A scheme path leading nowhere is the built-in scheme,
-because refusing to start over a typo is unusable. A scheme with unreadable colours
-loads as written, because that is the user's choice.
-
-Together they add up to a client that answers every mistake by looking normal. Somebody
-who sets `colourScheme` to a path with a typo in it sees the colours they had before,
-and has no way to tell whether the client read their file, read it and failed, or
-ignored the key entirely. The one reading available to them is that the feature does not
-work.
-
-What is wanted is small and is not a dialog. The settings read already knows what it
-could not use — unrecognised keys are kept, and scheme resolution already returns
-nothing on failure — so the missing piece is somewhere for those to go. The diagnostic
-report is where they go today, which is the right place for the detail and the wrong
-place for the first hint, since nobody opens it before they already suspect something.
-
-Not a notification system. One line, in one place, that a user looking for it can find.
-
-Falsified when a settings value this client could not use leaves no trace a user can
-find.
-
 ### §QS178 A surface with no reference
 
 The client has no menu on purpose, and the command line is where that decision put

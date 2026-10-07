@@ -101,6 +101,42 @@ public sealed partial class SettingsWindowTests : IDisposable
         Assert.Equal(HalfDone, File.ReadAllText(path));
     }
 
+    /// <summary>
+    /// QS174's falsification: every value this client could not use leaves a line where somebody
+    /// looking at their settings will look — a misspelt key, a value of the wrong kind, a scheme path
+    /// that leads nowhere — and a file it used whole says nothing.
+    /// </summary>
+    [Fact]
+    public void EveryValueTheClientCouldNotUseIsSaidInTheWindow()
+    {
+        string path = Path.Combine(_here, "settings.json");
+
+        File.WriteAllText(path, "{\n  \"fontsize\": 14,\n  \"scrollback\": \"lots\",\n  \"theme\": \"Purple\",\n"
+                                + "  \"colourScheme\": \"schemes/missing.itermcolors\"\n}\n");
+
+        (string said, string afterFixing) = OnSta(() =>
+        {
+            SettingsWindow window = new(path);
+            string first = window.Unused;
+
+            File.WriteAllText(path, "{ \"fontSize\": 14 }");
+            window.Reload();
+
+            string second = window.Unused;
+
+            window.Close();
+
+            return (first, second);
+        });
+
+        Assert.Contains("\"fontsize\" is not a setting this build knows", said, StringComparison.Ordinal);
+        Assert.Contains("\"scrollback\" is \"lots\"", said, StringComparison.Ordinal);
+        Assert.Contains("\"theme\" is \"Purple\"", said, StringComparison.Ordinal);
+        Assert.Contains("missing.itermcolors, which is not there", said, StringComparison.Ordinal);
+
+        Assert.Equal(string.Empty, afterFixing);
+    }
+
     // ---- plumbing ----
 
     /// <summary>The markup and the line breaks taken out, which is all that separates the two texts.</summary>

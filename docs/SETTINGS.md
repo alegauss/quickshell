@@ -17,7 +17,9 @@ writes and reading between them would find a file that is half there.
 
 **Ctrl+Shift+,** opens a window over the same file: one control per key below, each written to the
 file as you change it. The file stays the setting — the window is a way of typing into it, and it
-will not write over a file that does not parse.
+will not write over a file that does not parse. Anything in the file this client could not use — a
+misspelt key, a value of the wrong kind, a scheme path that leads nowhere — is named at the top of
+that window, so a typo is not mistaken for a setting that does not work.
 
 If nothing happens, **Ctrl+Shift+R** rereads it. That is worth knowing about rather than a fallback
 nobody should need: a settings file on a network share is one this client may not be able to watch,

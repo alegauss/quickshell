@@ -190,6 +190,97 @@ public static class SettingsFile
     }
 
     /// <summary>
+    /// What in the file this client could not use, one sentence each, or nothing where it used it
+    /// all (QS174).
+    ///
+    /// <para><b>Every one of these is a fallback that is right on its own</b> — an unreadable file is
+    /// the defaults rather than overwritten, a scheme path leading nowhere is the built-in scheme
+    /// rather than a refusal to start, a key from a newer build is carried through — and together
+    /// they are a client that answers every mistake by looking normal. A user who typed
+    /// <c>fontsize</c> sees the size they had and cannot tell a typo from a broken feature. This is
+    /// the trace: said where somebody looking at their settings will look, which is the settings
+    /// window, and never a dialog on the way to anything else.</para>
+    /// </summary>
+    public static IReadOnlyList<string> Unused(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+
+        if (!Readable(path))
+        {
+            return [$"{Path.GetFileName(path)} does not parse, so every setting is at its default until it does."];
+        }
+
+        List<string> said = [];
+
+        using JsonDocument document = JsonDocument.Parse(
+            Shared(path),
+            new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+
+        JsonElement root = document.RootElement;
+
+        foreach (JsonProperty property in root.EnumerateObject())
+        {
+            if (!Known.Contains(property.Name, StringComparer.Ordinal))
+            {
+                // Kept, because a newer build may know it; said, because a misspelt key is the likeliest
+                // reason one is here, and it does nothing at all.
+                said.Add($"\"{property.Name}\" is not a setting this build knows. It is kept in the file and does nothing here.");
+            }
+        }
+
+        // A font of no size is as unusable as one that is not a number; no scrollback is a choice.
+        foreach ((string key, double least) in ((string, double)[])[("fontSize", double.Epsilon), ("scrollback", 0)])
+        {
+            if (root.TryGetProperty(key, out JsonElement value) && (value.ValueKind != JsonValueKind.Number || value.GetDouble() < least))
+            {
+                said.Add($"\"{key}\" is {value.GetRawText()}, which is not a number it can take, so the default is in use.");
+            }
+        }
+
+        foreach (string key in (string[])["ligatures", "cursorBlink", "warnOnPaste"])
+        {
+            if (root.TryGetProperty(key, out JsonElement value) && value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+            {
+                said.Add($"\"{key}\" is {value.GetRawText()}, which is neither true nor false, so the default is in use.");
+            }
+        }
+
+        if (root.TryGetProperty("theme", out JsonElement theme)
+            && !(theme.ValueKind == JsonValueKind.String && Enum.TryParse(theme.GetString(), ignoreCase: true, out ChromeTheme _)))
+        {
+            said.Add($"\"theme\" is {theme.GetRawText()}, which is not System, Light or Dark, so System is in use.");
+        }
+
+        if (root.TryGetProperty("cursor", out JsonElement cursor) && Shape(root) is null)
+        {
+            said.Add($"\"cursor\" is {cursor.GetRawText()}, which is not Block, Underline or Bar, so Block is in use.");
+        }
+
+        if (Text(root, "colourScheme") is { Length: > 0 } named)
+        {
+            string beside = Path.IsPathRooted(named)
+                                ? named
+                                : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".", named);
+
+            if (!File.Exists(beside))
+            {
+                said.Add($"\"colourScheme\" names {beside}, which is not there, so the built-in scheme is in use.");
+            }
+            else if (SchemeFile.ReadFrom(beside) is null)
+            {
+                said.Add($"\"colourScheme\" names {beside}, which is not a scheme this client can read, so the built-in scheme is in use.");
+            }
+        }
+
+        return said;
+    }
+
+    /// <summary>
     /// Reads the file, migrating it forward where it is older than this build.
     /// </summary>
     /// <param name="path">The file. A missing one is the defaults and is not an error.</param>
