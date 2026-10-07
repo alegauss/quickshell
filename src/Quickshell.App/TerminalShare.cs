@@ -64,6 +64,27 @@ public sealed class TerminalShare : IDisposable
     /// <summary>What went wrong opening the device, or null.</summary>
     public Exception? Failed { get; private set; }
 
+    /// <summary>
+    /// The device as a crash report states it: the adapter chain's own account, and how many losses
+    /// it had already come back from (QS132).
+    ///
+    /// <para>The share and not a pane, because the share is what holds the device for every pane in
+    /// every tab — a pane can close and take its reference with it, and the device goes on. Where
+    /// there is none, the reason is said instead, and a device that failed to open says how, which
+    /// is the report most likely to be about a driver.</para>
+    /// </summary>
+    public (string Adapter, int Recoveries) Describe()
+    {
+        if (_device is { } device)
+        {
+            return (device.Adapter.ToString(), device.Recoveries);
+        }
+
+        return Failed is { } failed
+            ? ($"no device: opening one failed ({failed.GetType().Name}: {failed.Message})", 0)
+            : ("no device yet: no pane had been laid out", 0);
+    }
+
     /// <summary>How many panes this share is drawing.</summary>
     public int Panes
     {

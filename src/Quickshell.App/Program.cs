@@ -61,7 +61,6 @@ public static class Entry
         StartupTimeline.Mark("application");
 
         MainWindow? window = null;
-        PaneAttachment? terminal = null;
 
         // One device, one atlas, one set of shaders and one render thread for every pane this
         // process opens — QS49. It holds nothing yet: the device is opened by the first pane that
@@ -71,7 +70,7 @@ public static class Entry
         // Armed before the window, because a failure while building one is a failure the user would
         // otherwise see as nothing happening at all. It reads no file and opens nothing, so it does
         // not spend the cold start this order exists to protect.
-        using CrashGuard guard = CrashGuard.Arm(application, () => Doing(window, terminal));
+        using CrashGuard guard = CrashGuard.Arm(application, () => Doing(window, share));
 
         window = new MainWindow();
 
@@ -134,8 +133,6 @@ public static class Entry
         // two shaders and rasterising a font are the most expensive things this process does, and
         // none of them is between the user and their first sight of the window.
         Opened(window, settings, share);
-
-        terminal = Pane(window)?.Terminal;
 
         // `--tabs <n>` opens that many, which is what Ctrl+Shift+T opens n times. A real surface and
         // not a test hook, for the same reason `--import` is one: this client has no menu, so the
@@ -437,22 +434,27 @@ public static class Entry
     /// <summary>
     /// What the client was doing, for a report written after it stopped doing it.
     ///
-    /// <para>Every field here is one this composing layer can actually answer today. The adapter is
-    /// one of them now: QS116 gave the pane a device, so a report from a machine that quietly fell
-    /// back to WARP says so — which was the whole reason <c>AdapterChoice</c> carries what it
-    /// skipped. Before the pane is laid out there is still no device, and the report says that
-    /// instead of naming one.</para>
+    /// <para>Every field here is one this composing layer can actually answer today. The adapter and
+    /// its recoveries come from the share that holds the one device every pane draws with (QS132),
+    /// so a report from a machine that quietly fell back to WARP says so — which was the whole
+    /// reason <c>AdapterChoice</c> carries what it skipped — and a device-loss report says how many
+    /// losses came before it. Before any pane is laid out there is no device, and the report says
+    /// that instead of naming one.</para>
     /// </summary>
-    private static CrashContext Doing(MainWindow? window, PaneAttachment? terminal) =>
-        new(CrashContext.Build(),
-            Environment.OSVersion.VersionString,
-            terminal?.View?.Device.Adapter.ToString() ?? "no device is held at this level",
-            0,
-            // Before the window exists there is nothing open, which is itself worth knowing: it says
-            // the client stopped on the way up.
-            window?.Tabs ?? 0,
-            Stopwatch.GetElapsedTime(Started),
-            SessionLogs());
+    private static CrashContext Doing(MainWindow? window, TerminalShare share)
+    {
+        (string adapter, int recoveries) = share.Describe();
+
+        return new(CrashContext.Build(),
+                   Environment.OSVersion.VersionString,
+                   adapter,
+                   recoveries,
+                   // Before the window exists there is nothing open, which is itself worth knowing:
+                   // it says the client stopped on the way up.
+                   window?.Tabs ?? 0,
+                   Stopwatch.GetElapsedTime(Started),
+                   SessionLogs());
+    }
 
     /// <summary>
     /// The session log's files, newest last, so the report can carry the end of one.

@@ -186,6 +186,38 @@ public sealed class TerminalShareTests
         Assert.Equal(1, shown);
     }
 
+    /// <summary>
+    /// QS132's falsification: a device-loss report says which adapter was lost, and how many losses
+    /// came before it.
+    ///
+    /// <para>Read off the share, which is what the crash context asks, against a real device — and
+    /// then rebuilt as a loss rebuilds it, so the count the report carries is the one the device
+    /// kept.</para>
+    /// </summary>
+    [Fact]
+    public void ACrashReportNamesTheAdapterAndTheLossesBeforeIt()
+    {
+        (string unopened, string named, string expected, int before, int after) = OnPanes(1, (share, _, _) =>
+        {
+            (string adapter, int recoveries) = share.Describe();
+
+            share.Device!.Recover();
+
+            using TerminalShare idle = new() { Looping = false };
+
+            return (idle.Describe().Adapter, adapter,
+                    share.Device.Adapter.ToString(), recoveries, share.Describe().Recoveries);
+        });
+
+        Assert.StartsWith("no device yet", unopened);
+
+        Assert.Equal(expected, named);
+        Assert.DoesNotContain("no device", named);
+
+        Assert.Equal(0, before);
+        Assert.Equal(1, after);
+    }
+
     /// <summary>Builds a window with two tabs and hands the first one and the window to the work.</summary>
     private static T OnTwoTabs<T>(Func<TerminalShare, TerminalTab, MainWindow, T> work)
     {

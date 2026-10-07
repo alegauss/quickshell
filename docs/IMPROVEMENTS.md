@@ -1518,32 +1518,6 @@ asked for.
 
 Falsified when a running client cannot tell a user where its log is.
 
-### §QS132 The adapter line, filled in
-
-QS72's report carries a field for the adapter and a placeholder in it. That is not an
-oversight in the report: the composing layer genuinely has no device to ask. The render
-layer opens a `GraphicsDevice` where a pane needs one, and nothing at the window level
-holds a reference — so `Entry.Doing` writes what is true rather than a name it guessed
-at.
-
-The cost is exactly where it hurts. `CrashKind.DeviceLost` exists to say a failure was
-about the machine, and a device-loss report that cannot say which adapter, which vendor,
-or how many recoveries had already happened is a report naming a category and no
-evidence. `AdapterChoice.ToString` already renders the line wanted — which link of the
-chain answered, the adapter's own description, and what was skipped to reach it — and
-`GraphicsDevice.Recoveries` already counts the losses survived. Both are one reference
-away.
-
-So this is a wiring question and not a design one: whatever ends up owning the device
-for a pane exposes it to the crash context, through an interface narrow enough that the
-composing layer does not gain a second reason to know about D3D. A delegate returning a
-string is probably the whole of it.
-
-Do it when the pane holds a device, and not before — a hook with nothing on the other
-end is a field that says "unknown" in a different way.
-
-Falsified when a device-loss report cannot say which adapter was lost.
-
 ### §QS133 A recording that stops before the disk does
 
 QS71 worried about a trace left running overnight and gave the log a bounded total.
