@@ -28,6 +28,7 @@ namespace Quickshell.App;
 public sealed class TerminalLeaf : IAsyncDisposable
 {
     private readonly DamageSignal _damage;
+    private readonly TerminalShare _share;
 
     private IShellSession? _session;
     private long _seen;
@@ -43,6 +44,7 @@ public sealed class TerminalLeaf : IAsyncDisposable
 
         // The one signal every pane in the process sets, because there is one loop reading it.
         _damage = share.Damage;
+        _share = share;
 
         Typist = new Typist(emulator);
 
@@ -288,6 +290,15 @@ public sealed class TerminalLeaf : IAsyncDisposable
         // a frame — so every line already on screen takes the new colours rather than only the ones
         // written after this.
         settings.Colours.ApplyTo(Emulator.Palette);
+
+        // The typeface and its size, which are the share's and every pane's: asked of it by each
+        // pane, and the same answer each time is applied once, by the loop (QS135). A hand-typed
+        // size of nothing or a blank family is passed over: the file keeps what was typed, and the
+        // font that was drawing goes on drawing.
+        if (settings.FontSize > 0 && !string.IsNullOrWhiteSpace(settings.FontFamily))
+        {
+            _share.UseFont(settings.FontFamily, (float)settings.FontSize, settings.Ligatures);
+        }
 
         if (Terminal.View is not { } view)
         {

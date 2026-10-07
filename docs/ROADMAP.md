@@ -64,6 +64,7 @@
 - 📋 **QS178** (deps: —) **Five command-line flags exist and no page names them, so a script author finds them by reading the source** — The client has no menu, so the command line is how another program asks it for anything, and a surface nobody documented is one nobody finds. → §QS178
 - 📋 **QS199** (deps: —) **The test that says a chrome theme leaves the terminal's colours alone checks a palette nothing draws with** — Appearance.Palette is a second model of the terminal's colours that no running code reads; the colours a pane draws come from Settings.Colours. → §QS199
 - 📋 **QS217** (deps: QS126 ✅) **A saved session can only be opened by typing its path on a command line** — The palette reaches every other action and lists no session, so a user with forty hosts has to remember each one's path. → §QS217
+- 📋 **QS221** (deps: QS116 ✅) **A graphics driver reset leaves every pane frozen, and nothing in the client recovers or says so** — The device can recover and nothing asks it to, and a recovery would rebuild closed panes' swapchains because no resource ever leaves its list. → §QS221
 
 ## Block H — The reason to leave the incumbent
 
@@ -71,7 +72,7 @@
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS78** (deps: QS139) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - ⏳ **QS79** (deps: QS3 ✅, QS196, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
-- 📋 **QS135** (deps: QS74 ✅) **Three settings are read, written and kept faithfully, and nothing acts on them** — The typeface, its size and the scrollback depth reach no pane, so a user who edits the file sees the theme change and the rest do nothing. → §QS135
+- ⏳ **QS135** (deps: QS74 ✅) **Three settings are read, written and kept faithfully, and nothing acts on them** — The scrollback depth still reaches only a new pane: changing it live means resizing the ring in order with the parser, and choosing which lines go when it shrinks. → §QS135
 - 📋 **QS137** (deps: QS76 ✅) **The idle figure is measured on a window with no session and no render loop in it** — Zero core time over ten minutes is real and is not the connected-session number the budget will be read against, and nothing yet can put the client in that state. → §QS137
 - 📋 **QS190** (deps: —) **The window's constructor spends 230 ms of a 647 ms start building chrome the first frame does not show** — The tab strip and the find bar are built before the first paint although both are collapsed until somebody asks for them. → §QS190
 - 📋 **QS191** (deps: —) **The graphics device and the shell both wait for the window, so a start runs three slow things one after another** — Neither the device, the atlas and the shaders nor the pseudo-console needs a window, and each could be ready while WPF builds one. → §QS191
@@ -346,6 +347,13 @@
 - **An open tab turns its trace on from the palette** The palette's trace entry
   reconnects the tab with its session traced, the pane says where the trace is written,
   and the next run starts untraced.
+
+## Done when — QS135
+
+- **A scrollback depth changed in the settings reaches every open pane** Checked by
+  lowering the depth in a running client and reading the buffer's capacity in an open
+  pane: it holds the new depth, the newest lines survived, and the parser never saw a
+  ring mid-resize.
 
 ## Non-goals
 

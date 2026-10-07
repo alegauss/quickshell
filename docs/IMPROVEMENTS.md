@@ -1150,6 +1150,32 @@ session's name brings that session to the top.
 
 Falsified when a saved session can only be opened by typing its path.
 
+### §QS221 A device loss the client comes back from
+
+`GraphicsDevice` can survive a loss: `RemovedReason` says one happened, and `Recover`
+walks the adapter chain again and rebuilds every registered resource. Nothing in the
+client calls either. The share's loop draws until a call fails, and a driver update or a
+GPU timeout leaves every pane holding its last frame, or throwing on the render thread,
+with nothing said.
+
+Two things are owed, in this order.
+
+**Unregistering.** `Register` adds a resource and nothing ever takes one out. A closed
+pane's `PresentSurface` is released and stays in the list, and so would an atlas or a
+renderer that was replaced. `Recover` would then build a swapchain on a window that no
+longer exists and fail mid-recovery. A resource's own `Dispose` should leave the list.
+
+**Asking.** The loop checks `RemovedReason` once a present or a draw has failed, and not
+on every frame, because the call costs a round trip and a healthy device never needs it.
+On a loss it recovers on the loop's own thread, where the context is used, invalidates
+every view, and leaves a line in the log, because QS132's crash report counts recoveries
+and a recovery nobody logged is a number with no story behind it.
+
+A device that cannot be recovered at all, because no adapter answers, is a crash of the
+DeviceLost kind, and QS72 already reports that as being about the machine.
+
+Falsified when a pane goes black after a driver reset and stays black.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go

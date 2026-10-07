@@ -218,6 +218,50 @@ public sealed class TerminalShareTests
         Assert.Equal(1, after);
     }
 
+    /// <summary>
+    /// QS135's falsification: a font changed in the settings changes the terminal, without a
+    /// restart.
+    ///
+    /// <para>Through the leaf's own <c>Apply</c>, which is what the settings watcher calls, and one
+    /// pass of the loop, which is where it lands. A cell twice the size is a grid with about half the
+    /// columns, and the model is reflowed to it — the grid on the glass and the grid the host is told
+    /// are the same one.</para>
+    /// </summary>
+    [Fact]
+    public void AFontChangedInTheSettingsChangesEveryPaneLive()
+    {
+        (int before, int after, int modelled, float height, float taller, int told) = OnPanes(2, (share, tab, views) =>
+        {
+            int grids = 0;
+
+            views[1].GridChanged += (_, _) => grids++;
+
+            share.DrawOnce();
+
+            int columns = views[0].Columns;
+            float cell = views[0].Renderer.Metrics.Height;
+
+            Settings bigger = Settings.Default with { FontSize = Settings.Default.FontSize * 2 };
+
+            foreach (TerminalLeaf leaf in tab.Leaves)
+            {
+                leaf.Apply(bigger);
+            }
+
+            share.DrawOnce();
+
+            return (columns, views[0].Columns, tab.Leaves[0].Emulator.Buffer.Columns, cell,
+                    views[0].Renderer.Metrics.Height, grids);
+        });
+
+        Assert.True(after < before * 0.6, $"a font twice the size left {after} of {before} columns");
+        Assert.Equal(after, modelled);
+        Assert.True(taller > height * 1.6f, $"the cell went from {height} to {taller} pixels high");
+
+        // The other pane too, told once: one font for every pane, applied once.
+        Assert.Equal(1, told);
+    }
+
     /// <summary>Builds a window with two tabs and hands the first one and the window to the work.</summary>
     private static T OnTwoTabs<T>(Func<TerminalShare, TerminalTab, MainWindow, T> work)
     {

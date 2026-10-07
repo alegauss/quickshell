@@ -37,6 +37,10 @@ public sealed class TerminalShare : IDisposable
     private Task _loop = Task.CompletedTask;
     private bool _disposed;
 
+    // A font asked for and not yet applied. Written on WPF's thread and taken on the loop's, under
+    // the guard, because the atlas and the renderer it changes are the loop's alone.
+    private (string Family, float SizeInPoints, bool Ligatures)? _refont;
+
     /// <summary>
     /// What every session sets when its parser has changed something.
     ///
@@ -121,6 +125,28 @@ public sealed class TerminalShare : IDisposable
         return TerminalView.On(_device!, _atlas!, _renderer!, window, width, height, palette);
     }
 
+    /// <summary>
+    /// Changes the typeface or its size for every pane, without a restart (QS135).
+    ///
+    /// <para><b>Recorded here and applied by the loop before its next pass</b>, because the atlas
+    /// and the renderer are the loop's: rebuilding the cache under a frame that is reading it would
+    /// be two threads in one atlas. One font for every pane, as there has been one atlas since QS49
+    /// — so this is the window's font and not a pane's, and the last one asked for wins.</para>
+    /// </summary>
+    public void UseFont(string family, float sizeInPoints, bool ligatures)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(family);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sizeInPoints);
+
+        lock (_guard)
+        {
+            _refont = (family, sizeInPoints, ligatures);
+        }
+
+        // The loop sleeps on this, and a font change is nothing any parser will ever report.
+        Damage.Set();
+    }
+
     /// <summary>Starts drawing a pane, and starts the loop if this is the first.</summary>
     public void Draw(TerminalView view, Emulator model)
     {
@@ -166,6 +192,8 @@ public sealed class TerminalShare : IDisposable
         {
             panes = [.. _drawing];
         }
+
+        Refont(panes);
 
         int drawn = 0;
 
@@ -255,6 +283,59 @@ public sealed class TerminalShare : IDisposable
             _device = null;
 
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Applies a font asked for since the last pass: the atlas is pointed at it, the cell measured
+    /// again, and every pane asked what grid it now holds.
+    ///
+    /// <para>A font asked for before there is a device stays asked for, and the first pass after
+    /// the device opens applies it. One that cannot be measured — a family this machine does not
+    /// have — leaves the font that was drawing, because a terminal with no glyphs is worse than a
+    /// setting that did not take.</para>
+    /// </summary>
+    private void Refont((TerminalView View, Emulator Model)[] panes)
+    {
+        (string Family, float SizeInPoints, bool Ligatures)? wanted;
+
+        lock (_guard)
+        {
+            if (_refont is null || _atlas is null || _renderer is null || _rasteriser is null)
+            {
+                return;
+            }
+
+            wanted = _refont;
+            _refont = null;
+        }
+
+        (string family, float size, bool ligatures) = wanted.Value;
+        FontSettings was = _atlas.Font;
+        FontSettings font = new(family, size, was.Dpi) { Ligatures = ligatures };
+
+        if (font == was)
+        {
+            return;
+        }
+
+        CellMetrics metrics;
+
+        try
+        {
+            metrics = _rasteriser.Measure(font);
+        }
+        catch (Exception)
+        {
+            return;
+        }
+
+        _atlas.UseFont(font);
+        _renderer.UseMetrics(metrics);
+
+        foreach ((TerminalView view, _) in panes)
+        {
+            view.Refit();
         }
     }
 

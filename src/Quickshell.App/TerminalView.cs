@@ -306,6 +306,34 @@ public sealed class TerminalView : IDisposable
     }
 
     /// <summary>
+    /// The cell changed size under the same surface — a different font, or the same one at another
+    /// size — so the grid the surface holds is asked again and the frame on the glass forgotten.
+    ///
+    /// <para>On the render thread and nowhere else, for the reason a resize is applied there: the
+    /// metrics it reads are the renderer's, and the renderer is the loop's. A grid that changed is
+    /// told exactly as a resize's is, so the model reflows and the far end hears the new size.</para>
+    /// </summary>
+    public void Refit()
+    {
+        _gate.Invalidate();
+
+        (int columns, int rows) = _renderer.Metrics.GridFor(_surface.Width, _surface.Height);
+
+        columns = Math.Max(1, columns);
+        rows = Math.Max(1, rows);
+
+        if (columns == Columns && rows == Rows)
+        {
+            return;
+        }
+
+        Columns = columns;
+        Rows = rows;
+
+        GridChanged?.Invoke(columns, rows);
+    }
+
+    /// <summary>
     /// Whether something is over this window, asked only of a pane that has already been covered.
     ///
     /// <para><b>The test costs no frame, and asking it every time would still cost a call.</b> So it
