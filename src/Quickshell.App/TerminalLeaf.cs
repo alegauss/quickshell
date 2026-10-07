@@ -69,6 +69,12 @@ public sealed class TerminalLeaf : IAsyncDisposable
     public string Host { get; }
 
     /// <summary>
+    /// The SSH connection behind this pane, for whatever else is opened over it — a file channel for
+    /// a drop (QS189) — or null where the pane runs a local shell or nothing yet.
+    /// </summary>
+    public ISshTransport? Transport => (_session as RemoteShell)?.Transport;
+
+    /// <summary>
     /// How the shell in this pane reads a quoted word, which is what a dropped path is typed as.
     /// Read off what the pane runs: a local tab's is Windows' command processor, and anything this
     /// client connects to over SSH is a POSIX shell.

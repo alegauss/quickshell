@@ -533,28 +533,6 @@ have assumed the two servers were talking to each other.
 Falsified when dragging a file from the host's pane onto a local folder does not leave
 that file there, byte for byte.
 
-### §QS189 A drop that sends the file
-
-Carried out of QS64's design: a drop onto a terminal types the dropped paths, and a
-modifier held while dropping turns it into a transfer into the shell's working directory
-instead. The typing shipped; the transfer cannot, because it needs two things this
-client does not have yet — a tab whose session is SSH, which is QS126, and a directory
-the shell has said it is in.
-
-The directory is the emulator's reading of OSC 7, which QS184 uses for the same purpose
-and which a shell reports only when its profile asks it to. Where nothing has been
-reported, a modified drop says so in the pane rather than uploading to a guess: the
-account's home is the likeliest wrong directory there is, because it is where the file
-would land without anybody noticing.
-
-Which modifier is the one decision here. Shift is what Explorer uses to change a drop's
-meaning, and the reference says what it does on a terminal next to the plain drop,
-rather than leaving the difference to be discovered by a user who happened to be holding
-it.
-
-Falsified when a file dropped with the modifier onto an SSH tab whose shell reported its
-directory does not arrive in that directory.
-
 ### §QS219 A browser with a connection beside it and nothing listed
 
 QS60's file browser has a remote half that lists over a session's file channel, proven

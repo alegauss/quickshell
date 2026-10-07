@@ -118,7 +118,17 @@ public sealed class TerminalPane : HwndHost
     /// so without the pane accepting files itself a drop onto a terminal is refused at the cursor.
     /// </para>
     /// </summary>
-    public event Action<IReadOnlyList<string>>? Dropped;
+    /// <remarks>
+    /// The second argument is whether Shift was held, which turns the drop into a transfer to the
+    /// directory the shell reported rather than its paths typed (QS189).
+    /// </remarks>
+    public event Action<IReadOnlyList<string>, bool>? Dropped;
+
+    /// <summary>VK_SHIFT.</summary>
+    private const int ShiftKey = 0x10;
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int key);
 
     /// <summary>One detent, which is what Windows divides a wheel's delta by.</summary>
     private const int PerNotch = 120;
@@ -216,7 +226,9 @@ public sealed class TerminalPane : HwndHost
 
                 if (files.Count > 0)
                 {
-                    Dropped?.Invoke(files);
+                    // The drop's own key state went to the shell's drop target, not here, so Shift is
+                    // read as it is now: still held, by somebody who let go of the mouse a moment ago.
+                    Dropped?.Invoke(files, (GetAsyncKeyState(ShiftKey) & 0x8000) != 0);
                 }
 
                 handled = true;

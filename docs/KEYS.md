@@ -70,6 +70,11 @@ Dropping files from Explorer onto a terminal types their paths at the prompt of 
 go over, each quoted for the shell running there and followed by a space, and that pane takes the
 keyboard. Nothing is copied: a drop onto a terminal is the path as an argument.
 
+Holding `Shift` while you let go sends the files instead, into the directory the shell in that
+pane says it is in, over the pane's own SSH connection. The title says how many landed. Nothing is
+sent from a local pane, or from one whose shell has not reported its directory (OSC 7, from its
+prompt), and the title says which. A name already taken there is left alone.
+
 ## The client itself
 
 | Chord | What it does |

@@ -869,7 +869,7 @@ public sealed class MainWindow : Window
 
         // A file let go over a pane is typed at that pane's prompt, and the pane takes the keyboard:
         // somebody who aimed a drop at a terminal is about to finish the command line in it.
-        leaf.Pane.Dropped += paths =>
+        leaf.Pane.Dropped += (paths, sending) =>
         {
             if (Current is { } tab && tab.PaneOf(leaf) is var pane and >= 0)
             {
@@ -877,8 +877,35 @@ public sealed class MainWindow : Window
                 Retitle();
             }
 
+            if (sending)
+            {
+                _ = SendDropped(leaf, paths);
+
+                return;
+            }
+
             leaf.Drop(paths);
         };
+    }
+
+    /// <summary>
+    /// Files dropped with Shift held: sent into the directory the pane's shell reported, over its own
+    /// connection, and said in the title — whether they landed, or why nothing was sent (QS189).
+    /// </summary>
+    /// <returns>The sentence said, for a caller that waits.</returns>
+    public async Task<string> SendDropped(TerminalLeaf leaf, IReadOnlyList<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(leaf);
+        ArgumentNullException.ThrowIfNull(paths);
+
+        Tell($"Sending {BrowserActions.Entries(paths.Count)}…");
+
+        string said = await DropSend.SendAsync(leaf.Transport, leaf.Emulator.WorkingDirectory, leaf.Host, paths)
+                                    .ConfigureAwait(true);
+
+        Tell(said);
+
+        return said;
     }
 
     /// <summary>Who gives a freshly split pane a session, or null while nothing can.</summary>
