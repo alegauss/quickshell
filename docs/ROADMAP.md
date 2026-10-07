@@ -45,7 +45,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — QS47 put the session in the tab and stopped there, so the one thing that arrangement was for is the one thing that cannot be done. → §QS160
+- ⏳ **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — Tabs cannot yet be dragged, detached into a window without reconnecting, or ordered by recent use. → §QS160
 - 📋 **QS163** (deps: QS48 ✅) **A divider cannot be dragged, so the only sizes a split has are the halves it was created with** — QS48 gave the layout a share to set and left every way of setting it to a chord, so the gesture a person reaches for first does nothing. → §QS163
 - 📋 **QS164** (deps: QS48 ✅) **Four panes open four graphics devices, and nothing in the client stops a user opening sixteen** — QS48 made splitting one chord away and QS49 has not landed, so the cost the block's own criterion bounds is now reachable by holding a key. → §QS164
 - 📋 **QS168** (deps: QS50 ✅, QS49 ✅) **Changing the font in the settings file does nothing until the client is restarted** — QS50 applies the cursor and the blink live and leaves the one setting people actually experiment with needing a restart, which is what stops them experimenting. → §QS168
@@ -333,6 +333,12 @@
   typing Japanese through Microsoft IME into a running client: the phrase is underlined
   in the pane with no floating box, the candidate list sits beside it, and the committed
   text reaches the shell once.
+
+## Done when — QS160
+
+- **A tab detached into its own window keeps its connection** Checked by detaching a tab
+  with a live SSH session into a new window and asserting the transport is the same
+  object, no reconnect was logged, and the shell answers a keystroke in the new window.
 
 ## Non-goals
 

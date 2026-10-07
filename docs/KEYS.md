@@ -25,6 +25,8 @@ Nothing here is configurable yet. When it becomes configurable this page becomes
 | `Ctrl+Shift+W` | Closes the tab. If sessions are still live in it you are asked first. |
 | `Ctrl+Tab` | The next tab, wrapping past the last. |
 | `Ctrl+Shift+Tab` | The previous tab, wrapping past the first. |
+| `Ctrl+Shift+PageUp` | Moves the tab you are in one place left along the strip. It stops at the first place rather than wrapping. |
+| `Ctrl+Shift+PageDown` | Moves it one place right, and stops at the last. |
 | `Alt+1` `Alt+2` `Alt+3` `Alt+4` `Alt+5` `Alt+6` `Alt+7` `Alt+8` `Alt+9` | The tab in that position. A number past the last tab does nothing, rather than landing you somewhere you did not ask for. |
 
 ## Panes

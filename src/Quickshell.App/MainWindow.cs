@@ -169,6 +169,14 @@ public sealed class MainWindow : Window
         InputBindings.Add(new KeyBinding(new Step(this, by: -1), Key.Tab,
                                          ModifierKeys.Control | ModifierKeys.Shift));
 
+        // Moving the tab itself, on the chord browsers and editors use for it (QS160). Shift alone on
+        // a page key is the scrollback's, and the bare key is the program's.
+        InputBindings.Add(new KeyBinding(new Moving(this, by: -1), Key.PageUp,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
+        InputBindings.Add(new KeyBinding(new Moving(this, by: 1), Key.PageDown,
+                                         ModifierKeys.Control | ModifierKeys.Shift));
+
         // By index, on Alt rather than Ctrl: Ctrl with a digit is a control sequence a host has
         // meanings for, and Alt with one is not.
         for (int index = 1; index <= 9; index++)
@@ -828,6 +836,47 @@ public sealed class MainWindow : Window
                                         (_, _) => Retitle(), Dispatcher);
 
         _watching.Start();
+    }
+
+    /// <summary>
+    /// Moves the tab on screen along the strip, and it stays the one on screen (QS160).
+    ///
+    /// <para><b>Two lists move in step and the third does not move at all.</b> The tabs and their
+    /// headers are kept in order; the panes are in the canvas for their whole life and where they sit
+    /// there is decided by which tab is showing, never by position — so a reorder is a reorder of the
+    /// strip, and no session, pane or swapchain is touched.</para>
+    ///
+    /// <para>Clamped at the ends rather than wrapped, unlike stepping between tabs: a tab carried past
+    /// the last place and reappearing first is a tab the user has to go and find.</para>
+    /// </summary>
+    /// <returns>Whether it moved.</returns>
+    public bool MoveTab(int by)
+    {
+        if (_active < 0 || _open.Count < 2)
+        {
+            return false;
+        }
+
+        int from = _active;
+        int to = Math.Clamp(from + by, 0, _open.Count - 1);
+
+        if (to == from)
+        {
+            return false;
+        }
+
+        TerminalTab moving = _open[from];
+        object header = _tabs.Items[from];
+
+        _open.RemoveAt(from);
+        _open.Insert(to, moving);
+
+        _tabs.Items.RemoveAt(from);
+        _tabs.Items.Insert(to, header);
+
+        Active = to;
+
+        return true;
     }
 
     /// <summary>
@@ -1769,6 +1818,20 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.Active += by;
+    }
+
+    /// <summary>The tab on screen, one place along the strip.</summary>
+    private sealed class Moving(MainWindow window, int by) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => by > 0 ? "Move tab right" : "Move tab left";
+
+        /// <summary>Nowhere to move with one tab, or past either end.</summary>
+        public override bool CanExecute(object? parameter) =>
+            Window.Held.Count > 1 && Window.Active + by >= 0 && Window.Active + by < Window.Held.Count;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.MoveTab(by);
     }
 
     /// <summary>

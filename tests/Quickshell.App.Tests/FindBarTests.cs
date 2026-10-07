@@ -177,10 +177,13 @@ public sealed class FindBarTests
 
             foreach (Key key in new[] { Key.PageUp, Key.PageDown })
             {
-                KeyBinding bound = window.InputBindings.OfType<KeyBinding>()
-                                         .Single(binding => binding.Key == key);
+                KeyBinding[] onKey = [.. window.InputBindings.OfType<KeyBinding>().Where(binding => binding.Key == key)];
 
-                Assert.Equal(ModifierKeys.Shift, bound.Modifiers);
+                // The bare key is the program's: nothing in the window binds it. Ctrl+Shift on the
+                // same key moves a tab (QS160), which is a different chord and not the scrollback.
+                Assert.DoesNotContain(onKey, binding => binding.Modifiers == ModifierKeys.None);
+
+                KeyBinding bound = onKey.Single(binding => binding.Modifiers == ModifierKeys.Shift);
 
                 bound.Command.Execute(null);
             }

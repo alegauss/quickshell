@@ -139,6 +139,7 @@
 - ✅ **QS126** **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Saved sessions reach an SSH tab, and each component still unreached has a line naming what will reach it.
 - ✅ **QS151** **A reconnecting session makes a new damage signal per connection, so a pane asleep on the first never repaints** — A reconnecting session takes the pane's damage signal once and hands it to every connection's pipeline, so what a reconnect prints wakes the same window.
 - ✅ **QS152** **A shell that exits leaves the window holding its last frame, with nothing saying the session ended** — A session that ends says so in its pane, telling an exit code from a dropped link, and hides the cursor; closing the tab says nothing.
+- ✅ **QS160 (reordering from the keyboard and palette)** **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — Ctrl+Shift+PageUp/PageDown and the palette move the tab on screen along the strip; no session or pane is touched.
 
 ## Block H — The reason to leave the incumbent
 

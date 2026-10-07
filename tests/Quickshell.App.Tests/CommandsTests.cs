@@ -112,6 +112,49 @@ public sealed class CommandsTests
         Assert.Contains("Next tab", three, StringComparer.Ordinal);
     }
 
+    /// <summary>
+    /// QS160: the tab on screen moves along the strip and stays on screen, the same tab object with
+    /// its session untouched; it stops at either end, and the palette offers only the moves that can
+    /// happen.
+    /// </summary>
+    [Fact]
+    public void ATabMovesAlongTheStripAndStopsAtTheEnds()
+    {
+        (string[] order, int active, bool same, bool pastEnd, string[] atFirst, string[] inMiddle) =
+            OnStaThread<(string[], int, bool, bool, string[], string[])>(() =>
+        {
+            MainWindow window = new();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "alpha"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "beta"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "gamma"));
+
+            TerminalTab gamma = window.Held[2];
+
+            window.MoveTab(-1);
+            window.MoveTab(-1);
+
+            bool further = window.MoveTab(-1);
+            string[] first = [.. window.Actions.Select(entry => entry.Name)];
+
+            window.MoveTab(1);
+
+            return ([.. window.Held.Select(tab => tab.Host)], window.Active,
+                    ReferenceEquals(window.Current, gamma), further, first,
+                    [.. window.Actions.Select(entry => entry.Name)]);
+        });
+
+        Assert.Equal(["alpha", "gamma", "beta"], order);
+        Assert.Equal(1, active);
+        Assert.True(same, "the tab on screen is not the one that was moved");
+        Assert.False(pastEnd, "a tab moved past the first place");
+
+        Assert.DoesNotContain("Move tab left", atFirst, StringComparer.Ordinal);
+        Assert.Contains("Move tab right", atFirst, StringComparer.Ordinal);
+        Assert.Contains("Move tab left", inMiddle, StringComparer.Ordinal);
+        Assert.Contains("Move tab right", inMiddle, StringComparer.Ordinal);
+    }
+
     /// <summary>A tab is listed by what it is called, not only by where it sits.</summary>
     [Fact]
     public void ATabIsListedByItsName()

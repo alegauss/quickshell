@@ -111,6 +111,23 @@
           "reads": "name",
           "expect": "New session",
           "named": "and a session can be made from the running client"
+        },
+        {
+          "locator": "Edit",
+          "act": "set value",
+          "with": "move tab",
+          "expect": "move tab",
+          "reads": "value",
+          "named": "moving the tab on screen along the strip (QS160)"
+        },
+        {
+          // Left and not right: the tab on screen is the last one opened, so there is nowhere right
+          // for it to go and the palette does not offer the move. What rises is the one that can run.
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Move tab left",
+          "named": "and only the move that can happen is offered"
         }
       ]
     }
