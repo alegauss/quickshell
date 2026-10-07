@@ -314,32 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS183 A clipboard that is busy for a moment
-
-Measured while shipping QS180: on this desk CrossDeviceService and msrdc, the phone-link
-service and WSLg's clipboard bridge, each open the clipboard in the moments after it
-changes, and one of them sometimes rewrites it. The tests stopped depending on that. The
-client still does.
-
-`SystemClipboard.Read` asks once. A paste pressed while another process holds the
-clipboard open comes back empty, and an empty paste sends nothing and says nothing, so
-the user's `Ctrl+Shift+V` is simply lost; they press it again and it works, and learn
-that this client's paste is unreliable. A copy is the same in the other direction:
-`Write` fails, `CopySelection` answers empty, and whatever was on the clipboard before
-is what the next paste anywhere produces.
-
-A clipboard held by a listener is held for milliseconds, so the move is a bounded retry
-inside the two calls, a tenth of a second at most, which no person pressing a chord
-would notice. Past that bound the failure is real and should reach the user rather than
-vanish; this client has no status bar, so where it lands is part of the work.
-
-Built as a wrapper over the seam QS180 added, the retry is testable without the desk: a
-clipboard that refuses the first few asks and then answers, and a paste that must still
-send what it holds.
-
-Falsified when a paste pressed while another process holds the clipboard for less than a
-tenth of a second sends nothing.
-
 ### §QS198 A cursor colour that reaches the pane
 
 Found while shipping QS83. ColourScheme.ApplyTo writes the scheme's cursor into the

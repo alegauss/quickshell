@@ -14,7 +14,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS183** (deps: —) **A paste pressed while another process holds the clipboard open does nothing and says nothing** — Phone Link and WSLg's bridge open the clipboard just after every change, so a paste landing then reads empty and the keystroke is simply lost. → §QS183
 - 📋 **QS198** (deps: —) **A scheme's cursor colour and OSC 12 are stored and never drawn, so every pane's cursor is the same grey** — The renderer draws a process-wide constant and never reads the palette's cursor, while SETTINGS.md tells users a scheme sets it. → §QS198
 - 📋 **QS203** (deps: —) **Two combining marks on the same side of one base are drawn on the same pixels instead of stacked** — Each mark is placed where it sits over the base alone, because DirectWrite misplaces every mark after the first. → §QS203
 - 📋 **QS205** (deps: —) **Cursor up and down cross the scrolling region's edges, so a program moving inside a region writes outside it** — CUU and CUD clamp only to the screen, where DEC and xterm stop them at the margin the cursor started inside. → §QS205

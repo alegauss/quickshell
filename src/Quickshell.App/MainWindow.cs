@@ -1187,7 +1187,9 @@ public sealed class MainWindow : Window
             item.FontWeight = _open[tab].HasActivity ? FontWeights.Bold : FontWeights.Normal;
         }
 
-        Title = Naming(_recording, Current?.Title);
+        Title = Notice is { } notice
+            ? $"{notice} — {Naming(_recording, Current?.Title)}"
+            : Naming(_recording, Current?.Title);
     }
 
     /// <summary>The name this client answers to, which every title ends in.</summary>
@@ -1558,7 +1560,45 @@ public sealed class MainWindow : Window
     {
         string text = Selected?.Invoke() ?? string.Empty;
 
-        return text.Length > 0 && Clipboard.Write(text) ? text : string.Empty;
+        if (text.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        // Patiently, for a clipboard somebody else holds for a moment; past that, said (QS183) —
+        // a copy that silently failed leaves the previous text to be pasted somewhere it was not meant
+        // to go.
+        if (!Patiently.Write(Clipboard, text))
+        {
+            Tell("Copy did not happen: another program is holding the clipboard. Try again.");
+
+            return string.Empty;
+        }
+
+        return text;
+    }
+
+    /// <summary>
+    /// A short notice in the title, for a few seconds — this window's one place to say something
+    /// went wrong without a dialog in front of the terminal (QS183). The title is what the taskbar
+    /// and a screen reader both read.
+    /// </summary>
+    public string? Notice { get; private set; }
+
+    private DispatcherTimer? _noticing;
+
+    private void Tell(string notice)
+    {
+        Notice = notice;
+        Retitle();
+
+        _noticing?.Stop();
+        _noticing = new DispatcherTimer(TimeSpan.FromSeconds(4), DispatcherPriority.Background, (_, _) =>
+        {
+            _noticing?.Stop();
+            Notice = null;
+            Retitle();
+        }, Dispatcher);
     }
 
     /// <summary>
@@ -1574,7 +1614,14 @@ public sealed class MainWindow : Window
     /// <returns>What was sent, empty where nothing was.</returns>
     public string PasteFromClipboard()
     {
-        string held = Clipboard.Read();
+        // Patiently, for a clipboard somebody else holds for a moment (QS183): read once, a paste in
+        // that moment came back empty and the keystroke was lost without a word.
+        if (!Patiently.Read(Clipboard, out string held))
+        {
+            Tell("Paste did not happen: another program is holding the clipboard. Try again.");
+
+            return string.Empty;
+        }
 
         Func<string, ValueTask>? sending = Pasting ?? (Current is null ? null : Typed);
 
