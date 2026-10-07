@@ -169,7 +169,7 @@ public sealed class MobaXtermImportTests : IDisposable
         string named = File(Line("named", 0, "named.example", "22", "alex"));
         string missing = Path.Combine(_here, "not-there.ini");
 
-        (int namedSessions, string namedSource, string missingSource) = OnStaThread(() =>
+        (int namedSessions, string namedSource, string missingSource) = Sta.Run(() =>
         {
             List<ImportPreview> seen = [];
             MainWindow window = new() { Importing = preview => { seen.Add(preview); return false; } };
@@ -244,42 +244,6 @@ public sealed class MobaXtermImportTests : IDisposable
         }
 
         return $"{name}={string.Join('%', fields)}";
-    }
-
-    /// <summary>Runs something on an STA thread, and shuts the dispatcher it built down after.</summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the STA work failed", failed);
-        }
-
-        return result;
     }
 
     private string File(string content, bool whole = false)

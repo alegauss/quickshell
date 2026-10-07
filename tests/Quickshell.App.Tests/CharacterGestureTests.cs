@@ -55,7 +55,7 @@ public sealed class CharacterGestureTests
     [Fact]
     public void NoChordIsBoundToAnOemPosition()
     {
-        string[] onOem = OnSta(() => new MainWindow().InputBindings
+        string[] onOem = Sta.Run(() => new MainWindow().InputBindings
                                                     .OfType<KeyBinding>()
                                                     .Where(binding => binding.Key.ToString().StartsWith("Oem", StringComparison.Ordinal))
                                                     .Select(binding => binding.Key.ToString())
@@ -72,35 +72,6 @@ public sealed class CharacterGestureTests
         int filled = GetKeyboardLayoutList(count, layouts);
 
         return layouts[..filled];
-    }
-
-    private static T OnSta<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread sta = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception caught)
-            {
-                failed = caught;
-            }
-        });
-
-        sta.SetApartmentState(ApartmentState.STA);
-        sta.Start();
-        sta.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the STA work failed", failed);
-        }
-
-        return result;
     }
 
     [DllImport("user32.dll")]

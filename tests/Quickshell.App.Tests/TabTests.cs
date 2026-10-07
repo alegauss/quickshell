@@ -39,7 +39,7 @@ public sealed class TabTests
     [Fact]
     public void EverySurfaceAnswersForTheTabOnScreen()
     {
-        (bool first, bool second, string firstName, string secondName) = OnStaThread(() =>
+        (bool first, bool second, string firstName, string secondName) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -76,7 +76,7 @@ public sealed class TabTests
     [Fact]
     public void NextWrapsAndAnIndexPastTheEndDoesNothing()
     {
-        int[] landed = OnStaThread(() =>
+        int[] landed = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -125,7 +125,7 @@ public sealed class TabTests
     [Fact]
     public void TheTitleRanksTheUsersNameOverTheHostsOverWhatItIsConnectedTo()
     {
-        (string connected, string written, string named) = OnStaThread(() => Ranked());
+        (string connected, string written, string named) = Sta.Run(() => Ranked());
 
         Assert.Equal("cmd.exe", connected);
         Assert.Equal("~/work", written);
@@ -157,7 +157,7 @@ public sealed class TabTests
     [Fact]
     public void ATabNobodyIsLookingAtSaysSomethingHappened()
     {
-        (bool quiet, bool stirred, bool looked) = OnStaThread(() =>
+        (bool quiet, bool stirred, bool looked) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -191,7 +191,7 @@ public sealed class TabTests
     [Fact]
     public void ClosingALiveTabAsksAndClosingADeadOneDoesNot()
     {
-        (int asked, int open) = OnStaThread(() =>
+        (int asked, int open) = Sta.Run(() =>
         {
             // Built here and not outside, because a pane is a FrameworkElement and there is no
             // thread but this one it can exist on. Connecting is awaited by blocking, which is safe
@@ -253,7 +253,7 @@ public sealed class TabTests
     [Fact]
     public void ATabWhoseSessionDiedKeepsWhyOnScreen()
     {
-        string screen = OnStaThread(() =>
+        string screen = Sta.Run(() =>
         {
             TerminalTab tab = Connected(Settings.Default, "no-such-program-at-all",
                                         "no-such-program-at-all");
@@ -299,7 +299,7 @@ public sealed class TabTests
     [Fact]
     public void SplittingGivesTheNewPaneTheKeyboard()
     {
-        (int panes, bool moved, bool back) = OnStaThread(() =>
+        (int panes, bool moved, bool back) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -340,7 +340,7 @@ public sealed class TabTests
     [Fact]
     public void ZoomingFillsTheTabAndRestoresTheArrangement()
     {
-        (double before, int zoomed, double after) = OnStaThread(() =>
+        (double before, int zoomed, double after) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -393,43 +393,5 @@ public sealed class TabTests
         }
 
         return text.ToString();
-    }
-
-    /// <summary>Runs something on an STA thread, and shuts the dispatcher it built down after.</summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                // A window builds a dispatcher on this thread, and one that is never shut down keeps
-                // a foreground thread alive after the test has finished — one per case, until the
-                // runner refuses to exit and reports a suite that passed as a failure.
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-        thread.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the work on the STA thread failed", failed);
-        }
-
-        return result;
     }
 }

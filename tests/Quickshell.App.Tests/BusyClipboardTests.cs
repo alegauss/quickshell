@@ -16,7 +16,7 @@ public sealed class BusyClipboardTests
     [Fact]
     public void APasteWhileTheClipboardIsBrieflyHeldStillSends()
     {
-        (string sent, string? notice) = OnSta(() =>
+        (string sent, string? notice) = Sta.Run(() =>
         {
             string went = string.Empty;
 
@@ -46,7 +46,7 @@ public sealed class BusyClipboardTests
     [Fact]
     public void APasteTheClipboardNeverAnswersIsSaid()
     {
-        (string sent, string? notice, string title) = OnSta(() =>
+        (string sent, string? notice, string title) = Sta.Run(() =>
         {
             string went = string.Empty;
 
@@ -79,7 +79,7 @@ public sealed class BusyClipboardTests
     [Fact]
     public void ACopyWaitsForABriefHoldAndSaysWhenItCannot()
     {
-        (string brief, string held, string? notice) = OnSta(() =>
+        (string brief, string held, string? notice) = Sta.Run(() =>
         {
             BusyClipboard moment = new(busyFor: 3);
             BusyClipboard forever = new(busyFor: int.MaxValue);
@@ -134,34 +134,5 @@ public sealed class BusyClipboardTests
 
             return true;
         }
-    }
-
-    private static T OnSta<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread sta = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception caught)
-            {
-                failed = caught;
-            }
-        });
-
-        sta.SetApartmentState(ApartmentState.STA);
-        sta.Start();
-        sta.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the STA work failed", failed);
-        }
-
-        return result;
     }
 }

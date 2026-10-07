@@ -281,7 +281,7 @@ public sealed class InstallationTests : IDisposable
     {
         const string Install = "Install quickshell for this user";
 
-        (bool before, bool after, int asked) = OnStaThread(() =>
+        (bool before, bool after, int asked) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -374,40 +374,4 @@ public sealed class InstallationTests : IDisposable
             CreateNoWindow = true,
             RedirectStandardOutput = true,
         }) ?? throw new InvalidOperationException($"{program} did not start");
-
-    /// <summary>Runs work on an STA thread, which is the only kind a WPF window can be built on.</summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the window could not be built", failed);
-        }
-
-        return result;
-    }
 }

@@ -40,7 +40,7 @@ public sealed class ChoiceTests
     [Fact]
     public void EnterIsTheFirstAndEscapeIsTheWayOut()
     {
-        (bool first, bool last) = OnSta(() =>
+        (bool first, bool last) = Sta.Run(() =>
         {
             Choice usual = Build(new ChoiceButton("Open the report", "file"), new ChoiceButton("Close", "close"));
             Button[] buttons = Buttons(usual);
@@ -52,7 +52,7 @@ public sealed class ChoiceTests
         Assert.True(last);
 
         // The uninstall question: keeping the settings is both, so no key removes them.
-        (bool keepDefault, bool keepCancel, bool removeCancel) = OnSta(() =>
+        (bool keepDefault, bool keepCancel, bool removeCancel) = Sta.Run(() =>
         {
             Choice uninstall = Build(new ChoiceButton("Keep them", "keep") { IsWayOut = true },
                                      new ChoiceButton("Remove them too", "remove"));
@@ -73,7 +73,7 @@ public sealed class ChoiceTests
     [Fact]
     public void TheHostKeyQuestionNamesItsThreeAnswers()
     {
-        (IReadOnlyList<string> labels, SshHostKeyVerdict verdict) = OnSta(() =>
+        (IReadOnlyList<string> labels, SshHostKeyVerdict verdict) = Sta.Run(() =>
         {
             IReadOnlyList<string> seen = [];
             Choice.Showing = choice =>
@@ -141,7 +141,7 @@ public sealed class ChoiceTests
         [.. LogicalTreeHelper.GetChildren((StackPanel)((StackPanel)choice.Content).Children[1]).OfType<Button>()];
 
     private static (IReadOnlyList<string> Labels, string? Chosen) Asked(Func<string?> asking, string press) =>
-        OnSta(() =>
+        Sta.Run(() =>
         {
             IReadOnlyList<string> labels = [];
 
@@ -164,33 +164,4 @@ public sealed class ChoiceTests
                 Choice.Showing = null;
             }
         });
-
-    private static T OnSta<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread sta = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception caught)
-            {
-                failed = caught;
-            }
-        });
-
-        sta.SetApartmentState(ApartmentState.STA);
-        sta.Start();
-        sta.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the STA work failed", failed);
-        }
-
-        return result;
-    }
 }

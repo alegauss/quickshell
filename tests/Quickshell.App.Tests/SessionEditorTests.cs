@@ -366,7 +366,7 @@ public sealed class SessionEditorTests
     [Fact]
     public void ANewSessionDialogAsksForAHostAndANameAndNothingElse()
     {
-        (int boxes, bool expanded, bool enabled) = OnStaThread(() =>
+        (int boxes, bool expanded, bool enabled) = Sta.Run(() =>
         {
             SessionDialog dialog = new(SessionEditor.Creating(Fleet(), "prod", "cache"));
 
@@ -391,7 +391,7 @@ public sealed class SessionEditorTests
     [Fact]
     public void TypingAHostIsEnoughAndTheRestSaysWhereItCameFrom()
     {
-        (bool enabled, string user, string credential) = OnStaThread(() =>
+        (bool enabled, string user, string credential) = Sta.Run(() =>
         {
             SessionDialog dialog = new(SessionEditor.Creating(Fleet(), "prod", "cache"));
 
@@ -418,7 +418,7 @@ public sealed class SessionEditorTests
     [Fact]
     public void AnInheritedFieldsBoxIsEmpty()
     {
-        (string user, string own) = OnStaThread(() =>
+        (string user, string own) = Sta.Run(() =>
         {
             SessionDialog web = new(SessionEditor.Editing(Fleet(), "prod/web"));
             SessionDialog db = new(SessionEditor.Editing(Fleet(), "prod/db"));
@@ -494,35 +494,4 @@ public sealed class SessionEditorTests
             Decorator decorator => [decorator.Child],
             _ => [],
         };
-
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the work on the STA thread failed", failed);
-        }
-
-        return result;
-    }
 }

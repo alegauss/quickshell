@@ -38,7 +38,7 @@ public sealed class BroadcastTests
     [Fact]
     public void BroadcastingTypesIntoEveryPaneAndMarksEachOne()
     {
-        Pane[] panes = OnStaThread(() =>
+        Pane[] panes = Sta.Run(() =>
         {
             (MainWindow window, TerminalTab tab) = Split(3);
             Dictionary<TerminalLeaf, StringBuilder> heard = Listen(tab);
@@ -70,7 +70,7 @@ public sealed class BroadcastTests
     [Fact]
     public void TurnedOffOnlyTheFocusedPaneHearsAndNoMarkIsLeft()
     {
-        (Pane[] panes, bool focused) = OnStaThread(() =>
+        (Pane[] panes, bool focused) = Sta.Run(() =>
         {
             (MainWindow window, TerminalTab tab) = Split(2);
             Dictionary<TerminalLeaf, StringBuilder> heard = Listen(tab);
@@ -107,7 +107,7 @@ public sealed class BroadcastTests
     [Fact]
     public void AnotherTabASplitAZoomOrAClosedPaneEachEndIt()
     {
-        (bool leaving, bool returning, bool splitting, bool zooming, bool closing) = OnStaThread(() =>
+        (bool leaving, bool returning, bool splitting, bool zooming, bool closing) = Sta.Run(() =>
         {
             (MainWindow window, TerminalTab first) = Split(2);
 
@@ -158,7 +158,7 @@ public sealed class BroadcastTests
     [Fact]
     public void TurningItOnGivesAZoomedTabItsPanesBack()
     {
-        (int zoomed, bool broadcasting) = OnStaThread(() =>
+        (int zoomed, bool broadcasting) = Sta.Run(() =>
         {
             (MainWindow window, TerminalTab tab) = Split(2);
 
@@ -179,7 +179,7 @@ public sealed class BroadcastTests
     [Fact]
     public void ThePaletteOffersItOnlyWhereThereIsSomethingToBroadcastTo()
     {
-        (bool alone, string[] single, string[] split, string[] running) = OnStaThread(() =>
+        (bool alone, string[] single, string[] split, string[] running) = Sta.Run(() =>
         {
             MainWindow window = new();
             TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "cmd.exe");
@@ -213,7 +213,7 @@ public sealed class BroadcastTests
     [Fact]
     public void APaneLeftOutHearsNothingTypedIntoTheOthersAndIsNotMarked()
     {
-        Pane[] panes = OnStaThread(() =>
+        Pane[] panes = Sta.Run(() =>
         {
             (MainWindow window, TerminalTab tab) = Split(3);
             Dictionary<TerminalLeaf, StringBuilder> heard = Listen(tab);
@@ -252,7 +252,7 @@ public sealed class BroadcastTests
     [Fact]
     public void APaneLeftOutIsPrivateUntilItIsBroughtBack()
     {
-        (Pane[] apart, Pane[] back) = OnStaThread(() =>
+        (Pane[] apart, Pane[] back) = Sta.Run(() =>
         {
             (MainWindow window, TerminalTab tab) = Split(2);
             Dictionary<TerminalLeaf, StringBuilder> heard = Listen(tab);
@@ -288,7 +288,7 @@ public sealed class BroadcastTests
     [Fact]
     public void LeavingEveryPaneOutEndsItAndTheChoiceIsOfferedOnlyWhileItRuns()
     {
-        (string[] before, string[] during, string[] apart, bool ended) = OnStaThread(() =>
+        (string[] before, string[] during, string[] apart, bool ended) = Sta.Run(() =>
         {
             (MainWindow window, TerminalTab tab) = Split(2);
 
@@ -326,7 +326,7 @@ public sealed class BroadcastTests
     [Fact]
     public void APasteReachesEveryPaneAndIsShownUnlessEveryOneOfThemBrackets()
     {
-        (bool askedMixed, string[] mixed, bool askedAll, string[] all) = OnStaThread(() =>
+        (bool askedMixed, string[] mixed, bool askedAll, string[] all) = Sta.Run(() =>
         {
             (MainWindow window, TerminalTab tab) = Split(2);
             Dictionary<TerminalLeaf, StringBuilder> heard = Listen(tab);
@@ -458,40 +458,4 @@ public sealed class BroadcastTests
         window.InputBindings.OfType<InputBinding>()
               .Single(bound => Chord.Of(bound) == Chord.Naming(key, modifiers))
               .Command.Execute(null);
-
-    /// <summary>Runs something on an STA thread, and shuts the dispatcher it built down after.</summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the window could not be built", failed);
-        }
-
-        return result;
-    }
 }

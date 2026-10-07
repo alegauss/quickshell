@@ -25,7 +25,7 @@ public sealed class SessionEndTests
     [Fact]
     public void AShellThatExitsSaysSoInThePane()
     {
-        (string screen, string? ended, bool live, bool cursor) = OnSta(() =>
+        (string screen, string? ended, bool live, bool cursor) = Sta.Run(() =>
         {
             TerminalLeaf leaf = TerminalLeaf.Open(Settings.Default, "cmd.exe", Shared);
             PtyStub far = new();
@@ -64,7 +64,7 @@ public sealed class SessionEndTests
     [Fact]
     public void ClosingTheTabIsNotTheSessionEnding()
     {
-        (string? ended, string screen) = OnSta(() =>
+        (string? ended, string screen) = Sta.Run(() =>
         {
             TerminalLeaf leaf = TerminalLeaf.Open(Settings.Default, "cmd.exe", Shared);
             PtyStub far = new();
@@ -88,7 +88,7 @@ public sealed class SessionEndTests
     [Fact]
     public void AShellStartedAheadOfItsPaneKeepsItsOutputAndTakesTheSettings()
     {
-        (string screen, int kept) = OnSta(() =>
+        (string screen, int kept) = Sta.Run(() =>
         {
             Emulator early = new(80, 5, scrollback: 1000);
             PtyStub far = new();
@@ -163,34 +163,5 @@ public sealed class SessionEndTests
         }
 
         Assert.True(ready(), "the pane never reached the state this was waiting for");
-    }
-
-    private static T OnSta<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread sta = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception caught)
-            {
-                failed = caught;
-            }
-        });
-
-        sta.SetApartmentState(ApartmentState.STA);
-        sta.Start();
-        sta.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the STA work failed", failed);
-        }
-
-        return result;
     }
 }

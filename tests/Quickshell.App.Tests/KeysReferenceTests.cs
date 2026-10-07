@@ -36,7 +36,7 @@ public sealed partial class KeysReferenceTests
     [Fact]
     public void EveryChordIsDocumentedAndEveryDocumentedChordIsTaken()
     {
-        string[] taken = OnStaThread(() =>
+        string[] taken = Sta.Run(() =>
             new MainWindow().InputBindings
                             .OfType<InputBinding>()
                             .Select(Chord.Of)
@@ -76,7 +76,7 @@ public sealed partial class KeysReferenceTests
     [InlineData(Key.Tab, ModifierKeys.None)]
     public void TheChordsLeftToTheRemoteProgramAreLeftToIt(Key key, ModifierKeys modifiers)
     {
-        bool[] bound = OnStaThread(() =>
+        bool[] bound = Sta.Run(() =>
             new MainWindow().InputBindings
                             .OfType<KeyBinding>()
                             .Select(one => one.Key == key && one.Modifiers == modifiers)
@@ -124,41 +124,5 @@ public sealed partial class KeysReferenceTests
         Assert.NotNull(directory);
 
         return Path.Combine(directory.FullName, Reference.Replace('/', Path.DirectorySeparatorChar));
-    }
-
-    /// <summary>A window is a WPF object, so it is built where WPF can build one.</summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the window could not be built", failed);
-        }
-
-        return result;
     }
 }

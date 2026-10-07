@@ -47,7 +47,7 @@ public sealed class GlobalizationTests
     [Fact]
     public void ATextBoxCanShowACaret()
     {
-        OnStaThread(() =>
+        Sta.Run(() =>
         {
             TextBox box = new() { MinWidth = 120 };
             Window window = new() { Content = box, Width = 300, Height = 120 };
@@ -77,7 +77,7 @@ public sealed class GlobalizationTests
     [Fact]
     public void TextCanBeMeasuredInANamedTypeface()
     {
-        OnStaThread(() =>
+        Sta.Run(() =>
         {
             TextBlock text = new()
             {
@@ -98,45 +98,5 @@ public sealed class GlobalizationTests
 
             return true;
         });
-    }
-
-    /// <summary>Runs something on an STA thread, which is the only kind a WPF window lives on.</summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                // Showing a window builds a dispatcher on this thread, and a dispatcher that is
-                // never shut down keeps a foreground thread alive after the test has finished — one
-                // per case, until the runner refuses to exit and reports a suite that passed as a
-                // failure. Marking the thread background is not enough: the dispatcher's own timer
-                // thread is not this one.
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-        thread.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the work on the STA thread failed", failed);
-        }
-
-        return result;
     }
 }

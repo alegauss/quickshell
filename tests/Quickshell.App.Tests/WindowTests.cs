@@ -46,7 +46,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void ADefaultWindowShowsATitleBarAndATerminalAndNothingElse()
     {
-        (bool tabs, string[] tree) = OnStaThread(() =>
+        (bool tabs, string[] tree) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -80,7 +80,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void TheTabStripAppearsWithTheSecondTabAndLeavesWithIt()
     {
-        bool[] showing = OnStaThread(() =>
+        bool[] showing = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -114,7 +114,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void FollowingTheSystemIsHandedToWpfRatherThanResolvedOnce()
     {
-        ThemeMode mode = OnStaThread(() => new MainWindow().ThemeMode);
+        ThemeMode mode = Sta.Run(() => new MainWindow().ThemeMode);
 
         Assert.Equal(ThemeMode.System, mode);
         Assert.True(Appearance.Default.FollowsSystem);
@@ -125,7 +125,7 @@ public sealed class WindowTests : IDisposable
     [InlineData(ChromeTheme.Dark)]
     public void AChosenThemeIsHeldWhateverWindowsIsDoing(ChromeTheme chosen)
     {
-        ThemeMode mode = OnStaThread(() =>
+        ThemeMode mode = Sta.Run(() =>
             new MainWindow(Appearance.Default with { Theme = chosen }).ThemeMode);
 
         Assert.NotEqual(ThemeMode.System, mode);
@@ -139,7 +139,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void AnOpenBrowserFollowsAChangeOfTheme()
     {
-        (ThemeMode before, ThemeMode after) = OnStaThread(() =>
+        (ThemeMode before, ThemeMode after) = Sta.Run(() =>
         {
             MainWindow window = new() { ShowsBrowser = _ => { } };
 
@@ -171,7 +171,7 @@ public sealed class WindowTests : IDisposable
         Assert.Equal(mine, dark.Palette);
         Assert.Equal(mine, light.Palette);
 
-        TerminalPalette carried = OnStaThread(() => new MainWindow(dark).Appearance.Palette);
+        TerminalPalette carried = Sta.Run(() => new MainWindow(dark).Appearance.Palette);
 
         Assert.Equal(mine, carried);
     }
@@ -332,7 +332,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void ClosingAWindowWithASessionAsksBeforeItGoes()
     {
-        (ClosingQuestion? asked, bool openAfterNo, bool goneAfterYes) = OnStaThread(() =>
+        (ClosingQuestion? asked, bool openAfterNo, bool goneAfterYes) = Sta.Run(() =>
         {
             ClosingQuestion? put = null;
 
@@ -382,7 +382,7 @@ public sealed class WindowTests : IDisposable
     {
         string file = Path.Combine(_directory, "close-without-asking");
 
-        int asked = OnStaThread(() =>
+        int asked = Sta.Run(() =>
         {
             int times = 0;
 
@@ -420,7 +420,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void AWindowWithNothingOpenClosesWithoutAsking()
     {
-        int asked = OnStaThread(() =>
+        int asked = Sta.Run(() =>
         {
             int times = 0;
 
@@ -474,7 +474,7 @@ public sealed class WindowTests : IDisposable
     {
         System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
 
-        bool built = OnStaThread(() => new MainWindow() is not null);
+        bool built = Sta.Run(() => new MainWindow() is not null);
 
         clock.Stop();
 
@@ -498,7 +498,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void ARecordingSaysSoWhereAPersonCanSeeIt()
     {
-        (string quiet, string recording, string after) = OnStaThread(() =>
+        (string quiet, string recording, string after) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -535,7 +535,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void AHostThatNamesItselfIsNamedInTheTitleWithOneTab()
     {
-        (bool strip, string before, string after) = OnStaThread(() =>
+        (bool strip, string before, string after) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -574,7 +574,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void ANameTheUserGaveOutranksWhatTheHostSays()
     {
-        string titled = OnStaThread(() =>
+        string titled = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -630,7 +630,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void ThePalettesEntryWritesADiagnosticBundle()
     {
-        string written = OnStaThread(() =>
+        string written = Sta.Run(() =>
         {
             MainWindow window = new()
             {
@@ -657,7 +657,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void TheHelpChordShowsEveryActionAndWritesNothing()
     {
-        (int offered, bool chordsListed, int bundles) = OnStaThread(() =>
+        (int offered, bool chordsListed, int bundles) = Sta.Run(() =>
         {
             int shown = 0;
             bool keyed = false;
@@ -708,7 +708,7 @@ public sealed class WindowTests : IDisposable
     {
         string into = Path.Combine(_directory, "sessions.json");
 
-        (bool asked, bool wroteOnRefusal, bool wroteOnAgreement) = OnStaThread(() =>
+        (bool asked, bool wroteOnRefusal, bool wroteOnAgreement) = Sta.Run(() =>
         {
             Directory.CreateDirectory(_directory);
 
@@ -761,7 +761,7 @@ public sealed class WindowTests : IDisposable
     {
         string into = Path.Combine(_directory, "made.json");
 
-        (bool listed, string? host) = OnStaThread(() =>
+        (bool listed, string? host) = Sta.Run(() =>
         {
             Directory.CreateDirectory(_directory);
 
@@ -792,7 +792,7 @@ public sealed class WindowTests : IDisposable
     {
         string into = Path.Combine(_directory, "shared.json");
 
-        string written = OnStaThread(() =>
+        string written = Sta.Run(() =>
         {
             Directory.CreateDirectory(_directory);
             File.WriteAllText(into, """{ "Name": "", "Children": [ { "Name": "old", "Host": "old.example" } ] }""");
@@ -840,7 +840,7 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void ThePaletteOpensTheLogFolder()
     {
-        (bool listed, string? shown) = OnStaThread(() =>
+        (bool listed, string? shown) = Sta.Run(() =>
         {
             string? opened = null;
             MainWindow window = new() { ShowsFolder = folder => opened = folder };
@@ -870,55 +870,6 @@ public sealed class WindowTests : IDisposable
     };
 
     // ---- plumbing ----
-
-    /// <summary>
-    /// Runs something on an STA thread, which is the only kind a WPF window can be built on.
-    ///
-    /// <para>The test host's threads are not STA and xunit has no attribute for it here, so the
-    /// thread is made rather than asked for. Everything comes back through the result or the
-    /// exception, so a failure inside reads as a failure of the test rather than as a hang.</para>
-    /// </summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                // Building a Window on a thread gives that thread a dispatcher, and a dispatcher
-                // that was never told to stop keeps the frame it is on alive. The runner answers a
-                // thread still running at the end with a FATAL and a non-zero exit on a suite where
-                // every test passed — a red that says nothing about the code.
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-
-        // Background, so a WPF dispatcher that outlives the work does not hold the test host open
-        // for ten seconds after every run.
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the window could not be built", failed);
-        }
-
-        return result;
-    }
 
     /// <summary>Every element in the window's tree, by type name.</summary>
     private static IEnumerable<string> Tree(DependencyObject root)

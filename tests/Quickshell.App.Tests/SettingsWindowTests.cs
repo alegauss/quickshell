@@ -47,7 +47,7 @@ public sealed partial class SettingsWindowTests : IDisposable
 
         File.WriteAllText(path, "{\n  \"schema\": 1,\n  // I like it still\n  \"cursorBlink\": true,\n  \"fontSize\": 12\n}\n");
 
-        OnSta(() =>
+        Sta.Run(() =>
         {
             SettingsWindow window = new(path);
 
@@ -84,7 +84,7 @@ public sealed partial class SettingsWindowTests : IDisposable
 
         File.WriteAllText(path, HalfDone);
 
-        (bool enabled, bool changed) = OnSta(() =>
+        (bool enabled, bool changed) = Sta.Run(() =>
         {
             SettingsWindow window = new(path);
 
@@ -114,7 +114,7 @@ public sealed partial class SettingsWindowTests : IDisposable
         File.WriteAllText(path, "{\n  \"fontsize\": 14,\n  \"scrollback\": \"lots\",\n  \"theme\": \"Purple\",\n"
                                 + "  \"colourScheme\": \"schemes/missing.itermcolors\"\n}\n");
 
-        (string said, string afterFixing) = OnSta(() =>
+        (string said, string afterFixing) = Sta.Run(() =>
         {
             SettingsWindow window = new(path);
             string first = window.Unused;
@@ -153,42 +153,6 @@ public sealed partial class SettingsWindowTests : IDisposable
         {
             RoutedEvent = Keyboard.LostKeyboardFocusEvent,
         });
-
-    private static void OnSta(Action work) => OnSta(() =>
-    {
-        work();
-
-        return true;
-    });
-
-    private static T OnSta<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread sta = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception caught)
-            {
-                failed = caught;
-            }
-        });
-
-        sta.SetApartmentState(ApartmentState.STA);
-        sta.Start();
-        sta.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the STA work failed", failed);
-        }
-
-        return result;
-    }
 
     private static string RepositoryRoot()
     {

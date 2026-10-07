@@ -228,7 +228,7 @@ public sealed class InputMethodTests
     [Fact]
     public void TheCallsIntoTheInputMethodAreMadeAgainstARealWindow()
     {
-        long placed = OnStaThread(() =>
+        long placed = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -253,38 +253,5 @@ public sealed class InputMethodTests
         });
 
         Assert.Equal(1, placed);
-    }
-
-    /// <summary>
-    /// Runs something on an STA thread, which is the only kind a WPF window can be built on.
-    /// </summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-        thread.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the work on the STA thread failed", failed);
-        }
-
-        return result;
     }
 }

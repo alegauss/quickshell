@@ -49,7 +49,7 @@ public sealed class SessionGroupTests
     public void OpeningAGroupPutsEverySessionInOneBroadcastingTab()
     {
         (string[] hosts, string[] opened, bool broadcasting, bool allReceive, int tabs, int leftOut) =
-            OnSta<(string[], string[], bool, bool, int, int)>(() =>
+            Sta.Run<(string[], string[], bool, bool, int, int)>(() =>
         {
             MainWindow window = new();
 
@@ -83,7 +83,7 @@ public sealed class SessionGroupTests
     [Fact]
     public void AFolderLargerThanATabSaysWhatItLeftOut()
     {
-        (int panes, int leftOut) = OnSta(() =>
+        (int panes, int leftOut) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -95,34 +95,5 @@ public sealed class SessionGroupTests
 
         Assert.Equal(MainWindow.MaximumPanes, panes);
         Assert.Equal(19 - MainWindow.MaximumPanes, leftOut);
-    }
-
-    private static T OnSta<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread sta = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception caught)
-            {
-                failed = caught;
-            }
-        });
-
-        sta.SetApartmentState(ApartmentState.STA);
-        sta.Start();
-        sta.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the STA work failed", failed);
-        }
-
-        return result;
     }
 }

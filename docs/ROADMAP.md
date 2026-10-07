@@ -64,7 +64,7 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS195** (deps: —) **Each test class carries its own copy of the fixture plumbing, so a fault in one copy is a fault in all of them** — QS138 was one fault in two copies of one helper, and the STA runner, the fixture's trust and skip, and the repository walk are each copied sixteen to twenty-one times. → §QS195
+- ⏳ **QS195** (deps: —) **Each test class carries its own copy of the fixture plumbing, so a fault in one copy is a fault in all of them** — The transport fixture's trust and skip, the repository walk, and the pane-building STA helpers are each still copied per class. → §QS195
 - 📋 **QS222** (deps: —) **A desk that cannot be observed runs no UI case, and the run counts it as a pass** — CasesRun passes with nothing run where it should skip with the desk's reason, so the QS136 table shows a green that covered nothing. → §QS222
 - 📋 **QS224** (deps: —) **A guest run asked to carry HEAD alone carries the working tree's uncommitted edits to tracked files** — Send-Tree takes HEAD's file list and reads each file from disk, so a before-and-after measured with it compares the change with itself. → §QS224
 
@@ -325,6 +325,13 @@
   gives an SSH tab its remote pane: run-app-vm opens the browser in the guest, a
   winwright case drags a file from the host's pane onto an Explorer folder, and the file
   there is compared with the server's.
+
+## Done when — QS195
+
+- **Each piece of fixture plumbing is defined once per test assembly** A search of
+  tests/ finds one definition each of the transport fixture's host-key trust and its
+  skip, of the repository-root walk, and of the pane-building STA helper, with every
+  class calling it.
 
 ## Non-goals
 

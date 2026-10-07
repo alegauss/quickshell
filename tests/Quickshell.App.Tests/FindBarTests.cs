@@ -20,7 +20,7 @@ public sealed class FindBarTests
     [Fact]
     public void ADefaultWindowHasNeverSeenTheFindBar()
     {
-        bool showing = OnStaThread(() => new MainWindow().FindBarShowing);
+        bool showing = Sta.Run(() => new MainWindow().FindBarShowing);
 
         Assert.False(showing);
 
@@ -38,7 +38,7 @@ public sealed class FindBarTests
     [Fact]
     public void CtrlShiftFOpensTheBarAndClosesIt()
     {
-        (bool afterFirst, bool afterSecond) = OnStaThread(() =>
+        (bool afterFirst, bool afterSecond) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -75,7 +75,7 @@ public sealed class FindBarTests
     [Fact]
     public void TheBarSaysWhetherAnythingWasFound()
     {
-        (string found, string missing, string empty) = OnStaThread(() =>
+        (string found, string missing, string empty) = Sta.Run(() =>
         {
             MainWindow window = new() { Finding = (_, _, _) => 7 };
 
@@ -122,7 +122,7 @@ public sealed class FindBarTests
     [Fact]
     public void CapitalsMatterOnlyWhereTheUserTypedOne()
     {
-        (bool lower, bool upper) = OnStaThread(() =>
+        (bool lower, bool upper) = Sta.Run(() =>
         {
             bool exactly = false;
 
@@ -169,7 +169,7 @@ public sealed class FindBarTests
     [Fact]
     public void ShiftPageMovesTheHistoryAndTheBarePageKeysAreTheProgramsent()
     {
-        List<int> asked = OnStaThread(() =>
+        List<int> asked = Sta.Run(() =>
         {
             List<int> lines = [];
 
@@ -226,36 +226,5 @@ public sealed class FindBarTests
                 yield return nested;
             }
         }
-    }
-
-    /// <summary>Runs something on an STA thread, which is the only kind a WPF window lives on.</summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-        thread.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the work on the STA thread failed", failed);
-        }
-
-        return result;
     }
 }

@@ -39,7 +39,7 @@ public sealed class CopyPasteTests
     [Fact]
     public void CtrlShiftCCopiesAndCtrlCIsLeftToTheHost()
     {
-        (string copied, string held) = OnStaThread(() =>
+        (string copied, string held) = Sta.Run(() =>
         {
             HeldClipboard clipboard = new();
             MainWindow window = new() { Selected = () => "what the drag covered", Clipboard = clipboard };
@@ -66,7 +66,7 @@ public sealed class CopyPasteTests
     [Fact]
     public void CopyingNothingPutsNothingOnTheClipboard()
     {
-        (string copied, string held, int writes) = OnStaThread(() =>
+        (string copied, string held, int writes) = Sta.Run(() =>
         {
             HeldClipboard clipboard = new() { Text = "what they were carrying" };
             MainWindow window = new() { Selected = () => string.Empty, Clipboard = clipboard };
@@ -87,7 +87,7 @@ public sealed class CopyPasteTests
     [Fact]
     public void APasteWithANewlineIsShownAndARefusalSendsNothing()
     {
-        (string shown, string sentAfterNo, string sentAfterYes) = OnStaThread(() =>
+        (string shown, string sentAfterNo, string sentAfterYes) = Sta.Run(() =>
         {
             string seen = string.Empty;
             string went = string.Empty;
@@ -139,7 +139,7 @@ public sealed class CopyPasteTests
     [Fact]
     public void BracketedPasteTellsTheProgramInsteadOfAskingTheUser()
     {
-        (int asked, string sent) = OnStaThread(() =>
+        (int asked, string sent) = Sta.Run(() =>
         {
             int times = 0;
             string went = string.Empty;
@@ -181,7 +181,7 @@ public sealed class CopyPasteTests
     [Fact]
     public void ControlCharactersAreStrippedBeforeAnythingIsSent()
     {
-        string sent = OnStaThread(() =>
+        string sent = Sta.Run(() =>
         {
             string went = string.Empty;
 
@@ -238,7 +238,7 @@ public sealed class CopyPasteTests
             "Não é possível estabelecer a conexão: a configuração da sessão está incompleta e "
             + "precisa de atenção antes da próxima execução.";
 
-        byte[] heard = OnStaThread(() =>
+        byte[] heard = Sta.Run(() =>
         {
             List<byte> into = [];
 
@@ -269,7 +269,7 @@ public sealed class CopyPasteTests
     [Fact]
     public void APasteWithNoSessionSendsNothing()
     {
-        string sent = OnStaThread(() =>
+        string sent = Sta.Run(() =>
         {
             MainWindow window = new() { Clipboard = new HeldClipboard { Text = "anything" } };
 
@@ -296,7 +296,7 @@ public sealed class CopyPasteTests
     [Fact]
     public void TheWindowUsesTheSystemClipboardAndLeavesItAsItWasFound()
     {
-        (string? skipped, string copied, string onTheDesk, string pasted, bool restored) = OnStaThread(() =>
+        (string? skipped, string copied, string onTheDesk, string pasted, bool restored) = Sta.Run(() =>
         {
             if (!Found(out string? before, out string? why))
             {
@@ -494,42 +494,5 @@ public sealed class CopyPasteTests
         Assert.Equal(ModifierKeys.Control | ModifierKeys.Shift, bound.Modifiers);
 
         return bound;
-    }
-
-    /// <summary>Runs something on an STA thread, which the clipboard and a window both need.</summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                // A window with a tab starts a timer on this thread's dispatcher, and a dispatcher
-                // never shut down keeps a foreground thread alive after the test has finished.
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-        thread.Join();
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the work on the STA thread failed", failed);
-        }
-
-        return result;
     }
 }

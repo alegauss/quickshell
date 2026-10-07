@@ -389,7 +389,7 @@ public sealed class FileBrowserTests
     [Fact]
     public void ThePaletteOpensOneBrowserThatSaysWhyItHasNoRemoteSide()
     {
-        (int shown, bool same, bool noRemote, string local) = OnStaThread(() =>
+        (int shown, bool same, bool noRemote, string local) = Sta.Run(() =>
         {
             int shows = 0;
 
@@ -414,42 +414,6 @@ public sealed class FileBrowserTests
 
     /// <summary>The one device, atlas and render loop the tab in the window test would draw with.</summary>
     private static readonly TerminalShare Shared = new();
-
-    /// <summary>Runs something on an STA thread, and shuts the dispatcher it built down after.</summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the window could not be built", failed);
-        }
-
-        return result;
-    }
 
     // ---- The pane's thread, and the sides it lists ----
 

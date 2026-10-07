@@ -74,7 +74,7 @@ public sealed class ShellDirectoryTests
     [Fact]
     public void TheBrowserOpensWhereTheShellIsAndFollowsIt()
     {
-        (string opened, string followed, string elsewhere) = OnSta(() =>
+        (string opened, string followed, string elsewhere) = Sta.Run(() =>
         {
             MainWindow window = new() { ShowsBrowser = _ => { }, RemoteFiles = _ => new Empty() };
             TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "web1.example.com");
@@ -143,41 +143,5 @@ public sealed class ShellDirectoryTests
 
         public Task ChangeModeAsync(string path, int mode, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
-    }
-
-    /// <summary>Runs something on an STA thread, and shuts the dispatcher it built down after.</summary>
-    private static T OnSta<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the window could not be built", failed);
-        }
-
-        return result;
     }
 }

@@ -32,7 +32,7 @@ public sealed class CopyStripTests : IDisposable
     {
         Server server = new();
 
-        (IReadOnlyList<string> during, IReadOnlyList<string> after) = OnSta(() =>
+        (IReadOnlyList<string> during, IReadOnlyList<string> after) = Sta.Run(() =>
         {
             FileBrowser browser = new(new LocalFiles(), new RemoteFiles(server, "web1"));
 
@@ -165,41 +165,6 @@ public sealed class CopyStripTests : IDisposable
 
             await Task.Delay(20, Stop);
         }
-    }
-
-    private static T OnSta<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(60)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the window could not be built", failed);
-        }
-
-        return result;
     }
 
     /// <summary>One file on a server that hands it over at the pace of a slow link.</summary>

@@ -30,7 +30,7 @@ public sealed class CommandsTests
     [Fact]
     public void EveryBoundActionIsReachableFromThePalette()
     {
-        (string[] bound, string[] offered) = OnStaThread(() =>
+        (string[] bound, string[] offered) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -71,7 +71,7 @@ public sealed class CommandsTests
     [Fact]
     public void NoBindingCarriesACommandThatCannotSayWhatItIs()
     {
-        string[] nameless = OnStaThread<string[]>(() =>
+        string[] nameless = Sta.Run<string[]>(() =>
             [.. new MainWindow().InputBindings
                                 .OfType<InputBinding>()
                                 .Where(one => one.Command is not INamedCommand)
@@ -90,7 +90,7 @@ public sealed class CommandsTests
     [Fact]
     public void OnlyTheTabsThatAreOpenAreOffered()
     {
-        (string[] one, string[] three) = OnStaThread(() =>
+        (string[] one, string[] three) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -121,7 +121,7 @@ public sealed class CommandsTests
     public void ATabMovesAlongTheStripAndStopsAtTheEnds()
     {
         (string[] order, int active, bool same, bool pastEnd, string[] atFirst, string[] inMiddle) =
-            OnStaThread<(string[], int, bool, bool, string[], string[])>(() =>
+            Sta.Run<(string[], int, bool, bool, string[], string[])>(() =>
         {
             MainWindow window = new();
 
@@ -162,7 +162,7 @@ public sealed class CommandsTests
     [Fact]
     public void SplittingStopsAtSixteenPanes()
     {
-        (int panes, bool lastSplit, string[] offered) = OnStaThread<(int, bool, string[])>(() =>
+        (int panes, bool lastSplit, string[] offered) = Sta.Run<(int, bool, string[])>(() =>
         {
             MainWindow window = new();
 
@@ -188,7 +188,7 @@ public sealed class CommandsTests
     [Fact]
     public void ATabIsListedByItsName()
     {
-        string[] offered = OnStaThread<string[]>(() =>
+        string[] offered = Sta.Run<string[]>(() =>
         {
             MainWindow window = new();
 
@@ -206,7 +206,7 @@ public sealed class CommandsTests
     [Fact]
     public void AnEntryCarriesTheChordThatDoesTheSameThing()
     {
-        Command found = OnStaThread(() =>
+        Command found = Sta.Run(() =>
             new MainWindow().Actions.Single(entry => entry.Name == "Copy the selection"));
 
         Assert.Equal("Ctrl+Shift+C", found.Chord);
@@ -222,7 +222,7 @@ public sealed class CommandsTests
     [Fact]
     public void ACommandBoundTwiceIsOneEntry()
     {
-        Command[] splitting = OnStaThread<Command[]>(() =>
+        Command[] splitting = Sta.Run<Command[]>(() =>
             [.. new MainWindow().Actions.Where(entry => entry.Name == "Split pane right")]);
 
         Assert.Single(splitting);
@@ -233,7 +233,7 @@ public sealed class CommandsTests
     [Fact]
     public void ThePaletteIsInThePalette()
     {
-        Command found = OnStaThread(() =>
+        Command found = Sta.Run(() =>
             new MainWindow().Actions.Single(entry => entry.Name == "Show all commands"));
 
         Assert.Equal("Ctrl+Shift+P", found.Chord);
@@ -324,7 +324,7 @@ public sealed class CommandsTests
     [Fact]
     public void RunningAnEntryRunsTheSameCommandTheChordDoes()
     {
-        (bool opened, string[] recent) = OnStaThread(() =>
+        (bool opened, string[] recent) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -346,7 +346,7 @@ public sealed class CommandsTests
     [Fact]
     public void LeavingThePaletteRunsNothing()
     {
-        (bool opened, int remembered) = OnStaThread(() =>
+        (bool opened, int remembered) = Sta.Run(() =>
         {
             MainWindow window = new();
 
@@ -390,41 +390,5 @@ public sealed class CommandsTests
         public void Execute(object? parameter)
         {
         }
-    }
-
-    /// <summary>A window is a WPF object, so it is built where WPF can build one.</summary>
-    private static T OnStaThread<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the window could not be built", failed);
-        }
-
-        return result;
     }
 }

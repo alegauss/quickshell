@@ -84,7 +84,7 @@ public sealed class DropSendTests : IDisposable
     [Fact]
     public void ALocalPaneSaysItHasNowhereToSend()
     {
-        (string said, string? notice) = OnSta(() =>
+        (string said, string? notice) = Sta.Run(() =>
         {
             MainWindow window = new();
             TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "cmd.exe");
@@ -101,41 +101,6 @@ public sealed class DropSendTests : IDisposable
     }
 
     private static readonly TerminalShare Shared = new();
-
-    private static T OnSta<T>(Func<T> work)
-    {
-        T result = default!;
-        Exception? failed = null;
-
-        Thread thread = new(() =>
-        {
-            try
-            {
-                result = work();
-            }
-            catch (Exception error)
-            {
-                failed = error;
-            }
-            finally
-            {
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.IsBackground = true;
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread never finished");
-
-        if (failed is not null)
-        {
-            throw new InvalidOperationException("the window could not be built", failed);
-        }
-
-        return result;
-    }
 
     /// <summary>An SSH connection whose only use here is the file channel it opens.</summary>
     private sealed class Connection(Server server) : ISshTransport
