@@ -34,27 +34,30 @@
 
       "steps": [
         {
-          // Selected by kind and read for its name, so the locator does not fix the reading. The
-          // caption is this client's own string; the counts and the path in the body are not
-          // assertable, because `expect` is equality and both change with the machine.
-          "locator": "Window[class=\"#32770\"]",
+          // Found by its automation id and read for its name, so the locator does not fix the
+          // reading. Since QS131 this is the client's own Choice window and not Windows' message
+          // box, whose buttons said "Sim" and "Não" on this desk beside this client's English. The
+          // counts and the path in the body are not assertable, because `expect` is equality and
+          // both change with the machine.
+          "locator": "Window#Choice",
           "act": "read",
           "expect": "Import sessions",
           "reads": "name",
           "named": "the preview is on the desk under its own caption"
         },
         {
-          // No, by its control id. MessageBox takes its captions from Windows, so on this desk they
-          // read "Sim" and "Não" and a name would tie the case to one language (QS131). The id is
-          // IDNO, 7, in every language, and a dialog button's automation id is its control id —
-          // read off the tree in the guest, where the OK-only notice's button answered as 2.
-          //
-          // Not `Button[order=right]`, which this was until QS181: the dialog's caption Close is a
-          // button too, disabled on a Yes/No box, and on some runs it is the rightmost one found.
-          //
+          // The way out, found by what it means and read for what it says: the button names the
+          // act, in this client's words, whatever language Windows is in (QS131).
+          "locator": "Window#Choice > Button#no",
+          "act": "read",
+          "expect": "Don't import",
+          "reads": "name",
+          "named": "refusing says what it does"
+        },
+        {
           // `invoke` and not `click`: the pattern is the act, and a synthesised pointer would need
           // the foreground this whole exercise exists to stop needing.
-          "locator": "Window[class=\"#32770\"] > Button#7",
+          "locator": "Window#Choice > Button#no",
           "act": "invoke",
           "named": "refusing the import, which is what writes nothing"
         }

@@ -1442,20 +1442,30 @@ public sealed class MainWindow : Window
     /// </summary>
     private static void Told(string path)
     {
-        MessageBoxResult answer = MessageBox.Show(
+        string? answer = Choice.Ask(
+            null, "quickshell diagnostics",
             $"What your client was doing is written to {path}.\n\n"
             + "Read it before sending it to anybody. Nothing has been sent, and passwords and key "
-            + "material are not in it.\n\nOpen it now?",
-            "quickshell diagnostics", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            + "material are not in it.",
+            new ChoiceButton("Open the bundle", "file"),
+            new ChoiceButton("Open its folder", "folder"),
+            new ChoiceButton("Close", "close"));
 
-        if (answer != MessageBoxResult.Yes)
+        string? opening = answer switch
+        {
+            "file" => path,
+            "folder" => System.IO.Path.GetDirectoryName(path),
+            _ => null,
+        };
+
+        if (opening is null)
         {
             return;
         }
 
         try
         {
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true })?.Dispose();
+            Process.Start(new ProcessStartInfo(opening) { UseShellExecute = true })?.Dispose();
         }
         catch (Exception)
         {
@@ -1510,10 +1520,9 @@ public sealed class MainWindow : Window
                             + "beside the session it came from rather than dropped.");
         }
 
-        said.AppendLine().Append("Import them now?");
-
-        return MessageBox.Show(said.ToString(), "Import sessions", MessageBoxButton.YesNo,
-                               MessageBoxImage.Question) == MessageBoxResult.Yes;
+        return Choice.Ask(null, "Import sessions", said.ToString().TrimEnd(),
+                          new ChoiceButton($"Import {Count(preview.Carrying, "session")}", "import"),
+                          new ChoiceButton("Don't import", "no")) == "import";
     }
 
     /// <summary>
@@ -2091,19 +2100,21 @@ public sealed class MainWindow : Window
 
         return new ValueTask<Quickshell.Transport.SshHostKeyVerdict>(Dispatcher.InvokeAsync(() =>
         {
-            MessageBoxResult answer = MessageBox.Show(
-                this,
+            // Three buttons that each say what they do (QS131), the way out last so Escape and
+            // closing the window both mean "do not connect".
+            string? answer = Choice.Ask(
+                this, "Unknown host key",
                 $"quickshell has not seen {question.Endpoint.Host}'s key before.\n\n"
                 + $"{question.Key.Algorithm} SHA256:{question.Key.Fingerprint}\n\n"
-                + "Compare it with the fingerprint the server's owner gave you.\n\n"
-                + "Yes: trust it and remember it.\nNo: trust it this time only.\nCancel: do not connect.",
-                "Unknown host key", MessageBoxButton.YesNoCancel, MessageBoxImage.Question,
-                MessageBoxResult.Cancel);
+                + "Compare it with the fingerprint the server's owner gave you.",
+                new ChoiceButton("Trust and remember it", "remember"),
+                new ChoiceButton("Trust it this time", "once"),
+                new ChoiceButton("Don't connect", "refuse"));
 
             return answer switch
             {
-                MessageBoxResult.Yes => Quickshell.Transport.SshHostKeyVerdict.AcceptAndRemember,
-                MessageBoxResult.No => Quickshell.Transport.SshHostKeyVerdict.Accept,
+                "remember" => Quickshell.Transport.SshHostKeyVerdict.AcceptAndRemember,
+                "once" => Quickshell.Transport.SshHostKeyVerdict.Accept,
                 _ => Quickshell.Transport.SshHostKeyVerdict.Refuse,
             };
         }, System.Windows.Threading.DispatcherPriority.Normal, cancellationToken).Task);

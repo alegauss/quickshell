@@ -1518,31 +1518,6 @@ asked for.
 
 Falsified when a running client cannot tell a user where its log is.
 
-### §QS131 The crash dialog says what its buttons do
-
-QS72 tells the user through `MessageBox`, which is the right amount of machinery for a
-process that is already dying — no window to build, no resources to load, nothing that
-can fail a second time. It has one cost, visible the moment it was photographed on a
-Portuguese Windows: the sentence is this client's English and the buttons are the
-operating system's "Sim" and "Não".
-
-Two problems, and the second is the larger. **The dialog is bilingual**, which reads as
-a client that was not finished. And **"Yes/No" names neither action**: the question is
-"Open the report now?", so the buttons should say "Open the report" and "Close" — naming
-the act is what lets somebody answer without re-reading the sentence above it.
-
-The fix is a small window of this client's own, and the constraint it inherits is the
-reason `MessageBox` was chosen: it has to be constructible after an unhandled exception,
-on a thread that may not be the dispatcher, with the application object possibly already
-torn down. So it loads no styles, references no session state, and falls back to
-`MessageBox` if constructing it throws — a dialog that fails to appear is worse than a
-bilingual one.
-
-While there, the report's own path is long enough to wrap awkwardly; a button that opens
-the containing folder is usually what a person actually wants.
-
-Falsified when the buttons on the crash dialog do not say what they do.
-
 ### §QS132 The adapter line, filled in
 
 QS72's report carries a field for the adapter and a placeholder in it. That is not an

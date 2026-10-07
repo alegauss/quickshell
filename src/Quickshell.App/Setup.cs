@@ -153,12 +153,16 @@ public static class Setup
             return 0;
         }
 
-        MessageBoxResult answer = MessageBox.Show(
+        // Keeping them is both what Enter does and the way out, so neither key nor closing the
+        // window can be the destructive act; removing them takes a click on the button that says so.
+        string? answer = Choice.Ask(
+            null, Caption,
             $"quickshell is removed.\n\nYour settings and saved sessions are still in {settings}, and a "
-            + "later install finds them there.\n\nRemove them as well?",
-            Caption, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+            + "later install finds them there.",
+            new ChoiceButton("Keep them", "keep") { IsWayOut = true },
+            new ChoiceButton("Remove them too", "remove"));
 
-        if (answer == MessageBoxResult.Yes)
+        if (answer == "remove")
         {
             Directory.Delete(settings, recursive: true);
         }

@@ -127,18 +127,28 @@ public sealed class CrashGuard : IDisposable
             return;
         }
 
-        MessageBoxResult answer = MessageBox.Show(
-            $"{notice.Sentence}\n\nOpen the report now?", "quickshell has stopped",
-            MessageBoxButton.YesNo, MessageBoxImage.Error);
+        // Buttons that say what they do, and the folder as well as the file: a report's path is long
+        // enough to wrap, and the folder is usually what somebody wants to attach from (QS131).
+        string? answer = Choice.Ask(null, "quickshell has stopped", notice.Sentence,
+                                    new ChoiceButton("Open the report", "file"),
+                                    new ChoiceButton("Open its folder", "folder"),
+                                    new ChoiceButton("Close", "close"));
 
-        if (answer != MessageBoxResult.Yes)
+        string? opening = answer switch
+        {
+            "file" => notice.Path,
+            "folder" => System.IO.Path.GetDirectoryName(notice.Path),
+            _ => null,
+        };
+
+        if (opening is null)
         {
             return;
         }
 
         try
         {
-            Process.Start(new ProcessStartInfo(notice.Path) { UseShellExecute = true })?.Dispose();
+            Process.Start(new ProcessStartInfo(opening) { UseShellExecute = true })?.Dispose();
         }
         catch (Exception)
         {
