@@ -1597,28 +1597,6 @@ sessions afterwards than it did before plus what was imported.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS149 The other invisible byte
-
-A source file was rewritten by a shell one-liner that read it as one encoding and wrote
-it as another. Every em dash in it turned to mojibake, in prose that had been correct
-for months and in a comment written minutes earlier. It compiled, the tests passed, and
-nothing anywhere reported it: `git diff --stat` showing far more changed lines than the
-edit accounted for is what caught it, and only because someone looked.
-
-This is the same failure `SourceHygieneTests` already exists for, one codepage along. A
-raw ESC byte is invisible in a diff; mojibake is visible but only to a reader already
-looking at that line for another reason, and a review of a large diff is exactly where
-nobody is. Both survive a compile, both survive a test run, and whether either happens
-at all is a property of the tool that wrote the file rather than of the file.
-
-So the same test should refuse it: the byte sequences a UTF-8 file acquires when it has
-been decoded as Windows-1252 and re-encoded, none of which occurs in this repository's
-real prose in any language it is written in.
-
-Cheap, and it belongs beside the check it generalises rather than in a new file.
-
-Falsified by a file that carries mojibake through a green suite.
-
 ### §QS159 Two instructions about evidence, and the wrong one is louder
 
 `.claude/skills/roadmap-docs/SKILL.md` says a UI task is not done without the picture,
