@@ -48,6 +48,13 @@ internal sealed class PtyStub : IPtyChannel
     /// <summary>Says the far end has finished, which is what makes a read answer zero.</summary>
     public void Finish() => _output.Writer.TryComplete();
 
+    /// <summary>The far end ends as a real one does: how it ended first, then no more output.</summary>
+    public void End(PtyExit how)
+    {
+        _closed.TrySetResult(how);
+        Finish();
+    }
+
     /// <inheritdoc/>
     public async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {

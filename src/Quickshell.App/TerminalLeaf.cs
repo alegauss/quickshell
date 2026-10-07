@@ -1,5 +1,6 @@
 using System.Windows.Automation;
 using Quickshell.Terminal;
+using Quickshell.Transport;
 
 namespace Quickshell.App;
 
@@ -252,6 +253,11 @@ public sealed class TerminalLeaf : IAsyncDisposable
             // session to hear it. Sent once rather than assumed: a program wrong about its own width
             // draws a screen for a terminal nobody has.
             session.Pipeline.Resize(Emulator.Buffer.Columns, Emulator.Buffer.Rows);
+
+            // And the one path that carries an ending rather than bytes, which nothing waited on
+            // until QS152: a shell that exits sends nothing, and nothing is what the pane would go on
+            // drawing.
+            _ = SayWhenItEnds(session);
         }
         catch (Exception failed)
         {
@@ -266,6 +272,63 @@ public sealed class TerminalLeaf : IAsyncDisposable
             _damage.Set();
         }
     }
+
+    /// <summary>
+    /// Says, in the terminal, that the session has ended and what it ended with (QS152).
+    ///
+    /// <para><b>In the pane and not in a dialog</b>, because the pane is where the person is
+    /// looking, and a window holding its last frame with the cursor still blinking reads as hung —
+    /// typing <c>exit</c> is the ordinary way a session ends, and it must not look like a fault. A
+    /// program that exited and a link that went are told apart, as a remote session words them.
+    /// The cursor is hidden as well: a blinking caret is an invitation to type somewhere nothing is
+    /// listening.</para>
+    ///
+    /// <para>Written once the pipeline has completed, which is when its parser has stopped: from then
+    /// on this is the only writer the model has. A tab being closed is not a session ending, and
+    /// says nothing.</para>
+    /// </summary>
+    private async Task SayWhenItEnds(IShellSession session)
+    {
+        try
+        {
+            await session.Pipeline.Completed.ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // However the pipeline finished, it has finished, and that is what is being said.
+        }
+
+        if (_disposed)
+        {
+            return;
+        }
+
+        Task<PtyExit> closed = session.Pipeline.Closed;
+
+        string said = closed.IsCompletedSuccessfully
+            ? Ending(await closed.ConfigureAwait(false))
+            : "the session ended";
+
+        Ended = said;
+
+        // A fresh line, the pen reset so the sentence is not in whatever colour the shell left
+        // behind, and the cursor hidden.
+        string line = (Emulator.Buffer.CursorColumn > 0 ? "\r\n" : string.Empty)
+                      + "\u001b[0m\r\n[" + Host + ": " + said + ". Nothing typed here goes anywhere now.]\r\n"
+                      + "\u001b[?25l";
+
+        Emulator.Feed(System.Text.Encoding.UTF8.GetBytes(line));
+
+        _damage.Set();
+    }
+
+    /// <summary>How an ending reads: an exit code is the program's, anything else is the link's.</summary>
+    public static string Ending(PtyExit exit) =>
+        exit.IsExit
+            ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"the shell exited with code {exit.Code}")
+            : exit.Reason.Length > 0
+                ? $"the connection ended: {exit.Reason}"
+                : "the connection ended";
 
     /// <summary>
     /// Takes settings that have changed, on a pane that is already open and drawing.

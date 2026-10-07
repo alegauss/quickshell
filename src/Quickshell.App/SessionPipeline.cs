@@ -167,6 +167,12 @@ public sealed class SessionPipeline : IAsyncDisposable
     /// <summary>Completes when the host has closed and everything it sent has been parsed.</summary>
     public Task Completed { get; private set; } = Task.CompletedTask;
 
+    /// <summary>
+    /// How the channel under this ended: the code a program exited with, or what took the
+    /// connection — which is what a pane says once <see cref="Completed"/> has (QS152).
+    /// </summary>
+    public Task<PtyExit> Closed => _channel.Closed;
+
     /// <summary>What the stages have done so far.</summary>
     public PipelineWork Work => new(
         Interlocked.Read(ref _bytes),

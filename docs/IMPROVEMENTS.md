@@ -844,32 +844,6 @@ Falsified when a running forward does not appear in this view.
 
 ## Block G — The clean interface, defended
 
-### §QS152 The session that ended and did not say so
-
-`IPtyChannel.Closed` completes with a `PtyExit` carrying the code the program left with,
-and `ConPtyChannel` fills it in. Nothing in the client waits on it. QS116 opened a shell
-on the pane and joined every path that carries bytes; the one path that carries an
-ending was not among them, because a session that has ended sends nothing and nothing is
-what the pane keeps drawing.
-
-So the client a user actually meets does this: they type `exit`, the shell goes, the
-pipeline's loops finish, and the window sits on the last frame the shell printed, cursor
-still blinking. Every keystroke after that is taken by `Typist` and dropped, which is
-correct for a window with no session and indistinguishable from a window that has
-stopped responding. The client is not hung and the user has no way to tell.
-
-What it needs is small and it is a user-facing decision rather than a mechanism: the
-window has to say the session ended and what it ended with, in the terminal itself,
-where the person is already looking. `RemoteSession` already words this for the remote
-case, and its sentence distinguishes a shell that exited from a link that dropped, which
-is the distinction worth keeping here too.
-
-Whether the window then offers a new session is the second half and belongs with tabs,
-not with this line.
-
-Falsified when a shell exits and the window is indistinguishable from one that has
-stopped responding.
-
 ### §QS160 Moving a tab, and the connection that must not notice
 
 `TerminalTab` owns a model, a pane, a device, a loop, a keyboard and a shell, and
