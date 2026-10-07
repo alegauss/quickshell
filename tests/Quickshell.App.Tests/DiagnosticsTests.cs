@@ -107,6 +107,76 @@ public sealed class DiagnosticsTests : IDisposable
         Assert.Equal(Screen, Decompressed(recording.Path));
     }
 
+    /// <summary>
+    /// QS133's falsification: a recording left running stops at its limit instead of filling a disk,
+    /// and says that it did — once, to whoever shows it is running, and in the file itself.
+    ///
+    /// <para>Fed incompressible bytes, so the compressed size the bound is about grows as fast as it
+    /// can: a megabyte against a 64 KB limit.</para>
+    /// </summary>
+    [Fact]
+    public async Task ARecordingStopsAtItsLimitAndSaysWhere()
+    {
+        const long Limit = 64 * 1024;
+
+        await using SessionRecording recording = SessionRecording.Start(_here, "overnight", Limit);
+
+        int told = 0;
+
+        recording.Stopped += (_, _) => told++;
+
+        byte[] noise = new byte[4096];
+        Random random = new(133);
+        List<byte> fed = [];
+
+        for (int chunk = 0; chunk < 256; chunk++)
+        {
+            random.NextBytes(noise);
+
+            // Kept clear of CAN, so the only one in the file is the cut's own.
+            for (int at = 0; at < noise.Length; at++)
+            {
+                noise[at] = noise[at] == 0x18 ? (byte)'x' : noise[at];
+            }
+
+            if (recording.Running)
+            {
+                fed.AddRange(noise);
+            }
+
+            recording.HostSent(noise);
+        }
+
+        await recording.DisposeAsync();
+
+        Assert.False(recording.Running);
+        Assert.True(recording.Cut);
+        Assert.Equal(1, told);
+
+        // Bounded: past the limit by at most one compressor block, nowhere near the megabyte fed.
+        long size = new FileInfo(recording.Path).Length;
+
+        Assert.True(size < Limit + (64 * 1024), $"the recording grew to {size:N0} bytes against a {Limit:N0} limit");
+
+        // Readable, what came before the cut is exactly what the host sent, and the end says where.
+        byte[] kept;
+
+        await using (GZipStream reading = new(File.OpenRead(recording.Path), CompressionMode.Decompress))
+        await using (MemoryStream into = new())
+        {
+            await reading.CopyToAsync(into, Stop);
+            kept = into.ToArray();
+        }
+
+        int cut = Array.IndexOf(kept, (byte)0x18);
+
+        Assert.True(cut > 0, "the recording carries no cut line");
+        Assert.Equal(recording.Bytes, cut);
+        Assert.Equal(fed.Take(cut), kept.Take(cut));
+        Assert.Contains("stopped here, at its limit", Encoding.UTF8.GetString(kept, cut, kept.Length - cut),
+                        StringComparison.Ordinal);
+    }
+
     /// <summary>Nothing records on its own: a session with no recording writes no file.</summary>
     [Fact]
     public async Task NothingRecordsUnlessSomebodyAsked()

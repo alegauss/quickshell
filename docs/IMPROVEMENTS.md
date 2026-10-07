@@ -1518,31 +1518,6 @@ asked for.
 
 Falsified when a running client cannot tell a user where its log is.
 
-### §QS133 A recording that stops before the disk does
-
-QS71 worried about a trace left running overnight and gave the log a bounded total.
-QS73's recording has none, and it is the greedier of the two: it writes every byte a
-host sends. A `cat` of a large file is thirty megabytes in a few seconds, and the corpus
-already holds one capture that was 33 MB raw.
-
-Rotation is not the answer here, and that is the whole difficulty. A log is a sequence
-of independent lines and dropping the oldest costs the oldest. A recording is one
-continuous byte stream feeding a state machine — cut the front off and what is left
-starts mid-escape-sequence, which is a file that no longer reproduces anything. So the
-bound has to be a **stop**, not a roll.
-
-Which makes it a question about what the user is told. A recording that quietly stopped
-at a limit is worse than one that filled a disk, because the defect the user was trying
-to capture happened after it stopped and nobody said so. So: a cap the user can see
-before starting, the title's indication changing when it is reached, and the file itself
-carrying a last line saying where it was cut.
-
-Compressed size is the number to bound, since that is what reaches a disk and what the
-user has to send.
-
-Falsified when a session left recording overnight fills a disk, or stops without saying
-that it did.
-
 ### §QS134 Starting a recording from the window
 
 QS73 built the recorder, fed it from the parser stage where the user's keystrokes cannot
@@ -1557,8 +1532,9 @@ a session to toggle would have meant inventing a lifecycle to match.
 
 What this owes when the session lifecycle exists: a way to say *record this session* at
 the moment it opens, a name for the file that means something later, and a way to stop
-one that names the file it wrote so the user can find it. The title already changes; the
-stop is what needs the sentence.
+one that names the file it wrote so the user can find it. The title changes; a stop
+needs the sentence. QS133's `SessionRecording.Limit` is said before starting, and its
+`Stopped` event drops the title's mark.
 
 Keep the asymmetry. Starting is a decision made once, in the open; stopping is safe at
 any time and can be a keystroke. A recording that can be started by a keystroke is one
