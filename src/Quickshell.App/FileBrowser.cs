@@ -89,6 +89,14 @@ public sealed class FileBrowser : Window
 
         Keys();
 
+        // What a save in a local editor came to is said under the host's listing while this is
+        // open, and by a question of its own once it is not (QS185).
+        if (remote is RemoteFiles host && Remote is { } there)
+        {
+            host.Edits.Telling = (note, _) => Post(() => there.Say(note));
+            Closed += (_, _) => host.Edits.Telling = null;
+        }
+
         // Listed once there is a window to list into, and not before: a browser built and never
         // shown should cost no disk read and no round trip.
         Loaded += (_, _) =>
@@ -453,6 +461,7 @@ public sealed class FileBrowser : Window
     private sealed class PaneView : DockPanel
     {
         private readonly DirectoryPane _pane;
+        private readonly FileBrowser _browser;
         private readonly TextBox _path = new() { VerticalContentAlignment = VerticalAlignment.Center };
         private readonly Button _back = Tool("←", "Back");
         private readonly Button _forward = Tool("→", "Forward");
@@ -471,6 +480,7 @@ public sealed class FileBrowser : Window
         public PaneView(DirectoryPane pane, FileBrowser browser)
         {
             _pane = pane;
+            _browser = browser;
 
             TextBlock title = new()
             {
@@ -631,10 +641,21 @@ public sealed class FileBrowser : Window
 
         private void OpenSelected()
         {
-            if (_list.SelectedItem is FileItem item)
+            if (_list.SelectedItem is not FileItem item)
             {
-                _ = _pane.Open(item);
+                return;
             }
+
+            // A file of the host's opens in a local program with its saves sent back (QS185); a
+            // directory is gone into, here as on this computer.
+            if (!item.IsDirectory && _pane.Side is RemoteFiles)
+            {
+                _ = _browser.Actions.EditAsync(_pane, item);
+
+                return;
+            }
+
+            _ = _pane.Open(item);
         }
 
         private void Changed(object? sender, PropertyChangedEventArgs e)

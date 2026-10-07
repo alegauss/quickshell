@@ -235,7 +235,7 @@ public sealed class LocalFiles : IFileSide
 /// holds here: a name is joined with a slash and never normalised, folded or checked, because a
 /// client that tidied a remote name would be renaming somebody's file.</para>
 /// </summary>
-public sealed class RemoteFiles : IFileSide
+public sealed class RemoteFiles : IFileSide, IAsyncDisposable
 {
     private readonly IFileTransferChannel _channel;
 
@@ -249,10 +249,20 @@ public sealed class RemoteFiles : IFileSide
 
         _channel = channel;
         Title = title;
+        Edits = new RemoteEdits(channel);
     }
 
     /// <inheritdoc/>
     public string Title { get; }
+
+    /// <summary>
+    /// The files from this host open in local programs, which outlive any one browser and go with
+    /// the session: whoever holds the session disposes this when it ends (QS185).
+    /// </summary>
+    public RemoteEdits Edits { get; }
+
+    /// <summary>Ends the edits — each copy that landed is removed — and leaves the channel open.</summary>
+    public ValueTask DisposeAsync() => Edits.DisposeAsync();
 
     /// <summary>
     /// The session's file channel, which a copy between the panes runs over. Held by the side

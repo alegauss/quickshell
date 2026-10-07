@@ -510,31 +510,6 @@ Falsified when the guest suite runs ten times with no pass reading 0.0 for Direc
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-### §QS185 A save that lands on the server
-
-Carried out of QS60's design, which argued for it: editing a configuration file on a
-server is why most people open a file browser at all, and the round trip it replaces —
-download, edit, upload, and hope the upload went to the same path — is what they are
-trying to stop doing by hand.
-
-Opening a remote file downloads it to a temporary directory this client owns, opens it
-in the program Windows associates with it, and watches the copy. Each save is uploaded
-to the path it came from over the session's own file channel, and the pane says whether
-it landed. A save while the previous upload is still running waits for it rather than
-racing it.
-
-Two things make this more than a watcher. The file on the server may have changed since
-it was opened, and an upload that silently overwrote somebody else's edit is the worst
-outcome there is, so its modification time is checked before every write-back and a
-change is a question. And the temporary copy is the user's text: it goes when the
-session ends, never before its upload landed.
-
-It waits on QS60's operations, since writing a file back is one of them with a watcher
-in front, and on a tab that holds an SSH session, which is QS126.
-
-Falsified when a save in the local editor does not reach the server, or reaches it over
-a change somebody else made in the meantime without asking.
-
 ### §QS186 A copy you can watch and stop
 
 QS60's operations run a copy through `TransferQueue`, and the browser says one thing
@@ -617,7 +592,9 @@ What to build: the program sets `RemoteFiles` to answer, for a tab whose focused
 runs a `RemoteShell`, a remote side over `Transport.OpenFileTransferAsync` — a channel
 of the same connection, never a second one (QS59), so a hardware token is touched once.
 A local tab still answers nothing and the browser says so, as it does today. The channel
-closes with the browser, not with the shell, and a dropped connection ends the browser's
+closes with the browser unless `RemoteFiles.Edits` still has a file open in a local
+editor (QS185), whose saves need it; then the side is kept per session and disposed,
+before its channel, when the session ends, and a dropped connection ends the browser's
 listing with the reason rather than leaving it hung.
 
 Falsified when the browser opened over an SSH tab lists nothing from that host, or opens

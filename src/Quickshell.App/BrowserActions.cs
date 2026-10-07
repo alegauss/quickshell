@@ -384,6 +384,40 @@ public sealed class BrowserActions
         }
     }
 
+    /// <summary>
+    /// Opens a file of the host's in the local program Windows associates with it, and sends each
+    /// save back to where it came from (QS185). A directory, or a file on this computer, is not this.
+    /// </summary>
+    /// <param name="pane">The pane the file was opened from.</param>
+    /// <param name="item">The file.</param>
+    /// <param name="cancellationToken">Abandons the download.</param>
+    /// <returns>Whether it was opened.</returns>
+    public async Task<bool> EditAsync(DirectoryPane pane, FileItem item, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(pane);
+        ArgumentNullException.ThrowIfNull(item);
+
+        if (item.IsDirectory || pane.Side is not RemoteFiles host)
+        {
+            return false;
+        }
+
+        try
+        {
+            await host.Edits.EditAsync(host.Into(pane.Path, item.Name), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception failed) when (failed is not OperationCanceledException)
+        {
+            Tell(pane, $"Could not open {item.Name}: {Sentence(failed)}", refresh: false);
+
+            return false;
+        }
+
+        Tell(pane, $"Opened {item.Name}; each save goes back to {host.Title}.", refresh: false);
+
+        return true;
+    }
+
     /// <summary>Renames the one entry selected, to a name asked for.</summary>
     public async Task RenameAsync(CancellationToken cancellationToken = default)
     {

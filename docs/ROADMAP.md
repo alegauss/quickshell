@@ -27,7 +27,6 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-- 📋 **QS185** (deps: QS60 ✅, QS126 ✅) **A remote file cannot be edited in a local editor, so changing a config is still a download, an edit and an upload** — It is why most people open a file browser at all, and the manual round trip is exactly what they want the client to do for them. → §QS185
 - 📋 **QS186** (deps: —) **A copy started from the browser shows nothing until it ends and cannot be stopped, so a large tree looks hung** — The queue under it reports each file's progress and can pause, cancel and retry, and none of that reaches the window. → §QS186
 - 📋 **QS188** (deps: —) **Nothing can be dragged out of the host's pane, so a file on the server reaches Explorer only through a copy** — Windows asks for a dragged file's data during the drop, and a server cannot always answer in that time, so it needs deferred rendering. → §QS188
 - 📋 **QS189** (deps: QS126 ✅) **A file dropped onto an SSH terminal can only be typed as its path, never sent to the directory the shell is in** — QS64 typed the path and left the modifier that transfers instead, which needs an SSH tab and the directory its shell reported. → §QS189
