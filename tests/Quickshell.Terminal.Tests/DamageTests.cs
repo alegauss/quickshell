@@ -382,6 +382,61 @@ public sealed class DamageTests
         Assert.Equal(4, emulator.Buffer.ScrollbackLines);
     }
 
+    /// <summary>
+    /// QS135: a depth lowered under a running session drops the oldest lines and nothing else —
+    /// the screen is what it was, every kept line has its number, and the depth holds after it as
+    /// output carries on. Raised again, it keeps what is there and makes room.
+    /// </summary>
+    [Fact]
+    public void ALoweredScrollbackDropsTheOldestLinesAndNothingElse()
+    {
+        Emulator emulator = Fed(Rows(200));
+        TerminalBuffer buffer = emulator.Buffer;
+        long top = buffer.TopLine;
+        string[] screen = Screen(buffer);
+
+        emulator.KeepScrollback(10);
+
+        Assert.Equal(top, buffer.TopLine);
+        Assert.Equal(screen, Screen(buffer));
+        Assert.Equal(10, buffer.ScrollbackLines);
+        Assert.Equal(24 + 10, buffer.Capacity);
+
+        // The newest of what was behind the screen is what stayed. Rows 0..199 were printed and the
+        // cursor sits on a blank row below the last, so the screen's top is row 177 and the line
+        // just above it is row 176.
+        Assert.StartsWith("row 176", Text(buffer, buffer.ScrollbackLines - 1));
+
+        emulator.Feed(Encoding.UTF8.GetBytes(Rows(50)));
+
+        Assert.Equal(10, buffer.ScrollbackLines);
+
+        emulator.KeepScrollback(1000);
+
+        Assert.Equal(10, buffer.ScrollbackLines);
+        Assert.Equal(24 + 1000, buffer.Capacity);
+
+        emulator.Feed(Encoding.UTF8.GetBytes(Rows(50)));
+
+        Assert.Equal(60, buffer.ScrollbackLines);
+    }
+
+    private static string[] Screen(TerminalBuffer buffer) =>
+        [.. Enumerable.Range(0, buffer.Rows).Select(row => Text(buffer, buffer.ScrollbackLines + row))];
+
+    /// <summary>One held line's text, counted from the oldest line the ring holds.</summary>
+    private static string Text(TerminalBuffer buffer, int held)
+    {
+        StringBuilder text = new();
+
+        foreach (Cell cell in buffer.Line(held))
+        {
+            text.Append(cell.Codepoint is 0 ? ' ' : char.ConvertFromUtf32(cell.Codepoint));
+        }
+
+        return text.ToString().TrimEnd();
+    }
+
     private static string Rows(int count) =>
         string.Join(string.Empty, Enumerable.Range(0, count).Select(row => $"row {row}\r\n"));
 

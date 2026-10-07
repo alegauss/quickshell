@@ -149,7 +149,7 @@
 - ✅ **QS194** **An install fails outright when a virus scanner has one of its just-copied files open for a moment** — Each rename and removal of the program folder is tried for five seconds, so a scanner reading a just-copied file no longer fails an install, and a longer hold is named.
 - ✅ **QS79 (parse, emulate and start, gated locally)** **A change that costs performance is caught by whoever happens to notice it** — run-perf-gate.cmd and release.cmd fail a build whose parse, emulate or warm start is worse than the baseline's own noise allows, unless a commit's trailer says so.
 - ✅ **QS86** **Input to photon is the first figure in the budget and the only one nothing has ever measured** — Input to photon is measured: 33 ms median at a prompt on the 60 Hz panel, and under load the flags hold 42 ms where an unbought chain takes 56 (design recorded in `benchmarks/results/photon-h.md`).
-- ✅ **QS135 (typeface and size, live)** **Three settings are read, written and kept faithfully, and nothing acts on them** — A font family or size changed in the settings file redraws every open pane at the new cell size and reflows its grid, without a restart.
+- ✅ **QS135** **Three settings are read, written and kept faithfully, and nothing acts on them** — A scrollback depth changed in the settings reaches every open pane in order with its output, dropping only the oldest lines when it shrinks.
 
 ## Block I — An error a user can act on
 

@@ -300,6 +300,21 @@ public sealed class TerminalLeaf : IAsyncDisposable
             _share.UseFont(settings.FontFamily, (float)settings.FontSize, settings.Ligatures);
         }
 
+        // And the depth of history, through the session where there is one, because the ring is
+        // its parser's; without one nothing is writing the model and it is told directly — the
+        // same arrangement a resize has.
+        if (settings.Scrollback >= 0)
+        {
+            if (_session is { } session)
+            {
+                session.Pipeline.KeepScrollback(settings.Scrollback);
+            }
+            else
+            {
+                Emulator.KeepScrollback(settings.Scrollback);
+            }
+        }
+
         if (Terminal.View is not { } view)
         {
             _damage.Set();

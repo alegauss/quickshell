@@ -1285,31 +1285,6 @@ zero, and the suite checks it on every run already.
 Falsified when the gate is disabled to land a change and the disabling is not itself a
 filed line.
 
-### §QS135 The settings that are still only stored
-
-QS74 built the file and its contract: a schema from the first release, forward-only
-migration with a backup, unknown keys preserved, and portable mode. What it could wire
-was the theme, because WPF's `ThemeMode` repaints a live window and so can be applied as
-a correction after the first paint.
-
-`fontFamily`, `fontSize` and `scrollback` are read, held and written back faithfully.
-Nothing consumes them. The pane that would is not attached to a session, and inventing a
-consumer to make the file look finished would have been the wrong order — a setting
-wired to a stub is harder to remove than one that was never wired.
-
-Storing them anyway was deliberate: a user editing a hand-editable file will set these
-before anything reads them, and a build that dropped what it could not use would lose
-the choice at the moment it was made. They are preserved by exactly the mechanism that
-preserves a future build's keys.
-
-What this owes: the typeface and size reaching the glyph rasteriser without a restart —
-they are a live change, not a start-up one — and the scrollback depth reaching the
-emulator's buffer, which has to decide what happens to lines already held when the depth
-shrinks.
-
-Falsified when a user changes the font in the settings file and the terminal does not
-change.
-
 ### §QS137 The idle figure a connected client owes
 
 QS76 measured what exists and the number is good: 0 ms of core time over 601 seconds, no

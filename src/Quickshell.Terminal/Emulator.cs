@@ -134,6 +134,13 @@ public sealed partial class Emulator : IAnsiHandler
         }
     }
 
+    /// <summary>
+    /// Holds this many lines of history from now on. The primary screen's alone: the alternate
+    /// screen keeps none, whatever the setting says, because a full-screen program's frames are not
+    /// history.
+    /// </summary>
+    public void KeepScrollback(int scrollback) => Screens.Primary.KeepScrollback(scrollback);
+
     /// <summary>Resizes both screens and puts the cursor back inside the new one.</summary>
     public void Resize(int columns, int rows)
     {

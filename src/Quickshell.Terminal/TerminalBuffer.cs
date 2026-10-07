@@ -383,6 +383,46 @@ public sealed class TerminalBuffer
         Bump();
     }
 
+    /// <summary>
+    /// Holds this many lines behind the screen from now on — the setting changed under a running
+    /// session (QS135).
+    ///
+    /// <para><b>Shrinking drops the oldest lines and nothing else.</b> The screen is the newest of
+    /// what is held and the ring keeps the newest, so what the user is looking at does not move,
+    /// and every line kept has the number it had: a viewport or a selection anchored to one still
+    /// finds it. The lines that fell off are gone, as they would have been had the depth been this
+    /// from the start. Growing keeps everything and makes room.</para>
+    /// </summary>
+    /// <param name="scrollback">Lines behind the screen. Zero keeps the screen alone.</param>
+    public void KeepScrollback(int scrollback)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(scrollback);
+
+        int capacity = Rows + scrollback;
+
+        if (capacity == Capacity)
+        {
+            return;
+        }
+
+        Cell[] cells = new Cell[capacity * Columns];
+        bool[] wrapped = new bool[capacity];
+        long[] stamps = new long[capacity];
+        Array.Fill(cells, Cell.Blank);
+
+        ResizeHeight(cells, wrapped, stamps, capacity);
+
+        _cells = cells;
+        _wrapped = wrapped;
+        _stamps = stamps;
+        _origin = 0;
+        Capacity = capacity;
+
+        // No row of the screen changed, so nothing is dirtied: what moved is how far back the
+        // history reaches, which the next reader learns from the generation.
+        Bump();
+    }
+
     /// <summary>Writes one cell of the visible screen.</summary>
     public void Write(int row, int column, Cell cell)
     {

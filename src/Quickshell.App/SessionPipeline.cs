@@ -255,6 +255,33 @@ public sealed class SessionPipeline : IAsyncDisposable
     }
 
     /// <summary>
+    /// The scrollback depth changed in the settings (QS135). Posted down the same queue as a resize
+    /// and for the same reason: the ring belongs to the parser stage, and swapping it under a write
+    /// would lose the line being written.
+    /// </summary>
+    public void KeepScrollback(int scrollback)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(scrollback);
+
+        Chunk depth = new(null, 0, _clock.Elapsed.Ticks, 0, 0, scrollback);
+
+        if (_queue.Writer.TryWrite(depth))
+        {
+            return;
+        }
+
+        try
+        {
+            _queue.Writer.WriteAsync(depth, _stopping.Token).AsTask().GetAwaiter().GetResult();
+        }
+        catch (Exception closed) when (closed is ChannelClosedException or OperationCanceledException)
+        {
+            // The session has ended and its model is no longer written: a pane left showing a
+            // finished session keeps the history it has, which a setting has no business cutting.
+        }
+    }
+
+    /// <summary>
     /// Sends what the user typed, by the shortest route in this codebase.
     ///
     /// <para><b>It shares nothing with the output path.</b> It does not enter the queue the reader
@@ -400,7 +427,11 @@ public sealed class SessionPipeline : IAsyncDisposable
 
                 while (_queue.Reader.TryRead(out Chunk chunk))
                 {
-                    if (chunk.IsResize)
+                    if (chunk.IsDepth)
+                    {
+                        _emulator.KeepScrollback(chunk.Depth);
+                    }
+                    else if (chunk.IsResize)
                     {
                         Reshape(chunk);
                     }
@@ -593,7 +624,8 @@ public sealed class SessionPipeline : IAsyncDisposable
     }
 
     /// <summary>
-    /// One item for the parser stage: a read's worth of host output, or a size the window changed to.
+    /// One item for the parser stage: a read's worth of host output, a size the window changed to,
+    /// or a depth the scrollback changed to.
     ///
     /// <para><b>A resize goes down the same queue as the bytes, and that is not tidiness.</b> The
     /// model is mutated by one stage and no other — which is what lets a renderer read it without a
@@ -601,9 +633,13 @@ public sealed class SessionPipeline : IAsyncDisposable
     /// resize applied out of turn would reflow text the host had not finished sending, and re-wrap
     /// the wrong content.</para>
     /// </summary>
-    private readonly record struct Chunk(byte[]? Buffer, int Length, long Stamp, int Columns, int Rows)
+    private readonly record struct Chunk(byte[]? Buffer, int Length, long Stamp, int Columns, int Rows,
+                                         int Depth = -1)
     {
         /// <summary>Whether this is a new size rather than output.</summary>
-        public bool IsResize => Buffer is null;
+        public bool IsResize => Buffer is null && Depth < 0;
+
+        /// <summary>Whether this is a new scrollback depth.</summary>
+        public bool IsDepth => Depth >= 0;
     }
 }

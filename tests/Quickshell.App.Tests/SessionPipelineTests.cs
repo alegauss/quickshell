@@ -69,6 +69,43 @@ public sealed class SessionPipelineTests
         Assert.Contains("row 499", Screen(emulator), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// QS135: a scrollback depth changed under a running session reaches the model in order with
+    /// the bytes around it — what came before it is cut to it, and what came after is held to it.
+    /// </summary>
+    [Fact]
+    public async Task AScrollbackDepthChangedMidSessionHoldsInOrderWithTheOutput()
+    {
+        PtyStub far = new();
+        Emulator emulator = new(80, 24, scrollback: 1000);
+        await using SessionPipeline pipeline = SessionPipeline.Start(far, emulator);
+
+        for (int read = 0; read < 300; read++)
+        {
+            far.Produce(Encoding.UTF8.GetBytes($"row {read}\r\n"));
+        }
+
+        pipeline.KeepScrollback(20);
+
+        for (int read = 300; read < 600; read++)
+        {
+            far.Produce(Encoding.UTF8.GetBytes($"row {read}\r\n"));
+        }
+
+        far.Finish();
+
+        await Finished(pipeline);
+
+        Assert.Equal(24 + 20, emulator.Buffer.Capacity);
+        Assert.Equal(20, emulator.Buffer.ScrollbackLines);
+        Assert.Contains("row 599", Screen(emulator), StringComparison.Ordinal);
+
+        // A session that has ended takes the setting without throwing and keeps what it holds.
+        pipeline.KeepScrollback(5);
+
+        Assert.Equal(20, emulator.Buffer.ScrollbackLines);
+    }
+
     // ---- The barrier ----
 
     /// <summary>
