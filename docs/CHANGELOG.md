@@ -79,6 +79,7 @@
 - ✅ **QS140** **The reply buffer exceeds the maximum its own constant states** — The reply buffer never passes MaximumReplyLength: an answer that would end past it is taken back whole, so only whole answers are held.
 - ✅ **QS153 (drawn into the grid)** **The text being composed is a box the input method draws over the grid, not underlined text inside it** — The text being composed is painted into the grid at the cursor, underlined in the session's font and colours, wrapping like text, with the cursor on its caret.
 - ✅ **QS155** **A program that asks for the mouse never gets one, and the wheel scrolls nothing at all** — A program with mouse tracking hears every button's press and release, drags and wheel notches; under a full-screen program without it the wheel sends arrow keys.
+- ✅ **QS156** **Grapheme segmentation runs at half its old rate, because every cluster now asks ICU where the boundary is** — Measured with ICU on: segmentation runs 270 MB/s on cat-log and 180 on ls-color-r, above the 181 and 83 it ran before QS154 (design superseded: QS143's pair rule had already shipped it).
 
 ## Block D — The tree a user organises work in
 
