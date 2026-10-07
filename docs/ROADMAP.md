@@ -26,8 +26,6 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS179** (deps: QS121 ✅) **A fleet has no saved group to broadcast to, so the same split is rebuilt by hand before every broadcast** — QS53 built the tab as its target and left the saved group, which needs a session store the running client can read, and that is QS121. → §QS179
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 - 📋 **QS184** (deps: QS126 ✅) **The remote pane opens at the account's home while the shell beside it has already said where it is** — OSC 7 already records the shell's directory and nothing reads it, so a user who cd'd into a deployment finds the browser somewhere else. → §QS184

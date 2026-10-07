@@ -896,14 +896,20 @@ public sealed class MainWindow : Window
 
     /// <summary>Splits the pane that has the keyboard, and gives the new one a session.</summary>
     /// <returns>Whether a pane was made, which is false at <see cref="MaximumPanes"/>.</returns>
-    public bool SplitPane(Divide how)
+    /// <param name="how">Which way.</param>
+    /// <param name="host">What the new pane is connected to, or null for the tab's own host.</param>
+    /// <param name="connect">
+    /// Who gives the new pane its session, or null for <see cref="Connects"/> — which a group's pane
+    /// is not given, its session being a saved one (QS179).
+    /// </param>
+    public bool SplitPane(Divide how, string? host = null, Action<TerminalLeaf>? connect = null)
     {
         if (Current is { } full && full.Layout.Count >= MaximumPanes)
         {
             return false;
         }
 
-        if (Current?.Split(how) is not { } made)
+        if (Current?.Split(how, host) is not { } made)
         {
             return false;
         }
@@ -912,7 +918,7 @@ public sealed class MainWindow : Window
         Arrange();
         Retitle();
 
-        Connects?.Invoke(made);
+        (connect ?? Connects)?.Invoke(made);
 
         return true;
     }

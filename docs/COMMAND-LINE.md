@@ -22,7 +22,7 @@ help.
 | `--tabs` | `<n>` | Opens that many tabs, up to sixteen, as pressing Ctrl+Shift+T that many times would. |
 | `--panes` | `<n>` | Splits the first tab that many ways, up to sixteen, side by side. |
 | `--broadcast` | | Types into every pane of the first tab at once, after the split. |
-| `--session` | `<path>` | Opens a saved session in a tab of its own, by its path in the session store. |
+| `--session` | `<path>` | Opens a saved session in a tab of its own, by its path in the session store. A folder's path opens every session in it as panes of one tab, typing into all of them. |
 | `--trace` | | With `--session`: records that session's negotiation and channels in a log of its own, for this run only. |
 | `--import` | `[file]` | Previews importing MobaXterm's sessions, from the file named or from where MobaXterm keeps them; nothing is written until you agree. |
 | `--browse` | | Opens the file browser. |

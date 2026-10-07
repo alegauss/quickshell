@@ -217,7 +217,12 @@ public sealed class TerminalTab : IAsyncDisposable
     /// the mouse to finish a gesture they made with the keyboard.</para>
     /// </summary>
     /// <returns>The new pane, with no session behind it yet.</returns>
-    public TerminalLeaf? Split(Divide how)
+    /// <param name="how">Which way.</param>
+    /// <param name="host">
+    /// What the new pane is connected to, or null for this tab's own host — which a group's panes
+    /// are not, each being its own saved session (QS179).
+    /// </param>
+    public TerminalLeaf? Split(Divide how, string? host = null)
     {
         int made = Layout.Split(_focused, how);
 
@@ -229,7 +234,7 @@ public sealed class TerminalTab : IAsyncDisposable
         // Before the new pane exists, so it is never briefly a pane receiving typing nobody chose.
         StopBroadcasting();
 
-        TerminalLeaf leaf = TerminalLeaf.Open(_settings, Host, _share);
+        TerminalLeaf leaf = TerminalLeaf.Open(_settings, host ?? Host, _share);
 
         _leaves[made] = leaf;
         _focused = made;

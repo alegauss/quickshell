@@ -329,10 +329,12 @@ public static class Entry
                                       bool trace)
     {
         ResolvedSession? session;
+        SessionTree tree;
 
         try
         {
-            session = SessionTree.ReadFrom(window.SessionsFile ?? Locations.Current.Sessions).Session(path);
+            tree = SessionTree.ReadFrom(window.SessionsFile ?? Locations.Current.Sessions);
+            session = tree.Session(path);
         }
         catch (SessionStoreException unreadable)
         {
@@ -342,9 +344,32 @@ public static class Entry
             return;
         }
 
+        Quickshell.Transport.TrustOnFirstUse trusting = new(Quickshell.Transport.KnownHosts.ReadFrom(), window.AskHostKey);
+
+        // A folder is a group: every session in it as a pane of one tab, typing into all of them
+        // (QS179).
+        if (session is null && tree.Group(path) is { Count: > 0 } members)
+        {
+            (_, int leftOut) = SessionGroup.Open(window, settings, share, members, member =>
+                async (emulator, damage, columns, rows, token) =>
+                    await RemoteShell.OpenAsync(member, trusting, emulator, damage, columns, rows, token,
+                                                trace ? Traced(member.Host) : Logged.Value)
+                                     .ConfigureAwait(false));
+
+            if (leftOut > 0)
+            {
+                MessageBox.Show(window,
+                                $"{path} holds {members.Count} sessions and a tab holds {MainWindow.MaximumPanes}, "
+                                + $"so the first {MainWindow.MaximumPanes} are open and {leftOut} are not.",
+                                "Sessions", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+
+            return;
+        }
+
         if (session is null)
         {
-            MessageBox.Show(window, $"There is no saved session called {path}.", "Sessions",
+            MessageBox.Show(window, $"There is no saved session or folder of sessions called {path}.", "Sessions",
                             MessageBoxButton.OK, MessageBoxImage.Information);
 
             return;
@@ -356,12 +381,10 @@ public static class Entry
         window.Add(tab);
         window.Sessions.Open(session.Host, another: true);
 
-        Quickshell.Transport.TrustOnFirstUse trust = new(Quickshell.Transport.KnownHosts.ReadFrom(), window.AskHostKey);
-
         Quickshell.Transport.SessionLog log = trace ? Traced(session.Host) : Logged.Value;
 
         _ = tab.Focused.ConnectAsync(async (emulator, damage, columns, rows, token) =>
-            await RemoteShell.OpenAsync(session, trust, emulator, damage, columns, rows, token, log)
+            await RemoteShell.OpenAsync(session, trusting, emulator, damage, columns, rows, token, log)
                              .ConfigureAwait(false));
     }
 

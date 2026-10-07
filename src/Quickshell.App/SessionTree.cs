@@ -264,6 +264,23 @@ public sealed class SessionTree
     }
 
     /// <summary>
+    /// Every session in a folder and the folders inside it, in the tree's own order — a fleet chosen
+    /// once and kept (QS179). Empty where the path is a session, or nothing, or a folder with no
+    /// session in it.
+    /// </summary>
+    public IReadOnlyList<ResolvedSession> Group(string path)
+    {
+        if (Find(path) is not { Host: null } || string.IsNullOrWhiteSpace(path))
+        {
+            return [];
+        }
+
+        string folder = string.Join('/', Segments(path)) + "/";
+
+        return [.. Sessions().Where(session => session.Path.StartsWith(folder, StringComparison.OrdinalIgnoreCase))];
+    }
+
+    /// <summary>
     /// The node at a path, folder or session, or null where there is none. The empty path is the
     /// root.
     /// </summary>

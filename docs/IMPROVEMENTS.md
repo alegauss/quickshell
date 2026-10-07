@@ -534,26 +534,6 @@ Falsified when the guest suite runs ten times with no pass reading 0.0 for Direc
 
 ## Block D — The tree a user organises work in
 
-### §QS179 A fleet chosen once
-
-QS53's design names three targets for broadcast typing: the panes in this tab, a
-selection the user made, or a saved group. The tab shipped first because it needs
-nothing but the panes on screen. A saved group needs the one thing this client cannot
-yet do, which is read the session store from the running program, and that is QS121.
-
-A group is a named set of saved sessions. Opening it opens each as a pane in one new tab
-and turns broadcasting on for that tab, so the target is still the panes in front of the
-user and the outline QS53 draws is still what says which panes receive. What the group
-adds is that the fleet is chosen once and kept, rather than re-split by hand every
-morning.
-
-It never broadcasts across tabs and never to a session that is not on screen: the whole
-argument of QS53 is that a keystroke reaches only what is visibly marked, and a group
-does not change that.
-
-Falsified when opening a group leaves any of its sessions out of the tab, or broadcasts
-to a pane that is not one of them.
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ### §QS184 A pane that goes where the shell is
