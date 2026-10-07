@@ -94,9 +94,46 @@ public sealed class FileBrowser : Window
         Loaded += (_, _) =>
         {
             _ = Local.Start();
-            _ = Remote?.Start();
+            _ = Remote?.Start(ShellIsAt?.Invoke());
+
+            if (Remote is not null && ShellIsAt is not null)
+            {
+                Following();
+            }
         };
     }
+
+    /// <summary>
+    /// Where the tab's shell last said it is, on the host the remote side lists — null where it has
+    /// said nothing, or named another machine (QS184). Read when the browser opens and while it is
+    /// open, so the remote pane starts where the shell is and goes where it goes.
+    /// </summary>
+    public Func<string?>? ShellIsAt { get; init; }
+
+    /// <summary>How often the shell's directory is looked at while the browser is open.</summary>
+    private static readonly TimeSpan Glance = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
+    /// Moves the remote pane where the shell goes, for as long as the browser is open.
+    ///
+    /// <para><b>Looked at, not told.</b> The report is one string the emulator already keeps, and
+    /// reading it twice a second costs nothing; an event would have to cross from the session's
+    /// thread to this window's to say the same thing.</para>
+    /// </summary>
+    private void Following()
+    {
+        System.Windows.Threading.DispatcherTimer glance = new(System.Windows.Threading.DispatcherPriority.Background,
+                                                               Dispatcher) { Interval = Glance };
+
+        glance.Tick += (_, _) => FollowShell();
+        Closed += (_, _) => glance.Stop();
+
+        glance.Start();
+    }
+
+    /// <summary>Moves the remote pane to where the shell now is, unless the user has moved it since.</summary>
+    /// <returns>The navigation, or a finished task where the pane stays.</returns>
+    public Task FollowShell() => Remote?.Follow(ShellIsAt?.Invoke()) ?? Task.CompletedTask;
 
     /// <summary>This machine's half.</summary>
     public DirectoryPane Local { get; }

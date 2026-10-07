@@ -2375,9 +2375,18 @@ public sealed class MainWindow : Window
             return open;
         }
 
-        IFileSide? remote = Current is { } tab ? RemoteFiles?.Invoke(tab) : null;
+        TerminalTab? current = Current;
+        IFileSide? remote = current is not null ? RemoteFiles?.Invoke(current) : null;
 
-        FileBrowser browser = new(new LocalFiles(), remote) { ThemeMode = ThemeMode };
+        // The pane with the keyboard is the shell somebody was just typing into, and it is read
+        // each time rather than once, so a focus moved since still answers for the pane on screen.
+        FileBrowser browser = new(new LocalFiles(), remote)
+        {
+            ThemeMode = ThemeMode,
+            ShellIsAt = current is null
+                ? null
+                : () => ShellDirectory.On(current.Focused.Emulator.WorkingDirectory, current.Focused.Host),
+        };
 
         // Owned, so it closes with this window and stays above it — which WPF allows only of a
         // window that has been shown, and the client's always has by the time anybody can ask.

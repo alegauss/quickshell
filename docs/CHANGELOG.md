@@ -107,6 +107,7 @@
 - ✅ **QS64** **A file can only be transferred through the browser, so dragging one from Explorer does nothing** — Files dragged from Explorer onto a terminal are typed as their paths, quoted for that pane's shell, and onto a browser pane are copied into the directory it shows.
 - ✅ **QS122** **The shared-session trick rests on six SSH.NET members reached by name, and only a live server proves it holds** — Every SSH.NET member reached by name is checked by a test with no server, and the library is pinned to one version (design recorded in `src/Quickshell.Transport/LibraryShape.cs`).
 - ✅ **QS123** **A symbolic link on the server cannot be copied, because nothing here can read where it points** — Remote links are read with READLINK and recreated relative as they were (design recorded in `src/Quickshell.Transport/TransferPlan.cs`).
+- ✅ **QS184** **The remote pane opens at the account's home while the shell beside it has already said where it is** — The remote pane opens at the directory the shell reported on the session's own host and follows later reports until the user navigates it; QS219 brings the pane to SSH tabs.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

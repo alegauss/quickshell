@@ -510,32 +510,6 @@ Falsified when the guest suite runs ten times with no pass reading 0.0 for Direc
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-### §QS184 A pane that goes where the shell is
-
-Carried out of QS60's design: the remote pane follows the session's working directory
-wherever the shell reports one. The emulator already records it —
-`Emulator.WorkingDirectory` is what OSC 7 writes — so the reading exists and nothing
-uses it.
-
-Following means two things and only two. The browser opens where the shell is rather
-than at the account's home, because a user who has `cd`'d into a deployment directory
-and opens the browser is looking for that directory. And while the browser is open, a
-change the shell reports moves the pane — unless the user has navigated the pane
-themselves since, because a pane that jumped away from where somebody was reading would
-be the browser taking the directory out of their hands.
-
-OSC 7 carries a URL, `file://host/path`, and the host in it is the shell's idea of its
-own name, which is not always the name the session connected to. A path is followed only
-when the host matches the session's or is empty; a shell reporting another machine's
-directory, which is what a nested `ssh` does, is ignored rather than listed on the wrong
-server.
-
-A shell that reports nothing — most do not without a line in their profile — leaves the
-pane at home, and the pane does not guess.
-
-Falsified when the browser opens at home while the shell has reported a different
-directory of the same host.
-
 ### §QS185 A save that lands on the server
 
 Carried out of QS60's design, which argued for it: editing a configuration file on a

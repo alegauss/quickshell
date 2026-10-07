@@ -166,8 +166,35 @@ public sealed class DirectoryPane : INotifyPropertyChanged
         }
     }
 
-    /// <summary>The pane's first directory: the side's home.</summary>
-    public Task Start() => Load(Side.Home);
+    /// <summary>
+    /// Whether the user has moved this pane themselves, after which <see cref="Follow"/> leaves it
+    /// where they put it.
+    /// </summary>
+    public bool Steered { get; private set; }
+
+    /// <summary>The pane's first directory: where the shell is, where it has said, or the side's home.</summary>
+    /// <param name="at">The directory the session's shell reported, or null where it reported none.</param>
+    public Task Start(string? at = null) => Load(at is { Length: > 0 } ? at : Side.Home);
+
+    /// <summary>
+    /// Goes where the shell has just said it is — unless the user has navigated this pane since it
+    /// opened (QS184).
+    ///
+    /// <para><b>A pane that jumped away from where somebody was reading would be the browser taking
+    /// the directory out of their hands</b>, so the first move of their own ends the following for
+    /// as long as the pane is open. Not remembered for <see cref="Back"/> either: the history is the
+    /// user's, and this was not one of their moves.</para>
+    /// </summary>
+    /// <param name="at">The directory reported, or null where there is none to follow.</param>
+    public Task Follow(string? at)
+    {
+        if (Steered || at is not { Length: > 0 } || string.Equals(at, Path, StringComparison.Ordinal))
+        {
+            return Task.CompletedTask;
+        }
+
+        return Load(at);
+    }
 
     /// <summary>
     /// Goes to a directory, remembering where it was for <see cref="Back"/>.
@@ -175,6 +202,8 @@ public sealed class DirectoryPane : INotifyPropertyChanged
     public Task Go(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        Steered = true;
 
         if (Path.Length > 0 && !string.Equals(path, Path, StringComparison.Ordinal))
         {
@@ -204,6 +233,7 @@ public sealed class DirectoryPane : INotifyPropertyChanged
             return Task.CompletedTask;
         }
 
+        Steered = true;
         _forward.Push(Path);
 
         return Load(was);
@@ -217,6 +247,7 @@ public sealed class DirectoryPane : INotifyPropertyChanged
             return Task.CompletedTask;
         }
 
+        Steered = true;
         _back.Push(Path);
 
         return Load(next);
