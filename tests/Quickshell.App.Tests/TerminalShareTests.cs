@@ -262,6 +262,31 @@ public sealed class TerminalShareTests
         Assert.Equal(1, told);
     }
 
+    /// <summary>
+    /// QS150's falsification: a diagnostic bundle names the adapter the client is drawing on, and
+    /// says what each pane did with it — not what a fresh probe of the machine would choose.
+    /// </summary>
+    [Fact]
+    public void ABundleDescribesTheDeviceThePanesAreDrawingWith()
+    {
+        (string? said, string adapter, long drawn) = OnPanes(2, (share, _, views) =>
+        {
+            share.DrawOnce();
+
+            return (DiagnosticBundle.Drawing(views), share.Device!.Adapter.ToString(), views[1].Draws);
+        });
+
+        Assert.NotNull(said);
+        Assert.StartsWith(adapter, said, StringComparison.Ordinal);
+        Assert.Contains("recovered from 0 device losses", said, StringComparison.Ordinal);
+        Assert.Contains("pane 1:", said, StringComparison.Ordinal);
+        Assert.Contains($"pane 2:", said, StringComparison.Ordinal);
+        Assert.Contains($"{drawn} drawn", said, StringComparison.Ordinal);
+
+        // And nothing drawing is nothing to describe, which is where the probe answers instead.
+        Assert.Null(DiagnosticBundle.Drawing([]));
+    }
+
     /// <summary>Builds a window with two tabs and hands the first one and the window to the work.</summary>
     private static T OnTwoTabs<T>(Func<TerminalShare, TerminalTab, MainWindow, T> work)
     {

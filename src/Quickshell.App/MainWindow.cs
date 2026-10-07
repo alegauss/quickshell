@@ -955,8 +955,17 @@ public sealed class MainWindow : Window
     /// </summary>
     public string WriteDiagnostics()
     {
+        // The device every pane is drawing with, and what each did with it (QS150). A probe answers
+        // only where nothing is drawing yet — and says that is what it is.
+        TerminalView[] drawing = [.. _open.SelectMany(tab => tab.Leaves)
+                                          .Select(leaf => leaf.Terminal.View)
+                                          .OfType<TerminalView>()];
+
+        string? adapter = DiagnosticBundle.Drawing(drawing);
+
         string path = DiagnosticBundle.WriteTo(DiagnosticsFolder ?? DiagnosticBundle.Folder(),
-                                               DiagnosticSources.Default(), DateTimeOffset.UtcNow);
+                                               DiagnosticSources.Default(), DateTimeOffset.UtcNow,
+                                               adapter);
 
         (Wrote ?? Told)(path);
 

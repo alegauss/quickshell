@@ -41,8 +41,9 @@ public sealed record DiagnosticSources(string Config, string Logs, string Crashe
 /// parsed is named and left out entirely, which is the safe direction to fail in: a redaction that
 /// silently did not apply is worse than a section that is missing.</para>
 ///
-/// <para><b>It names the graphics adapter, which a crash report cannot.</b> This runs while the
-/// client is healthy, so it can walk the adapter chain and ask — where the crash path has to write
+/// <para><b>It names the graphics device the window is drawing with</b>, and what every pane did
+/// with it (QS150); only where nothing is drawing yet does it walk the adapter chain and ask, and
+/// it then says the answer is a probe's. This runs while the client is healthy, so it can ask — where the crash path has to write
 /// what it already knows and nothing more.</para>
 /// </summary>
 public static class DiagnosticBundle
@@ -155,12 +156,62 @@ public static class DiagnosticBundle
         return bundle.ToString();
     }
 
+    /// <summary>
+    /// The device the client is drawing with and what each pane did with it, or null where nothing
+    /// is drawing yet (QS150).
+    ///
+    /// <para><b>The live device and not a probe of one</b>, because "the terminal is black" is
+    /// answered by what the window did: frames owed and drawn, presents DXGI took, presents that
+    /// went nowhere because something covered the window. A probe knows none of that, and it
+    /// chooses again — so a client that fell back to WARP after losing its device would be reported
+    /// on the adapter it is not using.</para>
+    ///
+    /// <para>Counters only. The swapchain's statistics are a DXGI call, and DXGI's are the render
+    /// thread's to make; a bundle asked for from the keyboard reads what is already counted.</para>
+    /// </summary>
+    /// <param name="views">Every pane's view that has opened.</param>
+    public static string? Drawing(IEnumerable<TerminalView> views)
+    {
+        ArgumentNullException.ThrowIfNull(views);
+
+        TerminalView[] drawing = [.. views];
+
+        if (drawing.Length == 0)
+        {
+            return null;
+        }
+
+        GraphicsDevice device = drawing[0].Device;
+        StringBuilder said = new();
+
+        said.Append(device.Adapter)
+            .Append(CultureInfo.InvariantCulture, $"; recovered from {device.Recoveries} device losses");
+
+        for (int pane = 0; pane < drawing.Length; pane++)
+        {
+            TerminalView view = drawing[pane];
+            PresentSurface surface = view.Surface;
+
+            said.AppendLine()
+                .Append(CultureInfo.InvariantCulture,
+                        $"  pane {pane + 1}: {view.Columns}x{view.Rows} cells on {surface.Width}x{surface.Height} px, "
+                        + $"{(view.Showing ? "showing" : "behind another tab")}; "
+                        + $"{view.Frames} frames owed, {view.Draws} drawn, {view.Skipped} wake-ups with nothing to draw; "
+                        + $"{surface.Presented} presents taken, {surface.Occlusions} went nowhere because the window was covered");
+        }
+
+        return said.ToString();
+    }
+
     /// <summary>What the adapter chain would choose, asked without opening a device.</summary>
     private static string Graphics()
     {
         try
         {
-            return AdapterChain.Choose(new DxgiAdapterProbe(), nint.Zero).ToString();
+            // Said to be a probe, because it is one: no pane was drawing when the bundle was asked
+            // for, and what the chain would choose is not what any window did.
+            return "no pane is drawing yet; an adapter probe would choose "
+                   + AdapterChain.Choose(new DxgiAdapterProbe(), nint.Zero);
         }
         catch (Exception failure)
         {

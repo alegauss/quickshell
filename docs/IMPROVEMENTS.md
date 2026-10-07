@@ -1521,30 +1521,6 @@ somebody starts by accident.
 Falsified when a user who has just hit a terminal defect has no way to record the
 session that shows it.
 
-### §QS150 The device that is now in the room
-
-`DiagnosticBundle` answers the adapter question by opening a fresh `DxgiAdapterProbe`
-and asking what the chain would choose. That was the only honest answer available when
-it was written: nothing in the composing layer held a device, so the bundle described a
-hypothetical one.
-
-Since QS116 the client holds a real one, and it has been drawing. The difference matters
-for the report this feature exists to produce. "The terminal is black" is answered by
-frames drawn, presents that reached the glass, presents DXGI answered
-`DXGI_STATUS_OCCLUDED` to, and how deep the present queue got — none of which a probe
-can know, and all of which `PresentSurface` and `RedrawGate` already count. A probe can
-also disagree with the running device outright: it chooses again, and a client that fell
-back to WARP after a device was lost would be reported on the adapter it did not end up
-using.
-
-So the bundle should take the live view where there is one and keep the probe for where
-there is not — a client that crashed before its pane was laid out, which is a state
-worth naming rather than papering over.
-
-Nothing here is new work in the render layer: the counters exist and are public.
-
-Falsified by a bundle naming an adapter the client is not drawing on.
-
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ### §QS81 The document the non-goals were written for
