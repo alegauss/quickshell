@@ -1091,26 +1091,6 @@ sessions afterwards than it did before plus what was imported.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS193 The archive built by the pipeline that gates the tree
-
-Found while shipping QS77. `release.cmd` publishes the client self-contained and
-ReadyToRun, which is the build QS75 measured and the one people download. CI never runs
-it: it builds the solution framework-dependent and runs the suite. A publish fails for
-reasons a build never meets - a runtime pack that will not restore, a ReadyToRun compile
-error, the SDK refusing a property for WPF as it refused trimming with NETSDK1168 - and
-each of those would pass CI and surface on the day of a release.
-
-The move is one step in the workflow that already gates the tree: `release.cmd
--Unsigned` on the Windows runner after the suite, with the archive kept as a workflow
-artifact for a few days. The archive becomes something the pipeline proves on every
-push, and a reviewer can take exactly what a change would ship without building it.
-
-It stays unsigned there. The signing certificate is the maintainer's, and whether a
-pipeline may hold it is a question QS77's remainder settles; until then the archive is
-named for what it is, which is the guard `release.cmd` already has.
-
-Falsified when a change that breaks `release.cmd -Unsigned` passes CI.
-
 ### §QS195 Plumbing written once per test assembly
 
 Found shipping QS138, whose fault was one mistake in two copies of one helper: the SCP

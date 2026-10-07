@@ -42,3 +42,22 @@ jobs:
         env:
           QUICKSHELL_NO_FIXTURE: "1"
         run: .\run-tests.cmd Release
+
+      # What a release ships, built the way a release builds it (QS193): self-contained, ReadyToRun,
+      # zipped. A publish fails for reasons a build never meets - a runtime pack that will not
+      # restore, a ReadyToRun compile error, a property the SDK refuses for WPF - and this is where
+      # those surface, on the push that caused them rather than on the day of a release.
+      #
+      # Unsigned, because the certificate is the maintainer's and the archive's name says so. Ungated,
+      # because the performance gate means something only on the desk that took its baseline, which a
+      # hosted runner never is - the header above says the same.
+      - name: Release archive (unsigned)
+        run: .\release.cmd -Unsigned -Ungated
+
+      - name: Keep the archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: quickshell-unsigned
+          path: artifacts/release/
+          retention-days: 5
+          if-no-files-found: error

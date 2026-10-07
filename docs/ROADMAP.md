@@ -64,7 +64,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS193** (deps: —) **The release archive is built only by hand, so a change that breaks the self-contained publish passes CI** — CI builds the framework-dependent tree and runs the suite, while ReadyToRun, the runtime packs and the publish itself are exercised only by release.cmd. → §QS193
 - 📋 **QS195** (deps: —) **Each test class carries its own copy of the fixture plumbing, so a fault in one copy is a fault in all of them** — QS138 was one fault in two copies of one helper, and the STA runner, the fixture's trust and skip, and the repository walk are each copied sixteen to twenty-one times. → §QS195
 - 📋 **QS222** (deps: —) **A desk that cannot be observed runs no UI case, and the run counts it as a pass** — CasesRun passes with nothing run where it should skip with the desk's reason, so the QS136 table shows a green that covered nothing. → §QS222
 - 📋 **QS224** (deps: —) **A guest run asked to carry HEAD alone carries the working tree's uncommitted edits to tracked files** — Send-Tree takes HEAD's file list and reads each file from disk, so a before-and-after measured with it compares the change with itself. → §QS224
