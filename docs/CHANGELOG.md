@@ -175,6 +175,7 @@
 - ✅ **QS86** **Input to photon is the first figure in the budget and the only one nothing has ever measured** — Input to photon is measured: 33 ms median at a prompt on the 60 Hz panel, and under load the flags hold 42 ms where an unbought chain takes 56 (design recorded in `benchmarks/results/photon-h.md`).
 - ✅ **QS135** **Three settings are read, written and kept faithfully, and nothing acts on them** — A scrollback depth changed in the settings reaches every open pane in order with its output, dropping only the oldest lines when it shrinks.
 - ✅ **QS191** **The graphics device and the shell both wait for the window, so a start runs three slow things one after another** — The device and the first tab's shell now start with the process; in the guest a start reached its prompt at 435 ms against 609 and 634.
+- ✅ **QS192** **A portable copy that installs itself leaves its saved sessions and settings behind in the copy it came from** — Installing from a portable copy copies its settings and saved sessions into a profile with none, leaves one with its own untouched, and says which.
 
 ## Block I — An error a user can act on
 

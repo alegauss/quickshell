@@ -878,28 +878,6 @@ title bar first. That visible change is this line's decision.
 Falsified when the theme, moved after the first frame, does not make `interactive`
 measurably earlier in the guest across two runs each way.
 
-### §QS192 Bringing a portable copy's sessions into the installed one
-
-Found while shipping QS77. Installing from a portable copy copies its program files and
-deliberately leaves the marker and `data\` behind, so the copy it came from keeps
-working. That is right for the copy and wrong for the person: the natural path through
-this client is to unzip it, try it, import the MobaXterm sessions, and install it once
-it has earned that. The installed copy then starts in `%AppData%\quickshell` with no
-sessions and no settings, and says nothing about where they went.
-
-The move is one copy, once. When the copy being installed is portable and the installed
-copy's settings folder does not exist yet, the portable `data\` is copied into it: the
-settings, the saved sessions and the window placements. Never the logs, the crash
-reports or the recordings, which describe the other copy.
-
-Where the installed copy's folder already exists, nothing is copied and nothing is
-merged. Two sets of sessions are a decision a person makes, and the finished install's
-sentence says where the portable ones are instead. Either way that sentence says which
-happened, so somebody who expected their sessions knows whether to look for them.
-
-Falsified when a portable copy holding saved sessions installs into a profile with no
-settings folder, and the installed copy starts without them.
-
 ### §QS196 A frame, timed on both sides
 
 Found building QS79's gate. Figure 3 of the budget is steady-state frame cost: one

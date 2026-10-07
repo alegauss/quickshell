@@ -103,9 +103,10 @@ public static class Setup
 
         try
         {
-            long bytes = await Task.Run(() => target.Install(AppContext.BaseDirectory, Version)).ConfigureAwait(true);
+            (long bytes, string carried) = await Task.Run(() => (target.Install(AppContext.BaseDirectory, Version),
+                                                                  Carry(target))).ConfigureAwait(true);
 
-            said = Installed(target, bytes);
+            said = Installed(target, bytes, carried);
             image = MessageBoxImage.Information;
         }
         catch (Exception failure) when (failure is SetupException or IOException
@@ -126,10 +127,19 @@ public static class Setup
     {
         long bytes = target.Install(AppContext.BaseDirectory, Version);
 
-        Tell(quiet, Installed(target, bytes), MessageBoxImage.Information);
+        Tell(quiet, Installed(target, bytes, Carry(target)), MessageBoxImage.Information);
 
         return 0;
     }
+
+    /// <summary>
+    /// A portable copy's setup, brought into the installed copy's own folder where it has none
+    /// (QS192); nothing from an installed copy, whose folder is already the installed one's.
+    /// </summary>
+    private static string Carry(Installation target) =>
+        Locations.Current.Portable
+            ? PortableData.Carry(Locations.Current.Root, Locations.Discover(target.Folder).Root)
+            : string.Empty;
 
     /// <summary>
     /// Uninstalls, and only then asks about the settings — so a refusal is said before a question
@@ -171,11 +181,13 @@ public static class Setup
     }
 
     /// <summary>What a finished install says.</summary>
-    private static string Installed(Installation target, long bytes)
+    private static string Installed(Installation target, long bytes, string carried)
     {
         string whom = target.Everyone ? "for every user of this computer" : "for you";
         string portable = Locations.Current.Portable
-            ? "\n\nThe copy you ran it from is unchanged and keeps its own settings in its data folder."
+            ? "\n\n" + (carried.Length > 0
+                ? carried
+                : "The copy you ran it from is unchanged and keeps its own settings in its data folder.")
             : string.Empty;
 
         return $"quickshell {Version} is installed {whom}, in {target.Folder} ({bytes / (1024 * 1024)} MB), "
