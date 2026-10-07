@@ -241,6 +241,14 @@ if (-not $capture.Ok) {
     Refuse "the client ran but the screen could not be photographed: $($capture.Output)" 'captureScreen needs the guest login, which is what -Guest supplies.'
 }
 
+# QS182: a picture of nothing is refused. A guest resumed from suspension has handed back a capture
+# whose every pixel was black - a display gone dark, or a session locked while it slept - and this
+# script reported it as the client's picture. One colour from edge to edge is not a desk anybody
+# drew on, and filed as evidence it is worse than no file.
+if (Test-OneColour -Path $shot) {
+    Refuse "the capture is one colour from edge to edge, so the guest's desk drew nothing: $shot" 'Unlock the guest at its console - a desk resumed from suspension is often locked or dark - and run this again.'
+}
+
 Write-Host ''
 Write-Host "run-app-vm: $shot" -ForegroundColor Green
 if ($Keep) { Write-Host '            the client is still running on the guest.' }

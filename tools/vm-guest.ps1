@@ -132,11 +132,129 @@ function Invoke-VmRun {
     }
     foreach ($argument in $Arguments) { $null = $argv.Add($argument) }
 
-    $output = & $script:VmRun @argv 2>&1
+    # QS182: waited on by vmrun's own exit and never by the end of its output. `vmrun start ... gui`
+    # starts the Workstation window, and that window inherits whatever vmrun's output was written
+    # into; read through `&`, PowerShell waits for the end of that pipe, which comes when the window
+    # closes - so a resume that took seconds held the script for as long as the console was open.
+    # The output is read as it arrives, and whatever an inheriting child keeps open is left to it.
+    $said = New-Object System.Text.StringBuilder
+    $code = [QuickshellVmRun]::Run($script:VmRun, (($argv | ForEach-Object { ConvertTo-Argument $_ }) -join ' '), $said)
+
     return [pscustomobject]@{
-        ExitCode = $LASTEXITCODE
-        Output   = ($output | Out-String).Trim()
-        Ok       = ($LASTEXITCODE -eq 0)
+        ExitCode = $code
+        Output   = $said.ToString().Trim()
+        Ok       = ($code -eq 0)
+    }
+}
+
+# The reading half of Invoke-VmRun, compiled once: the output handlers are .NET events on the threads
+# that deliver them, so no PowerShell pipeline has to be idle for a line to be heard.
+if (-not ('QuickshellVmRun' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System.Diagnostics;
+using System.Text;
+using System.Threading;
+
+public static class QuickshellVmRun
+{
+    public static int Run(string file, string arguments, StringBuilder said)
+    {
+        ProcessStartInfo start = new ProcessStartInfo(file, arguments)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        using (Process process = new Process { StartInfo = start })
+        {
+            DataReceivedEventHandler heard = (sender, line) =>
+            {
+                if (line.Data != null) { lock (said) { said.AppendLine(line.Data); } }
+            };
+
+            process.OutputDataReceived += heard;
+            process.ErrorDataReceived += heard;
+
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            // With a timeout this returns at the process's own exit; without one it would also wait
+            // for the redirected streams to end, which a child holding them never lets happen.
+            while (!process.WaitForExit(250)) { }
+
+            // A moment for the last lines written to be delivered, and no longer.
+            Thread.Sleep(200);
+
+            return process.ExitCode;
+        }
+    }
+}
+'@
+}
+
+function ConvertTo-Argument {
+    <#
+      One argument as the Windows command line spells it, for a process started with an arguments
+      string: Windows PowerShell has no argument list to hand over, and a path with a space or a
+      password with a quote in it would otherwise arrive as two arguments or as something else.
+    #>
+    param([AllowEmptyString()] [string] $Value)
+
+    if ($Value.Length -gt 0 -and $Value -notmatch '[\s"]') { return $Value }
+
+    $quoted = New-Object System.Text.StringBuilder
+    $null = $quoted.Append('"')
+    $slashes = 0
+
+    foreach ($character in $Value.ToCharArray()) {
+        if ($character -eq '\') { $slashes++; continue }
+
+        if ($character -eq '"') {
+            $null = $quoted.Append('\', $slashes * 2 + 1)
+        }
+        elseif ($slashes -gt 0) {
+            $null = $quoted.Append('\', $slashes)
+        }
+
+        $slashes = 0
+        $null = $quoted.Append($character)
+    }
+
+    $null = $quoted.Append('\', $slashes * 2)
+    $null = $quoted.Append('"')
+
+    return $quoted.ToString()
+}
+
+function Test-OneColour {
+    <#
+      Whether a picture is a single colour from edge to edge (QS182), sampled on a grid fine enough to
+      land in any window a desk could hold. A capture of a desk that drew nothing is a rectangle of
+      one colour, and the scripts that bring pictures back refuse it rather than report it.
+    #>
+    param([Parameter(Mandatory)] [string] $Path)
+
+    Add-Type -AssemblyName System.Drawing
+
+    $image = [System.Drawing.Bitmap]::FromFile($Path)
+    try {
+        $first = $image.GetPixel(0, 0).ToArgb()
+        $stepX = [Math]::Max(1, [int]($image.Width / 64))
+        $stepY = [Math]::Max(1, [int]($image.Height / 64))
+
+        for ($y = 0; $y -lt $image.Height; $y += $stepY) {
+            for ($x = 0; $x -lt $image.Width; $x += $stepX) {
+                if ($image.GetPixel($x, $y).ToArgb() -ne $first) { return $false }
+            }
+        }
+
+        return $true
+    }
+    finally {
+        $image.Dispose()
     }
 }
 

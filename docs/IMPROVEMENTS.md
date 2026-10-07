@@ -1240,32 +1240,6 @@ sessions afterwards than it did before plus what was imported.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS182 A picture of a desk that was not drawing
-
-The host suite runs with the guest suspended, because a running guest holds the host's
-clipboard (QS180), so every picture taken after a suite resumes it.
-
-The resume does not hang; reading its output does. Found while shipping QS77: `vmrun
-start ... gui` resumed the guest and exited within seconds, but it had started the
-Workstation window, `vmware.exe --fd 1388`, and that window inherited the pipe
-`Invoke-VmRun` reads vmrun's output through. PowerShell waits for the end of that pipe,
-which comes when the window closes. So the script said it was starting the guest and
-then nothing, with vmrun gone and `checkToolsState` answering `running`. A deadline on
-the start would only turn every resume into a refusal.
-
-And the picture after it was of nothing. The next `run-app-vm` built the client, let it
-draw for twelve seconds and brought back a 3838 by 1841 capture in which every pixel is
-black: the desk the guest resumed to draws nothing, most likely a display that went dark
-or a session that locked while suspended. The script reported success.
-
-Two moves. `start` sends its output to a file and waits for vmrun's own exit, never
-reading through a pipe another process can inherit. And a capture that is one colour
-from edge to edge is refused as a picture of nothing, because a black rectangle filed as
-evidence is worse than no file.
-
-Falsified when `Connect-Guest` is still waiting after vmrun has exited, or a
-single-colour capture exits zero.
-
 ### §QS193 The archive built by the pipeline that gates the tree
 
 Found while shipping QS77. `release.cmd` publishes the client self-contained and
