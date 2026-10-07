@@ -239,7 +239,8 @@ So a red you cannot explain is a red whose report you have not read, and `TestRe
 still there tomorrow when the console is gone. Never pipe a run through a filter and then report
 what survived it.
 
-**`.\run-app-vm.cmd` is the client itself on that same desk** — see the picture rule below. It
+**`.\run-app-vm.cmd` is the client itself on that same desk** — for a picture a human looks at; the
+evidence for a UI task is a UI case, below. It
 shares its guest plumbing with the suite runner through `tools\vm-guest.ps1`, so both reach the VM
 the same way and neither has an opinion of its own about it.
 
@@ -279,20 +280,27 @@ A terminal client is judged on behaviour under a real connection, so its own tas
 - **A claim is proven by a run, against a real endpoint** — a live sshd, a container, a jump host,
   a port that is genuinely in use — and not by a unit test asserting the shape of a request. Tests
   are still written; they are not the evidence that the feature works.
-- **A UI task is not done without the picture.** Capture the window and say what it shows.
-  **`.\run-app-vm.cmd` is how the app is launched for it** — it builds and starts the client in the
-  guest, lets it draw, and writes `TestResults\vm\app-desk.png`. `-Arguments "--tabs 3 --panes 2"`
-  shapes what is on screen, `-Settings <path>` places a settings file first (which is how a scheme
-  or a font is looked at), and `-Keep` leaves it running for a longer look. Not the `/run` skill and
-  never this desktop: driving the operator's own screen takes the foreground from the person the
-  work is for. See also `agents.md`, which holds that the picture is for a human and the
-  accessibility tree is the evidence — QS159 is the open question of which of these two documents
-  is right.
+- **A UI task is proven by its accessibility tree, not by a picture** (QS159, settling it the way
+  `AGENTS.md` does). A screenshot says a window was there, not what it contained, and a capture on
+  this machine needs a foreground a desk somebody is at grants. The evidence is a **UI case**: a
+  file in `cases\` that finds an element by its automation id and reads or invokes it, run by
+  `Quickshell.Cases` — which `.\run-tests-vm.cmd` runs in the guest with the rest of the suite. A
+  new dialog, button or palette entry gets a case beside the ones already there; a verb the engine
+  cannot spell is filed in winwright's roadmap, not worked around here.
+- **A picture is still worth taking, for a human to look at.** `.\run-app-vm.cmd` builds and starts
+  the client in the guest, lets it draw, and writes `TestResults\vm\app-desk.png`;
+  `-Arguments "--tabs 3 --panes 2"` shapes what is on screen, `-Settings <path>` places a settings
+  file first (how a scheme or a font is looked at), and `-Keep` leaves it running. Never the `/run`
+  skill and never this desktop: driving the operator's own screen with synthetic input takes the
+  foreground from the person the work is for, and it is not a fallback when the guest is
+  inconvenient.
 - **A footprint claim is a number or it is nothing.** "Faster" and "lighter" are Block H's whole
   reason to exist; measure cold start and memory the same way each time and say which machine.
 - **Never report a pass that skipped a check.** A summary saying it works while the reconnect path
   or the tunnel teardown was never exercised is worse than a red run. If something could not be
-  exercised here, that goes in the report — named — and not in an info line.
+  exercised here, that goes in the report — named — and not in an info line. Every run ends with
+  how many tests ran, passed, failed and skipped, and why (QS136): read that table, and say how
+  many were waived when the run had no SSH fixture.
 
 ## Release notes
 
