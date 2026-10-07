@@ -97,14 +97,13 @@ public sealed class ParseRetentionTests
     }
 
     /// <summary>
-    /// The reply buffer is bounded whether or not anybody drains it — nearly.
+    /// The reply buffer is bounded whether or not anybody drains it, at exactly the number its
+    /// constant states.
     ///
-    /// <para><b>It overshoots its own stated maximum by one answer's length</b>, because
-    /// <c>Send</c> checks the cap before appending and then appends a whole reply. Two hundred
-    /// thousand undrained cursor-position requests reach 4,098 bytes against a
-    /// <c>MaximumReplyLength</c> of 4,096. That is harmless in practice and it is the code
-    /// contradicting its own constant, which is QS140; this asserts what it actually does so the
-    /// bound is still watched, and QS140 is where the number becomes exact.</para>
+    /// <para><b>It used to overshoot by one answer's length</b> — 4,098 bytes against 4,096 —
+    /// because <c>Send</c> checked the cap before appending and then appended a whole reply. Since
+    /// QS140 an answer that would end past the bound is taken back whole, so the constant is the
+    /// bound, and every answer kept is a whole one.</para>
     /// </summary>
     [Fact]
     public void TheReplyBufferDoesNotGrowWithoutBound()
@@ -119,9 +118,12 @@ public sealed class ParseRetentionTests
             emulator.Feed(asking);
         }
 
-        // The overshoot is one answer, not a quarter of a million of them: what this rules out is
-        // growth, which is the property the constant exists for.
-        Assert.InRange(emulator.Reply.Length, 0, Emulator.MaximumReplyLength + 64);
+        // The constant, and not one byte past it.
+        Assert.InRange(emulator.Reply.Length, Emulator.MaximumReplyLength - 16, Emulator.MaximumReplyLength);
+
+        // And what is held is whole answers: it ends where a cursor report ends, never half way
+        // through one, which is what a host reading it back would choke on.
+        Assert.Equal((byte)'R', emulator.Reply[^1]);
 
         // And it really did stop answering rather than merely being drained by something.
         Assert.True(emulator.Unhandled > 0,

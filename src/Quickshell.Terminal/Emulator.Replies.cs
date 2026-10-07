@@ -114,7 +114,9 @@ public sealed partial class Emulator
     {
         // Bounded, and counted rather than dropped silently: a host asking faster than the pty
         // drains is a fact worth being able to see.
-        if (_reply.Count >= MaximumReplyLength)
+        int before = _reply.Count;
+
+        if (before >= MaximumReplyLength)
         {
             Unhandled++;
             return;
@@ -220,6 +222,16 @@ public sealed partial class Emulator
             default:
                 Unhandled++;
                 break;
+        }
+
+        // An answer that would end past the bound is taken back whole, so the bound is the number
+        // its constant says (QS140). Checked after building rather than before, because only the
+        // built answer knows its length — a cursor position is a few bytes and a setting report is
+        // not, and a check that guessed would be a fact spread across the switch above.
+        if (_reply.Count > MaximumReplyLength)
+        {
+            _reply.RemoveRange(before, _reply.Count - before);
+            Unhandled++;
         }
     }
 

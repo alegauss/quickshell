@@ -265,31 +265,6 @@ library.
 
 Falsified when an unread session grows without limit.</body>
 
-### §QS140 A cap that is the number it says
-
-`Emulator.MaximumReplyLength` is 4,096 and `Send` refuses to answer once `_reply.Count`
-has reached it — then, having passed the check, appends a whole answer. So the buffer
-can end at `MaximumReplyLength - 1` plus one answer's length. Two hundred thousand
-undrained cursor-position requests reach **4,098** bytes, measured.
-
-Two bytes is not a memory problem and this is not filed as one. It is filed because the
-constant is documented as the bound — *"how much the terminal will owe the host before
-it stops answering"* — and it is not the bound, which makes it the wrong number to
-reason from. The next answer added to that switch could be longer than a cursor
-position; a `DECRPSS` string reply is not two bytes, and nothing in the check knows how
-long the thing it is about to append is.
-
-The fix is to reserve headroom: refuse when the buffer plus the longest answer this file
-can build would exceed the maximum. That wants the longest answer to be a stated
-constant next to the cap, which is worth having anyway — right now it is a fact spread
-across a switch.
-
-`ParseRetentionTests.TheReplyBufferDoesNotGrowWithoutBound` asserts the present
-behaviour with sixty-four bytes of slack and checks that answers really were refused, so
-the growth property stays watched until this makes the number exact.
-
-Falsified when the reply buffer exceeds the constant that names its maximum.
-
 ### §QS141 The figure and the path it is measured on
 
 Figure 2 of the budget is *sustained parse throughput, at least 400 MB/s*, measured by a
