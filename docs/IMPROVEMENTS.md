@@ -844,30 +844,6 @@ Falsified when a running forward does not appear in this view.
 
 ## Block G — The clean interface, defended
 
-### §QS151 A signal nothing is sleeping on
-
-`SessionPipeline` raises a `DamageSignal` when the parser has changed the model, and the
-pane's render loop sleeps on one. QS116 found that those have to be the same object and
-gave `Start` a parameter for it: `LocalSession` hands in the pane's, and
-`LocalSessionTests` asserts the identity rather than the text, because a session parsing
-correctly into the model while setting a signal of its own passes every assertion about
-what the screen says and is still a window that draws one frame and stops.
-
-`RemoteSession.LiveAsync` calls `SessionPipeline.Start(channel, _emulator)` with no
-signal, once per connection, and exposes none. So the same fault is already written down
-in the file QS126 will reach for, and it is worse there than it was here: a reconnect
-replaces the pipeline, so even a client that found the first signal and slept on it
-would be sleeping on a dead one from the second connection onwards. The reconnect is the
-whole point of that class, the scrollback survives it, and a window that goes blank on
-the first reconnect is the failure a user reports as losing their session.
-
-What it needs is the shape `LocalSession` already has: the signal belongs to the pane,
-is passed in once, and every pipeline the session opens over its life is given that one.
-Which is also the smaller claim to test, because it is an identity and not a wait.
-
-Falsified when a session survives a reconnect and the window still shows what the second
-connection printed.
-
 ### §QS152 The session that ended and did not say so
 
 `IPtyChannel.Closed` completes with a `PtyExit` carrying the code the program left with,

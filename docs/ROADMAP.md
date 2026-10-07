@@ -5,7 +5,7 @@
 ## Block A — A session that stays up, or says why it did not
 
 - 📋 **QS142** (deps: QS139 ⏸) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
-- 📋 **QS220** (deps: QS151) **An SSH tab whose link drops stays ended, though the session that reconnects was built for it** — RemoteShell connects once and RemoteSession, which reconnects and keeps the scrollback, is reached by nothing. → §QS220
+- 📋 **QS220** (deps: QS151 ✅) **An SSH tab whose link drops stays ended, though the session that reconnects was built for it** — RemoteShell connects once and RemoteSession, which reconnects and keeps the scrollback, is reached by nothing. → §QS220
 
 ## Block B — Keys, agents, and the host you think you reached
 
@@ -49,7 +49,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS151** (deps: QS116 ✅) **A reconnecting session makes a new damage signal per connection, so a pane asleep on the first never repaints** — QS126 wires this up and inherits a window frozen at whatever frame it drew first. → §QS151
 - 📋 **QS152** (deps: QS116 ✅) **A shell that exits leaves the window holding its last frame, with nothing saying the session ended** — Typing exit is the ordinary way a session ends, and the client that answers it with a frozen picture reads as hung. → §QS152
 - 📋 **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — QS47 put the session in the tab and stopped there, so the one thing that arrangement was for is the one thing that cannot be done. → §QS160
 - 📋 **QS163** (deps: QS48 ✅) **A divider cannot be dragged, so the only sizes a split has are the halves it was created with** — QS48 gave the layout a share to set and left every way of setting it to a chord, so the gesture a person reaches for first does nothing. → §QS163

@@ -133,6 +133,7 @@
 - ✅ **QS83** **Every window would invent its own colours and row shapes, so the chrome drifts from the two clients it should match** — Every colour the client decides is declared once in Brand.cs, a test refuses one written elsewhere in src, and open windows follow a change of theme.
 - ✅ **QS202** **An editor's save over the settings file can be refused while the client is reading it** — A save that deletes the settings file and renames into place is not refused by the client's read; a move over an open file still is, by any reader.
 - ✅ **QS126** **Eleven shipped transport components are named by no code in the application, so none of them can be used** — Saved sessions reach an SSH tab, and each component still unreached has a line naming what will reach it.
+- ✅ **QS151** **A reconnecting session makes a new damage signal per connection, so a pane asleep on the first never repaints** — A reconnecting session takes the pane's damage signal once and hands it to every connection's pipeline, so what a reconnect prints wakes the same window.
 
 ## Block H — The reason to leave the incumbent
 

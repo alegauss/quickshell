@@ -35,11 +35,12 @@ public sealed class RemoteSession : IAsyncDisposable
     private bool _disposed;
 
     private RemoteSession(Func<CancellationToken, ValueTask<ISshTransport>> connect,
-                          Emulator emulator, ReconnectPolicy policy)
+                          Emulator emulator, ReconnectPolicy policy, DamageSignal damage)
     {
         _connect = connect;
         _emulator = emulator;
         _policy = policy;
+        Damage = damage;
     }
 
     /// <summary>
@@ -52,13 +53,20 @@ public sealed class RemoteSession : IAsyncDisposable
     /// </param>
     /// <param name="emulator">The model. It belongs to this session and survives every reconnect.</param>
     /// <param name="policy">When to try again; <see cref="ReconnectPolicy.Off"/> to never.</param>
+    /// <param name="damage">
+    /// The signal the pane's render loop sleeps on, which every connection's pipeline sets — the
+    /// pane's and not one per connection, or a window asleep on the first would never wake for the
+    /// second (QS151). One of its own where there is no pane.
+    /// </param>
     public static RemoteSession Start(Func<CancellationToken, ValueTask<ISshTransport>> connect,
-                                      Emulator emulator, ReconnectPolicy? policy = null)
+                                      Emulator emulator, ReconnectPolicy? policy = null,
+                                      DamageSignal? damage = null)
     {
         ArgumentNullException.ThrowIfNull(connect);
         ArgumentNullException.ThrowIfNull(emulator);
 
-        RemoteSession session = new(connect, emulator, policy ?? ReconnectPolicy.Off);
+        RemoteSession session = new(connect, emulator, policy ?? ReconnectPolicy.Off,
+                                    damage ?? new DamageSignal());
 
         session.Completed = Task.Run(session.RunAsync);
 
@@ -85,6 +93,13 @@ public sealed class RemoteSession : IAsyncDisposable
 
     /// <summary>The model, which is this session's and not the connection's.</summary>
     public Emulator Emulator => _emulator;
+
+    /// <summary>
+    /// What every connection's pipeline sets when it has changed the model: one signal for the
+    /// session's life, like the model, so a reconnect wakes the same render loop the first
+    /// connection did.
+    /// </summary>
+    public DamageSignal Damage { get; }
 
     /// <summary>
     /// Stops trying, now. This is the third of the three things the design says an attempt must make
@@ -209,8 +224,9 @@ public sealed class RemoteSession : IAsyncDisposable
 
             // The same emulator every time. That is the whole claim: the scrollback the user has
             // read is this object's, and a new connection writes onto the end of it rather than
-            // replacing it.
-            SessionPipeline pipeline = SessionPipeline.Start(channel, _emulator);
+            // replacing it. And the same signal, for the same reason: the window asleep on it is the
+            // one that has to wake for what this connection prints (QS151).
+            SessionPipeline pipeline = SessionPipeline.Start(channel, _emulator, damage: Damage);
 
             Volatile.Write(ref _pipeline, pipeline);
             Connections++;

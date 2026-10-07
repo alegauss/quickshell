@@ -108,6 +108,42 @@ public sealed class RemoteSessionTests
     }
 
     /// <summary>
+    /// QS151's falsification: the window still shows what the second connection printed, because
+    /// the second connection's pipeline sets the signal the pane is asleep on — the pane's own, given
+    /// once — and not one it made for itself.
+    /// </summary>
+    [Fact]
+    public async Task AReconnectWakesTheSameWindowTheFirstConnectionDid()
+    {
+        List<ReplayTransport> made = [];
+        DamageSignal pane = new();
+
+        await using RemoteSession session = RemoteSession.Start(
+            _ => Connect(made, made.Count == 0 ? "first connection\r\n" : "second connection\r\n"),
+            new Emulator(80, 25), Quick, pane);
+
+        Assert.Same(pane, session.Damage);
+
+        await Until(() => Screen(session).Contains("first connection", StringComparison.Ordinal));
+
+        long woken = pane.Sets;
+
+        Assert.True(woken > 0, "the first connection never woke the pane");
+
+        made[0].Drop("the network went away");
+
+        await Until(() => session.Connections >= 2);
+        await Until(() => Screen(session).Contains("second connection", StringComparison.Ordinal));
+
+        // What the second connection printed woke the same window, which is the only way it reaches
+        // the glass: a pipeline setting a signal of its own changes the model and nothing else.
+        Assert.True(pane.Sets > woken,
+                    $"the pane's signal was set {pane.Sets} times, as before the reconnect");
+
+        session.Stop();
+    }
+
+    /// <summary>
     /// A host that stopped answering is reconnected too, though the read under the session never
     /// returns: the transport's verdict ends the connection, not the pipeline running dry. Waiting
     /// on the pipeline alone left a session "live" on a dead host for as long as the read waited.
