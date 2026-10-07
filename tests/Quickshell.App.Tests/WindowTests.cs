@@ -157,23 +157,36 @@ public sealed class WindowTests : IDisposable
 
     /// <summary>
     /// The mistake this design names: a user with a favourite scheme wants it under either chrome.
-    /// Changing one must not touch the other, in the model or in the window.
+    /// Changing one must not touch the other — read off the palette an open pane draws with, which is
+    /// the one place the terminal's colours live (QS199).
     /// </summary>
     [Fact]
     public void TheChromesThemeDoesNotTouchTheTerminalsColours()
     {
-        TerminalPalette mine = new("mine", new Rgb(1, 2, 3), new Rgb(4, 5, 6),
-                                   new Rgb(7, 8, 9), new Rgb(10, 11, 12));
+        ColourScheme mine = new()
+        {
+            Name = "mine",
+            Foreground = new Rgb(1, 2, 3),
+            Background = new Rgb(4, 5, 6),
+            Cursor = new Rgb(7, 8, 9),
+        };
 
-        Appearance light = new() { Theme = ChromeTheme.Light, Palette = mine };
-        Appearance dark = light with { Theme = ChromeTheme.Dark };
+        Settings light = Settings.Default with { Theme = ChromeTheme.Light, Colours = mine };
 
-        Assert.Equal(mine, dark.Palette);
-        Assert.Equal(mine, light.Palette);
+        (Rgb Foreground, Rgb Background, Rgb Cursor) drawn = Sta.Run(() =>
+        {
+            MainWindow window = new();
 
-        TerminalPalette carried = Sta.Run(() => new MainWindow(dark).Appearance.Palette);
+            window.Add(TerminalTab.Open(light, Shared, "mine"));
+            window.Apply(light);
+            window.Apply(light with { Theme = ChromeTheme.Dark });
 
-        Assert.Equal(mine, carried);
+            Palette palette = window.Current!.Leaves[0].Emulator.Palette;
+
+            return (palette.Foreground, palette.Background, palette.Cursor);
+        });
+
+        Assert.Equal((mine.Foreground, mine.Background, mine.Cursor), drawn);
     }
 
     // ---- Where the window goes, per arrangement of screens ----

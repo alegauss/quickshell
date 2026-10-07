@@ -36,7 +36,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS199** (deps: —) **The test that says a chrome theme leaves the terminal's colours alone checks a palette nothing draws with** — Appearance.Palette is a second model of the terminal's colours that no running code reads; the colours a pane draws come from Settings.Colours. → §QS199
 - 📋 **QS217** (deps: QS126 ✅) **A saved session can only be opened by typing its path on a command line** — The palette reaches every other action and lists no session, so a user with forty hosts has to remember each one's path. → §QS217
 - 📋 **QS221** (deps: QS116 ✅) **A graphics driver reset leaves every pane frozen, and nothing in the client recovers or says so** — The device can recover and nothing asks it to, and a recovery would rebuild closed panes' swapchains because no resource ever leaves its list. → §QS221
 - 📋 **QS223** (deps: —) **Clicking a tab on the strip moves its highlight but leaves the other tab's terminal on screen** — Nothing handles the strip's selection changing, so only the chords switch tabs and a click points the keyboard at a session it does not show. → §QS223

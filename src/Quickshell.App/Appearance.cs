@@ -1,5 +1,3 @@
-using Quickshell.Terminal;
-
 namespace Quickshell.App;
 
 /// <summary>Which way the application's chrome is painted.</summary>
@@ -16,33 +14,14 @@ public enum ChromeTheme
 }
 
 /// <summary>
-/// The colours the terminal itself is drawn in.
+/// How the window's chrome looks.
 ///
-/// <para><b>Not the same thing as <see cref="ChromeTheme"/>, and conflating them is the mistake this
-/// type exists to prevent.</b> A user with a favourite scheme wants it under light chrome and under
-/// dark chrome; a client that switched their terminal to a light scheme because Windows went light
-/// has thrown away a choice they made deliberately in favour of one they made about their
-/// operating system. The two travel separately, are stored separately, and change separately.</para>
-/// </summary>
-/// <param name="Name">What the scheme is called, as a user chose it.</param>
-/// <param name="Foreground">Default text.</param>
-/// <param name="Background">The ground behind it.</param>
-/// <param name="Cursor">The cursor, which a block one inverts the glyph against.</param>
-/// <param name="Selection">The ground a selected cell takes.</param>
-public readonly record struct TerminalPalette(string Name, Rgb Foreground, Rgb Background,
-                                              Rgb Cursor, Rgb Selection)
-{
-    /// <summary>
-    /// What a terminal looks like before anybody has chosen anything: light text on a dark ground,
-    /// which is what a terminal has looked like since terminals were furniture.
-    /// </summary>
-    public static TerminalPalette Default { get; } = new(
-        "quickshell", Brand.Ink, Brand.Ground, Brand.Cursor, Brand.Selection);
-}
-
-/// <summary>
-/// How the window looks: the chrome's theme and the terminal's scheme, which are two settings and
-/// not one.
+/// <para><b>The terminal's colours are not here, and conflating the two is the mistake to
+/// avoid.</b> A user with a favourite scheme wants it under light chrome and under dark chrome; a
+/// client that switched their terminal to a light scheme because Windows went light has thrown away
+/// a choice they made deliberately in favour of one they made about their operating system. The
+/// scheme is <see cref="Settings.Colours"/>, which every pane draws from, and nothing in this record
+/// reaches it.</para>
 ///
 /// <para><b>Following the system means following it, not reading it once.</b> A user who switches
 /// Windows to dark at sunset expects the window to follow while it is open — so the chrome theme is
@@ -57,9 +36,6 @@ public sealed record Appearance
 
     /// <summary>The chrome's theme. Follows Windows unless the user says otherwise.</summary>
     public ChromeTheme Theme { get; init; } = ChromeTheme.System;
-
-    /// <summary>The terminal's own colours, which the chrome's theme never touches.</summary>
-    public TerminalPalette Palette { get; init; } = TerminalPalette.Default;
 
     /// <summary>Whether the chrome is following the system rather than holding a fixed answer.</summary>
     public bool FollowsSystem => Theme == ChromeTheme.System;

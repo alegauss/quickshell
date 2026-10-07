@@ -626,20 +626,6 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS199 One model of the terminal's colours
-
-Found while shipping QS83. Appearance carries a TerminalPalette with a foreground,
-background, cursor and selection, and
-WindowTests.TheChromesThemeDoesNotTouchTheTerminalsColours asserts that changing the
-chrome theme leaves it alone. Nothing at run time reads it: panes take their colours
-from Settings.Colours through ColourScheme.ApplyTo, and MainWindow never passes its
-Appearance palette anywhere. So the test proves an invariant about a model no pixel
-comes from, and the invariant that matters, that a theme change leaves a pane's scheme
-alone, is untested. The move is to delete TerminalPalette and Appearance.Palette, and to
-rewrite the test against the real path: apply settings with another theme and read that
-an open pane's palette is unchanged. Falsified when a model of the terminal's colours
-exists that no pane draws from.
-
 ### §QS217 Sessions in the palette
 
 QS126 made a saved session openable as an SSH tab, and the only way to ask for one is
