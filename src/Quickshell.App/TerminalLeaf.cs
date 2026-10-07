@@ -246,6 +246,9 @@ public sealed class TerminalLeaf : IAsyncDisposable
             StartupTimeline.Mark("shell");
 
             Typist.Sending = bytes => session.Pipeline.TypeAsync(bytes);
+
+            // And the mouse a program asks for, by the same path: a click is something typed (QS155).
+            Terminal.Sending = bytes => session.Pipeline.TypeAsync(bytes);
             Typist.Typed = Terminal.ToBottom;
             Terminal.Resized = session.Pipeline.Resize;
 

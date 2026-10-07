@@ -165,19 +165,76 @@ public sealed partial class Emulator
         int row,
         MouseModifiers modifiers = MouseModifiers.None)
     {
+        Span<byte> spelled = stackalloc byte[MaximumMouseReport];
+
+        int length = EncodeMouse(button, action, column, row, modifiers, spelled, out MouseDisposition disposition);
+
+        if (length == 0)
+        {
+            return disposition;
+        }
+
+        // Held to the reply bound like every other answer, and whole or not at all.
+        if (_reply.Count + length > MaximumReplyLength)
+        {
+            Unhandled++;
+
+            return disposition;
+        }
+
+        _reply.AddRange(spelled[..length]);
+
+        return disposition;
+    }
+
+    /// <summary>The longest report either encoding writes: SGR with three five-digit numbers is under it.</summary>
+    public const int MaximumMouseReport = 32;
+
+    /// <summary>
+    /// The same decision as <see cref="ReportMouse"/>, written into the caller's buffer rather than
+    /// into <see cref="Reply"/> (QS155).
+    ///
+    /// <para><b>The window's own path, and the reason this exists.</b> <see cref="Reply"/> belongs to
+    /// the thread that parses — the pipeline drains it after every read — so a click arriving on the
+    /// window's thread cannot append to it. It is encoded here instead and goes out the way a
+    /// keystroke does, which is also the right order: a click is something the user did, not
+    /// something the host asked about.</para>
+    /// </summary>
+    /// <param name="button">Which button, or the wheel.</param>
+    /// <param name="action">What it did.</param>
+    /// <param name="column">The cell's column, zero-based; clamped into the screen.</param>
+    /// <param name="row">Its row, zero-based; clamped likewise.</param>
+    /// <param name="modifiers">What was held. Shift is the user's and is never reported.</param>
+    /// <param name="destination">At least <see cref="MaximumMouseReport"/> bytes.</param>
+    /// <param name="disposition">What became of the event, as <see cref="ReportMouse"/> answers.</param>
+    /// <returns>How many bytes were written; zero for anything not reported.</returns>
+    public int EncodeMouse(
+        MouseButton button,
+        MouseAction action,
+        int column,
+        int row,
+        MouseModifiers modifiers,
+        Span<byte> destination,
+        out MouseDisposition disposition)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(destination.Length, MaximumMouseReport);
+
         if (_tracking == MouseTracking.Off)
         {
-            return MouseDisposition.NotAsked;
+            disposition = MouseDisposition.NotAsked;
+            return 0;
         }
 
         if ((modifiers & MouseModifiers.Shift) != 0)
         {
-            return MouseDisposition.HeldForSelection;
+            disposition = MouseDisposition.HeldForSelection;
+            return 0;
         }
 
         if (!Wanted(button, action))
         {
-            return MouseDisposition.NotAsked;
+            disposition = MouseDisposition.NotAsked;
+            return 0;
         }
 
         column = Math.Clamp(column, 0, Math.Max(0, Buffer.Columns - 1));
@@ -187,13 +244,14 @@ public sealed partial class Emulator
         // report each time is what makes mode 1003 saturate a link that is doing nothing else.
         if (action == MouseAction.Move && column == _lastMouseColumn && row == _lastMouseRow)
         {
-            return MouseDisposition.SameCell;
+            disposition = MouseDisposition.SameCell;
+            return 0;
         }
 
         _lastMouseColumn = column;
         _lastMouseRow = row;
 
-        return Encode(button, action, column + 1, row + 1, modifiers);
+        return Encode(button, action, column + 1, row + 1, modifiers, destination, out disposition);
     }
 
     /// <summary>
@@ -231,12 +289,14 @@ public sealed partial class Emulator
     /// SGR keeps the button and moves the distinction into the final byte, so a program can tell a
     /// right-click release from a left one.</para>
     /// </summary>
-    private MouseDisposition Encode(
+    private int Encode(
         MouseButton button,
         MouseAction action,
         int column,
         int row,
-        MouseModifiers modifiers)
+        MouseModifiers modifiers,
+        Span<byte> into,
+        out MouseDisposition disposition)
     {
         int code = (int)button;
 
@@ -260,15 +320,25 @@ public sealed partial class Emulator
             }
         }
 
+        // Built from numbers and constants alone, as every reply is: nothing the host sent can reach
+        // these bytes.
+        int at = 0;
+
+        into[at++] = Escape;
+        into[at++] = Bracket;
+
         if (_encoding == MouseEncoding.Sgr)
         {
-            Send(
-                action == MouseAction.Release ? Answer.MouseSgrRelease : Answer.MouseSgrPress,
-                code,
-                column,
-                row);
+            into[at++] = (byte)'<';
+            at += Decimal(code, into[at..]);
+            into[at++] = (byte)';';
+            at += Decimal(column, into[at..]);
+            into[at++] = (byte)';';
+            at += Decimal(row, into[at..]);
+            into[at++] = action == MouseAction.Release ? (byte)'m' : (byte)'M';
 
-            return MouseDisposition.Reported;
+            disposition = MouseDisposition.Reported;
+            return at;
         }
 
         if (action == MouseAction.Release)
@@ -284,12 +354,37 @@ public sealed partial class Emulator
             // on the left-hand side of the window was clicked, and the host would act on it — a
             // wrong answer being worse than a missing one, exactly as with the replies in QS19.
             Unhandled++;
-            return MouseDisposition.BeyondLegacyReach;
+            disposition = MouseDisposition.BeyondLegacyReach;
+            return 0;
         }
 
-        Send(Answer.MouseLegacy, code, column, row);
+        // Three bytes rather than three numbers. Each sum fits, because the check above is what
+        // makes it fit: a byte that overflowed here would name another cell.
+        into[at++] = (byte)'M';
+        into[at++] = (byte)(code + 32);
+        into[at++] = (byte)(column + 32);
+        into[at++] = (byte)(row + 32);
 
-        return MouseDisposition.Reported;
+        disposition = MouseDisposition.Reported;
+        return at;
+    }
+
+    /// <summary>A number in decimal ASCII, which is all an SGR report's parameters are.</summary>
+    private static int Decimal(int value, Span<byte> into)
+    {
+        Span<char> digits = stackalloc char[11];
+
+        if (!value.TryFormat(digits, out int written, provider: System.Globalization.CultureInfo.InvariantCulture))
+        {
+            return 0;
+        }
+
+        for (int index = 0; index < written; index++)
+        {
+            into[index] = (byte)digits[index];
+        }
+
+        return written;
     }
 
     /// <summary>

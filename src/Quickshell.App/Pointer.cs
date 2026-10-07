@@ -131,6 +131,8 @@ public sealed class Pointer
     /// <para>C# truncates towards zero, so a pixel one row above the top divides to 0 and lands on
     /// the first row — a drag upwards that never leaves it.</para>
     /// </summary>
+    internal static int Floor(int value, int by) => Divided(value, by);
+
     private static int Divided(int value, int by)
     {
         int size = Math.Max(1, by);

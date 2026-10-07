@@ -8,7 +8,7 @@ namespace Quickshell.App;
 /// <summary>What the mouse did on the pane.</summary>
 public enum PaneMouseKind
 {
-    /// <summary>The left button went down, which begins a selection.</summary>
+    /// <summary>A button went down: the left one begins a selection, and any is a program's to hear.</summary>
     Pressed,
 
     /// <summary>It moved, which extends one while the button is down.</summary>
@@ -28,7 +28,12 @@ public enum PaneMouseKind
 /// <param name="Notches">
 /// Wheel detents, positive away from the user. Zero for everything that is not a wheel.
 /// </param>
-public readonly record struct PaneMouse(PaneMouseKind Kind, int X, int Y, int Notches = 0);
+/// <param name="Button">
+/// Which button a press or a release was about. Only the left one selects; every one of them is
+/// reported to a program that asked for the mouse (QS155).
+/// </param>
+public readonly record struct PaneMouse(PaneMouseKind Kind, int X, int Y, int Notches = 0,
+                                        Quickshell.Terminal.MouseButton Button = Quickshell.Terminal.MouseButton.Left);
 
 /// <summary>
 /// The terminal's own window, hosted inside WPF's.
@@ -94,6 +99,10 @@ public sealed class TerminalPane : HwndHost
 
     private const int ButtonDown = 0x0201;
     private const int ButtonUp = 0x0202;
+    private const int RightDown = 0x0204;
+    private const int RightUp = 0x0205;
+    private const int MiddleDown = 0x0207;
+    private const int MiddleUp = 0x0208;
     private const int Moved = 0x0200;
     private const int CaptureLost = 0x0215;
     private const int Wheel = 0x020A;
@@ -154,9 +163,12 @@ public sealed class TerminalPane : HwndHost
 
                 return nint.Zero;
 
-            case ButtonDown:
+            case ButtonDown or RightDown or MiddleDown:
+                // Every button, and not only the one that selects: the others are a program's to
+                // hear (QS155).
+                _held = Button(msg);
                 SetCapture(hwnd);
-                Raise(PaneMouseKind.Pressed, lParam);
+                Raise(PaneMouseKind.Pressed, lParam, _held.Value);
 
                 return nint.Zero;
 
@@ -165,9 +177,13 @@ public sealed class TerminalPane : HwndHost
 
                 return nint.Zero;
 
-            case ButtonUp:
+            case ButtonUp or RightUp or MiddleUp:
+                // Forgotten before the capture is given back, because giving it back is itself a
+                // capture change: without this the release raised a second, bogus one at the corner,
+                // which a program that asked for the mouse would have been told as a click at 1;1.
+                _held = null;
                 ReleaseCapture();
-                Raise(PaneMouseKind.Released, lParam);
+                Raise(PaneMouseKind.Released, lParam, Button(msg));
 
                 return nint.Zero;
 
@@ -183,8 +199,13 @@ public sealed class TerminalPane : HwndHost
             case CaptureLost:
                 // Somebody else took the mouse — an Alt-Tab, a dialog. The drag is over and the
                 // selection stands; what must not happen is a pane that thinks a button is still
-                // down and extends the selection on the next unrelated movement.
-                Mouse?.Invoke(new PaneMouse(PaneMouseKind.Released, 0, 0));
+                // down and extends the selection on the next unrelated movement. Only while a button
+                // is held: a release gives the capture back itself and has already said so.
+                if (_held is { } button)
+                {
+                    _held = null;
+                    Mouse?.Invoke(new PaneMouse(PaneMouseKind.Released, 0, 0, Button: button));
+                }
 
                 return nint.Zero;
 
@@ -214,8 +235,21 @@ public sealed class TerminalPane : HwndHost
     /// drag above or left of the pane reports a negative coordinate, and read as unsigned that is a
     /// pointer sixty-five thousand pixels the other way.</para>
     /// </summary>
-    private void Raise(PaneMouseKind kind, nint packed) =>
-        Mouse?.Invoke(new PaneMouse(kind, (short)(packed & 0xFFFF), (short)((packed >> 16) & 0xFFFF)));
+    /// <summary>The button held down over this pane, or null while none is.</summary>
+    private Quickshell.Terminal.MouseButton? _held;
+
+    /// <summary>Which button a button message is about.</summary>
+    private static Quickshell.Terminal.MouseButton Button(int message) => message switch
+    {
+        RightDown or RightUp => Quickshell.Terminal.MouseButton.Right,
+        MiddleDown or MiddleUp => Quickshell.Terminal.MouseButton.Middle,
+        _ => Quickshell.Terminal.MouseButton.Left,
+    };
+
+    private void Raise(PaneMouseKind kind, nint packed,
+                       Quickshell.Terminal.MouseButton button = Quickshell.Terminal.MouseButton.Left) =>
+        Mouse?.Invoke(new PaneMouse(kind, (short)(packed & 0xFFFF), (short)((packed >> 16) & 0xFFFF),
+                                    Button: button));
 
     /// <summary>
     /// The paths in a drop, in the order they were dragged, and the drop's memory given back.

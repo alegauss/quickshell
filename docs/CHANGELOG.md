@@ -78,6 +78,7 @@
 - ✅ **QS215 (the blank reported and redrawn)** **The contrast test's Direct2D reference sometimes draws nothing in the guest, and the failure reads as infinite ink** — EndDraw is checked, the draw flushed, and a blank reference read again, redrawn and recorded instead of read as infinite ink.
 - ✅ **QS140** **The reply buffer exceeds the maximum its own constant states** — The reply buffer never passes MaximumReplyLength: an answer that would end past it is taken back whole, so only whole answers are held.
 - ✅ **QS153 (drawn into the grid)** **The text being composed is a box the input method draws over the grid, not underlined text inside it** — The text being composed is painted into the grid at the cursor, underlined in the session's font and colours, wrapping like text, with the cursor on its caret.
+- ✅ **QS155** **A program that asks for the mouse never gets one, and the wheel scrolls nothing at all** — A program with mouse tracking hears every button's press and release, drags and wheel notches; under a full-screen program without it the wheel sends arrow keys.
 
 ## Block D — The tree a user organises work in
 

@@ -3,6 +3,9 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Quickshell.Render;
 using Quickshell.Terminal;
+using Key = Quickshell.Terminal.Key;
+using MouseAction = Quickshell.Terminal.MouseAction;
+using MouseButton = Quickshell.Terminal.MouseButton;
 
 namespace Quickshell.App;
 
@@ -62,6 +65,16 @@ public sealed class PaneAttachment : IDisposable
 
     /// <summary>The view, once there was something to open it on. Null until then.</summary>
     public TerminalView? View { get; private set; }
+
+    /// <summary>
+    /// Where a mouse report or a wheel's arrow keys go: the session's keystroke path, set when there
+    /// is a session and null before (QS155). A click is something the user did, so it travels the
+    /// way typing does.
+    /// </summary>
+    public Func<ReadOnlyMemory<byte>, ValueTask>? Sending { get; set; }
+
+    /// <summary>The button a program is being told is held, so motion reports carry it.</summary>
+    private MouseButton _reporting = MouseButton.None;
 
     /// <summary>
     /// Who is told the grid changed size, and it is the second and third of QS32's three parties.
@@ -378,12 +391,21 @@ public sealed class PaneAttachment : IDisposable
 
         if (mouse.Kind == PaneMouseKind.Wheeled)
         {
-            Wheeled(mouse.Notches);
+            Wheeled(view, mouse, held);
 
             return;
         }
 
+        // The program asked for the mouse and shift is not held: it is the program's (QS155).
         if (_emulator.MouseReporting != MouseTracking.Off && (held & ModifierKeys.Shift) == 0)
+        {
+            Report(view, mouse, held);
+
+            return;
+        }
+
+        // Only the left button selects. The others are a program's, and there is none listening.
+        if (mouse.Button != MouseButton.Left)
         {
             return;
         }
@@ -427,16 +449,115 @@ public sealed class PaneAttachment : IDisposable
     /// under the alternate screen does nothing, which is honest and is not the terminal scrolling
     /// out from under a program that owns the screen.</para>
     /// </summary>
-    private void Wheeled(int notches)
+    private void Wheeled(TerminalView view, PaneMouse mouse, ModifierKeys held)
     {
-        if (notches == 0 || Viewport.Wheel(_emulator) != WheelGoes.ToScrollback)
+        int notches = mouse.Notches;
+
+        if (notches == 0)
         {
             return;
         }
 
-        // Away from the user is back through the history, which is the opposite sign.
-        ScrollBy(-notches * LinesPerNotch);
+        switch (Viewport.Wheel(_emulator))
+        {
+            case WheelGoes.ToScrollback:
+                // Away from the user is back through the history, which is the opposite sign.
+                ScrollBy(-notches * LinesPerNotch);
+                break;
+
+            case WheelGoes.ToTheProgram:
+                // One press per notch, at the cell the pointer is over — which is the wheel message's
+                // one coordinate the pane does not carry, so the last one it reported stands in.
+                for (int notch = 0; notch < Math.Abs(notches); notch++)
+                {
+                    Report(view, mouse with { Kind = PaneMouseKind.Pressed,
+                                              Button = notches > 0 ? MouseButton.WheelUp : MouseButton.WheelDown,
+                                              X = _lastX, Y = _lastY },
+                           held);
+                }
+
+                break;
+
+            case WheelGoes.ToArrowKeys:
+                // A pager that never heard of a mouse still scrolls: three lines a notch, as arrows.
+                Span<byte> arrow = stackalloc byte[Keys.MaximumLength];
+                int length = _emulator.Encode(notches > 0 ? Key.Up : Key.Down, KeyModifiers.None, arrow);
+
+                byte[] presses = new byte[length * Math.Abs(notches) * LinesPerNotch];
+
+                for (int at = 0; at < presses.Length; at += length)
+                {
+                    arrow[..length].CopyTo(presses.AsSpan(at));
+                }
+
+                Send(presses);
+                break;
+        }
     }
+
+    /// <summary>
+    /// One pointer event, told to the program that asked for it (QS155): encoded by the emulator into
+    /// a report of this session's own spelling and sent the way a keystroke is.
+    ///
+    /// <para>Never written into the emulator's reply, which is the parser's: this is the window's
+    /// thread, and the reply is drained by the stage that parses.</para>
+    /// </summary>
+    private void Report(TerminalView view, PaneMouse mouse, ModifierKeys held)
+    {
+        CellMetrics box = view.Renderer.Metrics;
+
+        if (mouse.Kind != PaneMouseKind.Wheeled)
+        {
+            _lastX = mouse.X;
+            _lastY = mouse.Y;
+        }
+
+        int column = Pointer.Floor(mouse.X, box.Width);
+        int row = Pointer.Floor(mouse.Y, box.Height);
+
+        (MouseButton button, MouseAction action) = mouse.Kind switch
+        {
+            PaneMouseKind.Pressed => (mouse.Button, MouseAction.Press),
+            PaneMouseKind.Released => (mouse.Button, MouseAction.Release),
+            _ => (_reporting, MouseAction.Move),
+        };
+
+        // What is held across a drag, so the motion reports between press and release carry it.
+        if (button is MouseButton.Left or MouseButton.Middle or MouseButton.Right)
+        {
+            _reporting = action == MouseAction.Press ? button : MouseButton.None;
+        }
+
+        Span<byte> report = stackalloc byte[Emulator.MaximumMouseReport];
+
+        int length = _emulator.EncodeMouse(button, action, column, row, Modifiers(held), report,
+                                           out MouseDisposition _);
+
+        if (length > 0)
+        {
+            Send(report[..length].ToArray());
+        }
+    }
+
+    /// <summary>What the keyboard held, as a mouse report spells it.</summary>
+    private static MouseModifiers Modifiers(ModifierKeys held) =>
+        ((held & ModifierKeys.Shift) != 0 ? MouseModifiers.Shift : MouseModifiers.None)
+        | ((held & ModifierKeys.Alt) != 0 ? MouseModifiers.Meta : MouseModifiers.None)
+        | ((held & ModifierKeys.Control) != 0 ? MouseModifiers.Control : MouseModifiers.None);
+
+    /// <summary>Hands bytes to the session's keystroke path, and to nothing where there is none.</summary>
+    private void Send(byte[] bytes)
+    {
+        if (Sending is { } sending && bytes.Length > 0)
+        {
+            _ = sending(bytes).AsTask();
+        }
+    }
+
+    /// <summary>Where the pointer last was over this pane, which a wheel report is placed at.</summary>
+    private int _lastX;
+
+    private int _lastY;
 
     /// <summary>
     /// A press: extend what is there where shift is held, and otherwise start again.

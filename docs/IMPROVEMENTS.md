@@ -314,26 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS155 The mouse the host asked for, and the wheel
-
-Counted while wiring QS30's selection: `src/Quickshell.App/*.cs` names neither
-`MouseReporting`, nor the encoder QS21 shipped, nor `Viewport` at all. So a program that
-turns mouse tracking on gets nothing — no click, no drag, no wheel — and the scrollback
-exists in the ring with nothing able to look back into it.
-
-QS30 already made the decision this depends on, and made it the way every terminal does:
-the host owns the pointer once it asks for it, and shift takes it back for selection.
-What is missing is only the other half of that sentence. A press, a release, a move
-while a button is down and a wheel notch each become the sequence `Emulator.Encode`
-already produces, and go out through the same `TypeAsync` a keystroke does.
-
-The wheel is the piece with a decision in it, and `Viewport.Wheel` has already made that
-too: back through the history on the ordinary screen, to the program where it asked for
-the mouse, and as arrow keys under a full-screen program that did not — which is what
-makes a wheel work inside a pager that never heard of one.
-
-Falsified when a program with mouse tracking on cannot tell a click from silence.
-
 ### §QS156 The boundary ICU is asked for and ASCII never needed
 
 Measured on the replayed corpus, same machine, one build apart. Segmentation falls from

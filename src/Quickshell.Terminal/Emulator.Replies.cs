@@ -29,15 +29,6 @@ internal enum Answer : byte
     /// </summary>
     SettingReport,
 
-    /// <summary>A pointer event in the original encoding: three bytes, each its value plus 32.</summary>
-    MouseLegacy,
-
-    /// <summary>A pointer event in SGR encoding, DECSET 1006, that is not a release.</summary>
-    MouseSgrPress,
-
-    /// <summary>The same, released — which is a different final byte and nothing else.</summary>
-    MouseSgrRelease,
-
     /// <summary>
     /// DECRQCRA's answer: the asker's id, then a rectangle's checksum as four hex digits. Both are
     /// numbers this terminal computed; the id is the host's, but it is a number and is written as
@@ -174,29 +165,6 @@ public sealed partial class Emulator
                 SettingReport((Setting)first);
                 _reply.Add(Escape);
                 _reply.Add(Backslash);
-                break;
-
-            case Answer.MouseLegacy:
-                // Three bytes rather than three numbers, and the only place in this file where a
-                // reply byte is arithmetic instead of a digit. The caller has already checked that
-                // each sum fits, because a byte that overflowed here would name another cell.
-                Csi();
-                _reply.Add((byte)'M');
-                _reply.Add((byte)(first + 32));
-                _reply.Add((byte)(second + 32));
-                _reply.Add((byte)(third + 32));
-                break;
-
-            case Answer.MouseSgrPress:
-            case Answer.MouseSgrRelease:
-                Csi();
-                Literal("<");
-                Number(first);
-                Literal(";");
-                Number(second);
-                Literal(";");
-                Number(third);
-                Literal(answer == Answer.MouseSgrRelease ? "m" : "M");
                 break;
 
             case Answer.AnsiModeReport:
