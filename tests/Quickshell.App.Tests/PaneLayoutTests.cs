@@ -196,4 +196,60 @@ public sealed class PaneLayoutTests
 
         Assert.Equal(0.5, layout.Portions[left].Width, 9);
     }
+
+    /// <summary>
+    /// QS163: every split is a divider with a place on screen, and dragging it by the split's own
+    /// id moves exactly that one — the right half split again has two dividers, and the inner one
+    /// moves without the outer one noticing.
+    /// </summary>
+    [Fact]
+    public void EveryDividerHasAPlaceAndDragsItsOwnSplit()
+    {
+        PaneLayout layout = new();
+
+        int right = layout.Split(layout.First, Divide.Beside);
+        layout.Split(right, Divide.Below);
+
+        IReadOnlyList<Divider> dividers = layout.Dividers;
+
+        Assert.Equal(2, dividers.Count);
+
+        Divider outer = dividers.Single(each => each.How == Divide.Beside);
+        Divider inner = dividers.Single(each => each.How == Divide.Below);
+
+        Assert.Equal(0.5, outer.At, 9);
+        Assert.Equal(0.5, inner.At, 9);
+        Assert.Equal(0.5, inner.Space.X, 9);
+
+        // The inner divider dragged to three quarters of the way down the tab.
+        layout.Drag(inner.Split, inner.ShareAt(0.75));
+
+        Assert.Equal(0.75, layout.Dividers.Single(each => each.How == Divide.Below).At, 9);
+        Assert.Equal(0.5, layout.Dividers.Single(each => each.How == Divide.Beside).At, 9);
+    }
+
+    /// <summary>
+    /// A chord moves the divider beside the focused pane the way the arrow points, the nearest one
+    /// that runs the right way; with none that way it answers no and moves nothing.
+    /// </summary>
+    [Fact]
+    public void ANudgeMovesTheNearestDividerThatRunsTheRightWay()
+    {
+        PaneLayout layout = new();
+
+        int right = layout.Split(layout.First, Divide.Beside);
+        int below = layout.Split(right, Divide.Below);
+
+        // From the bottom-right pane: left moves the vertical divider, up moves the horizontal one.
+        Assert.True(layout.Nudge(below, Toward.Left));
+        Assert.Equal(0.45, layout.Dividers.Single(each => each.How == Divide.Beside).At, 9);
+
+        Assert.True(layout.Nudge(below, Toward.Up));
+        Assert.Equal(0.45, layout.Dividers.Single(each => each.How == Divide.Below).At, 9);
+
+        // A tab of one pane has nothing to nudge.
+        PaneLayout single = new();
+
+        Assert.False(single.Nudge(single.First, Toward.Right));
+    }
 }

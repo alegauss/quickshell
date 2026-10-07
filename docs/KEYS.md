@@ -36,6 +36,7 @@ Nothing here is configurable yet. When it becomes configurable this page becomes
 | `Ctrl+Shift+\` | Splits the focused pane side by side. |
 | `Ctrl+Shift+-` | Splits it one above the other. |
 | `Alt+Shift+Left` `Alt+Shift+Right` `Alt+Shift+Up` `Alt+Shift+Down` | Moves the focus to the pane that way on screen. Nothing that way leaves the focus where it is. |
+| `Ctrl+Alt+Shift+Left` `Ctrl+Alt+Shift+Right` `Ctrl+Alt+Shift+Up` `Ctrl+Alt+Shift+Down` | Moves the divider beside the focused pane a step that way. A divider can also be dragged with the mouse. |
 | `Ctrl+Shift+Z` | Zooms the focused pane to fill the tab, and back. The other panes keep running. |
 | `Ctrl+Shift+E` | Gives every pane in the tab an equal share. |
 | `Ctrl+Shift+B` | Types into every pane in the tab at once, pastes included; press it again to stop. Each pane receiving what you type has an orange edge. |

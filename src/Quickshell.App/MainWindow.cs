@@ -206,6 +206,11 @@ public sealed class MainWindow : Window
         {
             InputBindings.Add(new KeyBinding(new Facing(this, way), key,
                                              ModifierKeys.Alt | ModifierKeys.Shift));
+
+            // And the divider beside it, with Control added: the same arrows, one modifier more,
+            // for somebody resizing a split without a mouse (QS163).
+            InputBindings.Add(new KeyBinding(new Nudging(this, way), key,
+                                             ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift));
         }
 
         // Zoom and equalise, which are the two gestures that make a cramped split workable.
@@ -363,19 +368,178 @@ public sealed class MainWindow : Window
                     view.Showing = visible;
                 }
 
-                // Rounded to whole pixels, and the far edge rounded rather than the width: two panes
-                // sharing a divider must not leave a one-pixel seam of whatever is behind them.
-                double left = Math.Floor(at.X * width);
-                double top = Math.Floor(at.Y * height);
+                // Rounded to whole pixels, and the far edge rounded rather than the width, so the
+                // gaps are exactly the dividers' and nothing else. An edge inside the tab gives half
+                // a divider to the gap there (QS163); the tab's own edges give nothing.
+                double left = Math.Floor(at.X * width) + (at.X > Inside ? HalfDivider : 0);
+                double top = Math.Floor(at.Y * height) + (at.Y > Inside ? HalfDivider : 0);
+                double right = Math.Floor(at.Right * width) - (at.Right < 1 - Inside ? HalfDivider : 0);
+                double bottom = Math.Floor(at.Bottom * height) - (at.Bottom < 1 - Inside ? HalfDivider : 0);
 
                 Canvas.SetLeft(leaf.Pane, left);
                 Canvas.SetTop(leaf.Pane, top);
 
-                leaf.Pane.Width = Math.Max(1d, Math.Floor(at.Right * width) - left);
-                leaf.Pane.Height = Math.Max(1d, Math.Floor(at.Bottom * height) - top);
+                leaf.Pane.Width = Math.Max(1d, right - left);
+                leaf.Pane.Height = Math.Max(1d, bottom - top);
+            }
+        }
+
+        Handles(width, height);
+    }
+
+    /// <summary>Half a divider's width in pixels, given to the gap by each pane beside it.</summary>
+    private const double HalfDivider = 2;
+
+    /// <summary>How far in from the tab's edge an edge has to be to be a divider's and not the tab's.</summary>
+    private const double Inside = 1e-6;
+
+    /// <summary>The handles in the gaps, reused across arrangements and hidden where unused.</summary>
+    private readonly List<System.Windows.Controls.Primitives.Thumb> _handles = [];
+
+    /// <summary>
+    /// A handle in every gap of the tab on screen, which is what a divider is dragged by (QS163).
+    ///
+    /// <para><b>A real element in a real gap</b>, because nothing can be drawn over a pane: it is a
+    /// child window a swapchain presents into, and it takes the mouse before anything beside it. So
+    /// the panes leave a few pixels between them and the handle sits there, with the cursor that says
+    /// what it does. A press inside a terminal stays a selection — deciding by how near the edge it
+    /// landed is a rule a user would lose against.</para>
+    /// </summary>
+    private void Handles(double width, double height)
+    {
+        IReadOnlyList<Divider> dividers = Current is { Zoomed: < 0 } tab
+            ? tab.Layout.Dividers
+            : [];
+
+        while (_handles.Count < dividers.Count)
+        {
+            _handles.Add(Handle());
+        }
+
+        for (int at = 0; at < _handles.Count; at++)
+        {
+            System.Windows.Controls.Primitives.Thumb handle = _handles[at];
+
+            if (at >= dividers.Count)
+            {
+                handle.Visibility = Visibility.Collapsed;
+                continue;
+            }
+
+            Divider divider = dividers[at];
+            bool upright = divider.How == Divide.Beside;
+
+            handle.Tag = divider.Split;
+            handle.Cursor = upright ? Cursors.SizeWE : Cursors.SizeNS;
+            handle.Visibility = Visibility.Visible;
+
+            if (upright)
+            {
+                double x = Math.Floor(divider.At * width) - HalfDivider;
+                double y = Math.Floor(divider.Space.Y * height);
+
+                Canvas.SetLeft(handle, x);
+                Canvas.SetTop(handle, y);
+
+                handle.Width = HalfDivider * 2;
+                handle.Height = Math.Max(1d, Math.Floor(divider.Space.Bottom * height) - y);
+            }
+            else
+            {
+                double x = Math.Floor(divider.Space.X * width);
+                double y = Math.Floor(divider.At * height) - HalfDivider;
+
+                Canvas.SetLeft(handle, x);
+                Canvas.SetTop(handle, y);
+
+                handle.Width = Math.Max(1d, Math.Floor(divider.Space.Right * width) - x);
+                handle.Height = HalfDivider * 2;
             }
         }
     }
+
+    /// <summary>One handle: transparent, named for the accessibility tree, and dragging its split.</summary>
+    private System.Windows.Controls.Primitives.Thumb Handle()
+    {
+        FrameworkElementFactory ground = new(typeof(Border));
+        ground.SetValue(Border.BackgroundProperty, System.Windows.Media.Brushes.Transparent);
+
+        System.Windows.Controls.Primitives.Thumb handle = new()
+        {
+            Template = new ControlTemplate(typeof(System.Windows.Controls.Primitives.Thumb)) { VisualTree = ground },
+            Focusable = false,
+        };
+
+        System.Windows.Automation.AutomationProperties.SetAutomationId(handle, "Divider");
+        System.Windows.Automation.AutomationProperties.SetName(handle, "Pane divider");
+
+        handle.DragDelta += (_, moved) => DragDivider(handle, moved.HorizontalChange, moved.VerticalChange);
+
+        _terminal.Children.Add(handle);
+
+        return handle;
+    }
+
+    /// <summary>
+    /// A handle moved: its split's share becomes wherever the divider now is, and the panes follow.
+    /// The change is from where the handle was, which is where the divider was until this moved it.
+    /// </summary>
+    private void DragDivider(System.Windows.Controls.Primitives.Thumb handle, double across, double down)
+    {
+        if (Current is not { } tab || handle.Tag is not int split)
+        {
+            return;
+        }
+
+        // By id and not by default: the root split's id is zero, so a missing divider and the root
+        // one would be indistinguishable to a lookup that fell back on a default.
+        Divider? found = null;
+
+        foreach (Divider each in tab.Layout.Dividers)
+        {
+            if (each.Split == split)
+            {
+                found = each;
+            }
+        }
+
+        if (found is not { } divider)
+        {
+            return;
+        }
+
+        double width = Math.Max(1d, _terminal.ActualWidth);
+        double height = Math.Max(1d, _terminal.ActualHeight);
+
+        double position = divider.How == Divide.Beside
+            ? divider.At + (across / width)
+            : divider.At + (down / height);
+
+        tab.Layout.Drag(split, divider.ShareAt(position));
+
+        Arrange();
+    }
+
+    /// <summary>
+    /// Moves the divider beside the focused pane one step the arrow's way — a divider for somebody
+    /// without a mouse (QS163).
+    /// </summary>
+    /// <returns>Whether there was one that way to move.</returns>
+    public bool NudgeDivider(Toward way)
+    {
+        if (Current is not { Zoomed: < 0 } tab || !tab.Layout.Nudge(tab.FocusedPane, way))
+        {
+            return false;
+        }
+
+        Arrange();
+
+        return true;
+    }
+
+    /// <summary>The handles in the gaps of the tab on screen, for a caller that drags one.</summary>
+    public IReadOnlyList<System.Windows.Controls.Primitives.Thumb> DividerHandles =>
+        [.. _handles.Where(handle => handle.Visibility == Visibility.Visible)];
 
     /// <summary>The tab on screen, or null while there are none.</summary>
     public TerminalTab? Current => _active >= 0 && _active < _open.Count ? _open[_active] : null;
@@ -1818,6 +1982,19 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.Active += by;
+    }
+
+    /// <summary>The divider beside the focused pane, one step the arrow's way.</summary>
+    private sealed class Nudging(MainWindow window, Toward way) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => $"Move divider {way.ToString().ToLowerInvariant()}";
+
+        /// <summary>A tab with one pane has no divider to move.</summary>
+        public override bool CanExecute(object? parameter) => Window.Current is { Layout.Count: > 1, Zoomed: < 0 };
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.NudgeDivider(way);
     }
 
     /// <summary>The tab on screen, one place along the strip.</summary>

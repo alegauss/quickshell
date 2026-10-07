@@ -41,6 +41,15 @@
           "reads": "name",
           "expect": "Terminal output",
           "named": "and so is the one beside it"
+        },
+        {
+          // The handle a divider is dragged by, in the gap between the two (QS163). Found by its id
+          // and read for its name, so the reading is not what found it.
+          "locator": "Thumb#Divider",
+          "act": "read",
+          "reads": "name",
+          "expect": "Pane divider",
+          "named": "and between them is a divider a mouse can take hold of"
         }
       ]
     }

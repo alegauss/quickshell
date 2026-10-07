@@ -803,30 +803,6 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS163 The divider that is a gap between two child windows
-
-`PaneLayout.Share` takes a proportion, clamps it so neither side can be dragged away,
-and is called by nothing but the equalise chord. What is missing is the drag, and the
-obstacle is the same one that runs through every pane in this client: they are child
-windows.
-
-A `GridSplitter` needs a WPF element between two WPF elements. Between two `HwndHost`
-panes there is no such thing — the panes are positioned on a canvas by proportion, and
-what lies between them is a few pixels of nothing that receives no WPF mouse input
-because the child windows either side take it first. So the divider has to be either a
-real element placed over the gap and given a cursor and a drag, or a pointer captured by
-whichever pane the press landed near the edge of.
-
-The second is tempting because the mouse plumbing already exists and would need no new
-element, and it is wrong: a drag that starts inside a terminal is a selection, and
-deciding between the two by how close to an edge the press was is a rule a user will
-lose against.
-
-Worth having beside it: a chord that nudges a divider, which needs none of this and is
-what somebody without a mouse has.
-
-Falsified when a pane can be resized only by closing it and splitting again.
-
 ### §QS164 The device per pane that splitting made cheap to ask for
 
 `TerminalLeaf.Open` attaches a view, and a view opens a `GraphicsDevice`, a

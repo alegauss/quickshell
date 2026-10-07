@@ -43,6 +43,26 @@ public readonly record struct Portion(double X, double Y, double Width, double H
 }
 
 /// <summary>
+/// One divider: the split it belongs to, which way it runs, the space the split divides and how much
+/// of it the first side takes (QS163).
+/// </summary>
+/// <param name="Split">The split's own id, which is what dragging it sets the share of.</param>
+/// <param name="How">Beside is a vertical divider, Below a horizontal one.</param>
+/// <param name="Space">The space the split divides, as proportions of the tab.</param>
+/// <param name="Share">How much of that space the first side takes.</param>
+public readonly record struct Divider(int Split, Divide How, Portion Space, double Share)
+{
+    /// <summary>Where the divider is across the tab: an X for a vertical one, a Y for a horizontal one.</summary>
+    public double At => How == Divide.Beside ? Space.X + (Space.Width * Share) : Space.Y + (Space.Height * Share);
+
+    /// <summary>The share a divider dragged to this position across the tab would have.</summary>
+    public double ShareAt(double position) =>
+        How == Divide.Beside
+            ? (position - Space.X) / Math.Max(double.Epsilon, Space.Width)
+            : (position - Space.Y) / Math.Max(double.Epsilon, Space.Height);
+}
+
+/// <summary>
 /// The tree of splits a tab holds, and where each pane ends up in it.
 ///
 /// <para><b>A tree and not a list, because any pane can be split again.</b> A model that held rows
@@ -205,6 +225,82 @@ public sealed class PaneLayout
 
     /// <summary>Where every pane sits, as proportions of the tab.</summary>
     public IReadOnlyDictionary<int, Portion> Portions => Where();
+
+    /// <summary>Every divider in the tab, which is every split, and where each one is (QS163).</summary>
+    public IReadOnlyList<Divider> Dividers
+    {
+        get
+        {
+            List<Divider> found = [];
+
+            Splits(_root, new Portion(0, 0, 1, 1), found);
+
+            return found;
+        }
+    }
+
+    /// <summary>
+    /// Sets a split's share by the split's own id, which is what a divider being dragged knows —
+    /// clamped as <see cref="Share"/> clamps, so neither side can be dragged away.
+    /// </summary>
+    public void Drag(int split, double share)
+    {
+        if (_nodes.TryGetValue(split, out Node? node) && !node.Leaf)
+        {
+            _nodes[split] = node with { Share = Math.Clamp(share, 0.05, 0.95) };
+        }
+    }
+
+    /// <summary>
+    /// Moves the divider beside a pane one step in a direction, which is what a chord does for
+    /// somebody without a mouse (QS163): the nearest split around the pane that runs the right way,
+    /// moved the way the arrow points.
+    /// </summary>
+    /// <returns>Whether there was such a divider to move.</returns>
+    public bool Nudge(int pane, Toward way, double by = 0.05)
+    {
+        Divide how = way is Toward.Left or Toward.Right ? Divide.Beside : Divide.Below;
+        double sign = way is Toward.Right or Toward.Down ? 1 : -1;
+
+        for (int at = Parent(pane); at >= 0; at = Parent(at))
+        {
+            if (_nodes[at].How == how)
+            {
+                Drag(at, _nodes[at].Share + (sign * by));
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void Splits(int at, Portion space, List<Divider> into)
+    {
+        Node node = _nodes[at];
+
+        if (node.Leaf)
+        {
+            return;
+        }
+
+        into.Add(new Divider(at, node.How, space, node.Share));
+
+        if (node.How == Divide.Beside)
+        {
+            double width = space.Width * node.Share;
+
+            Splits(node.First, space with { Width = width }, into);
+            Splits(node.Second, space with { X = space.X + width, Width = space.Width - width }, into);
+
+            return;
+        }
+
+        double height = space.Height * node.Share;
+
+        Splits(node.First, space with { Height = height }, into);
+        Splits(node.Second, space with { Y = space.Y + height, Height = space.Height - height }, into);
+    }
 
     /// <summary>
     /// The pane in a direction, by where it is on screen and not by where it is in the tree.
