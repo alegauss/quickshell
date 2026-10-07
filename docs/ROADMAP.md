@@ -14,7 +14,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS198** (deps: —) **A scheme's cursor colour and OSC 12 are stored and never drawn, so every pane's cursor is the same grey** — The renderer draws a process-wide constant and never reads the palette's cursor, while SETTINGS.md tells users a scheme sets it. → §QS198
 - 📋 **QS203** (deps: —) **Two combining marks on the same side of one base are drawn on the same pixels instead of stacked** — Each mark is placed where it sits over the base alone, because DirectWrite misplaces every mark after the first. → §QS203
 - 📋 **QS205** (deps: —) **Cursor up and down cross the scrolling region's edges, so a program moving inside a region writes outside it** — CUU and CUD clamp only to the screen, where DEC and xterm stop them at the margin the cursor started inside. → §QS205
 - 📋 **QS206** (deps: —) **Restoring the cursor does not restore the character set, so line drawing after ESC 8 prints letters** — DECSC saves the designations and shift state with the position, and a program that switched sets in between relies on getting them back. → §QS206

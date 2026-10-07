@@ -281,6 +281,45 @@ public sealed class TerminalViewTests
         Assert.True(drew, "the prepared device drew nothing");
     }
 
+    /// <summary>
+    /// QS198: the cursor a pane draws is its own palette's — what a host set through OSC 12, or what a
+    /// scheme set — and not one grey for every pane. The renderer drawing the colour it is given is
+    /// DecorationTests' claim; this is that the pane gives it.
+    /// </summary>
+    [Fact]
+    public void ThePaneDrawsTheCursorItsPaletteNames()
+    {
+        (Rgb fromHost, Rgb fromScheme) = OnPane(pane =>
+        {
+            using TerminalShare share = new() { Looping = false };
+
+            // On the model's own palette, as the client opens every pane.
+            Emulator emulator = new(80, 25);
+            TerminalView view = share.View(pane.PaneHandle,
+                                           (uint)Math.Max(1d, pane.ActualWidth),
+                                           (uint)Math.Max(1d, pane.ActualHeight),
+                                           new FontSettings("Consolas", 16f, 96f),
+                                           emulator.Palette)
+                                ?? throw new InvalidOperationException($"no graphics device: {share.Failed?.Message}");
+
+            // OSC 12, as a host sets it.
+            emulator.Feed("\u001b]12;#ff8800\u0007"u8);
+            view.DrawIfNeeded(emulator);
+
+            Rgb host = view.Renderer.CursorColour;
+
+            // And a scheme's, as the settings apply one.
+            new ColourScheme { Cursor = new Rgb(0, 200, 120) }.ApplyTo(emulator.Palette);
+            view.Moved();
+            view.DrawIfNeeded(emulator);
+
+            return (host, view.Renderer.CursorColour);
+        });
+
+        Assert.Equal(new Rgb(255, 136, 0), fromHost);
+        Assert.Equal(new Rgb(0, 200, 120), fromScheme);
+    }
+
     /// <summary>What was prepared and never taken is released with the share, and nothing is left open.</summary>
     [Fact]
     public void APreparedDeviceNoPaneTookIsReleased()

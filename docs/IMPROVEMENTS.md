@@ -314,19 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS198 A cursor colour that reaches the pane
-
-Found while shipping QS83. ColourScheme.ApplyTo writes the scheme's cursor into the
-pane's Palette, and OSC 12 writes it there too, but CellRenderer draws with its own
-CursorColour, which nothing in src sets, so every pane's cursor is Brand.Cursor whatever
-the scheme or the host asked for. docs/SETTINGS.md says a scheme sets the cursor colour,
-which is not true today. The built-in scheme is also inconsistent with a scheme file: a
-file that omits its cursor gets the foreground, while the built-in one's cursor is a
-different grey. The move is for the view to hand the palette's cursor to the renderer
-each frame, the way cell colours already travel, with a test that sets a scheme's cursor
-and reads the colour a block cursor was drawn with. Falsified when a scheme or OSC 12
-sets the cursor and the drawn cursor is not that colour.
-
 ### §QS203 Stacking what the shaper would not
 
 QS91 draws a cluster as one atlas glyph, shaped whole by DirectWrite. On Consolas the

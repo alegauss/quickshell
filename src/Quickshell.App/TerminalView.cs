@@ -448,6 +448,11 @@ public sealed class TerminalView : IDisposable
 
         long occluded = _surface.Occlusions;
 
+        // The cursor this pane's scheme or host asked for (QS198). The renderer draws every pane in
+        // the process, so its cursor colour is set for each pane's frame, on the one thread that
+        // draws them, rather than once for all of them.
+        _renderer.CursorColour = _palette.Cursor;
+
         // Cleared to the scheme's own background first, read afresh each frame so a scheme changed
         // under a live pane takes the strip past its last cell with it (QS177).
         _renderer.Draw(_surface, _cells.AsSpan(0, _painter.Painted), buffer.Columns, _outlined,

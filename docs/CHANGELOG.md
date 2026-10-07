@@ -83,6 +83,7 @@
 - ✅ **QS158** **Nothing says how far back the view is, so a reader who scrolled has no idea where they are or that output arrived** — A view scrolled into the history shows a thumb in the right-hand column and an arrow when output arrived below, drawn in the grid; the live screen carries neither.
 - ✅ **QS177** **The strip past the last whole cell is never painted, so every pane has a black band at its right and bottom edges** — Every frame clears the target to the scheme's background before the grid, so the strip past a pane's last whole cell is the scheme's colour, not black.
 - ✅ **QS183** **A paste pressed while another process holds the clipboard open does nothing and says nothing** — Copy and paste wait up to a tenth of a second for a clipboard somebody else holds, and past that say in the title that they did not happen.
+- ✅ **QS198** **A scheme's cursor colour and OSC 12 are stored and never drawn, so every pane's cursor is the same grey** — Each pane hands its own palette's cursor to the renderer as it draws, so a scheme's cursor and a host's OSC 12 are the colour on screen.
 
 ## Block D — The tree a user organises work in
 
