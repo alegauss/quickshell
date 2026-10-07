@@ -1620,33 +1620,6 @@ sessions afterwards than it did before plus what was imported.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS136 A green that says how much it covered
-
-`run-tests.cmd` already refuses one way of shrinking silently: no test applications
-found is not a pass. It does not refuse the other. The docker sshd fixture stops on its
-own, and every test needing it calls `Assert.SkipUnless`. The run then reports
-**Passed**, `All 5 test assemblies passed`, and exits 0, with 103 of 228 tests never
-executed. The line a person reads is identical either way.
-
-That is the shape of failure the script's own comment argues against: a command
-reporting something the tree does not have teaches people to stop reading it. A false
-green is worse than a false red, because nobody investigates it.
-
-What to do, in order of worth. **Print the skip count in the summary**, always — one
-number, and the difference becomes visible. **Fail on a skip budget**: a number per
-assembly, checked in, so a new skip is a decision rather than weather. **Say why**: the
-skip reasons are already one line each. CI needs this most, because nobody there watches
-a terminal.
-
-The fixture half is the **engine**, not the containers. They exit `(0)` because the
-engine under them stops — this desk runs FreeWilly, which then answers "the FreeWilly
-engine is not running". So `restart: unless-stopped` in `compose.yaml` is worth having
-and is not enough: the suite has to notice. One session saw four green runs skipping 81,
-103, 96 and 96 of 228 tests.
-
-Falsified when a run that skipped the whole network suite exits 0 without saying
-so.</body>
-
 ### §QS149 The other invisible byte
 
 A source file was rewritten by a shell one-liner that read it as one encoding and wrote
@@ -1712,6 +1685,9 @@ is for.
 
 What must not happen is the ceiling quietly becoming a budget. Zero is the claim; the
 noise is the runtime's, and the fix is to stop measuring the runtime.
+
+Seen again on 2026-10-07: the `tmux-resize` replay allocated 7,288 bytes in a guest run
+and none in three host runs, and that test already measures a warmed second pass.
 
 Falsified when the same tree gives two verdicts on two runs of the same machine.
 

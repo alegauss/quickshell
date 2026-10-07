@@ -79,18 +79,33 @@ if %RAN%==0 (
     exit /b 1
 )
 
-if %FAILED%==0 (
+rem QS136: how much ran, always, and the skips held to the budget beside the tests. A run that
+rem skipped a hundred tests used to print the same line as one that skipped none, and a green that
+rem proves nothing is worse than a red, because nobody investigates it. The counts are printed on
+rem every run; a skip past tests\skips.json fails it, unless it is the SSH fixture's on a desk that
+rem declares it has none (QUICKSHELL_NO_FIXTURE), which is then printed as waived.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\count-the-run.ps1" -From "%REPORTS%" -Budget "%~dp0tests\skips.json"
+set "OVER=%ERRORLEVEL%"
+echo.
+
+if %FAILED%==0 if %OVER%==0 (
     echo All %RAN% test assemblies passed.
     popd
     exit /b 0
 )
 
+if not %OVER%==0 echo SKIPPED PAST THE BUDGET - more tests did not run than tests\skips.json allows.
+
+if %FAILED%==0 (
+    popd
+    exit /b 1
+)
+
 echo %FAILED% of %RAN% test assemblies failed:!BROKEN!
 echo.
 
-rem Which tests, out of the reports. A reporter and never a verdict - the exit code below is the
-rem suite's, and a second thing that could fail a build is a second thing that can be wrong about
-rem one.
+rem Which tests, out of the reports, and last, so the end of the output is the answer. A reporter
+rem and never a verdict - the exit code below is the suite's.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\name-the-red.ps1" -From "%REPORTS%"
 
 popd

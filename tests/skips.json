@@ -1,0 +1,17 @@
+// How many tests each assembly may skip on a desk with the SSH fixture up (QS136).
+//
+// A skip past these numbers fails run-tests.cmd, so a new one is a decision written here with its
+// reason rather than weather nobody reads. The fixture's own skips are not counted against them
+// only where a run declares it has none (QUICKSHELL_NO_FIXTURE, which the guest runner sets); a
+// desk that forgot to start it is over budget.
+{
+  // The PuTTY sessions and the MobaXterm.ini a real machine may hold: nothing to read on a clean desk.
+  "Quickshell.App.Tests": 2,
+
+  // run-fuzz.cmd's findings, which a desk that never fuzzed does not have.
+  "Quickshell.Terminal.Tests": 1,
+
+  // The Windows ssh-agent service, off unless somebody started it; and QS139's reproduction, kept
+  // skipped until SSH.NET bounds a channel's window.
+  "Quickshell.Transport.Tests": 2
+}

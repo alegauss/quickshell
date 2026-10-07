@@ -34,5 +34,11 @@ jobs:
 
       # run-tests.cmd, which is the suite on every desk: it writes a TRX per assembly and names a
       # red run's tests. `dotnet test --solution Quickshell.sln` gives the same verdict since QS89.
+      #
+      # A hosted Windows runner cannot run the Linux SSH fixture, and says so: the network tests are
+      # printed as waived rather than passing as a quieter green, and every other skip is held to
+      # tests\skips.json (QS136).
       - name: Test
+        env:
+          QUICKSHELL_NO_FIXTURE: "1"
         run: .\run-tests.cmd Release

@@ -89,6 +89,11 @@ set "DOTNET_CLI_TELEMETRY_OPTOUT=1"
 set "MSBUILDDISABLENODEREUSE=1"
 dotnet build-server shutdown >nul 2>&1
 
+rem The guest has no docker, so the SSH fixture is never up here, and saying so is what lets the run
+rem pass while printing every test that did not run as waived (QS136). A host run does not set it,
+rem so a fixture somebody forgot to start is a run over its skip budget there.
+set "QUICKSHELL_NO_FIXTURE=1"
+
 cd /d "$script:GuestRepo"
 call "$script:GuestRepo\run-tests.cmd" $Configuration > "$script:GuestSync\vm-run.log" 2>&1
 
