@@ -85,7 +85,7 @@ public static class Commands
                 continue;
             }
 
-            string? chord = binding is KeyBinding key ? Chord.Naming(key.Key, key.Modifiers) : null;
+            string? chord = Chord.Of(binding);
 
             found.Add(new Command(named.Name, chord, named));
         }

@@ -73,9 +73,9 @@ public sealed class CommandsTests
     {
         string[] nameless = OnStaThread<string[]>(() =>
             [.. new MainWindow().InputBindings
-                                .OfType<KeyBinding>()
+                                .OfType<InputBinding>()
                                 .Where(one => one.Command is not INamedCommand)
-                                .Select(one => Chord.Naming(one.Key, one.Modifiers))]);
+                                .Select(one => Chord.Of(one) ?? one.Command.GetType().Name)]);
 
         Assert.Empty(nameless);
     }
@@ -213,11 +213,11 @@ public sealed class CommandsTests
     }
 
     /// <summary>
-    /// A command bound to two keys is one entry.
+    /// Splitting side by side is one entry, named by the character it is bound to.
     ///
-    /// <para>Splitting side by side is bound to both <c>OemBackslash</c> and <c>Oem5</c> because the
-    /// backslash sits in different places on different keyboards. Listing it twice would show the
-    /// user a fact about a <see cref="Key"/> enumeration rather than about this client.</para>
+    /// <para>It was bound to both <c>OemBackslash</c> and <c>Oem5</c> because the backslash sits in
+    /// different places on different keyboards; since QS171 it is one binding on the character, and
+    /// the palette names it by that character on every layout.</para>
     /// </summary>
     [Fact]
     public void ACommandBoundTwiceIsOneEntry()

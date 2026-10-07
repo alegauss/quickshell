@@ -38,8 +38,9 @@ public sealed partial class KeysReferenceTests
     {
         string[] taken = OnStaThread(() =>
             new MainWindow().InputBindings
-                            .OfType<KeyBinding>()
-                            .Select(one => Chord.Naming(one.Key, one.Modifiers))
+                            .OfType<InputBinding>()
+                            .Select(Chord.Of)
+                            .OfType<string>()
                             .Distinct(StringComparer.Ordinal)
                             .Order(StringComparer.Ordinal)
                             .ToArray());

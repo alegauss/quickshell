@@ -372,8 +372,8 @@ public sealed class TabTests
 
     /// <summary>Presses a chord through the binding the window actually carries.</summary>
     private static void Step(MainWindow window, Key key, ModifierKeys modifiers) =>
-        window.InputBindings.OfType<KeyBinding>()
-              .Single(bound => bound.Key == key && bound.Modifiers == modifiers)
+        window.InputBindings.OfType<InputBinding>()
+              .Single(bound => Chord.Of(bound) == Chord.Naming(key, modifiers))
               .Command.Execute(null);
 
     /// <summary>The whole screen as one string.</summary>

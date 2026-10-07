@@ -108,6 +108,13 @@ meanings for. `Alt` with one is not.
 **`Ctrl+Tab` is the exception, and it is taken anyway.** A full-screen program could plausibly want
 it. A client where you cannot leave the tab you are in has no tabs, so this one is spent knowingly.
 
+**The chords on punctuation follow your keyboard layout.** `Ctrl+Shift+\`, `Ctrl+Shift+-` and
+`Ctrl+Shift+,` are bound to the character and not to a key: whichever key types that character
+without Shift on the layout you are using is the one that works. On a layout where the character
+needs AltGr or Shift, that chord does not exist — Windows has no key for it to be — and the command
+is in the palette (`Ctrl+Shift+P`) instead. Every layout installed on the machine the tests run on
+is checked against this.
+
 ## What is deliberately not taken
 
 - **`Ctrl+C`.** It is how a person stops a runaway program. A client that took it would have taken

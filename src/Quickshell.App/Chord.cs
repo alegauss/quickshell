@@ -24,7 +24,26 @@ public static class Chord
     /// </summary>
     /// <param name="key">The key itself.</param>
     /// <param name="modifiers">What is held down with it.</param>
-    public static string Naming(Key key, ModifierKeys modifiers)
+    public static string Naming(Key key, ModifierKeys modifiers) => Naming(modifiers, Named(key));
+
+    /// <summary>
+    /// How a binding's chord is written, whichever kind of gesture it is — a key, or a character a
+    /// key types (QS171) — or null for a binding with no chord, which is a palette-only command.
+    /// </summary>
+    public static string? Of(InputBinding binding)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+
+        return binding switch
+        {
+            KeyBinding key => Naming(key.Key, key.Modifiers),
+            { Gesture: CharacterGesture typed } => typed.Name,
+            _ => null,
+        };
+    }
+
+    /// <summary>The same spelling, for a key already named.</summary>
+    internal static string Naming(ModifierKeys modifiers, string key)
     {
         List<string> parts = [];
 
@@ -43,7 +62,7 @@ public static class Chord
             parts.Add("Shift");
         }
 
-        parts.Add(Named(key));
+        parts.Add(key);
 
         return string.Join('+', parts);
     }
@@ -69,7 +88,6 @@ public static class Chord
         Key.OemBackslash or Key.Oem5 => "\\",
         Key.OemMinus or Key.Subtract => "-",
         Key.OemPlus or Key.Add => "+",
-        Key.OemComma => ",",
         >= Key.D0 and <= Key.D9 => ((char)('0' + (key - Key.D0))).ToString(),
         _ => key.ToString(),
     };

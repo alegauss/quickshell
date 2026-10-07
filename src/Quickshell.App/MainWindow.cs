@@ -171,8 +171,8 @@ public sealed class MainWindow : Window
 
         // The window over the settings file (QS170), on the comma every editor puts settings on, with
         // Shift added as every chord here has, because Ctrl+comma alone is the program's.
-        InputBindings.Add(new KeyBinding(new Configuring(this), Key.OemComma,
-                                         ModifierKeys.Control | ModifierKeys.Shift));
+        InputBindings.Add(new InputBinding(new Configuring(this),
+                                           new CharacterGesture(',', ModifierKeys.Control | ModifierKeys.Shift)));
 
         // Moving the tab itself, on the chord browsers and editors use for it (QS160). Shift alone on
         // a page key is the scrollback's, and the bare key is the program's.
@@ -192,14 +192,15 @@ public sealed class MainWindow : Window
 
         // Splitting, on the two chords tmux and every terminal that copied it use — the characters
         // are the picture: a vertical bar divides side by side, a minus divides one above the other.
-        InputBindings.Add(new KeyBinding(new Splitting(this, Divide.Beside), Key.OemBackslash,
-                                         ModifierKeys.Control | ModifierKeys.Shift));
+        //
+        // Bound by the character and not by the key (QS171): an Oem key is a position on a US
+        // keyboard, so whichever key types a backslash or a minus on the layout in use is the one
+        // that splits — one binding each, on every layout, instead of one per position.
+        InputBindings.Add(new InputBinding(new Splitting(this, Divide.Beside),
+                                           new CharacterGesture('\\', ModifierKeys.Control | ModifierKeys.Shift)));
 
-        InputBindings.Add(new KeyBinding(new Splitting(this, Divide.Beside), Key.Oem5,
-                                         ModifierKeys.Control | ModifierKeys.Shift));
-
-        InputBindings.Add(new KeyBinding(new Splitting(this, Divide.Below), Key.OemMinus,
-                                         ModifierKeys.Control | ModifierKeys.Shift));
+        InputBindings.Add(new InputBinding(new Splitting(this, Divide.Below),
+                                           new CharacterGesture('-', ModifierKeys.Control | ModifierKeys.Shift)));
 
         // The focus, by direction and on the arrows, because the gesture is about where things are
         // on screen and an arrow is the only key that says a direction.
