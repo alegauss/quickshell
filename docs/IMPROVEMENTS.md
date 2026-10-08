@@ -759,27 +759,6 @@ visible.
 
 Falsified when a week passes with no campaign and nothing says so.
 
-### §QS224 HEAD only, read from disk
-
-Found while timing QS191. `Send-Tree -CommittedOnly` in `tools/vm-guest.ps1` is
-documented as "carry HEAD alone". It takes HEAD's list of files from `git ls-files -c`,
-then packs each file with `CreateEntryFromFile` from the working tree on disk. A tracked
-file with uncommitted edits therefore goes to the guest edited. A "before" run of an
-uncommitted change was the change itself: QS191's HEAD run reported a milestone that
-only the uncommitted code writes. A QS190 figure was recorded the same way and had to be
-corrected.
-
-What to build: with `-CommittedOnly`, read each file's contents from HEAD rather than
-from disk. Either `git archive --format=zip HEAD` straight into the stage, which is one
-call and is what HEAD means, or `git show HEAD:<path>` per file. Have the script print
-which it carried, as it does now. Untracked files are already excluded.
-
-`run-tests-vm.ps1`, `run-app-vm.ps1` and `run-startup-vm.ps1` all take the switch
-through Send-Tree, so one fix covers all three.
-
-Falsified when a guest run with `-CommittedOnly` builds a tracked file's uncommitted
-edit.
-
 ### §QS226 Clearing the guest clipboard without touching the host's
 
 Twice running on 2026-10-08, with no test failing, the guest suite went red on the skip

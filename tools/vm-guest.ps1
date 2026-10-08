@@ -372,8 +372,9 @@ function Send-Tree {
       A directory on the host to build the archive and the guest scripts in.
 
     .PARAMETER CommittedOnly
-      Carry HEAD alone. By default the guest gets the working tree - uncommitted and untracked
-      included - because testing a tree nobody has in front of them answers a question nobody asked.
+      Carry HEAD alone, its contents as committed and not as the disk has them now. By default the
+      guest gets the working tree - uncommitted and untracked included - because testing a tree
+      nobody has in front of them answers a question nobody asked.
     #>
     param(
         [Parameter(Mandatory)] [string] $RepoRoot,
@@ -381,29 +382,44 @@ function Send-Tree {
         [switch] $CommittedOnly
     )
 
+    $zip = Join-Path $Stage 'source.zip'
+
     Push-Location $RepoRoot
     try {
-        # -c and -o together, minus what .gitignore covers: tracked files plus the untracked ones
-        # that are really part of the tree. A sync built from `git diff` alone carries neither an
-        # untracked test file nor a new reference image, and a suite that never saw them is green
-        # about nothing.
-        if ($CommittedOnly) { $files = @(& git ls-files -c) } else { $files = @(& git ls-files -c -o --exclude-standard) }
-        if ($LASTEXITCODE -ne 0) { Refuse 'git would not list this tree' }
+        if ($CommittedOnly) {
+            # HEAD's own contents, from git, and not HEAD's list of files read off the disk (QS224):
+            # the second carried every tracked file's uncommitted edit, so a "before" run of a change
+            # was the change itself, and a measurement compared it with itself.
+            $files = @(& git ls-tree -r --name-only HEAD)
+            if ($LASTEXITCODE -ne 0) { Refuse 'git would not list HEAD' }
+
+            & git archive --format=zip -o $zip HEAD
+            if ($LASTEXITCODE -ne 0) { Refuse 'git would not archive HEAD' }
+        }
+        else {
+            # -c and -o together, minus what .gitignore covers: tracked files plus the untracked ones
+            # that are really part of the tree. A sync built from `git diff` alone carries neither an
+            # untracked test file nor a new reference image, and a suite that never saw them is green
+            # about nothing.
+            $files = @(& git ls-files -c -o --exclude-standard)
+            if ($LASTEXITCODE -ne 0) { Refuse 'git would not list this tree' }
+        }
     }
     finally { Pop-Location }
 
-    $zip = Join-Path $Stage 'source.zip'
-    Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
-    $archive = [IO.Compression.ZipFile]::Open($zip, 'Create')
-    try {
-        foreach ($relative in $files) {
-            $full = Join-Path $RepoRoot $relative
-            if (Test-Path -LiteralPath $full -PathType Leaf) {
-                $null = [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $full, $relative)
+    if (-not $CommittedOnly) {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+        $archive = [IO.Compression.ZipFile]::Open($zip, 'Create')
+        try {
+            foreach ($relative in $files) {
+                $full = Join-Path $RepoRoot $relative
+                if (Test-Path -LiteralPath $full -PathType Leaf) {
+                    $null = [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $full, $relative)
+                }
             }
         }
+        finally { $archive.Dispose() }
     }
-    finally { $archive.Dispose() }
 
     $size = [math]::Round((Get-Item -LiteralPath $zip).Length / 1MB, 1)
     $carrying = if ($CommittedOnly) { 'HEAD only' } else { 'the working tree' }

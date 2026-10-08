@@ -38,7 +38,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS224** (deps: —) **A guest run asked to carry HEAD alone carries the working tree's uncommitted edits to tracked files** — Send-Tree takes HEAD's file list and reads each file from disk, so a before-and-after measured with it compares the change with itself. → §QS224
 - 📋 **QS226** (deps: —) **A guest run goes red on the skip budget when the guest's clipboard holds a bitmap from an earlier session** — No test fails, yet the run is red and a commit waits until someone clears the guest by hand. → §QS226
 - 📋 **QS230** (deps: —) **A test that hangs in the guest holds the whole run, and the host shows nothing that says which one** — One stuck transport test held a guest run for over an hour, and only listing the guest's processes named it. → §QS230
 
