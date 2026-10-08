@@ -876,19 +876,6 @@ Then the baseline is taken again, and this line says what the threshold became.
 Falsified when a baseline's derived threshold for `parse` is still above ten per cent on
 the reference machine.
 
-### §QS200 Timing the bytes that ship
-
-Found by the QS79 review. release.cmd hands the gate the published client, but only the
-start figure is measured on it. Parse and emulate come from Quickshell.Replay built from
-the same source in Release, framework-dependent and with its own runtimeconfig. A
-setting in the App project or in the publish command, such as TieredPGO off or a
-different GC mode, changes what ships and not what the gate measures. PERFORMANCE.md now
-says so plainly. The move is to run the replay arms against the published assemblies:
-publish the harness beside the client with the same runtime settings, or load the arms
-from the publish folder, then take a new baseline. Falsified when a runtime setting
-added only to the client's publish slows its emulate path and the release gate still
-reports emulate held.
-
 ### §QS201 Where the second refresh interval goes
 
 QS86's run, in `benchmarks/results/photon-h.md`: at a prompt, with the queue empty, an

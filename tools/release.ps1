@@ -20,8 +20,8 @@
   unless -Unsigned says so - and then the archive's own name says so too, where nobody can miss it.
 
   And it does not ship a regression by accident (QS79). Once the client is published, the
-  performance gate times that build's start, and the parse and emulate arms of the same source
-  through the replay harness, against this machine's baseline. A figure worse than the baseline's
+  performance gate times that build's start, and the parse and emulate arms of the replay harness
+  run on that build's own assemblies and runtime settings, against this machine's baseline. A figure worse than the baseline's
   own noise allows refuses the release before anything is signed or zipped. So does one a commit
   since the baseline said was meant: that trade is allowed, and a new baseline is owed before the
   release, or the trailer would go on excusing the figure by any amount. A machine with no baseline

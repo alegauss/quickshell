@@ -106,9 +106,12 @@ soak: a number that passes on minute one and drifts is a leak that passed.
 `release.cmd` runs it before it archives, so a regression fails a release rather than reaching one.
 It holds two of the six figures today, `parse` (the arm figure 2 governs) and `start` (figure 5,
 warm), and one figure the budget has no number for, `emulate`, which is what a session actually
-costs. `start` is timed on the very build being archived; `parse` and `emulate` are the same source
-replayed through the harness in Release, so a setting that exists only in the published client does
-not reach them.
+costs. All three are timed on the very build being archived. `start` launches it; `parse` and
+`emulate` run the replay harness from a copy of its folder, published the way the client is, where
+every assembly both carry is the client's copy and the client's runtimeconfig is the harness's
+(QS200). So a runtime setting that exists only in the published client reaches them: with tiered
+compilation switched off in the client's publish alone, `emulate` read 14 MB/s against a baseline of
+54, where the harness built on its own went on reading 48 to 54.
 
 **The allowance is measured, not chosen.** `run-perf-gate.cmd --baseline` samples `parse` and
 `emulate` seven times each and starts the client eleven times, dropping the first start as the cold

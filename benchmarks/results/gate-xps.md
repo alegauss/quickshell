@@ -12,3 +12,9 @@ was measured with uncommitted changes on top of it, the gate's own files aside.
 | 2026-09-10 21:04 | 02fac99+ | 1150 | 52.7 | 636 | held - with a 0.2 ms wait put into `Emulator.Feed` on purpose, never committed: inside emulate's 6.4 % |
 | 2026-09-10 21:06 | 02fac99+ | 1135 | 30.7 | 633 | worse: emulate - with a 1 ms wait put into `Emulator.Feed` on purpose to prove the gate, never committed |
 | 2026-09-10 21:37 | 02fac99+ | 1170 | 55.1 | 644 | held |
+| 2026-10-07 19:54 | 40fb448+ | 988 | 40.8 | 608 | worse: emulate - the first run with the arms on the published client (QS200), straight after two publishes; replayed by hand right after, the old harness build and the published bytes both read 50 to 53 |
+| 2026-10-07 19:58 | 40fb448+ | 820 | 14.3 | 607 | worse: parse, emulate - against a client published with `-p:TieredCompilation=false` on purpose to prove QS200, never committed; the old harness build read 48 to 54 for emulate at the same time |
+| 2026-10-07 20:00 | 40fb448+ | 1003 | 44.6 | 602 | baseline - discarded, never committed: the VM guest was running, and emulate's allowance came out at 52.6 % |
+| 2026-10-07 20:03 | 40fb448+ | 1041 | 36.6 | 489 | baseline - discarded, never committed: emulate's allowance came out at 33.9 % while hand replays read 54 to 58 |
+| 2026-10-07 20:08 | 40fb448+ | 1155 | 53.6 | 485 | baseline |
+| 2026-10-07 20:08 | 40fb448+ | 1152 | 55.5 | 479 | held |

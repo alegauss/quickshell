@@ -62,7 +62,7 @@ public static class Program
 
                   (no flag)        check this tree against this machine's baseline
                   --baseline       take this machine's baseline instead, and write it for committing
-                  --client <exe>   the client whose start to time; without it, a release publish is made
+                  --client <exe>   the client to time, start and replay arms both; without it, a release publish is made
 
                 Exit: 0 held, 1 worse, 2 worse but a commit said it was meant (take a new baseline before
                 the next release), 3 not judged (no baseline, or a measurement failed).
@@ -116,21 +116,27 @@ public static class Program
         Console.WriteLine($"gate  {machine}, {(baseline ? "taking a baseline" : "checking")} at {commit[..7]}"
                           + (dirty ? " with uncommitted changes" : string.Empty));
 
-        Say("building the harnesses");
-        Exec(root, "dotnet", "build", Path.Combine("benchmarks", "Quickshell.Replay", "Quickshell.Replay.csproj"),
-             "-c", "Release", "--nologo", "-v", "quiet");
+        Say("building the startup harness");
         Exec(root, "dotnet", "build", Path.Combine("tools", "Quickshell.Startup", "Quickshell.Startup.csproj"),
              "-c", "Release", "--nologo", "-v", "quiet");
 
-        client ??= Publish(root);
+        client ??= Publish(root, Path.Combine("src", "Quickshell.App", "Quickshell.App.csproj"), "quickshell", "quickshell");
 
         if (!File.Exists(client))
         {
             throw new GateRefusal($"there is no client at {client} to time");
         }
 
+        client = Path.GetFullPath(client);
+
+        // Published the way the client is, then laid over it, so the arms time the bytes and the
+        // runtime settings being archived and not a build of the same source (QS200).
+        string harness = Publish(root, Path.Combine("benchmarks", "Quickshell.Replay", "Quickshell.Replay.csproj"), "replay",
+                                 Bench.Harness);
+        string replay = Bench.Assemble(client, Path.GetDirectoryName(harness)!, Path.Combine(root, "artifacts", "gate", "bench"));
+
         Dictionary<string, List<double>> samples =
-            Sample(root, Path.GetFullPath(client), replays: baseline ? 7 : 3, starts: baseline ? 11 : 7);
+            Sample(root, client, replay, replays: baseline ? 7 : 3, starts: baseline ? 11 : 7);
 
         return standing is null
             ? Baseline(samples, baselineFile, history, machine, commit, dirty)
@@ -263,9 +269,8 @@ public static class Program
     }
 
     /// <summary>Every figure's samples: the replay harness run so many times, and the client started so many.</summary>
-    private static Dictionary<string, List<double>> Sample(string root, string client, int replays, int starts)
+    private static Dictionary<string, List<double>> Sample(string root, string client, string replay, int replays, int starts)
     {
-        string replay = Path.Combine(root, "benchmarks", "Quickshell.Replay", "bin", "Release", "net10.0-windows", "Quickshell.Replay.exe");
         string startup = Path.Combine(root, "tools", "Quickshell.Startup", "bin", "Release", "net10.0-windows", "Quickshell.Startup.exe");
 
         List<double> parse = [];
@@ -357,24 +362,26 @@ public static class Program
     }
 
     /// <summary>
-    /// A client published the way release.cmd publishes one, so the start the gate times is the start
-    /// of the thing people download.
+    /// A project published the way release.cmd publishes the client: the client itself, so the start
+    /// the gate times is the start of the thing people download, and the replay harness, so the arms
+    /// laid over that client were compiled the same way it was.
     /// </summary>
-    private static string Publish(string root)
+    /// <returns>The executable published, named for its assembly.</returns>
+    private static string Publish(string root, string project, string folder, string executable)
     {
-        string output = Path.Combine(root, "artifacts", "gate", "quickshell");
+        string output = Path.Combine(root, "artifacts", "gate", folder);
 
         if (Directory.Exists(output))
         {
             Directory.Delete(output, recursive: true);
         }
 
-        Say("publishing the client the way a release does");
-        Exec(root, "dotnet", "publish", Path.Combine("src", "Quickshell.App", "Quickshell.App.csproj"), "--configuration", "Release",
+        Say($"publishing {Path.GetFileNameWithoutExtension(project)} the way a release does");
+        Exec(root, "dotnet", "publish", project, "--configuration", "Release",
              "--runtime", "win-x64", "--self-contained", "true", "-p:PublishReadyToRun=true", "--output", output,
              "--nologo", "-v", "quiet");
 
-        return Path.Combine(output, "quickshell.exe");
+        return Path.Combine(output, $"{executable}.exe");
     }
 
     /// <summary>One row of the history, which is the only place drift shows.</summary>

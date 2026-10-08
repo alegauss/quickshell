@@ -3,10 +3,11 @@ rem QS79: a performance regression fails here instead of reaching a release.
 rem
 rem   run-perf-gate.cmd                check this tree against this machine's baseline
 rem   run-perf-gate.cmd --baseline     take this machine's baseline, then commit what it writes
-rem   run-perf-gate.cmd --client <exe> time that client's start instead of publishing one
+rem   run-perf-gate.cmd --client <exe> time that client instead of publishing one
 rem
-rem It builds the replay and startup harnesses in Release, publishes the client the way a release
-rem does, and measures parse and emulate throughput and warm start. Each figure fails when it is worse
+rem It publishes the client the way a release does, publishes the replay harness the same way and runs
+rem it on the client's own assemblies and runtime settings (QS200), and measures parse and emulate
+rem throughput and warm start. Each figure fails when it is worse
 rem than the baseline by more than the baseline's own noise, unless a commit since then says it was
 rem meant with a trailer:  Performance-Moved: <figure> - <what it bought>
 rem
