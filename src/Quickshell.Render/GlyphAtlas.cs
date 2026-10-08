@@ -321,6 +321,7 @@ public sealed class GlyphAtlas : IDeviceResource, IDisposable
     /// <summary>Releases the pages, and the rasteriser if this atlas opened one.</summary>
     public void Dispose()
     {
+        _graphics.Unregister(this);
         ((IDeviceResource)this).Release();
 
         if (_ownsRasteriser)

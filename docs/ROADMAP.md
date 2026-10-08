@@ -23,7 +23,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS221** (deps: QS116 ✅) **A graphics driver reset leaves every pane frozen, and nothing in the client recovers or says so** — The device can recover and nothing asks it to, and a recovery would rebuild closed panes' swapchains because no resource ever leaves its list. → §QS221
 - 📋 **QS223** (deps: —) **Clicking a tab on the strip moves its highlight but leaves the other tab's terminal on screen** — Nothing handles the strip's selection changing, so only the chords switch tabs and a click points the keyboard at a session it does not show. → §QS223
 
 ## Block H — The reason to leave the incumbent

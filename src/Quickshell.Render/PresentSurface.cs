@@ -361,7 +361,12 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
     }
 
     /// <summary>Releases the swapchain. The device it was registered with is not disposed here.</summary>
-    public void Dispose() => ((IDeviceResource)this).Release();
+    public void Dispose()
+    {
+        // Out of the device's list first, so a recovery never rebuilds a swapchain on a closed pane (QS221).
+        _graphics.Unregister(this);
+        ((IDeviceResource)this).Release();
+    }
 
     private static SwapChainFlags Flags(bool waitable)
     {

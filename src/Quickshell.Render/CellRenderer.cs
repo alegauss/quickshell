@@ -321,7 +321,11 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
     }
 
     /// <summary>Releases the shaders and buffers. The atlas and the device are not disposed here.</summary>
-    public void Dispose() => ((IDeviceResource)this).Release();
+    public void Dispose()
+    {
+        _graphics.Unregister(this);
+        ((IDeviceResource)this).Release();
+    }
 
     private unsafe ID3D11Buffer Upload(ReadOnlySpan<CellInstance> cells)
     {

@@ -262,13 +262,74 @@ public sealed class TerminalShare : IDisposable
 
         foreach ((TerminalView view, Emulator model) in panes)
         {
-            if (view.DrawIfNeeded(model))
+            try
             {
-                drawn++;
+                if (view.DrawIfNeeded(model))
+                {
+                    drawn++;
+                }
+            }
+            catch (Exception) when (_device is { } device && Removed(device) is { } why)
+            {
+                // Asked here and not every frame: the question is a round trip, a healthy device
+                // never needs it, and a loss always shows itself as a call that failed (QS221).
+                Recover(why);
+
+                return drawn;
             }
         }
 
         return drawn;
+    }
+
+    /// <summary>
+    /// Asks a device that has just failed a call whether it was removed, and why; null where it was
+    /// not, and the failure is the draw's own. The device's own answer, unless a caller says
+    /// otherwise — which is how a test, which has no way to make a driver reset, asks the loop to
+    /// believe one happened.
+    /// </summary>
+    public Func<GraphicsDevice, string?> Removed { get; init; } =
+        device => device.RemovedReason() is { } reason ? reason.ToString() : null;
+
+    /// <summary>
+    /// Told each recovery: why the device went, the adapter it was rebuilt on, and how many this run
+    /// has needed (QS221). The program writes it to the log.
+    /// </summary>
+    public Action<string, string, int>? Recovered { get; set; }
+
+    /// <summary>
+    /// Rebuilds the device and everything on it, then has every pane draw afresh, because each
+    /// one's picture went with the swapchain it was in. Called by the loop, on its own thread where
+    /// the context is used, once a draw failed on a removed device.
+    ///
+    /// <para>A device that cannot be rebuilt at all — no adapter answers — throws out of here, which
+    /// ends the loop as the DeviceLost crash QS72 already reports as being about the machine.</para>
+    /// </summary>
+    /// <param name="why">The removed reason, for the log.</param>
+    public void Recover(string why)
+    {
+        if (_device is not { } device)
+        {
+            return;
+        }
+
+        device.Recover();
+
+        (TerminalView View, Emulator Model)[] panes;
+
+        lock (_guard)
+        {
+            panes = [.. _drawing];
+        }
+
+        foreach ((TerminalView view, _) in panes)
+        {
+            view.Moved();
+        }
+
+        Recovered?.Invoke(why, device.Adapter.ToString(), device.Recoveries);
+
+        Damage.Set();
     }
 
     /// <inheritdoc/>

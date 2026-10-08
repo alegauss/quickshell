@@ -301,6 +301,72 @@ public sealed class TerminalShareTests
         Assert.Null(DiagnosticBundle.Drawing([]));
     }
 
+    /// <summary>
+    /// QS221, against the real device: a closed pane's swapchain leaves the device's list, so a
+    /// recovery rebuilds only what is still open — and every pane still open draws again after it,
+    /// because each one's picture went with the swapchain it was in.
+    /// </summary>
+    [Fact]
+    public void AClosedPaneLeavesTheDeviceAndARecoveryRedrawsTheRest()
+    {
+        List<(string Why, int Count)> told = [];
+
+        (int before, int closed, int recoveries, int redrawn) = OnPanes(3, (share, _, views) =>
+        {
+            share.Recovered = (why, _, count) => told.Add((why, count));
+            share.DrawOnce();
+
+            int listed = share.Device!.Registered;
+
+            share.Forget(views[0]);
+            views[0].Dispose();
+
+            int afterClosing = share.Device.Registered;
+
+            // What the loop does once a draw failed on a removed device; called directly, because a
+            // test cannot make a driver reset.
+            share.Recover("DXGI_ERROR_DEVICE_REMOVED");
+
+            return (listed, afterClosing, share.Device.Recoveries, share.DrawOnce());
+        });
+
+        Assert.Equal(before - 1, closed);
+        Assert.Equal(1, recoveries);
+        Assert.Equal(2, redrawn);
+        Assert.Equal(("DXGI_ERROR_DEVICE_REMOVED", 1), Assert.Single(told));
+    }
+
+    /// <summary>
+    /// QS221: a draw that fails on a removed device is recovered by the loop rather than ending it,
+    /// and one that fails on a device still there is the draw's own failure and is not hidden.
+    /// </summary>
+    [Fact]
+    public void ADrawThatFailsOnARemovedDeviceIsRecoveredAndOtherFailuresAreNot()
+    {
+        bool removed = false;
+
+        (int recoveries, Exception? kept) = OnPanes(2, (share, _, views) =>
+        {
+            share.DrawOnce();
+
+            // A pane whose swapchain has gone while the loop still holds it: its next draw fails,
+            // which is the shape a driver reset takes from inside a frame.
+            views[1].Dispose();
+            views[1].Moved();
+
+            Exception? notALoss = Record.Exception(() => share.DrawOnce());
+
+            removed = true;
+            views[1].Moved();
+            share.DrawOnce();
+
+            return (share.Device!.Recoveries, notALoss);
+        }, () => new TerminalShare { Looping = false, Removed = _ => removed ? "DXGI_ERROR_DEVICE_HUNG" : null });
+
+        Assert.NotNull(kept);
+        Assert.Equal(1, recoveries);
+    }
+
     /// <summary>Builds a window with two tabs and hands the first one and the window to the work.</summary>
     private static T OnTwoTabs<T>(Func<TerminalShare, TerminalTab, MainWindow, T> work) => Sta.Run(() =>
     {
@@ -336,11 +402,12 @@ public sealed class TerminalShareTests
     /// layout for a window that was never on screen. It does not take the foreground: a test that
     /// stole the desk would be a test nobody could run while working.</para>
     /// </summary>
-    private static T OnPanes<T>(int how, Func<TerminalShare, TerminalTab, TerminalView[], T> work) => Sta.Run(() =>
+    private static T OnPanes<T>(int how, Func<TerminalShare, TerminalTab, TerminalView[], T> work,
+                                Func<TerminalShare>? making = null) => Sta.Run(() =>
     {
         // Not looping: this counts what one pass draws, and a thread drawing them first would leave
         // every pass with nothing to do. The client always loops; a measurement paces itself.
-        TerminalShare share = new() { Looping = false };
+        TerminalShare share = making?.Invoke() ?? new() { Looping = false };
         MainWindow client = new();
 
         try

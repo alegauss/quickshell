@@ -233,6 +233,17 @@ public sealed class SessionLog : IAsyncDisposable
     public void ForwardFailed(int localPort, string why) =>
         Say(LogDetail.Ordinary, "forward-failed", Number("local", localPort), ("why", One(why)));
 
+    /// <summary>
+    /// The graphics device was lost and rebuilt, with why and on what (QS221): a crash report counts
+    /// recoveries, and a count with no line behind it is a number with no story.
+    /// </summary>
+    /// <param name="why">The removed reason the device gave.</param>
+    /// <param name="adapter">The adapter it was rebuilt on.</param>
+    /// <param name="count">How many recoveries this run, this one included.</param>
+    public void DeviceRecovered(string why, string adapter, int count) =>
+        Say(LogDetail.Ordinary, "device-recovered", ("why", One(why)), ("adapter", One(adapter)),
+            Number("count", count));
+
     // ---- The trace ----
 
     /// <summary>The two version strings, which are the first thing an old appliance disagrees on.</summary>

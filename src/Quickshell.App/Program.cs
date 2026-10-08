@@ -71,6 +71,10 @@ public static class Entry
         // has a handle, because which adapter to use is decided by the window the output goes to.
         using TerminalShare share = new();
 
+        // A driver reset the loop came back from, in the client's own log (QS221): a crash report
+        // counts recoveries, and this is the line behind each one.
+        share.Recovered = (why, adapter, count) => Logged.Value.DeviceRecovered(why, adapter, count);
+
         // Opened now, on the pool, while WPF spends its first window on this thread (QS191). The
         // settings are read there too, which is no read on the way to the first paint: this thread
         // does not wait for it, and the first pane checks the guess before it uses any of it.

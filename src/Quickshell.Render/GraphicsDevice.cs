@@ -19,6 +19,10 @@ public sealed class GraphicsDevice : IDisposable
     private readonly bool _debugLayer;
     private readonly List<IDeviceResource> _resources = [];
 
+    // Panes open and close on WPF's thread and a recovery runs on the loop's, so the list is guarded;
+    // what is done to each resource is done to a copy taken under the guard.
+    private readonly Lock _listed = new();
+
     private ID3D11Device _device;
     private ID3D11DeviceContext _context;
 
@@ -65,8 +69,45 @@ public sealed class GraphicsDevice : IDisposable
     {
         ArgumentNullException.ThrowIfNull(resource);
 
-        _resources.Add(resource);
+        lock (_listed)
+        {
+            _resources.Add(resource);
+        }
+
         resource.Create(_device);
+    }
+
+    /// <summary>
+    /// Takes a resource out of the list, which its own <c>Dispose</c> does (QS221). A closed pane's
+    /// swapchain left here would be rebuilt by <see cref="Recover"/> on a window that no longer
+    /// exists, and the recovery would fail half way through every other pane's.
+    /// </summary>
+    public void Unregister(IDeviceResource resource)
+    {
+        lock (_listed)
+        {
+            _resources.Remove(resource);
+        }
+    }
+
+    /// <summary>How many resources a recovery would rebuild now.</summary>
+    public int Registered
+    {
+        get
+        {
+            lock (_listed)
+            {
+                return _resources.Count;
+            }
+        }
+    }
+
+    private IDeviceResource[] Listed()
+    {
+        lock (_listed)
+        {
+            return [.. _resources];
+        }
     }
 
     /// <summary>
@@ -87,7 +128,9 @@ public sealed class GraphicsDevice : IDisposable
     /// </summary>
     public void Recover()
     {
-        foreach (IDeviceResource resource in _resources)
+        IDeviceResource[] resources = Listed();
+
+        foreach (IDeviceResource resource in resources)
         {
             resource.Release();
         }
@@ -99,7 +142,7 @@ public sealed class GraphicsDevice : IDisposable
         (_device, _context) = Create(Adapter, _debugLayer);
         Recoveries++;
 
-        foreach (IDeviceResource resource in _resources)
+        foreach (IDeviceResource resource in resources)
         {
             resource.Create(_device);
         }
@@ -108,12 +151,15 @@ public sealed class GraphicsDevice : IDisposable
     /// <summary>Releases every registered resource, then the context and the device.</summary>
     public void Dispose()
     {
-        foreach (IDeviceResource resource in _resources)
+        foreach (IDeviceResource resource in Listed())
         {
             resource.Release();
         }
 
-        _resources.Clear();
+        lock (_listed)
+        {
+            _resources.Clear();
+        }
         _context.Dispose();
         _device.Dispose();
     }
