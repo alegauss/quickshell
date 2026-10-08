@@ -134,7 +134,7 @@
 - ✅ **QS127** **The library's SOCKS proxy answers about one request in six with something that is not a SOCKS reply** — A hundred connects through the SOCKS proxy each get a well-formed reply before the target's first byte (design recorded in `src/Quickshell.Transport/DynamicForward.cs`).
 - ✅ **QS68** **Reaching many hosts on the remote network needs one forward configured per host** — One SOCKS5 or SOCKS4a proxy reaches the remote network, every name resolved by the server and every refusal given its reply code.
 - ✅ **QS69** **A forward is set up by hand each time and dies silently when its session drops** — A session's forwards start with it, come back after a reconnect each said, go with it, and a busy port names the program holding it.
-- ✅ **QS70 (the forwards view)** **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — Show forwards lists every running forward across sessions with what it carries now, each stoppable and copyable, and what failed with its reason.
+- ✅ **QS70** **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — Every running forward is listed with what it carries now, and the window title says how many run while any do, so none is forgotten.
 
 ## Block G — The clean interface, defended
 

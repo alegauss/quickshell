@@ -1222,9 +1222,40 @@ public sealed class MainWindow : Window
             item.FontWeight = _open[tab].HasActivity ? FontWeights.Bold : FontWeights.Normal;
         }
 
-        Title = Notice is { } notice
+        string named = Notice is { } notice
             ? $"{notice} — {Naming(_recording, Current?.Title)}"
             : Naming(_recording, Current?.Title);
+
+        // While any forward runs, the title says so first (QS70): a forgotten forward is an open
+        // route into somebody's network, and the title is chrome the window already has, which a
+        // taskbar shows too, rather than a new element on a window that is meant to stay bare.
+        int running = RunningForwards();
+
+        string titled = running == 0
+            ? named
+            : string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                            $"{running} forward{(running == 1 ? string.Empty : "s")} running — {named}");
+
+        if (!string.Equals(Title, titled, StringComparison.Ordinal))
+        {
+            Title = titled;
+        }
+    }
+
+    /// <summary>How many forwards every open session is running now.</summary>
+    public int RunningForwards()
+    {
+        int running = 0;
+
+        foreach (TerminalTab tab in _open)
+        {
+            foreach (TerminalLeaf leaf in tab.Leaves)
+            {
+                running += leaf.Forwards?.Count ?? 0;
+            }
+        }
+
+        return running;
     }
 
     /// <summary>The name this client answers to, which every title ends in.</summary>
@@ -2537,7 +2568,7 @@ public sealed class MainWindow : Window
             return open;
         }
 
-        ForwardsWindow view = new(OpenForwards) { ThemeMode = ThemeMode };
+        ForwardsWindow view = new(OpenForwards) { ThemeMode = ThemeMode, Changed = Retitle };
 
         if (IsLoaded)
         {

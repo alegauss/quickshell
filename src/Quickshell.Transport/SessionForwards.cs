@@ -107,6 +107,18 @@ public sealed class SessionForwards : IAsyncDisposable
         }
     }
 
+    /// <summary>How many are running, read without building a list: what the window's title counts (QS70).</summary>
+    public int Count
+    {
+        get
+        {
+            lock (_guard)
+            {
+                return _started.Count;
+            }
+        }
+    }
+
     /// <summary>What could not start, and why.</summary>
     public IReadOnlyList<FailedForward> Failed
     {

@@ -130,16 +130,21 @@ public sealed class ForwardsWindow : Window
         }
     }
 
+    /// <summary>Told when a row stopped or started a forward, so the window's title can count again.</summary>
+    public Action? Changed { get; init; }
+
     private async Task StopAsync(SessionForwards forwards, ForwardSpec spec)
     {
         await forwards.StopAsync(spec);
         Refresh();
+        Changed?.Invoke();
     }
 
     private async Task StartAsync(SessionForwards forwards, ForwardSpec spec)
     {
         await forwards.StartAsync(spec);
         Refresh();
+        Changed?.Invoke();
     }
 
     private static Button Button(string label, Action act)

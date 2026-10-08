@@ -311,6 +311,19 @@ public sealed class RemoteSession : IAsyncDisposable
                     : (gone.Message, gone.Kind is SshFailureKind.Dropped or SshFailureKind.Unreachable);
             }
 
+            // The pipeline has ended, so the channel's close is moments away or never coming - a
+            // channel whose connection is being torn down from under it may not say. Bounded and
+            // stoppable, so a disposal never waits on it (QS70, found holding a test run open).
+            Task said = await Task.WhenAny(channel.Closed, Task.Delay(TimeSpan.FromSeconds(5), _stopping.Token))
+                                  .ConfigureAwait(false);
+
+            _stopping.Token.ThrowIfCancellationRequested();
+
+            if (said != channel.Closed)
+            {
+                return ("the connection ended", true);
+            }
+
             PtyExit exit = await channel.Closed.ConfigureAwait(false);
 
             if (exit.IsExit)

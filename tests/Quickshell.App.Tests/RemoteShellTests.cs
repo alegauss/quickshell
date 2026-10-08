@@ -560,7 +560,8 @@ public sealed class RemoteShellTests : IDisposable
 
             byte[] banner = new byte[4];
 
-            await through.GetStream().ReadExactlyAsync(banner, Stop);
+            // Bounded: a forward that never carries would otherwise hold the whole run.
+            await through.GetStream().ReadExactlyAsync(banner, Stop).AsTask().WaitAsync(TimeSpan.FromSeconds(15), Stop);
 
             string busy = Sta.Run(() => new ForwardsWindow(() => [new SessionForwardsView("127.0.0.1", forwards)]).Lines.Single());
 
@@ -573,6 +574,64 @@ public sealed class RemoteShellTests : IDisposable
 
         Assert.StartsWith("No forwards are running", stopped, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// QS70's remaining criterion: the window's title says a forward is running exactly while one
+    /// is, read off a real tab whose pane holds a fixture session with one forward.
+    /// </summary>
+    [Fact]
+    public async Task TheTitleSaysAForwardIsRunningExactlyWhileOneIs()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession web = SessionTree.ReadFrom(Store("""
+            { "Name": "", "Children": [
+                { "Name": "web", "Host": "127.0.0.1", "Settings": { "User": "probe", "Port": 2222, "Key": "KEY" },
+                  "Forwards": [ { "Kind": "Dynamic", "ListenPort": 0 } ] }
+            ] }
+            """)).Session("web")!;
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+
+        RemoteShell shell = await RemoteShell.OpenAsync(web, trust, new Emulator(80, 25), new DamageSignal(), 80, 25, Stop);
+
+        try
+        {
+            (string before, string running, string after) = Sta.Run(() =>
+            {
+                MainWindow window = new();
+                string empty;
+
+                window.Retitle();
+                empty = window.Title;
+
+                TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "127.0.0.1");
+
+                window.Add(tab);
+                tab.Focused.ConnectAsync((_, _, _, _, _) => Task.FromResult<IShellSession>(shell)).GetAwaiter().GetResult();
+
+                window.Retitle();
+                string busy = window.Title;
+
+                shell.Forwards.StopAsync(shell.Forwards.Started[0].Spec).AsTask().GetAwaiter().GetResult();
+
+                window.Retitle();
+
+                return (empty, busy, window.Title);
+            });
+
+            Assert.DoesNotContain("forward", before, StringComparison.Ordinal);
+            Assert.StartsWith("1 forward running — ", running, StringComparison.Ordinal);
+            Assert.DoesNotContain("forward", after, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await shell.DisposeAsync();
+        }
+    }
+
+    /// <summary>The one device, atlas and render loop a tab in these tests draws with. See QS49.</summary>
+    private static readonly TerminalShare Shared = new();
 
     /// <summary>One of the fixture's accounts on the target, with the fixture's key, read back from a store.</summary>
     private ResolvedSession Account(string user) =>

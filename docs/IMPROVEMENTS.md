@@ -422,34 +422,6 @@ that file there, byte for byte.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-### §QS70 Showing the thing that has no window of its own
-
-Forwards have no window, no output and no obvious presence, which is exactly why they
-have to be shown. One view lists every forward this client currently holds across every
-session: direction, local address and port, remote target, owning session, state, and
-the number of connections currently carried.
-
-Live connection counts are what make the view diagnostic rather than decorative. A
-forward listening with nothing connected and a forward carrying eight connections look
-identical in any list that omits the count, and those are precisely the two states a
-user is trying to tell apart.
-
-Each row stops and starts, and each copies as an address the user can paste into
-whatever tool needs it.
-
-The window's own chrome carries a small indicator whenever any forward is active,
-because a user who has forgotten one is running has an open route into a production
-network on their laptop and does not know it.
-
-Recent failures appear in the same view with their reasons. A forward that failed an
-hour ago is invisible everywhere else by now, and it is exactly what the user is
-currently trying to explain to somebody.
-
-Built: `ForwardsWindow` from the palette, counts, stop, start, copy and failures, proven
-against the fixture. Left: the chrome's mark while any forward runs.
-
-Falsified when a running forward does not appear in this view.
-
 ## Block G — The clean interface, defended
 
 ### §QS160 Moving a tab, and the connection that must not notice

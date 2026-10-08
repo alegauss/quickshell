@@ -21,8 +21,6 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-- ⏳ **QS70** (deps: QS69 ✅) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — The window's chrome carries no mark while a forward is running, so one forgotten stays an open route nobody sees. → §QS70
-
 ## Block G — The clean interface, defended
 
 - ⏳ **QS217** (deps: QS126 ✅, winwright WW509) **A saved session can only be opened by typing its path on a command line** — A UI case typing part of a known session's name and reading it at the top, once a fixture can hand the client a store. → §QS217
@@ -319,12 +317,6 @@
 - **A UI case finds a known session by part of its name** A case in cases\ launches the
   client over a store of its own, opens Open session, types part of a session's name and
   reads that session at the top of the list.
-
-## Done when — QS70
-
-- **The chrome shows a mark exactly while a forward is running** A UI case or window
-  test reads the mark absent with no session, present while a fixture session's forward
-  listens, and gone once it stops.
 
 ## Non-goals
 
