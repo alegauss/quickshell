@@ -18,8 +18,6 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-- ⏳ **QS188** (deps: QS219 ✅) **Nothing can be dragged out of the host's pane, so a file on the server reaches Explorer only through a copy** — A real drop onto Explorer is untried: no SSH tab has a remote pane until QS219, and then the guest drags one. → §QS188
-
 ## Block F — A forward is a lifecycle, not a checkbox
 
 - ⏳ **QS69** (deps: QS66 ✅, QS67 ✅, QS68 ✅, QS38 ✅, QS220) **A forward is set up by hand each time and dies silently when its session drops** — A reconnect does not bring forwards back, since an SSH tab does not reconnect until QS220, and what holds a busy port is not named. → §QS69
