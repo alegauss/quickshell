@@ -90,19 +90,22 @@ internal static class Run
     /// <param name="length">How long to run.</param>
     /// <param name="seed">For the echo intervals, so two arms see the same rhythm.</param>
     /// <param name="host">Makes the window to present into, at the size asked for in pixels.</param>
+    /// <param name="composed">Whether the chain is made for composition and bound to a visual, not to the window.</param>
     internal static Outcome Time(Arm arm, Workload workload, byte[] stream, TimeSpan length, int seed,
-                                 Func<int, int, IPhotonHost> host)
+                                 Func<int, int, IPhotonHost> host, bool composed)
     {
         using GlyphRasteriser rasteriser = new();
         CellMetrics metrics = rasteriser.Measure(FontSettings.Default);
 
         using IPhotonHost window = host(metrics.Width * Columns, metrics.Height * Rows);
         using GraphicsDevice device = GraphicsDevice.Open(outputWindow: window.Handle);
+        using Composer? composer = composed ? new Composer(device.Device, window.Handle) : null;
 
         // The window's own size and not the one asked for, which a host that lays out in its own
         // units may not have honoured to the pixel.
         using PresentSurface surface = PresentSurface.For(device, window.Handle, window.Width, window.Height,
-                                                          arm.Latency, arm.Waitable, arm.Buffers);
+                                                          arm.Latency, arm.Waitable, arm.Buffers,
+                                                          compose: composer is null ? null : composer.Bind);
         using GlyphAtlas atlas = GlyphAtlas.For(device, FontSettings.Default, rasteriser: rasteriser);
         using CellRenderer renderer = CellRenderer.For(device, atlas, metrics);
 

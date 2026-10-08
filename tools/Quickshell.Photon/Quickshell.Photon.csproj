@@ -20,4 +20,8 @@
     <ProjectReference Include="..\..\src\Quickshell.Render\Quickshell.Render.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Vortice.DirectComposition" Version="3.8.3" />
+  </ItemGroup>
+
 </Project>

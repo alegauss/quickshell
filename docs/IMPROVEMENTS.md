@@ -876,28 +876,23 @@ Then the baseline is taken again, and this line says what the threshold became.
 Falsified when a baseline's derived threshold for `parse` is still above ten per cent on
 the reference machine.
 
-### §QS201 Where the second refresh interval goes
+### §QS225 Timing a monitor-covering chain
 
-QS86's run, in `benchmarks/results/photon-h.md`: at a prompt, with the queue empty, an
-echo reaches DXGI's vblank in a median of 33 ms on the 60 Hz panel, two intervals, in
-every swapchain arm. Waiting for the next vblank explains half an interval on average,
-so about one whole interval is spent after the present.
+QS201 found every windowed chain composed on the reference desk, so an echo there costs
+two refresh intervals and the non-goal says a windowed client keeps them. The one case
+it did not time is the one where Windows offers independent flip: a borderless window
+that covers its whole monitor, the shape a maximised or full-screen terminal takes.
 
-That interval is the part a faster panel does not remove. At 120 Hz the same shape is
-about 17 ms, twice the 8.3 ms budget, so figure 1 fails on the reference machine's
-successor as well as on this one unless the second interval goes.
+The photon tool already has what this needs. Add a host whose window is the monitor's
+size, borderless, with the chain at that exact size, and run every arm with the `shown
+as` column. If the echoes read independent flip at about one interval, a full-screen
+mode is worth designing for figure 1 and the non-goal gets its exception named; if they
+stay composed, the exception is removed from the non-goal's sentence.
 
-The likely owner is composition. A windowed flip-model chain the compositor draws into
-the desktop is shown a frame after it is presented. Independent flip, or a hardware
-overlay plane, shows it at the next vblank, and the compositor grants those only under
-conditions of its own: the swapchain covering its window, no transform, and a host that
-does not redirect the window.
-
-Done first: photon reports each echo's presentation mode from DXGI's media statistics,
-and on 2026-10-08 every echo in every arm was composed (photon-h.md). `--host wpf` then
-timed the client's own WPF child HWND: composed too, 29 to 31 ms. Next, present a
-composition swapchain through a DirectComposition visual in photon and read whether it
-reaches an overlay plane; if not, file a non-goal that 60 Hz composition is the floor.
+The run covers the operator's whole screen for a minute and a half, on the host and not
+the guest, whose virtual GPU says nothing about the panel. So it is taken only when the
+user has cleared the desk for it, never unattended. Falsified when a monitor-covering
+chain on the reference desk reports independent flip and the line was still deferred.
 
 ## Block I — An error a user can act on
 

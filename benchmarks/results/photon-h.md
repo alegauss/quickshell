@@ -135,3 +135,26 @@ One pass of 10 s per arm, 2026-10-08, guest suspended:
 popup.** The WPF chrome and the child window are not what keeps the chain composed: a bare
 popup the compositor could have flipped was composed as well. What is left to try is a chain
 the compositor can put on an overlay plane, which a windowed HWND chain here never got.
+
+### A chain made for composition
+
+`--chain composition` makes the chain with `CreateSwapChainForComposition` and binds it to a
+DirectComposition visual on the host window, which is the arrangement a compositor may hand to a
+hardware overlay plane. One pass of 10 s per arm, 2026-10-08, on both hosts:
+
+| workload | arm | popup: shown as | popup median | wpf: shown as | wpf median |
+|---|---|---|---|---|---|
+| typing | client | composed 67 | 29.3 | composed 67 | 30.3 |
+| typing | wait-first | composed 67 | 28.3 | composed 67 | 28.5 |
+| typing | unbought | composed 67 | 32.0 | composed 67 | 30.8 |
+| typing | unbought-3 | composed 67 | 30.0 | composed 67 | 29.7 |
+| busy | client | composed 95 | 35.8 | composed 99 | 40.0 |
+| busy | wait-first | composed 99 | 42.9 | composed 99 | 42.2 |
+| busy | unbought | composed 98 | 55.6 | composed 99 | 38.8 |
+| busy | unbought-3 | composed 99 | 32.1 | composed 99 | 40.4 |
+
+**Still composed, every echo, at the same two intervals.** On this desk no windowed chain reached
+an overlay plane, whether made for the window or for composition, in a popup or in the client's
+own host. For a windowed client the second interval is the compositor's and stays, which is now
+a non-goal. Not measured: a window covering the whole monitor, the one case where independent
+flip is on offer, since that run would cover the operator's screen.

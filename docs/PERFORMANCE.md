@@ -44,7 +44,11 @@ confirm it — a run that used only the instrumented path says so.
 *Where it stands:* `tools/Quickshell.Photon` is the instrumented path, and its run of
 2026-10-06 is in `benchmarks/results/photon-h.md`. An echo at a prompt reaches the glass in a
 median of 33 ms, two refresh intervals, so the figure is not met. The interval count is the
-part a faster panel would not fix (QS201).
+part a faster panel would not fix. QS201 found why: every windowed chain on this desk is
+composed, made for the window or for composition, in a bare popup or in the client's own WPF
+host, and a composed frame is shown a refresh after the compositor's pass. For a windowed
+client that second interval is a non-goal; a window covering its whole monitor, the one case
+independent flip is offered, is untimed (QS225).
 
 ### 2. Sustained parse throughput — at least 400 MB/s
 

@@ -36,6 +36,8 @@ public static class Photon
                   --out <file>    append the report here as well as printing it
                   --host <kind>   popup (default): a bare topmost popup; wpf: the client's own
                                   arrangement, a WPF window with a child HWND the chain presents to
+                  --chain <kind>  window (default): made for the host window; composition: made for
+                                  composition and bound to a DirectComposition visual on it
 
                 It puts a large topmost window on this desk for every run and never activates it.
                 Nothing may cover it: an occluded frame has no photon end, and a run that saw one
@@ -60,6 +62,17 @@ public static class Photon
             _ => throw new ArgumentException($"--host takes popup or wpf, not {hostName}"),
         };
 
+        // How the chain reaches that window: made for it, or made for composition and bound to a
+        // DirectComposition visual on it, which the compositor may put on an overlay plane.
+        string chainName = Argument(arguments, "--chain") is { Length: > 0 } chosen ? chosen : "window";
+
+        bool composed = chainName switch
+        {
+            "window" => false,
+            "composition" => true,
+            _ => throw new ArgumentException($"--chain takes window or composition, not {chainName}"),
+        };
+
         Arm[] arms = [Arm.Client, Arm.Early, Arm.Unbought, Arm.Deep];
         Workload[] workloads = [Workload.Typing, Workload.Busy];
         List<Outcome> outcomes = [];
@@ -78,12 +91,12 @@ public static class Photon
                         $"pass {pass + 1}/{passes}: {arm.Name} while {workload.Name}…"));
 
                     // The same seed for both arms of a pass, so they see the same rhythm of echoes.
-                    outcomes.Add(Run.Time(arm, workload, stream, length, seed: 86 + pass, host));
+                    outcomes.Add(Run.Time(arm, workload, stream, length, seed: 86 + pass, host, composed));
                 }
             }
         }
 
-        string report = Report(outcomes, length, passes, hostName);
+        string report = Report(outcomes, length, passes, $"{hostName} host, {chainName} chain");
 
         Console.WriteLine(report);
 
@@ -100,7 +113,7 @@ public static class Photon
         StringBuilder text = new();
 
         text.AppendLine(CultureInfo.InvariantCulture,
-                        $"## Input to photon — {passes} passes of {length.TotalSeconds:F0} s per arm, {host} host")
+                        $"## Input to photon — {passes} passes of {length.TotalSeconds:F0} s per arm, {host}")
             .AppendLine()
             .AppendLine(CultureInfo.InvariantCulture,
                         $"measured {DateTimeOffset.Now:yyyy-MM-dd HH:mm} local on {Environment.MachineName}, echo due to the vblank DXGI reports it shown at, in milliseconds")

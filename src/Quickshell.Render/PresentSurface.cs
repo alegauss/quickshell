@@ -60,9 +60,15 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
     /// The swapchain's buffer count. Two for every real surface; a measurement opens three to see
     /// what a deeper chain lets the queue do.
     /// </param>
+    /// <param name="compose">
+    /// Null for every real surface, whose chain is made for <paramref name="window"/>. Given, the
+    /// chain is made for composition instead and handed to this, which binds it to a visual of its
+    /// own — QS201's question, whether such a chain reaches an overlay plane where a window's chain
+    /// is composed. It is called again with the new chain whenever the device is recreated.
+    /// </param>
     public static PresentSurface For(GraphicsDevice graphics, nint window, uint width, uint height,
                                      uint maximumFrameLatency = 1, bool waitable = true,
-                                     uint buffers = 2)
+                                     uint buffers = 2, Action<IDXGISwapChain1>? compose = null)
     {
         ArgumentNullException.ThrowIfNull(graphics);
 
@@ -71,6 +77,7 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
             MaximumFrameLatency = maximumFrameLatency,
             Waitable = waitable,
             Buffers = buffers,
+            Compose = compose,
         };
 
         graphics.Register(surface);
@@ -85,6 +92,9 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
 
     /// <summary>How many buffers the swapchain holds. Two, unless a measurement says otherwise.</summary>
     public uint Buffers { get; private init; } = 2;
+
+    /// <summary>Binds a composition chain to a visual; null for a chain made for the window.</summary>
+    private Action<IDXGISwapChain1>? Compose { get; init; }
 
     /// <summary>Whether this machine reported <c>DXGI_FEATURE_PRESENT_ALLOW_TEARING</c>.</summary>
     public bool TearingAllowed { get; }
@@ -307,11 +317,18 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
             SwapEffect = SwapEffect.FlipDiscard,
             SampleDescription = new SampleDescription(1, 0),
             AlphaMode = Vortice.DXGI.AlphaMode.Ignore,
-            Scaling = Scaling.None,
+
+            // A composition chain takes stretch or nothing; its visual is the size of its buffers,
+            // so nothing is stretched either way.
+            Scaling = Compose is null ? Scaling.None : Scaling.Stretch,
             Flags = Flags(Waitable),
         };
 
-        using IDXGISwapChain1 created = factory.CreateSwapChainForHwnd(device, _window, description);
+        using IDXGISwapChain1 created = Compose is null
+            ? factory.CreateSwapChainForHwnd(device, _window, description)
+            : factory.CreateSwapChainForComposition(device, description);
+
+        Compose?.Invoke(created);
         _swapChain = created.QueryInterface<IDXGISwapChain2>();
 
         if (Waitable)
