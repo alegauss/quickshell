@@ -121,6 +121,7 @@
 - ✅ **QS186** **A copy started from the browser shows nothing until it ends and cannot be stopped, so a large tree looks hung** — A copy is a line under the panes with what is moving, the rate, the time left and a stop; one that stops short stays with its reason and a retry that resumes.
 - ✅ **QS188 (virtual-file drag source)** **Nothing can be dragged out of the host's pane, so a file on the server reaches Explorer only through a copy** — Files dragged out of the host's pane are offered as virtual files read from the server on the drop's demand, on their own thread, with Explorer's background copy.
 - ✅ **QS189** **A file dropped onto an SSH terminal can only be typed as its path, never sent to the directory the shell is in** — Shift held while dropping onto an SSH pane sends the files into the directory its shell reported, over its own connection; with no report nothing is sent and the title says why.
+- ✅ **QS219** **The file browser opened over an SSH tab shows nothing on the host's side** — The browser over an SSH tab lists that host over a file channel of the tab's own connection, opened in the background once the shell is up (design superseded: kept per session, not per browser).
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

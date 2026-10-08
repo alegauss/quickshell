@@ -49,6 +49,37 @@ public sealed class RemoteShell : IShellSession
     /// <summary>The transport, for whatever else a pane opens over the same connection.</summary>
     public ISshTransport Transport => _transport;
 
+    /// <summary>
+    /// The host's files, over a file channel of this same connection (QS219), or null until that
+    /// channel has opened or where the server offers none. Opened in the background once the shell
+    /// is up, so the browser finds it ready and nothing on screen waits for it; never a second
+    /// connection (QS59), so a hardware token is touched once.
+    ///
+    /// <para><b>Kept with the session, not with a browser.</b> A file opened from it in a local
+    /// editor (QS185) is saved back through it after the browser has closed, so it lives as long as
+    /// the session does and goes, before the connection, when the session ends.</para>
+    /// </summary>
+    public RemoteFiles? Files => _files is { IsCompletedSuccessfully: true } opened ? opened.Result : null;
+
+    private Task<RemoteFiles?>? _files;
+
+    /// <summary>The file channel and the side over it, or null where the server will not open one.</summary>
+    private static async Task<RemoteFiles?> OpenFilesAsync(ISshTransport transport, string host)
+    {
+        try
+        {
+            IFileTransferChannel channel = await transport.OpenFileTransferAsync().ConfigureAwait(false);
+
+            return new RemoteFiles(channel, host);
+        }
+        catch (SshException)
+        {
+            // A server with no file subsystem: the browser opened over this tab says it has no
+            // remote side, which is the truth, rather than this failing the shell.
+            return null;
+        }
+    }
+
     /// <summary>Connects a saved session and opens its shell into the model.</summary>
     /// <param name="session">The session as the store resolves it.</param>
     /// <param name="trust">The host-key check every hop passes.</param>
@@ -181,7 +212,10 @@ public sealed class RemoteShell : IShellSession
                               .ConfigureAwait(false);
             }
 
-            return new RemoteShell(transport, channel, pipeline, forwards);
+            return new RemoteShell(transport, channel, pipeline, forwards)
+            {
+                _files = OpenFilesAsync(transport, session.Host),
+            };
         }
         catch
         {
@@ -317,6 +351,15 @@ public sealed class RemoteShell : IShellSession
         // outlives the session that made it; then the shell, then the connection.
         await Pipeline.DisposeAsync().ConfigureAwait(false);
         await Forwards.DisposeAsync().ConfigureAwait(false);
+
+        // The host's files, edits first and then their channel, while the connection under them is
+        // still there to close it on (QS219).
+        if (_files is { } opening && await opening.ConfigureAwait(false) is { } files)
+        {
+            await files.DisposeAsync().ConfigureAwait(false);
+            await files.Channel.DisposeAsync().ConfigureAwait(false);
+        }
+
         await _channel.DisposeAsync().ConfigureAwait(false);
         await _transport.DisposeAsync().ConfigureAwait(false);
     }

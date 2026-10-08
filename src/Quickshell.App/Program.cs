@@ -142,6 +142,10 @@ public static class Entry
         window.Connects = leaf => _ = leaf.ConnectAsync();
         window.OpensSession = path => OpenedSession(window, window.Settings, share, path, trace: false);
 
+        // The browser's host side: the files of the session in the pane with the keyboard, over its
+        // own connection (QS219). A local pane has none, and the browser says so.
+        window.RemoteFiles = tab => tab.Focused.Files;
+
         // Only a copy that is not the installed one offers to install itself: the installed copy
         // installing itself would be a copy of a folder onto the same folder.
         if (Installation.Of(AppContext.BaseDirectory) is null)

@@ -415,26 +415,6 @@ have assumed the two servers were talking to each other.
 Falsified when dragging a file from the host's pane onto a local folder does not leave
 that file there, byte for byte.
 
-### §QS219 A browser with a connection beside it and nothing listed
-
-QS60's file browser has a remote half that lists over a session's file channel, proven
-on fifty thousand entries, and it has never been opened on anything:
-`MainWindow.RemoteFiles` asks a tab for its remote side, and until QS126 no tab held an
-SSH session to answer with. Now one can — `RemoteShell.Transport` is the connection
-behind an SSH tab — and the browser still opens with an empty remote pane on it.
-
-What to build: the program sets `RemoteFiles` to answer, for a tab whose focused pane
-runs a `RemoteShell`, a remote side over `Transport.OpenFileTransferAsync` — a channel
-of the same connection, never a second one (QS59), so a hardware token is touched once.
-A local tab still answers nothing and the browser says so, as it does today. The channel
-closes with the browser unless `RemoteFiles.Edits` still has a file open in a local
-editor (QS185), whose saves need it; then the side is kept per session and disposed,
-before its channel, when the session ends, and a dropped connection ends the browser's
-listing with the reason rather than leaving it hung.
-
-Falsified when the browser opened over an SSH tab lists nothing from that host, or opens
-a second connection to list it.
-
 ## Block F — A forward is a lifecycle, not a checkbox
 
 ### §QS69 A forward has a life, and it outlives attention

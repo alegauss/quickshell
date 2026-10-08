@@ -312,6 +312,67 @@ public sealed class RemoteShellTests : IDisposable
         Assert.Equal(0, asked);
     }
 
+    /// <summary>
+    /// QS219's falsification: the browser's host side over an SSH session lists that host — the
+    /// account's home, which holds the <c>.ssh</c> the fixture authorised its key in — over a file
+    /// channel of the session's own connection.
+    /// </summary>
+    [Fact]
+    public async Task ASessionsFilesAreListedOverItsOwnConnection()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession probe = Account("probe");
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+
+        await using RemoteShell shell = await RemoteShell.OpenAsync(probe, trust, new Emulator(80, 25),
+                                                                    new DamageSignal(), 80, 25, Stop);
+
+        await Until(() => shell.Files is not null);
+
+        RemoteFiles files = shell.Files!;
+        List<string> names = [];
+
+        await foreach (FileItem item in files.ListAsync(files.Home, Stop))
+        {
+            names.Add(item.Name);
+        }
+
+        Assert.Equal("/home/probe", files.Home);
+        Assert.Contains(".ssh", names);
+        Assert.Equal("127.0.0.1", files.Title);
+    }
+
+    /// <summary>
+    /// A server with no file subsystem leaves the session without a host side, and the shell
+    /// untouched: the browser says there is none rather than this failing the connection.
+    /// </summary>
+    [Fact]
+    public async Task AServerWithNoFileSubsystemLeavesTheShellAndNoFiles()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession bare = SessionTree.ReadFrom(Store("""
+            { "Name": "", "Children": [
+                { "Name": "it", "Host": "127.0.0.1", "Settings": { "User": "probe", "Port": 2225, "Key": "KEY" } }
+            ] }
+            """)).Session("it")!;
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        Emulator emulator = new(80, 25);
+
+        await using RemoteShell shell = await RemoteShell.OpenAsync(bare, trust, emulator, new DamageSignal(), 80, 25, Stop);
+
+        await shell.Pipeline.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
+        await Until(() => Screen(emulator).Contains("qs-sshd-nosftp", StringComparison.Ordinal));
+
+        // Long enough for a channel that was going to open to have opened.
+        await Task.Delay(TimeSpan.FromSeconds(2), Stop);
+
+        Assert.Null(shell.Files);
+    }
+
     /// <summary>One of the fixture's accounts on the target, with the fixture's key, read back from a store.</summary>
     private ResolvedSession Account(string user) =>
         SessionTree.ReadFrom(Store($$"""

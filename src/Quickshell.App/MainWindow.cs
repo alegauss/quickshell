@@ -2446,9 +2446,9 @@ public sealed class MainWindow : Window
     }
 
     /// <summary>
-    /// Who says what the host side of a tab is — its session's file channel — or null while no tab
-    /// can have one. Nothing in this client sets it yet: a tab runs a local shell until QS126 gives
-    /// one an SSH session, and the browser says so rather than showing an empty pane.
+    /// Who says what the host side of a tab is — its session's file channel — or null where the tab
+    /// has none. The program answers with the focused pane's <see cref="TerminalLeaf.Files"/>
+    /// (QS219); a local tab has none, and the browser says so rather than showing an empty pane.
     /// </summary>
     public Func<TerminalTab, IFileSide?>? RemoteFiles { get; set; }
 
