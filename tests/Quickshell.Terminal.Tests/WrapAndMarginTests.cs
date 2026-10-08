@@ -127,6 +127,31 @@ public sealed class WrapAndMarginTests
         Assert.False(emulator.InsertMode);
     }
 
+    // ---- DECCOLM ----
+
+    /// <summary>
+    /// QS208: a request for 132 columns, or for 80, keeps the width and does everything else
+    /// DECCOLM does — the screen cleared, the region reset, the cursor home.
+    /// </summary>
+    [Theory]
+    [InlineData("\e[?3h")]
+    [InlineData("\e[?3l")]
+    public void AColumnModeChangeKeepsTheWidthAndClearsTheScreenAndTheRegion(string asked)
+    {
+        Emulator emulator = new(8, 4, scrollback: 0);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\r\nbbbb\r\ncccc\e[2;3r\e[3;5H" + asked));
+
+        Assert.Equal(8, emulator.Buffer.Columns);
+        Assert.Equal((0, 3), (emulator.MarginTop, emulator.MarginBottom));
+        Assert.Equal((0, 0), (emulator.Buffer.CursorRow, emulator.Buffer.CursorColumn));
+
+        for (int row = 0; row < 4; row++)
+        {
+            Assert.Equal(string.Empty, Row(emulator, row).TrimEnd());
+        }
+    }
+
     // ---- The scrolling region ----
 
     /// <summary>

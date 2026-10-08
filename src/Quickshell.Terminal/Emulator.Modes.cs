@@ -233,6 +233,17 @@ public sealed partial class Emulator
                     ApplicationCursorKeys = set;
                     break;
 
+                case 3:
+                    // DECCOLM. The width is refused, as xterm refuses it without allowC132: a pane
+                    // in a split tab has no single size a host could ask it to become. What every
+                    // DECCOLM also does is kept, because a program asking for it assumes a clean
+                    // screen with no region, and drew its next frame on that assumption (QS208).
+                    EraseDisplay(2);
+                    MarginTop = 0;
+                    MarginBottom = Buffer.Rows - 1;
+                    Home();
+                    break;
+
                 case 6:
                     OriginMode = set;
 
@@ -322,8 +333,8 @@ public sealed partial class Emulator
     /// <para><b>Five answers and not two.</b> A program told a mode is merely off will try to turn
     /// it on; told it is permanently off, it falls back. So a mode this client refuses on purpose
     /// answers four, a mode it honours answers one or two by its state, and anything it never heard
-    /// of answers zero — which is also the answer for a mode that is planned but not built, such as
-    /// 132 columns (QS208), because "off" would invite the program to set it.</para>
+    /// of answers zero, because "off" would invite the program to set it. DECCOLM answers four: its
+    /// side effects are honoured, its width never is (QS208).</para>
     /// </summary>
     private void ModeReport(in CsiParameters parameters, bool dec)
     {
@@ -349,8 +360,8 @@ public sealed partial class Emulator
         1006 => On(_encoding == MouseEncoding.Sgr),
 
         // Refused on purpose, so permanently off: the UTF-8 mouse encoding, which SGR replaces
-        // unambiguously, and sixel display mode, which is a non-goal.
-        1005 or 80 => ModeState.PermanentlyReset,
+        // unambiguously, sixel display mode, which is a non-goal, and 132 columns, which is too.
+        1005 or 80 or 3 => ModeState.PermanentlyReset,
 
         _ => ModeState.Unrecognised,
     };

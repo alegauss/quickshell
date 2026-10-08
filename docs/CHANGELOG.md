@@ -88,6 +88,7 @@
 - ✅ **QS205** **Cursor up and down cross the scrolling region's edges, so a program moving inside a region writes outside it** — CUU, CUD, CNL and CPL stop at the margin between the cursor and the screen's edge, so vttest's cuts 014 and 016 now agree with xterm.
 - ✅ **QS206** **Restoring the cursor does not restore the character set, so line drawing after ESC 8 prints letters** — ESC 7 saves the two designations and the shifted-in slot with the cursor and ESC 8 restores them, so vttest's cut 022 draws lines as xterm does.
 - ✅ **QS207** **Insert mode is ignored, so text printed with CSI 4 h overwrites the row instead of pushing it right** — CSI 4 h turns on insert mode: printed text pushes the row right and loses what falls off, DECRQM reports it, and vttest's cuts 025 and 026 agree with xterm.
+- ✅ **QS208** **A request for 132 columns is ignored without its side effects, and nothing says whether that is the intent** — DECCOLM keeps the pane's width, now a non-goal, and still clears the screen, resets the margins and homes the cursor; DECRQM calls mode 3 permanently off.
 
 ## Block D — The tree a user organises work in
 

@@ -14,7 +14,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS208** (deps: —) **A request for 132 columns is ignored without its side effects, and nothing says whether that is the intent** — DECCOLM also clears the screen and resets the margins, so a program that asks gets neither the width nor the clean screen it assumes. → §QS208
 - 📋 **QS211** (deps: —) **esctest is judged through a pseudo-console that answers its queries itself, so the figure measures conhost** — A DECRQCRA sent through ConPtyChannel came back as conhost's 0000 and never reached the emulator, so 228 failures cannot move. → §QS211
 - 📋 **QS214** (deps: —) **Replaying the tmux resize recording sometimes allocates in steady state in the guest, and the failure says no more** — One guest run counted 7,288 bytes and the next none, and a number with no type is a failure nobody can act on. → §QS214
 
@@ -372,3 +371,7 @@
   windowed chain composed on the reference desk, made for the window or for composition,
   in a popup or the client's WPF host: the second interval is the compositor's. A
   monitor-covering window is the open exception.
+- **No pane resized because a host asks for 132 or 80 columns** A pane in a split tab
+  has no single size to become, and xterm too ignores DECCOLM's width unless allowC132
+  is set. QS208 keeps its clear, margin reset and home; vttest cuts 010, 012 and 030
+  differ for this.

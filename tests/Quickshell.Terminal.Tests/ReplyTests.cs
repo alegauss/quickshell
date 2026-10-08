@@ -219,6 +219,7 @@ public sealed class ReplyTests
     [InlineData("[?1002h", "[?1002$p", "[?1002;1$y")]
     [InlineData("", "[?1005$p", "[?1005;4$y")]      // refused on purpose: permanently off
     [InlineData("", "[?80$p", "[?80;4$y")]          // sixel, a non-goal
+    [InlineData("[?3h", "[?3$p", "[?3;4$y")]        // 132 columns, a non-goal even once asked for (QS208)
     [InlineData("", "[?12345$p", "[?12345;0$y")]    // never heard of
     [InlineData("", "[4$p", "[4;2$y")]              // insert mode, an ANSI mode, off by default
     [InlineData("[4h", "[4$p", "[4;1$y")]           // and on (QS207)

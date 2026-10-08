@@ -36,9 +36,9 @@ public sealed class VttestTests
     /// </summary>
     private static readonly Dictionary<int, string> Known = new()
     {
-        [10] = "QS208: 132 columns asked for with CSI ? 3 h; xterm obeys, this keeps 80",
-        [12] = "QS208: the same 132-column screen, light background",
-        [30] = "QS208: the VT102 test's 132-column pass",
+        [10] = "a non-goal since QS208: 132 columns asked for with CSI ? 3 h; xterm obeys, this keeps 80 and only clears",
+        [12] = "a non-goal since QS208: the same 132-column screen, light background",
+        [30] = "a non-goal since QS208: the VT102 test's 132-column pass",
     };
 
     [Fact]

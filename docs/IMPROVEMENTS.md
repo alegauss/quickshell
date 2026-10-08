@@ -314,25 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS208 132 columns, obeyed or refused
-
-Found by QS33's vttest run, cuts 010, 012 and 030. `CSI ? 3 h` asks for 132 columns; the
-xterm in the oracle obeys and redraws, and this emulator ignores it, so every 132-column
-screen vttest draws is read here as 80 columns of it.
-
-This is a choice before it is a build. Obeying means the client resizes its window, or
-its grid, when a host says so, which a tabbed and split client has no single answer for.
-xterm itself ignores the sequence unless allowC132 is set, and many modern terminals do
-the same. Ignoring it entirely also drops the side effects DECCOLM carries everywhere:
-clear the screen, home the cursor, reset the margins.
-
-What to decide, then build: either obey within the pane by reflowing to 132 columns, or
-keep ignoring the width and still perform the clear, home and margin reset. The second
-is small and is what xterm does with allowC132 set and no room to grow. If the answer is
-to ignore it, that is a non-goal and this line retires into it.
-
-Falsified when cut 010 is decided against without a line in the non-goals saying so.
-
 ### §QS211 A judge with nothing in between
 
 Found shipping QS103. The emulator answered DECRQCRA correctly in its own tests, and the
