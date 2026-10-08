@@ -269,6 +269,13 @@ public sealed class MainWindow : Window
         // handshake is in it (QS129): offered only where that pane holds a saved session.
         InputBindings.Add(new InputBinding(new TracingSession(this), new PaletteOnly()));
 
+        // Recording a session's output (QS134). Starting opens a new session, after a question that
+        // says what is kept: a decision made once and in the open, so no chord. Stopping is safe at
+        // any moment, and is in the palette beside them.
+        InputBindings.Add(new InputBinding(new RecordingTab(this), new PaletteOnly()));
+        InputBindings.Add(new InputBinding(new RecordingSession(this), new PaletteOnly()));
+        InputBindings.Add(new InputBinding(new StoppingRecording(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
@@ -1226,9 +1233,12 @@ public sealed class MainWindow : Window
             item.FontWeight = _open[tab].HasActivity ? FontWeights.Bold : FontWeights.Normal;
         }
 
+        // Recording while any pane is (QS134), or while somebody said so directly.
+        bool recording = _recording || RecordingPanes() > 0;
+
         string named = Notice is { } notice
-            ? $"{notice} — {Naming(_recording, Current?.Title)}"
-            : Naming(_recording, Current?.Title);
+            ? $"{notice} — {Naming(recording, Current?.Title)}"
+            : Naming(recording, Current?.Title);
 
         // While any forward runs, the title says so first (QS70): a forgotten forward is an open
         // route into somebody's network, and the title is chrome the window already has, which a
@@ -2700,6 +2710,123 @@ public sealed class MainWindow : Window
     }
 
     /// <summary>
+    /// Opens a new local tab recording into the recording given, which its pane then owns (QS134).
+    /// The program sets it, because the tab needs the device every pane shares.
+    /// </summary>
+    public Action<SessionRecording>? OpensRecorded { get; set; }
+
+    /// <summary>Opens a saved session, by its path, recording into the recording given (QS134).</summary>
+    public Action<string, SessionRecording>? OpensSessionRecorded { get; set; }
+
+    /// <summary>Where recordings go: <see cref="Locations.Recordings"/> unless a caller says otherwise.</summary>
+    public string? RecordingsFolder { get; set; }
+
+    /// <summary>
+    /// Asks what to call a recording, given the name to offer, and answers null where the person
+    /// declined. The dialog, unless a caller says otherwise — which is how a test answers it.
+    /// </summary>
+    public Func<string, string?>? AsksRecordingName { get; set; }
+
+    /// <summary>Says one sentence to the person at the window. A message box, unless a caller says otherwise.</summary>
+    public Action<string>? Tells { get; set; }
+
+    /// <summary>Asks for a name, then opens a new local tab recorded from its first byte (QS134).</summary>
+    public void RecordNewTab()
+    {
+        if (OpensRecorded is { } open && Recorded("local") is { } recording)
+        {
+            open(recording);
+            Retitle();
+        }
+    }
+
+    /// <summary>Asks for a name, then opens the saved session at <paramref name="path"/> recorded (QS134).</summary>
+    public void RecordSession(string path)
+    {
+        if (OpensSessionRecorded is { } open && Recorded(path) is { } recording)
+        {
+            open(path, recording);
+            Retitle();
+        }
+    }
+
+    /// <summary>
+    /// Closes the recording of the pane with the keyboard and says where the file is: the title
+    /// changes, and a stop needs the sentence (QS134).
+    /// </summary>
+    /// <returns>The file, or null where that pane was recording nothing.</returns>
+    public async Task<string?> StopRecordingAsync()
+    {
+        if (Current?.Focused is not { } leaf || await leaf.StopRecordingAsync() is not { } path)
+        {
+            return null;
+        }
+
+        Retitle();
+        Say($"The recording is saved as {path}");
+
+        return path;
+    }
+
+    /// <summary>How many panes are recording now, which is what the title's mark is set from.</summary>
+    public int RecordingPanes() =>
+        _open.Sum(tab => tab.Leaves.Count(leaf => leaf.Recording is { Running: true }));
+
+    /// <summary>
+    /// A recording started under the name the person chose, or null where they declined. The name
+    /// offered is what is about to be recorded and when, which is what it will need to mean later.
+    /// </summary>
+    private SessionRecording? Recorded(string what)
+    {
+        string folder = RecordingsFolder ?? Locations.Current.Recordings;
+        string offered = $"{what.Replace('/', '-')}-{DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture)}";
+
+        string? named = (AsksRecordingName ?? (suggested => AskedRecordingName(suggested, folder)))(offered);
+
+        if (named is null)
+        {
+            return null;
+        }
+
+        SessionRecording recording = SessionRecording.Start(folder, named);
+
+        // A recording that stopped at its limit takes the title's mark with it, and says so: the
+        // defect that happens next is not in the file, and the person should not believe it is.
+        recording.Stopped += (_, _) => Dispatcher.BeginInvoke(() =>
+        {
+            Retitle();
+            Say($"The recording reached its limit and stopped; it is saved as {recording.Path}");
+        });
+
+        return recording;
+    }
+
+    private string? AskedRecordingName(string suggested, string folder)
+    {
+        RecordingDialog dialog = new(suggested, folder, SessionRecording.DefaultLimit)
+        {
+            Owner = this,
+            ThemeMode = ThemeMode,
+        };
+
+        dialog.ShowDialog();
+
+        return dialog.Named;
+    }
+
+    private void Say(string sentence)
+    {
+        if (Tells is { } tell)
+        {
+            tell(sentence);
+
+            return;
+        }
+
+        MessageBox.Show(this, sentence, "Recording", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    /// <summary>
     /// Asks the person at this window about a host key nobody has seen, which is the one question a
     /// connection cannot answer for itself (QS126).
     ///
@@ -2875,14 +3002,65 @@ public sealed class MainWindow : Window
         public override void Execute(object? parameter) => Window.TraceFocused();
     }
 
-    /// <summary>One saved session as a palette entry: running it opens that session.</summary>
-    private sealed class OpeningOne(MainWindow window, string path) : Doing(window)
+    /// <summary>One saved session as a palette entry: running it opens that session, or records it.</summary>
+    private sealed class OpeningOne(MainWindow window, string path, Action<string> open) : Doing(window)
     {
         /// <inheritdoc/>
         public override string Name => path;
 
         /// <inheritdoc/>
-        public override void Execute(object? parameter) => Window.OpensSession?.Invoke(path);
+        public override void Execute(object? parameter) => open(path);
+    }
+
+    /// <summary>A new local tab, recorded from its first byte (QS134).</summary>
+    private sealed class RecordingTab(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "New tab, recorded";
+
+        /// <inheritdoc/>
+        public override bool CanExecute(object? parameter) => Window.OpensRecorded is not null;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.RecordNewTab();
+    }
+
+    /// <summary>A saved session, opened and recorded from its first byte (QS134).</summary>
+    private sealed class RecordingSession(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Open session, recorded";
+
+        /// <inheritdoc/>
+        public override bool CanExecute(object? parameter) => Window.OpensSessionRecorded is not null;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter)
+        {
+            try
+            {
+                Window.ChooseSession(Window.RecordSession);
+            }
+            catch (SessionStoreException unreadable)
+            {
+                MessageBox.Show(Window, $"{unreadable.Message}\n\n{unreadable.Means}\n\n{unreadable.Remedy}",
+                                "Sessions", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+    }
+
+    /// <summary>Stops the recording of the pane with the keyboard, and says where the file is (QS134).</summary>
+    private sealed class StoppingRecording(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Stop recording";
+
+        /// <inheritdoc/>
+        public override bool CanExecute(object? parameter) =>
+            Window.Current?.Focused.Recording is { Running: true };
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => _ = Window.StopRecordingAsync();
     }
 
     /// <summary>The import binding's command.</summary>
@@ -2982,10 +3160,11 @@ public sealed class MainWindow : Window
     /// Each entry is the session's path, with its host where a command's chord goes, and is found by
     /// its host and tags as well as its path. The ones opened most recently come first.</para>
     /// </summary>
+    /// <param name="open">What picking one does; opening it, where not given. Recording it is the other (QS134).</param>
     /// <exception cref="SessionStoreException">The store is there and cannot be read.</exception>
-    public void ChooseSession()
+    public void ChooseSession(Action<string>? open = null)
     {
-        if (OpensSession is null)
+        if ((open ?? OpensSession) is not { } opening)
         {
             return;
         }
@@ -2994,7 +3173,7 @@ public sealed class MainWindow : Window
 
         Command[] sessions =
         [
-            .. store.Sessions().Select(session => new Command(session.Path, session.Host, new OpeningOne(this, session.Path))
+            .. store.Sessions().Select(session => new Command(session.Path, session.Host, new OpeningOne(this, session.Path, opening))
             {
                 Also = string.Join(' ', [session.Host, .. session.Tags]),
             }),

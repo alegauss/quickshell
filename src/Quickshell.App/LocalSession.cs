@@ -87,13 +87,15 @@ public sealed class LocalSession : IShellSession
     /// <param name="rows">Its rows.</param>
     /// <param name="commandLine">What to run, or null for <see cref="Shell"/>.</param>
     /// <param name="cancellationToken">Gives up on the pseudo-console's pipes connecting.</param>
+    /// <param name="recording">Where to keep what the shell sends, from its first byte, or null (QS134).</param>
     public static async Task<LocalSession> OpenAsync(
         Emulator emulator,
         DamageSignal damage,
         int columns,
         int rows,
         string? commandLine = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        SessionRecording? recording = null)
     {
         ArgumentNullException.ThrowIfNull(emulator);
         ArgumentNullException.ThrowIfNull(damage);
@@ -106,7 +108,7 @@ public sealed class LocalSession : IShellSession
                         cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        return new LocalSession(channel, SessionPipeline.Start(channel, emulator, damage: damage));
+        return new LocalSession(channel, SessionPipeline.Start(channel, emulator, recording: recording, damage: damage));
     }
 
     /// <inheritdoc/>

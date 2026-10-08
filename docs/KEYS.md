@@ -18,7 +18,11 @@ your saved sessions, found by path, host or tag, with the ones you opened last a
 that did not start,
 *Trace this session* connects the saved session in the pane again with a trace of its own under
 the log folder, handshake included, and says in the pane where the file is; the remote shell is a
-new one, as after any reconnect, and the trace lasts until the client closes, and
+new one, as after any reconnect, and the trace lasts until the client closes,
+*New tab, recorded* and *Open session, recorded* open a session that keeps everything its host sends
+in a file you name first — never what you type, up to 256 MB compressed, under `recordings` in
+the client's folder, with the title saying so while it runs — and *Stop recording* closes the
+file and says where it is, and
 *Leave this pane out of broadcast typing* is described under [Panes](#panes).
 
 Nothing here is configurable yet. When it becomes configurable this page becomes the defaults.

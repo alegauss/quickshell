@@ -35,8 +35,6 @@
 
 ## Block I — An error a user can act on
 
-- 📋 **QS134** (deps: QS73 ✅, QS129 ✅) **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The recorder and the title's indication both work, and the only caller that can begin one is a test, so the feature reaches no user. → §QS134
-
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of

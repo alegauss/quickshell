@@ -208,6 +208,7 @@
 - ✅ **QS132** **A crash report cannot name the GPU, on the failures most likely to be about one** — A crash report names the adapter of the device every pane shares, how many losses it had survived, and why there is none when opening it failed.
 - ✅ **QS133** **A recording has no bound and will fill a disk if it is left running** — A recording stops at a compressed limit stated before it starts, ends its file with a line saying where it was cut, and raises Stopped (design recorded in `src/Quickshell.App/SessionRecording.cs`).
 - ✅ **QS150** **A defect report about a black window says what an adapter probe found, not what the window did** — A diagnostic bundle names the device the panes are drawing with and each pane's frames, draws, presents and covered presents; a probe answers only before any pane draws.
+- ✅ **QS134** **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The palette opens a tab or a saved session recorded, after a dialog naming the file, what is kept and the limit; Stop recording says where the file is.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 

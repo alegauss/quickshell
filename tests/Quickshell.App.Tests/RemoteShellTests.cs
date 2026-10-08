@@ -873,6 +873,38 @@ public sealed class RemoteShellTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// QS134: a saved session opened recorded keeps what its host sent, from the banner on, and
+    /// nothing that was typed — the command is in the file only as the host echoed it.
+    /// </summary>
+    [Fact]
+    public async Task ASavedSessionOpenedRecordedKeepsWhatItsHostSent()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession probe = Account("probe");
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        Emulator emulator = new(120, 25);
+        SessionRecording recording = SessionRecording.Start(Path.Combine(_here, "recordings"), "probe");
+
+        await using (RemoteShell shell = await RemoteShell.OpenAsync(probe, trust, emulator, new DamageSignal(),
+                                                                     120, 25, Stop, recording: recording))
+        {
+            // Printed by the shell as the sum, so the answer is something only the host could send.
+            await shell.TypeAsync(Encoding.ASCII.GetBytes("echo $((40 + 2))-from-the-host\r"), Stop);
+            await Until(() => Screen(emulator).Contains("42-from-the-host", StringComparison.Ordinal));
+        }
+
+        await recording.DisposeAsync();
+
+        await using FileStream reading = File.OpenRead(recording.Path);
+        await using System.IO.Compression.GZipStream unpacking = new(reading, System.IO.Compression.CompressionMode.Decompress);
+        using StreamReader text = new(unpacking);
+
+        Assert.Contains("42-from-the-host", await text.ReadToEndAsync(Stop), StringComparison.Ordinal);
+    }
+
     /// <summary>A jump host is written as OpenSSH writes one, and every part of it is optional but the host.</summary>
     [Theory]
     [InlineData("bastion.example", "me", "bastion.example", 22)]

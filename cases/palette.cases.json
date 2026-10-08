@@ -192,6 +192,64 @@
       ]
     },
     {
+      "name": "a recording is asked about before anything is recorded, and can be refused",
+      "catches": "a recording started by a palette entry with no question first — a client writing somebody's session to disk on one keystroke — or a question with no way to say no",
+      "filed": "QS134",
+      "tags": ["palette", "recording"],
+      "fixture": "a window to open the palette over",
+
+      "steps": [
+        {
+          "locator": "TabItem[order=right]",
+          "act": "press",
+          "with": "Ctrl+Shift+P",
+          "named": "the palette is opened the way a user opens it"
+        },
+        {
+          "locator": "Edit",
+          "act": "set value",
+          "with": "new tab recorded",
+          "expect": "new tab recorded",
+          "reads": "value",
+          "named": "the way to record a session from its first byte"
+        },
+        {
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "New tab, recorded",
+          "named": "is in the palette"
+        },
+        {
+          "locator": "Edit",
+          "act": "press",
+          "with": "Enter",
+          "named": "and taken"
+        },
+        {
+          // The question, before any tab or file: its terms name the desk's own folder, so what is
+          // read is the dialog's caption and its way out, which mean the same on every desk.
+          "locator": "Window#Recording",
+          "act": "read",
+          "reads": "name",
+          "expect": "Record a session",
+          "named": "a question comes first, under its own caption"
+        },
+        {
+          "locator": "Window#Recording > Button#decline",
+          "act": "read",
+          "reads": "name",
+          "expect": "Don't record",
+          "named": "and refusing says what it does"
+        },
+        {
+          "locator": "Window#Recording > Button#decline",
+          "act": "invoke",
+          "named": "refusing it, which records nothing"
+        }
+      ]
+    },
+    {
       "name": "part of a saved session's name brings it to the top of Open session",
       "catches": "an Open session list that reads some other store than the one the client was given, or one that lists sessions without finding them by what a user remembers of the name",
       "filed": "QS217",

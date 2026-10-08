@@ -248,12 +248,42 @@ public sealed class TerminalLeaf : IAsyncDisposable
     /// </summary>
     /// <param name="commandLine">What to run, or null for this user's own shell.</param>
     /// <param name="cancellationToken">Gives up on the pseudo-console's pipes connecting.</param>
+    /// <param name="recording">Where to keep what the shell sends, which this pane then owns, or null (QS134).</param>
     public Task ConnectAsync(string? commandLine = null,
-                             CancellationToken cancellationToken = default) =>
-        ConnectAsync(async (emulator, damage, columns, rows, token) =>
-                         await LocalSession.OpenAsync(emulator, damage, columns, rows, commandLine, token)
-                                           .ConfigureAwait(false),
-                     cancellationToken);
+                             CancellationToken cancellationToken = default,
+                             SessionRecording? recording = null)
+    {
+        Recording = recording ?? Recording;
+
+        return ConnectAsync(async (emulator, damage, columns, rows, token) =>
+                                await LocalSession.OpenAsync(emulator, damage, columns, rows, commandLine, token,
+                                                             recording)
+                                                  .ConfigureAwait(false),
+                            cancellationToken);
+    }
+
+    /// <summary>
+    /// What this pane's session is being recorded into, or null. Given as the session opens and
+    /// never afterwards (QS134): a recording that could start mid-session is one a user could be
+    /// unaware had started. The pane owns it, so it is closed when the pane is.
+    /// </summary>
+    public SessionRecording? Recording { get; set; }
+
+    /// <summary>
+    /// Closes the recording, which is what makes the file readable, and says where it is.
+    /// </summary>
+    /// <returns>The file it wrote, or null where nothing was being recorded.</returns>
+    public async ValueTask<string?> StopRecordingAsync()
+    {
+        if (Recording is not { Running: true } recording)
+        {
+            return null;
+        }
+
+        await recording.DisposeAsync().ConfigureAwait(false);
+
+        return recording.Path;
+    }
 
     /// <summary>
     /// Starts whatever <paramref name="open"/> opens behind this pane — a saved session's remote
@@ -471,6 +501,12 @@ public sealed class TerminalLeaf : IAsyncDisposable
         if (_session is { } session)
         {
             await session.DisposeAsync().ConfigureAwait(false);
+        }
+
+        // After the session, so its last bytes are in the file, and closed so the file can be read.
+        if (Recording is { } recording)
+        {
+            await recording.DisposeAsync().ConfigureAwait(false);
         }
     }
 }

@@ -114,6 +114,9 @@ public sealed class RemoteShell : IShellSession
     /// offers keys and the agent alone (QS218).
     /// </param>
     /// <param name="secrets">Where remembered passwords are kept, or null to remember none.</param>
+    /// <param name="recording">
+    /// Where to keep what the host sends, across every reconnect, or null (QS134). Not closed here.
+    /// </param>
     /// <exception cref="SshException">The first connection did not happen, and why in words.</exception>
     public static async Task<RemoteShell> OpenAsync(ResolvedSession session, TrustOnFirstUse trust,
                                                     Emulator emulator, DamageSignal damage,
@@ -121,7 +124,8 @@ public sealed class RemoteShell : IShellSession
                                                     CancellationToken cancellationToken = default,
                                                     SessionLog? log = null,
                                                     Func<SignInQuestion, CancellationToken, ValueTask<SignInAnswer?>>? ask = null,
-                                                    SecretStore? secrets = null)
+                                                    SecretStore? secrets = null,
+                                                    SessionRecording? recording = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(trust);
@@ -205,7 +209,7 @@ public sealed class RemoteShell : IShellSession
 
                 return await connection.ConnectAsync(token).ConfigureAwait(false);
             },
-            emulator, policy, damage, Changed);
+            emulator, policy, damage, Changed, recording);
 
         RemoteShell shell = new(inner, connection);
 

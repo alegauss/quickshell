@@ -727,31 +727,6 @@ worst of it.
 Falsified when a failed negotiation against the `legacy` fixture leaves a log naming
 both sides' algorithm lists.
 
-### §QS134 Starting a recording from the window
-
-QS73 built the recorder, fed it from the parser stage where the user's keystrokes cannot
-reach, and made the window say so in its title. What it did not build is the way to
-start one: `SessionPipeline.Start` takes a recording at construction, and nothing at the
-window level constructs a session yet — the same hole QS129 names for the log.
-
-That order was deliberate. A recording that could be switched on mid-session is one a
-user could be unaware had started, so the decision belongs where the session begins, and
-the window's indication is set from the same decision. Wiring a toggle before there was
-a session to toggle would have meant inventing a lifecycle to match.
-
-What this owes when the session lifecycle exists: a way to say *record this session* at
-the moment it opens, a name for the file that means something later, and a way to stop
-one that names the file it wrote so the user can find it. The title changes; a stop
-needs the sentence. QS133's `SessionRecording.Limit` is said before starting, and its
-`Stopped` event drops the title's mark.
-
-Keep the asymmetry. Starting is a decision made once, in the open; stopping is safe at
-any time and can be a keystroke. A recording that can be started by a keystroke is one
-somebody starts by accident.
-
-Falsified when a user who has just hit a terminal defect has no way to record the
-session that shows it.
-
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ### §QS81 The document the non-goals were written for

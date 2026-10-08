@@ -1,3 +1,5 @@
+using System.IO;
+using System.IO.Compression;
 using System.Text;
 using Quickshell.App;
 using Quickshell.Terminal;
@@ -327,6 +329,48 @@ public sealed class RemoteSessionTests
 
         Assert.Equal(2, made.Count);
         Assert.Contains("connection 1", Screen(session), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A recording is the session's and not one connection's, as the scrollback is: what both
+    /// connections sent is in the one file (QS134).
+    /// </summary>
+    [Fact]
+    public async Task ARecordingSpansAReconnect()
+    {
+        List<ReplayTransport> made = [];
+        string folder = Path.Combine(Path.GetTempPath(), "qs-recording-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            SessionRecording recording = SessionRecording.Start(folder, "spanning");
+
+            await using (RemoteSession session = RemoteSession.Start(
+                             _ => Connect(made, $"connection {made.Count + 1}\r\n"), new Emulator(80, 25),
+                             ReconnectPolicy.Off, recording: recording))
+            {
+                await Until(() => session.Status.IsLive && recording.Bytes > 0);
+
+                session.ConnectAgain();
+
+                await Until(() => session.Connections == 2 && Screen(session).Contains("connection 2", StringComparison.Ordinal));
+            }
+
+            await recording.DisposeAsync();
+
+            await using FileStream reading = File.OpenRead(recording.Path);
+            await using GZipStream unpacking = new(reading, CompressionMode.Decompress);
+            using StreamReader text = new(unpacking);
+
+            string kept = await text.ReadToEndAsync(Stop);
+
+            Assert.Contains("connection 1", kept, StringComparison.Ordinal);
+            Assert.Contains("connection 2", kept, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
     }
 
     /// <summary>

@@ -142,6 +142,11 @@ public static class Entry
         window.Connects = leaf => _ = leaf.ConnectAsync();
         window.OpensSession = path => OpenedSession(window, window.Settings, share, path, trace: false);
 
+        // A session recorded from its first byte, local or saved (QS134).
+        window.OpensRecorded = recording => Opened(window, window.Settings, share, recording: recording);
+        window.OpensSessionRecorded = (path, recording) =>
+            OpenedSession(window, window.Settings, share, path, trace: false, recording);
+
         // The browser's host side: the files of the session in the pane with the keyboard, over its
         // own connection (QS219). A local pane has none, and the browser says so.
         window.RemoteFiles = tab => tab.Focused.Files;
@@ -348,8 +353,10 @@ public static class Entry
     /// <param name="share">The one device and loop.</param>
     /// <param name="model">A model a shell was started into ahead of the window, or null.</param>
     /// <param name="started">That shell, or null to start one now.</param>
+    /// <param name="recording">Where to keep what the new shell sends, or null (QS134).</param>
     private static void Opened(MainWindow window, Settings settings, TerminalShare share,
-                               Emulator? model = null, Task<LocalSession>? started = null)
+                               Emulator? model = null, Task<LocalSession>? started = null,
+                               SessionRecording? recording = null)
     {
         string host = Path.GetFileName(LocalSession.Shell);
         TerminalTab tab = TerminalTab.Open(settings, share, host, model);
@@ -359,6 +366,13 @@ public static class Entry
 
         window.Add(tab);
         window.Sessions.Open(host, another: true);
+
+        if (recording is not null)
+        {
+            _ = tab.Focused.ConnectAsync(recording: recording);
+
+            return;
+        }
 
         _ = started is null
             ? tab.ConnectAsync()
@@ -374,7 +388,21 @@ public static class Entry
     /// the tab rather than opening nothing.</para>
     /// </summary>
     private static void OpenedSession(MainWindow window, Settings settings, TerminalShare share, string path,
-                                      bool trace)
+                                      bool trace, SessionRecording? recording = null)
+    {
+        if (!OpenSessionInTab(window, settings, share, path, trace, recording) && recording is not null)
+        {
+            // Started for a session that did not open into a pane of its own, so there is nothing
+            // to keep, and an empty file left behind would read as a recording that captured nothing.
+            recording.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            File.Delete(recording.Path);
+            window.Retitle();
+        }
+    }
+
+    /// <returns>Whether a single session was opened into a pane of its own, which is what a recording needs.</returns>
+    private static bool OpenSessionInTab(MainWindow window, Settings settings, TerminalShare share, string path,
+                                         bool trace, SessionRecording? recording)
     {
         ResolvedSession? session;
         SessionTree tree;
@@ -389,7 +417,17 @@ public static class Entry
             MessageBox.Show(window, $"{unreadable.Message}\n\n{unreadable.Means}", "Sessions",
                             MessageBoxButton.OK, MessageBoxImage.Warning);
 
-            return;
+            return false;
+        }
+
+        // A recording is one stream, and a folder is several sessions typing at once (QS134).
+        if (recording is not null && session is null && tree.Group(path).Count > 0)
+        {
+            MessageBox.Show(window, $"{path} is a folder of sessions, and a recording keeps one session's output. "
+                                    + "Record one of the sessions in it instead.",
+                            "Recording", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            return false;
         }
 
         Quickshell.Transport.TrustOnFirstUse trusting = new(Quickshell.Transport.KnownHosts.ReadFrom(), window.AskHostKey);
@@ -417,7 +455,7 @@ public static class Entry
                                 "Sessions", MessageBoxButton.OK, MessageBoxImage.Information);
             }
 
-            return;
+            return false;
         }
 
         if (session is null)
@@ -425,7 +463,7 @@ public static class Entry
             MessageBox.Show(window, $"There is no saved session or folder of sessions called {path}.", "Sessions",
                             MessageBoxButton.OK, MessageBoxImage.Information);
 
-            return;
+            return false;
         }
 
         TerminalTab tab = TerminalTab.Open(settings, share, session.Host);
@@ -436,10 +474,16 @@ public static class Entry
 
         Quickshell.Transport.SessionLog log = trace ? Traced(session.Host) : Logged.Value;
 
+        // The pane owns the recording before the first byte arrives, so the title says so at once.
+        tab.Focused.Recording = recording;
+        window.Retitle();
+
         _ = tab.Focused.ConnectAsync(async (emulator, damage, columns, rows, token) =>
             await RemoteShell.OpenAsync(session, trusting, emulator, damage, columns, rows, token, log,
-                                        window.AskSignIn, secrets)
+                                        window.AskSignIn, secrets, recording)
                              .ConfigureAwait(false));
+
+        return true;
     }
 
     /// <summary>

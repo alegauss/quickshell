@@ -65,9 +65,15 @@ public sealed class RemoteSession : IAsyncDisposable
     /// Told every change of status, from the first — which is why it is given here and not set
     /// afterwards: the first attempt begins before this returns.
     /// </param>
+    /// <param name="recording">
+    /// Where to keep what the host sends, or null (QS134). Every connection's pipeline feeds the
+    /// same one, so a recording spans a reconnect the way the scrollback does. Not closed here: it
+    /// is whoever started it that owns it.
+    /// </param>
     public static RemoteSession Start(Func<CancellationToken, ValueTask<ISshTransport>> connect,
                                       Emulator emulator, ReconnectPolicy? policy = null,
-                                      DamageSignal? damage = null, Action<SessionStatus>? changed = null)
+                                      DamageSignal? damage = null, Action<SessionStatus>? changed = null,
+                                      SessionRecording? recording = null)
     {
         ArgumentNullException.ThrowIfNull(connect);
         ArgumentNullException.ThrowIfNull(emulator);
@@ -76,6 +82,7 @@ public sealed class RemoteSession : IAsyncDisposable
                                     damage ?? new DamageSignal())
         {
             Changed = changed,
+            Recording = recording,
         };
 
         session.Completed = Task.Run(session.RunAsync);
@@ -164,6 +171,9 @@ public sealed class RemoteSession : IAsyncDisposable
     /// <see cref="Start"/>, because the first attempt begins before it returns.
     /// </summary>
     private Action<SessionStatus>? Changed { get; init; }
+
+    /// <summary>Where every connection's output is kept, or null (QS134).</summary>
+    private SessionRecording? Recording { get; init; }
 
     /// <summary>The connection there is now, or null between connections.</summary>
     public ISshTransport? Transport => Volatile.Read(ref _transport);
@@ -293,7 +303,7 @@ public sealed class RemoteSession : IAsyncDisposable
             // read is this object's, and a new connection writes onto the end of it rather than
             // replacing it. And the same signal, for the same reason: the window asleep on it is the
             // one that has to wake for what this connection prints (QS151).
-            SessionPipeline pipeline = SessionPipeline.Start(channel, _emulator, damage: Damage);
+            SessionPipeline pipeline = SessionPipeline.Start(channel, _emulator, recording: Recording, damage: Damage);
 
             if (Volatile.Read(ref _scrollback) is var depth and >= 0)
             {
