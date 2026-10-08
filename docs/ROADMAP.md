@@ -14,7 +14,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS203** (deps: —) **Two combining marks on the same side of one base are drawn on the same pixels instead of stacked** — Each mark is placed where it sits over the base alone, because DirectWrite misplaces every mark after the first. → §QS203
 - 📋 **QS205** (deps: —) **Cursor up and down cross the scrolling region's edges, so a program moving inside a region writes outside it** — CUU and CUD clamp only to the screen, where DEC and xterm stop them at the margin the cursor started inside. → §QS205
 - 📋 **QS206** (deps: —) **Restoring the cursor does not restore the character set, so line drawing after ESC 8 prints letters** — DECSC saves the designations and shift state with the position, and a program that switched sets in between relies on getting them back. → §QS206
 - 📋 **QS207** (deps: —) **Insert mode is ignored, so text printed with CSI 4 h overwrites the row instead of pushing it right** — Editors and readline-style prompts use IRM to insert in place, and a terminal that overwrites shows the line the program did not draw. → §QS207
@@ -60,6 +59,7 @@
 
 - 📋 **QS222** (deps: —) **A desk that cannot be observed runs no UI case, and the run counts it as a pass** — CasesRun passes with nothing run where it should skip with the desk's reason, so the QS136 table shows a green that covered nothing. → §QS222
 - 📋 **QS224** (deps: —) **A guest run asked to carry HEAD alone carries the working tree's uncommitted edits to tracked files** — Send-Tree takes HEAD's file list and reads each file from disk, so a before-and-after measured with it compares the change with itself. → §QS224
+- 📋 **QS226** (deps: —) **A guest run goes red on the skip budget when the guest's clipboard holds a bitmap from an earlier session** — No test fails, yet the run is red and a commit waits until someone clears the guest by hand. → §QS226
 
 ## Done when — Block A
 

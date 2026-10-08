@@ -343,6 +343,59 @@ public sealed class CellRendererTests
                      "the family drew exactly as the man does, so the sequence was not joined");
     }
 
+    /// <summary>
+    /// QS203's falsification: an acute and a diaeresis over one <c>q</c> are two inks stacked above
+    /// it, and not one ink drawn twice on the same pixels. A <c>q</c> and not an <c>a</c>, because
+    /// DirectWrite composes an a with an acute into the precomposed glyph, whose diaeresis the face
+    /// positions itself; a base with no precomposed form is the one whose marks are placed here.
+    /// </summary>
+    [Fact]
+    public void TwoMarksAboveOneBaseAreStackedAndNotDrawnOnTheSamePixels()
+    {
+        // Written as code points, because this repository holds no raw combining marks.
+        const char Acute = (char)0x0301;
+        const char Diaeresis = (char)0x0308;
+
+        using GlyphRasteriser rasteriser = new();
+
+        GlyphResolution resolved = rasteriser.Resolve(FontSettings.Default, Vortice.DirectWrite.FontWeight.Normal,
+                                                      Vortice.DirectWrite.FontStyle.Normal, 'q', 0f);
+
+        GlyphBitmap? Cluster(string text) =>
+            rasteriser.RasteriseCluster(resolved.Family, Vortice.DirectWrite.FontWeight.Normal,
+                                        Vortice.DirectWrite.FontStyle.Normal, resolved.SizeInPixels, text,
+                                        clearType: false);
+
+        GlyphBitmap? bare = Cluster("q");
+        GlyphBitmap? acute = Cluster($"q{Acute}");
+        GlyphBitmap? both = Cluster($"q{Acute}{Diaeresis}");
+
+        Assert.NotNull(bare);
+        Assert.NotNull(acute);
+        Assert.NotNull(both);
+
+        // Runs of inked rows above the q's own top, separated by at least one row with no ink.
+        int inks = 0;
+        bool inking = false;
+
+        for (int row = 0; row < both.Height && both.Top + row < bare.Top; row++)
+        {
+            bool lit = false;
+
+            for (int column = 0; column < both.Width; column++)
+            {
+                lit |= both.Coverage[(row * both.Width) + column] > 64;
+            }
+
+            inks += lit && !inking ? 1 : 0;
+            inking = lit;
+        }
+
+        Assert.True(inks >= 2, $"{inks} ink above the q, so the acute and the diaeresis were drawn on the same pixels");
+        Assert.True(both.Top < acute.Top - 1,
+                    $"the two marks reach {-both.Top} px above the baseline and the acute alone {-acute.Top}, so nothing was stacked");
+    }
+
     [Fact]
     public void MoreCellsThanTheBufferHoldsGrowsItRatherThanRefusing()
     {

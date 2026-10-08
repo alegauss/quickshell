@@ -314,27 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS203 Stacking what the shaper would not
-
-QS91 draws a cluster as one atlas glyph, shaped whole by DirectWrite. On Consolas the
-shaper places the first mark after a base correctly and every later one a whole base
-advance to the left, out of the cell. That held for both the Latin and the Common
-shaper. So `GlyphRasteriser.Restack` places each mark from the base shaped with that
-mark alone.
-
-That is right for marks on different sides, a dot below and an acute above. Two marks on
-the same side, an acute and a diaeresis above one vowel as Vietnamese or IPA write them,
-are each placed where they would sit alone, so they land on the same pixels.
-
-What to build: after placing each mark alone, read its ink bounds from the rasterised
-pair, and push a later mark above, or below, the ink of the earlier ones on its side by
-that height plus a pixel. The side is the sign of where the ink sits against the base's
-x-height. Then check the shaper again first: if a newer DirectWrite, or a face with
-mark-to-mark positioning, places the second mark right, `Restack` should step aside for
-it rather than override it.
-
-Falsified when `a` with U+0301 and U+0308 reads back two separate inks above the a.
-
 ### §QS205 A movement that respects the region
 
 Found by QS33's vttest run, cuts 014 and 016. vttest turns origin mode on, sets the
@@ -1087,3 +1066,25 @@ through Send-Tree, so one fix covers all three.
 
 Falsified when a guest run with `-CommittedOnly` builds a tracked file's uncommitted
 edit.
+
+### §QS226 Clearing the guest clipboard without touching the host's
+
+Twice running on 2026-10-08, with no test failing, the guest suite went red on the skip
+budget: the guest's clipboard held a bitmap, so the clipboard case could not put it back
+exactly and measured nothing, which is App.Tests' third skip against a budget of two.
+The bitmap was the guest's own, left from an earlier session; the host held text the
+whole time.
+
+It was cleared by hand, and in this order because of QS180: VMware shares the clipboard,
+so setting the guest's while sharing is on would also overwrite the host's, the very
+thing QS180 stopped the suite doing. So `vmrun writeVariable <vmx> runtimeConfig
+isolation.tools.copy.disable TRUE` and `paste.disable TRUE` first, then
+`[Windows.Forms.Clipboard]::SetText` inside the guest from a script run with
+`runProgramInGuest -interactive`, then the suite, then both variables back to FALSE.
+
+What to build: `run-tests-vm.ps1` does exactly that around the run. It reads the guest
+clipboard's formats first and does nothing when they are text. When they are not, it
+turns sharing off, writes plain text in the guest, runs, and restores sharing in a
+`finally`, so a failed run never leaves it off. It says on the console which of the two
+it did. Falsified when a guest whose clipboard holds a bitmap runs green and the host
+clipboard is unchanged.

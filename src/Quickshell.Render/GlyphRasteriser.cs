@@ -447,8 +447,20 @@ public sealed class GlyphRasteriser : IDisposable
     /// U+0301 puts the dot correctly under it and the acute 7.29 px <em>left</em> of the pen — the
     /// base's whole advance too far, out of the cell, where the grid clips it. The Latin and the
     /// Common shaper both answered that way. Each mark shaped with its base alone is right, so each
-    /// mark is placed from that shaping. Two marks on the same side then overlap rather than stack;
-    /// that is the case left, and it is rarer than the one this fixes.</para>
+    /// mark is placed from that shaping.</para>
+    ///
+    /// <para><b>Then stacked, QS203.</b> Placed alone, two marks on the same side of the base, an
+    /// acute and a diaeresis over one letter as Vietnamese and IPA write them, land on the same
+    /// pixels. So a later mark is moved past the ink of the earlier ones on its side, with a clear
+    /// row between, using each glyph's own ink bounds from the face's design metrics. Which side a
+    /// mark is on is where its ink's middle sits against half the face's x-height.</para>
+    ///
+    /// <para><b>Where the shaper put a mark over the base, its place is the start.</b> A mark the
+    /// run placed within half the base's advance of where the base alone puts it is the shaper's
+    /// own answer, mark-to-mark positioning included, and keeps its horizontal place. Only its
+    /// height is corrected, and only when it would touch the ink below it: on Consolas the shaper
+    /// lifts a diaeresis 2.3 px over an acute on <c>q</c>, which still lands it on the acute. A
+    /// mark the shaper sent out of the cell is placed from the pair instead.</para>
     ///
     /// <para>Only a run that came back one glyph per character, a base and then marks that advance
     /// nothing of their own, is touched. An emoji sequence the face joined is one glyph and is left
@@ -457,6 +469,11 @@ public sealed class GlyphRasteriser : IDisposable
     private void Restack(string cluster, IDWriteFontFace face, float sizeInPixels, ScriptAnalysis script,
                          Shaped shaped)
     {
+        // Pixels between one stacked mark's ink and the next. Two and not one: the design bounds
+        // are fractional and antialiasing spreads each ink about half a pixel past them, so one
+        // pixel measured that way left a diaeresis touching the acute it was stacked on.
+        const float Gap = 2f;
+
         int baseLength = char.IsSurrogatePair(cluster, 0) ? 2 : 1;
         int marks = shaped.Glyphs.Length - 1;
 
@@ -467,6 +484,16 @@ public sealed class GlyphRasteriser : IDisposable
 
         string baseText = cluster[..baseLength];
         float penAfterBase = shaped.Advances[0];
+
+        // Every mark's ink, top and bottom in pixels above the baseline, before any is moved.
+        (float Top, float Bottom)[] ink = Ink(face, sizeInPixels, shaped.Glyphs);
+        float middle = face.Metrics.XHeight * sizeInPixels / face.Metrics.DesignUnitsPerEm / 2f;
+
+        // How far the ink placed so far reaches on each side: the highest top above, the lowest
+        // bottom below. Null until a mark on that side has been placed.
+        float? reachedAbove = null;
+        float? reachedBelow = null;
+        float pen = penAfterBase;
 
         for (int mark = 1; mark <= marks; mark++)
         {
@@ -481,14 +508,91 @@ public sealed class GlyphRasteriser : IDisposable
             // Where the mark lands, measured from the base's own origin, as the pair placed it; then
             // stated against the pen this run reaches it at, which is after the base and stays there.
             float x = alone.Advances[0] + alone.Offsets[1].AdvanceOffset;
+            float placed = pen + shaped.Offsets[mark].AdvanceOffset;
+            pen += shaped.Advances[mark];
 
-            shaped.Advances[mark] = 0f;
-            shaped.Offsets[mark] = new GlyphOffset
+            // The misplacement QS91 measured is a whole base advance out of the cell. Mark-to-mark
+            // positioning legitimately moves a stacked mark a pixel or so from where it sits alone,
+            // so anything within half the base's advance is the shaper's answer and is kept.
+            bool shaperWasRight = MathF.Abs(placed - x) < penAfterBase / 2f && shaped.Advances[mark] == 0f;
+            float raised = shaperWasRight ? shaped.Offsets[mark].AscenderOffset : alone.Offsets[1].AscenderOffset;
+
+            float top = ink[mark].Top + raised;
+            float bottom = ink[mark].Bottom + raised;
+            bool above = (top + bottom) / 2f >= middle;
+
+            // Past what the earlier marks on this side already cover, with a clear row between -
+            // whoever placed it: a shaper's mark-to-mark lift measured on Consolas was 2.3 px, which
+            // left a diaeresis on the acute below it.
+            bool moved = false;
+
+            if (above && reachedAbove is { } ceiling && bottom < ceiling + Gap)
             {
-                AdvanceOffset = x - penAfterBase,
-                AscenderOffset = alone.Offsets[1].AscenderOffset,
-            };
+                float lift = ceiling + Gap - bottom;
+                raised += lift;
+                top += lift;
+                bottom += lift;
+                moved = true;
+            }
+            else if (!above && reachedBelow is { } floor && top > floor - Gap)
+            {
+                float drop = top - (floor - Gap);
+                raised -= drop;
+                top -= drop;
+                bottom -= drop;
+                moved = true;
+            }
+
+            if (!shaperWasRight)
+            {
+                shaped.Advances[mark] = 0f;
+                shaped.Offsets[mark] = new GlyphOffset
+                {
+                    AdvanceOffset = x - penAfterBase,
+                    AscenderOffset = raised,
+                };
+            }
+            else if (moved)
+            {
+                shaped.Offsets[mark] = shaped.Offsets[mark] with { AscenderOffset = raised };
+            }
+
+            if (above)
+            {
+                reachedAbove = MathF.Max(reachedAbove ?? top, top);
+            }
+            else
+            {
+                reachedBelow = MathF.Min(reachedBelow ?? bottom, bottom);
+            }
         }
+    }
+
+    /// <summary>
+    /// Each glyph's ink, top and bottom in pixels above the baseline at this size, from the face's
+    /// design metrics: what a glyph covers, without rasterising it to find out.
+    /// </summary>
+    private static (float Top, float Bottom)[] Ink(IDWriteFontFace face, float sizeInPixels, ushort[] glyphs)
+    {
+        GlyphMetrics[] metrics = new GlyphMetrics[glyphs.Length];
+        face.GetDesignGlyphMetrics(glyphs, metrics, false);
+
+        float scale = sizeInPixels / face.Metrics.DesignUnitsPerEm;
+        (float Top, float Bottom)[] ink = new (float, float)[glyphs.Length];
+
+        for (int at = 0; at < glyphs.Length; at++)
+        {
+            GlyphMetrics glyph = metrics[at];
+
+            // The vertical origin is the glyph's top-of-advance above the baseline; the bearings
+            // are the empty space inside the advance above the ink and below it.
+            float top = glyph.VerticalOriginY - glyph.TopSideBearing;
+            float bottom = glyph.VerticalOriginY - ((int)glyph.AdvanceHeight - glyph.BottomSideBearing);
+
+            ink[at] = (top * scale, bottom * scale);
+        }
+
+        return ink;
     }
 
     /// <summary>
