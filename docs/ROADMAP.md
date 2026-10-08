@@ -5,7 +5,6 @@
 ## Block A — A session that stays up, or says why it did not
 
 - 📋 **QS142** (deps: QS139 ⏸) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
-- 📋 **QS220** (deps: QS151 ✅) **An SSH tab whose link drops stays ended, though the session that reconnects was built for it** — RemoteShell connects once and RemoteSession, which reconnects and keeps the scrollback, is reached by nothing. → §QS220
 
 ## Block B — Keys, agents, and the host you think you reached
 
@@ -16,11 +15,13 @@
 
 ## Block D — The tree a user organises work in
 
+- 📋 **QS229** (deps: —) **The session store's fields are documented nowhere, and Reconnect can only be set by editing the file** — A field a user cannot find is a field nobody uses, and reconnecting is off unless one is set on purpose. → §QS229
+
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-- ⏳ **QS69** (deps: QS66 ✅, QS67 ✅, QS68 ✅, QS38 ✅, QS220) **A forward is set up by hand each time and dies silently when its session drops** — A reconnect does not bring forwards back, since an SSH tab does not reconnect until QS220, and what holds a busy port is not named. → §QS69
+- ⏳ **QS69** (deps: QS66 ✅, QS67 ✅, QS68 ✅, QS38 ✅, QS220 ✅) **A forward is set up by hand each time and dies silently when its session drops** — A reconnect does not bring forwards back, since an SSH tab does not reconnect until QS220, and what holds a busy port is not named. → §QS69
 - 📋 **QS70** (deps: QS69 ⏳) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — A forward is invisible by nature, and a client that will not show its own listeners makes the user consult netstat to understand the client. → §QS70
 
 ## Block G — The clean interface, defended
@@ -38,7 +39,7 @@
 
 ## Block I — An error a user can act on
 
-- ⏳ **QS129** (deps: QS71 ✅, QS220) **Nothing in the client says where its log is, or turns the trace on** — An open tab cannot turn its trace on, since a trace records the handshake and the tab cannot reconnect until QS220. → §QS129
+- ⏳ **QS129** (deps: QS71 ✅, QS220 ✅) **Nothing in the client says where its log is, or turns the trace on** — An open tab cannot turn its trace on, since a trace records the handshake and the tab cannot reconnect until QS220. → §QS129
 - 📋 **QS134** (deps: QS73 ✅, QS129 ⏳) **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The recorder and the title's indication both work, and the only caller that can begin one is a test, so the feature reaches no user. → §QS134
 
 ## Block J — Leaving MobaXterm, proven by the switch
@@ -48,6 +49,7 @@
 - 📋 **QS222** (deps: —) **A desk that cannot be observed runs no UI case, and the run counts it as a pass** — CasesRun passes with nothing run where it should skip with the desk's reason, so the QS136 table shows a green that covered nothing. → §QS222
 - 📋 **QS224** (deps: —) **A guest run asked to carry HEAD alone carries the working tree's uncommitted edits to tracked files** — Send-Tree takes HEAD's file list and reads each file from disk, so a before-and-after measured with it compares the change with itself. → §QS224
 - 📋 **QS226** (deps: —) **A guest run goes red on the skip budget when the guest's clipboard holds a bitmap from an earlier session** — No test fails, yet the run is red and a commit waits until someone clears the guest by hand. → §QS226
+- 📋 **QS230** (deps: —) **A test that hangs in the guest holds the whole run, and the host shows nothing that says which one** — One stuck transport test held a guest run for over an hour, and only listing the guest's processes named it. → §QS230
 
 ## Done when — Block A
 

@@ -49,12 +49,19 @@ public sealed record SessionSettings
     /// <summary>How many lines of history to keep.</summary>
     public int? Scrollback { get; init; }
 
+    /// <summary>
+    /// Whether a dropped link is connected again, with the scrollback kept (QS220). Off unless a
+    /// node says so, deliberately: an unexpected new login is an event on plenty of hosts, so it is
+    /// something a user turns on for a host, or for a folder of them.
+    /// </summary>
+    public bool? Reconnect { get; init; }
+
     /// <summary>Whether every field is unset, which is a node that inherits everything.</summary>
     [JsonIgnore]
     public bool IsEmpty =>
         User is null && Port is null && Key is null && JumpHost is null
         && Scheme is null && Credential is null && FontSize is null
-        && TerminalType is null && Scrollback is null;
+        && TerminalType is null && Scrollback is null && Reconnect is null;
 }
 
 /// <summary>
@@ -142,6 +149,9 @@ public sealed record ResolvedSession(string Path, string Host, Source<string>? U
 
     /// <summary>Lines of history, and which node said so.</summary>
     public Source<int>? Scrollback { get; init; }
+
+    /// <summary>Whether a dropped link is connected again, and which node said so (QS220).</summary>
+    public Source<bool>? Reconnect { get; init; }
 
     /// <summary>
     /// What this session types after login, which is its own or nothing. No source accompanies it
@@ -343,6 +353,8 @@ public sealed class SessionTree
         Note(nameof(SessionSettings.TerminalType), carried.TerminalType);
         Note(nameof(SessionSettings.Scrollback),
              carried.Scrollback?.ToString(CultureInfo.InvariantCulture));
+        Note(nameof(SessionSettings.Reconnect),
+             carried.Reconnect is { } again ? (again ? "true" : "false") : null);
 
         return inherited;
 
@@ -488,6 +500,9 @@ public sealed class SessionTree
                 Scrollback = settings.Scrollback is { } lines
                     ? new Source<int>(lines, sources[nameof(SessionSettings.Scrollback)])
                     : null,
+                Reconnect = settings.Reconnect is { } again
+                    ? new Source<bool>(again, sources[nameof(SessionSettings.Reconnect)])
+                    : null,
 
                 // Its own, never the folder's: see SessionNode.PostLogin.
                 PostLogin = node.PostLogin,
@@ -523,6 +538,7 @@ public sealed class SessionTree
         Take(own.FontSize, nameof(SessionSettings.FontSize));
         Take(own.TerminalType, nameof(SessionSettings.TerminalType));
         Take(own.Scrollback, nameof(SessionSettings.Scrollback));
+        Take(own.Reconnect, nameof(SessionSettings.Reconnect));
 
         return new SessionSettings
         {
@@ -535,6 +551,7 @@ public sealed class SessionTree
             FontSize = own.FontSize ?? inherited.FontSize,
             TerminalType = own.TerminalType ?? inherited.TerminalType,
             Scrollback = own.Scrollback ?? inherited.Scrollback,
+            Reconnect = own.Reconnect ?? inherited.Reconnect,
         };
 
         void Take(object? value, string field)

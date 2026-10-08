@@ -54,27 +54,6 @@ would make the rest of this unnecessary.
 
 Falsified when the trade turns out not to exist.
 
-### §QS220 A tab and the session that reconnects, never introduced
-
-QS38 built `RemoteSession`: a model that outlives its connection, a bounded and visible
-backoff, a frozen peer noticed by QS111's keepalive, an exit that is not retried. QS126
-made a saved session an SSH tab through `RemoteShell`, which connects once and ends with
-the connection. The two have never met, so a tab whose link drops shows the ending and
-stays ended, exactly the symptom QS38 shipped a fix for.
-
-What to build: `RemoteShell` connects through `RemoteSession` rather than beside it —
-the factory builds the transport and the sign-in narration as it does now, and the
-session reconnects under the policy, keeping the pane's model and scrollback. The pane
-shows the attempt, when the next one is due and how to stop, which `SessionStatus`
-already carries. The session's forwards are started again on each new connection, and
-the pane says which came back and which did not (QS69's remainder).
-
-`RemoteSession` makes its own pipeline per connection with a damage signal of its own,
-which QS151 already says freezes a pane asleep on the first; that is part of this work.
-
-Falsified when an SSH tab whose link dropped for ten seconds is not connected again with
-its scrollback, or comes back without saying which of its forwards did.
-
 ## Block B — Keys, agents, and the host you think you reached
 
 ### §QS43 Two agents, one protocol, and the key that never leaves
@@ -389,6 +368,32 @@ one and rewrite it whole with an unfiltered run before the commit that cites a f
 Falsified when a failing class has no line and no non-goal naming it.
 
 ## Block D — The tree a user organises work in
+
+### §QS229 A reference for the session store
+
+The session store, `sessions.json` under `%AppData%\quickshell` or beside a portable
+copy, is a format this client commits to (SessionTree's own words): readable, diffable
+and edited by hand. No page says what it holds. `docs/SETTINGS.md` covers
+`settings.json` key by key and `docs/KEYS.md` the chords, and nothing covers a session's
+fields: `User`, `Port`, `Key`, `JumpHost`, `Scheme`, `Credential`, `FontSize`,
+`TerminalType`, `Scrollback`, `Reconnect` (QS220), `PostLogin`, `Tags`, `Forwards`,
+which of them a folder hands down, and which never are (`PostLogin`, `Forwards`).
+
+QS220 made it concrete. Reconnecting is off unless a session or a folder sets
+`Reconnect`, deliberately, and the only way to set it is to edit the file, because the
+session dialog has no switch for it. A user who has never read SessionTree.cs cannot
+find it.
+
+What to build: `docs/SESSIONS.md`, the store's reference written the way SETTINGS.md is,
+one heading per field with its type, its default, whether it inherits and an example,
+plus the Forwards shapes; linked from SETTINGS.md and KEYS.md. And a Reconnect switch in
+the session dialog beside the other inherited fields, showing what the folder above says
+as the dialog already does for the rest. A test that reads SessionSettings' properties
+and finds a heading for each keeps the page from drifting, as CommandLineReferenceTests
+keeps the flags page.
+
+Falsified when a SessionSettings field has no heading on the page, or Reconnect can only
+be set by editing the file.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -964,3 +969,28 @@ turns sharing off, writes plain text in the guest, runs, and restores sharing in
 `finally`, so a failed run never leaves it off. It says on the console which of the two
 it did. Falsified when a guest whose clipboard holds a bitmap runs green and the host
 clipboard is unchanged.
+
+### §QS230 A guest run that says where it is
+
+On 2026-10-08 a transport test waited forever in the guest: it awaited a listener that a
+connection never reached, because the fixture's key file is not on that desk.
+run-tests-vm printed "running the suite in the guest" and nothing else for over an hour.
+The guest's console was blank, and the only way to find the culprit was vmrun
+listProcessesInGuest, which named Quickshell.Transport.Tests.exe, and killProcessInGuest
+to end it.
+
+Two things are missing. Progress: the host learns nothing until run.cmd exits, because
+the suite's output lands in a log the script copies back at the end. A hang: nothing
+bounds how long one assembly may run, so a stuck test is a stuck run, and the person
+waiting has no way to tell a slow run from a dead one.
+
+What to build: run.cmd writes the assembly it is starting, and the summary line of each
+that finished, to a progress file in the guest; run-tests-vm copies that file back every
+few seconds (CopyFileFromGuestToHost) and prints what is new, so the host shows which
+assembly is running. And each assembly runs with Microsoft.Testing.Platform's hang dump
+(`--hangdump --hangdump-timeout 10m`), which names the test that hung and ends the
+process, so the run continues and the report says which test it was. The timeout goes in
+one place beside the skip budget.
+
+Falsified when a test that never returns, put in on purpose, holds a guest run past the
+timeout or leaves the host unable to name it.

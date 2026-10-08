@@ -77,3 +77,15 @@ services:
       - "127.0.0.1:2227:22"
     volumes:
       - ./keys:/keys:ro
+
+  # A server that exists to go away and come back. QS220 stops it for ten seconds and starts it
+  # again, which is a dropped link as a session sees it, and a container of its own is what lets
+  # that run beside every other test instead of taking their server down too.
+  drop:
+    build: .
+    container_name: qs-sshd-drop
+    hostname: qs-sshd-drop
+    ports:
+      - "127.0.0.1:2228:22"
+    volumes:
+      - ./keys:/keys:ro

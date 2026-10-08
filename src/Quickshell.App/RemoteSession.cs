@@ -32,6 +32,8 @@ public sealed class RemoteSession : IAsyncDisposable
     private ISshTransport? _transport;
     private SessionPipeline? _pipeline;
     private SessionStatus _status = SessionStatus.Idle;
+    private PtyExit? _exit;
+    private int _scrollback = -1;
     private bool _disposed;
 
     private RemoteSession(Func<CancellationToken, ValueTask<ISshTransport>> connect,
@@ -58,15 +60,22 @@ public sealed class RemoteSession : IAsyncDisposable
     /// pane's and not one per connection, or a window asleep on the first would never wake for the
     /// second (QS151). One of its own where there is no pane.
     /// </param>
+    /// <param name="changed">
+    /// Told every change of status, from the first — which is why it is given here and not set
+    /// afterwards: the first attempt begins before this returns.
+    /// </param>
     public static RemoteSession Start(Func<CancellationToken, ValueTask<ISshTransport>> connect,
                                       Emulator emulator, ReconnectPolicy? policy = null,
-                                      DamageSignal? damage = null)
+                                      DamageSignal? damage = null, Action<SessionStatus>? changed = null)
     {
         ArgumentNullException.ThrowIfNull(connect);
         ArgumentNullException.ThrowIfNull(emulator);
 
         RemoteSession session = new(connect, emulator, policy ?? ReconnectPolicy.Off,
-                                    damage ?? new DamageSignal());
+                                    damage ?? new DamageSignal())
+        {
+            Changed = changed,
+        };
 
         session.Completed = Task.Run(session.RunAsync);
 
@@ -130,6 +139,39 @@ public sealed class RemoteSession : IAsyncDisposable
     /// <summary>Tells the model and, where there is one, the far end that the window changed size.</summary>
     public void Resize(int columns, int rows) => Volatile.Read(ref _pipeline)?.Resize(columns, rows);
 
+    /// <summary>
+    /// How many lines of history the model keeps: applied to the live pipeline and to every one a
+    /// reconnect starts, so a depth set once is the session's and not one connection's (QS220).
+    /// </summary>
+    public void KeepScrollback(int lines)
+    {
+        Volatile.Write(ref _scrollback, lines);
+        Volatile.Read(ref _pipeline)?.KeepScrollback(lines);
+    }
+
+    /// <summary>
+    /// Told every change of <see cref="Status"/>, on the session's own thread, so a pane can say an
+    /// attempt is running, when the next is due and why the last failed (QS220). Given to
+    /// <see cref="Start"/>, because the first attempt begins before it returns.
+    /// </summary>
+    private Action<SessionStatus>? Changed { get; init; }
+
+    /// <summary>The connection there is now, or null between connections.</summary>
+    public ISshTransport? Transport => Volatile.Read(ref _transport);
+
+    /// <summary>
+    /// How the session ended for good: the shell's exit where it exited, or the reason the last
+    /// connection went and no attempt brought it back.
+    /// </summary>
+    public Task<PtyExit> Ended => EndedAsync();
+
+    private async Task<PtyExit> EndedAsync()
+    {
+        await Completed.ConfigureAwait(false);
+
+        return _exit ?? PtyExit.Failed(Status.Reason == "stopped" ? string.Empty : Status.Reason);
+    }
+
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
@@ -178,8 +220,12 @@ public sealed class RemoteSession : IAsyncDisposable
 
                 // An authentication failure and a refused host key will not fix themselves by being
                 // asked again, and asking again is how a client locks an account out. Only the ways
-                // a network fails are worth a second attempt.
-                worthRetrying = failure.Kind is SshFailureKind.Unreachable or SshFailureKind.Dropped;
+                // a network fails are worth a second attempt - and a port with nothing listening on
+                // it, which is what a server being restarted is for the seconds it takes to come
+                // back (QS220). The attempts are bounded and said, so a host that has gone for good
+                // is given up on in the same minute and a half as one that is unreachable.
+                worthRetrying = failure.Kind is SshFailureKind.Unreachable or SshFailureKind.Dropped
+                                                or SshFailureKind.Refused;
             }
 
             if (!_policy.Enabled || !worthRetrying || attempt >= _policy.MaximumAttempts)
@@ -228,6 +274,11 @@ public sealed class RemoteSession : IAsyncDisposable
             // one that has to wake for what this connection prints (QS151).
             SessionPipeline pipeline = SessionPipeline.Start(channel, _emulator, damage: Damage);
 
+            if (Volatile.Read(ref _scrollback) is var depth and >= 0)
+            {
+                pipeline.KeepScrollback(depth);
+            }
+
             Volatile.Write(ref _pipeline, pipeline);
             Connections++;
 
@@ -262,6 +313,11 @@ public sealed class RemoteSession : IAsyncDisposable
 
             PtyExit exit = await channel.Closed.ConfigureAwait(false);
 
+            if (exit.IsExit)
+            {
+                _exit = exit;
+            }
+
             // A program that exited said so, and a new login is not what the user asked for by
             // typing `exit`. Anything else is the link, and the link is what reconnecting is for.
             return exit.IsExit
@@ -282,5 +338,7 @@ public sealed class RemoteSession : IAsyncDisposable
         {
             _status = status;
         }
+
+        Changed?.Invoke(status);
     }
 }

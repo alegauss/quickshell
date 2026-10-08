@@ -266,24 +266,24 @@ public sealed class TerminalLeaf : IAsyncDisposable
 
             if (_owedScrollback is { } depth)
             {
-                session.Pipeline.KeepScrollback(depth);
+                session.KeepScrollback(depth);
                 _owedScrollback = null;
             }
 
             // The shell is running, which is when a timed start stops waiting on this client.
             StartupTimeline.Mark("shell");
 
-            Typist.Sending = bytes => session.Pipeline.TypeAsync(bytes);
+            Typist.Sending = bytes => session.TypeAsync(bytes);
 
             // And the mouse a program asks for, by the same path: a click is something typed (QS155).
-            Terminal.Sending = bytes => session.Pipeline.TypeAsync(bytes);
+            Terminal.Sending = bytes => session.TypeAsync(bytes);
             Typist.Typed = Terminal.ToBottom;
-            Terminal.Resized = session.Pipeline.Resize;
+            Terminal.Resized = session.Resize;
 
             // The grid the pane settled on while this was starting, which arrived when there was no
             // session to hear it. Sent once rather than assumed: a program wrong about its own width
             // draws a screen for a terminal nobody has.
-            session.Pipeline.Resize(Emulator.Buffer.Columns, Emulator.Buffer.Rows);
+            session.Resize(Emulator.Buffer.Columns, Emulator.Buffer.Rows);
 
             // And the one path that carries an ending rather than bytes, which nothing waited on
             // until QS152: a shell that exits sends nothing, and nothing is what the pane would go on
@@ -320,13 +320,16 @@ public sealed class TerminalLeaf : IAsyncDisposable
     /// </summary>
     private async Task SayWhenItEnds(IShellSession session)
     {
+        PtyExit exit;
+
         try
         {
-            await session.Pipeline.Completed.ConfigureAwait(false);
+            exit = await session.Ended.ConfigureAwait(false);
         }
         catch (Exception)
         {
-            // However the pipeline finished, it has finished, and that is what is being said.
+            // However the session finished, it has finished, and that is what is being said.
+            exit = PtyExit.Failed(string.Empty);
         }
 
         if (_disposed)
@@ -334,11 +337,7 @@ public sealed class TerminalLeaf : IAsyncDisposable
             return;
         }
 
-        Task<PtyExit> closed = session.Pipeline.Closed;
-
-        string said = closed.IsCompletedSuccessfully
-            ? Ending(await closed.ConfigureAwait(false))
-            : "the session ended";
+        string said = Ending(exit);
 
         Ended = said;
 
@@ -400,7 +399,7 @@ public sealed class TerminalLeaf : IAsyncDisposable
         {
             if (_session is { } session)
             {
-                session.Pipeline.KeepScrollback(settings.Scrollback);
+                session.KeepScrollback(settings.Scrollback);
             }
             else if (_adopted)
             {

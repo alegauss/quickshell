@@ -133,7 +133,30 @@ public sealed class SessionEndTests
     {
         public SessionPipeline Pipeline => pipeline;
 
+        public Task<PtyExit> Ended => Ending(pipeline);
+
+        public ValueTask TypeAsync(ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken = default) =>
+            pipeline.TypeAsync(bytes, cancellationToken);
+
+        public void Resize(int columns, int rows) => pipeline.Resize(columns, rows);
+
+        public void KeepScrollback(int lines) => pipeline.KeepScrollback(lines);
+
         public ValueTask DisposeAsync() => pipeline.DisposeAsync();
+
+        private static async Task<PtyExit> Ending(SessionPipeline pipeline)
+        {
+            try
+            {
+                await pipeline.Completed;
+            }
+            catch (Exception)
+            {
+                // Finished, however it finished.
+            }
+
+            return pipeline.Closed.IsCompletedSuccessfully ? await pipeline.Closed : PtyExit.Failed(string.Empty);
+        }
     }
 
     private static string Text(Emulator emulator)

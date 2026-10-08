@@ -47,6 +47,37 @@ public sealed class LocalSession : IShellSession
     /// <summary>The identifier of the program on the other end, for a crash report to name.</summary>
     public int ProcessId => _channel.ProcessId;
 
+    /// <inheritdoc/>
+    public ValueTask TypeAsync(ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken = default) =>
+        Pipeline.TypeAsync(bytes, cancellationToken);
+
+    /// <inheritdoc/>
+    public void Resize(int columns, int rows) => Pipeline.Resize(columns, rows);
+
+    /// <inheritdoc/>
+    public void KeepScrollback(int lines) => Pipeline.KeepScrollback(lines);
+
+    /// <inheritdoc/>
+    /// <remarks>One pipeline for the session's life: it ends when that pipeline does.</remarks>
+    public Task<PtyExit> Ended => EndedAsync(Pipeline);
+
+    /// <summary>The pipeline's end, then how its channel closed, or that it simply ended.</summary>
+    internal static async Task<PtyExit> EndedAsync(SessionPipeline pipeline)
+    {
+        try
+        {
+            await pipeline.Completed.ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // However the pipeline finished, it has finished, and that is what is being said.
+        }
+
+        return pipeline.Closed.IsCompletedSuccessfully
+            ? await pipeline.Closed.ConfigureAwait(false)
+            : PtyExit.Failed(string.Empty);
+    }
+
     /// <summary>
     /// Starts a shell and puts the pipeline over it.
     /// </summary>

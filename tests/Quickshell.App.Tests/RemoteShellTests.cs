@@ -69,7 +69,7 @@ public sealed class RemoteShellTests : IDisposable
             await using RemoteShell shell = await RemoteShell.OpenAsync(web, trust, emulator, new DamageSignal(),
                                                                         80, 25, Stop);
 
-            await shell.Pipeline.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
+            await shell.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
 
             await Until(() => Screen(emulator).Contains("qs-sshd-target", StringComparison.Ordinal));
         }
@@ -100,7 +100,7 @@ public sealed class RemoteShellTests : IDisposable
         await using RemoteShell shell = await RemoteShell.OpenAsync(inside, trust, emulator, new DamageSignal(),
                                                                     80, 25, Stop);
 
-        await shell.Pipeline.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
+        await shell.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
 
         await Until(() => Screen(emulator).Contains("qs-sshd-target", StringComparison.Ordinal));
     }
@@ -162,7 +162,7 @@ public sealed class RemoteShellTests : IDisposable
                 return ValueTask.FromResult<SignInAnswer?>(new SignInAnswer("twofactor-pw", Remember: false));
             }, secrets: SecretStore.In(Path.Combine(_here, "secrets")));
 
-        await shell.Pipeline.TypeAsync(Encoding.ASCII.GetBytes("whoami\r"), Stop);
+        await shell.TypeAsync(Encoding.ASCII.GetBytes("whoami\r"), Stop);
         await Until(() => Screen(emulator).Contains("twofactor", StringComparison.Ordinal)
                           && Screen(emulator).Split('\n').Any(line => line.Trim() == "twofactor"));
 
@@ -258,7 +258,7 @@ public sealed class RemoteShellTests : IDisposable
                              return ValueTask.FromResult<SignInAnswer?>(new SignInAnswer("passonly-pw", Remember: true));
                          }, secrets: secrets))
         {
-            await shell.Pipeline.TypeAsync(Encoding.ASCII.GetBytes("whoami\r"), Stop);
+            await shell.TypeAsync(Encoding.ASCII.GetBytes("whoami\r"), Stop);
             await Until(() => Screen(emulator).Split('\n').Any(line => line.Trim() == "passonly"));
         }
 
@@ -364,13 +364,162 @@ public sealed class RemoteShellTests : IDisposable
 
         await using RemoteShell shell = await RemoteShell.OpenAsync(bare, trust, emulator, new DamageSignal(), 80, 25, Stop);
 
-        await shell.Pipeline.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
+        await shell.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
         await Until(() => Screen(emulator).Contains("qs-sshd-nosftp", StringComparison.Ordinal));
 
         // Long enough for a channel that was going to open to have opened.
         await Task.Delay(TimeSpan.FromSeconds(2), Stop);
 
         Assert.Null(shell.Files);
+    }
+
+    /// <summary>
+    /// QS220's falsification: an SSH tab whose link drops for ten seconds is connected again with its
+    /// scrollback, and says which of its forwards came back. The fixture's <c>drop</c> server is
+    /// stopped and started again, which is a link gone as a session sees it, and a new shell answers
+    /// under the same model with the line typed before the drop still in it.
+    /// </summary>
+    [Fact]
+    public async Task ADroppedLinkIsConnectedAgainWithItsScrollbackAndItsForwards()
+    {
+        SkipWithoutFixture();
+
+        await BringBackTheDropServer();
+
+        ResolvedSession dropping = SessionTree.ReadFrom(Store("""
+            { "Name": "", "Children": [
+                { "Name": "it", "Host": "127.0.0.1",
+                  "Settings": { "User": "probe", "Port": 2228, "Key": "KEY", "Reconnect": true },
+                  "Forwards": [ { "Kind": "Dynamic", "ListenPort": 0 } ] }
+            ] }
+            """)).Session("it")!;
+
+        // Its own host key per start, so every reconnect meets a key nobody has kept: accepted
+        // once each time, as a person told it is the same machine would.
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        Emulator emulator = new(120, 40);
+
+        await using RemoteShell shell = await RemoteShell.OpenAsync(dropping, trust, emulator, new DamageSignal(),
+                                                                    120, 40, Stop);
+
+        await shell.TypeAsync(Encoding.ASCII.GetBytes("echo before-the-drop\r"), Stop);
+        await Until(() => Screen(emulator).Split('\n').Any(line => line.Trim() == "before-the-drop"));
+
+        Docker("stop", "-t", "0", "qs-sshd-drop");
+        await Task.Delay(TimeSpan.FromSeconds(10), Stop);
+        await BringBackTheDropServer();
+
+        System.Diagnostics.Stopwatch reconnecting = System.Diagnostics.Stopwatch.StartNew();
+
+        while (reconnecting.Elapsed < TimeSpan.FromSeconds(60) && !(shell.Connections == 2 && shell.Status.IsLive))
+        {
+            await Task.Delay(100, Stop);
+        }
+
+        Assert.True(shell.Connections == 2 && shell.Status.IsLive,
+                    $"not connected again: {shell.Connections} connections, {shell.Status}\n{Screen(emulator)}");
+
+        await shell.TypeAsync(Encoding.ASCII.GetBytes("echo after-the-drop\r"), Stop);
+        await Until(() => Screen(emulator).Split('\n').Any(line => line.Trim() == "after-the-drop"));
+
+        string screen = Screen(emulator);
+
+        // The scrollback kept, the attempt said, and the forward said again on the new connection.
+        Assert.Contains("before-the-drop", screen, StringComparison.Ordinal);
+        Assert.Contains("Trying again in", screen, StringComparison.Ordinal);
+        Assert.Contains("Connecting to probe@127.0.0.1:2228 again", screen, StringComparison.Ordinal);
+        Assert.Equal(2, screen.Split("is listening on port").Length - 1);
+    }
+
+    /// <summary>
+    /// And off unless the session says so (QS38's design): the same drop, with no Reconnect set,
+    /// ends the session and says why, rather than logging in again unasked.
+    /// </summary>
+    [Fact]
+    public async Task ASessionNotSetToReconnectEndsWhenItsLinkDrops()
+    {
+        SkipWithoutFixture();
+
+        await BringBackTheDropServer();
+
+        ResolvedSession dropping = SessionTree.ReadFrom(Store("""
+            { "Name": "", "Children": [
+                { "Name": "it", "Host": "127.0.0.1", "Settings": { "User": "probe", "Port": 2228, "Key": "KEY" } }
+            ] }
+            """)).Session("it")!;
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+
+        await using RemoteShell shell = await RemoteShell.OpenAsync(dropping, trust, new Emulator(80, 25),
+                                                                    new DamageSignal(), 80, 25, Stop);
+
+        try
+        {
+            Docker("stop", "-t", "0", "qs-sshd-drop");
+
+            PtyExit ended = await shell.Ended.WaitAsync(TimeSpan.FromSeconds(60), Stop);
+
+            Assert.False(ended.IsExit);
+            Assert.Equal(1, shell.Connections);
+        }
+        finally
+        {
+            await BringBackTheDropServer();
+        }
+    }
+
+    /// <summary>
+    /// Starts the drop server again and waits until its sshd answers, so the next test that uses it
+    /// meets a server and not a container still starting.
+    /// </summary>
+    private static async Task BringBackTheDropServer()
+    {
+        Docker("start", "qs-sshd-drop");
+
+        System.Diagnostics.Stopwatch waited = System.Diagnostics.Stopwatch.StartNew();
+
+        while (waited.Elapsed < TimeSpan.FromSeconds(30))
+        {
+            try
+            {
+                using TcpClient probe = new();
+
+                await probe.ConnectAsync("127.0.0.1", 2228, Stop);
+
+                byte[] said = new byte[4];
+
+                if (await probe.GetStream().ReadAsync(said, Stop) == 4 && Encoding.ASCII.GetString(said) == "SSH-")
+                {
+                    return;
+                }
+            }
+            catch (SocketException)
+            {
+                // Not listening yet.
+            }
+            catch (IOException)
+            {
+                // Listening, and closed on us before saying anything.
+            }
+
+            await Task.Delay(200, Stop);
+        }
+    }
+
+    /// <summary>Runs docker against the fixture, which is how a test takes one of its servers away.</summary>
+    private static void Docker(params string[] arguments)
+    {
+        System.Diagnostics.ProcessStartInfo start = new("docker") { UseShellExecute = false, CreateNoWindow = true };
+
+        foreach (string argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        using System.Diagnostics.Process docker = System.Diagnostics.Process.Start(start)!;
+
+        docker.WaitForExit();
     }
 
     /// <summary>One of the fixture's accounts on the target, with the fixture's key, read back from a store.</summary>
@@ -437,7 +586,7 @@ public sealed class RemoteShellTests : IDisposable
             Assert.Contains("is listening on port", screen, StringComparison.Ordinal);
             Assert.Contains($"-L {taken}:qs-sshd-jump:22 did not start", screen, StringComparison.Ordinal);
 
-            await shell.Pipeline.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
+            await shell.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
             await Until(() => Screen(emulator).Contains("qs-sshd-target", StringComparison.Ordinal));
 
             // One stopped and started again on its own, leaving the other and the session alone.
@@ -551,9 +700,13 @@ public sealed class RemoteShellTests : IDisposable
         return text.ToString();
     }
 
-    private static async Task Until(Func<bool> ready)
+    private static Task Until(Func<bool> ready) => Until(ready, TimeSpan.FromSeconds(15));
+
+    private static async Task Until(Func<bool> ready, TimeSpan patience)
     {
-        for (int wait = 0; wait < 150 && !ready(); wait++)
+        System.Diagnostics.Stopwatch waited = System.Diagnostics.Stopwatch.StartNew();
+
+        while (waited.Elapsed < patience && !ready())
         {
             await Task.Delay(100, Stop);
         }
