@@ -11,6 +11,7 @@
 - ✅ **QS111** **A peer that stopped answering on a socket that stayed open is not noticed, so the session looks live for minutes** — A host frozen on an open socket is reported Dropped within three keepalive intervals, by a request it must answer (design recorded in `src/Quickshell.Transport/SshNetTransport.cs`).
 - ✅ **QS40 (the container rows)** **This client has met one server, so an appliance that negotiates differently is an unknown** — OpenSSH 6.6 to 9.6 and Dropbear each negotiate, take an RSA key and draw top, with the agreed algorithms recorded per row.
 - ✅ **QS112** **A dead route and a port that is not SSH read as one failure, so the remedy offered covers two things** — A dead route is Unreachable and a port that never speaks SSH is NotResponding, each with its own remedy; abandoning still works (design recorded in `src/Quickshell.Transport/SshDiagnosis.cs`).
+- ✅ **QS228** **A connection that ends before the server presents its key is reported as a refused host key** — A connection that ends before the server presents a key is reported by how it ended, not as a refused host key, so a reconnect tries it again.
 
 ## Block B — Keys, agents, and the host you think you reached
 

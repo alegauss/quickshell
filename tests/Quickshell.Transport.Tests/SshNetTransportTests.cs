@@ -173,6 +173,49 @@ public sealed class SshNetTransportTests
         Assert.Equal(SshFailureKind.HostKey, refused.Kind);
     }
 
+    /// <summary>
+    /// QS228: a connection that ends before the server presents a key refused no key. A listener
+    /// that takes the connection and closes it at once is what a server mid-restart looks like, and
+    /// calling that a refused host key made it a failure a reconnect would never try again.
+    /// </summary>
+    [Fact]
+    public async Task AConnectionThatEndsBeforeAnyKeyIsNotAHostKeyRefusal()
+    {
+        using System.Net.Sockets.TcpListener listener = new(System.Net.IPAddress.Loopback, 0);
+
+        listener.Start();
+
+        int port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+
+        // It says it is SSH and then goes, before any key exchange: the server got far enough to be
+        // an SSH server and no further, which is what a restarting sshd is for an instant.
+        Task closing = Task.Run(async () =>
+        {
+            using System.Net.Sockets.TcpClient taken = await listener.AcceptTcpClientAsync(Stop);
+
+            await taken.GetStream().WriteAsync("SSH-2.0-OpenSSH_9.6\r\n"u8.ToArray(), Stop);
+            await Task.Delay(200, Stop);
+        }, Stop);
+
+        bool asked = false;
+
+        await using SshNetTransport transport = new() { Timeout = TimeSpan.FromSeconds(10) };
+
+        SshException failed = await Assert.ThrowsAsync<SshException>(async () =>
+            await transport.ConnectAsync(SshEndpoint.For("127.0.0.1", "anyone", port), [Key()],
+                (_, _, _) =>
+                {
+                    asked = true;
+
+                    return ValueTask.FromResult(SshHostKeyVerdict.Refuse);
+                }, Stop));
+
+        await closing;
+
+        Assert.False(asked);
+        Assert.NotEqual(SshFailureKind.HostKey, failed.Kind);
+    }
+
     // ---- Failures arrive as this client's type, with a kind ----
 
     [Fact]

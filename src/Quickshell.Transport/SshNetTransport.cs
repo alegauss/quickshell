@@ -183,8 +183,14 @@ public sealed class SshNetTransport : ISshTransport
         // unnamed key is a client with no host-key check, and the safe reading of silence is no.
         SshHostKeyVerdict verdict = SshHostKeyVerdict.Refuse;
 
+        // Whether the server got as far as presenting a key at all. A connection that ends before
+        // that - a server mid-restart, a proxy with nothing behind it yet - refused no key, and
+        // calling it a refused key made it a failure nothing would retry (QS228).
+        bool keyPresented = false;
+
         client.HostKeyReceived += (_, presented) =>
         {
+            keyPresented = true;
             verdict = Ask(hostKey, endpoint, presented, cancellationToken);
             presented.CanTrust = verdict != SshHostKeyVerdict.Refuse;
         };
@@ -210,7 +216,7 @@ public sealed class SshNetTransport : ISshTransport
         {
             client.Dispose();
 
-            SshException told = verdict == SshHostKeyVerdict.Refuse && failure is SshConnectionException
+            SshException told = keyPresented && verdict == SshHostKeyVerdict.Refuse && failure is SshConnectionException
                 ? SshException.From(
                     SshFailureKind.HostKey,
                     $"The key {endpoint} presented was refused.",
