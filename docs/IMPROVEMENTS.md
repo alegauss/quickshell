@@ -194,8 +194,10 @@ that shows the server's own words, masks what must not be echoed, and offers to 
 the answer in `SecretStore` — and `RemoteShell` offering a remembered password and the
 interactive callback after the keys, password last as QS41 orders them.
 
-The prompt is asked on the window's thread, which the connection waits for, the way
-`MainWindow.AskHostKey` already is.
+Built: `SignIn` and `SignInDialog`, keyboard-interactive answered from the window, a
+kept password in Credential Manager. Left: a password-only server (kbd-int off, Ubuntu's
+default) offers no prompt; the transport must report the methods it allows, so ask and
+retry.
 
 Falsified when a session to a host that takes only a password cannot be connected from
 the client, or when a password the user chose to remember is asked for again.

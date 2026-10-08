@@ -109,8 +109,8 @@ public sealed class RemoteShellTests : IDisposable
     /// QS113's falsification: a two-step sign-in does not show the same thing at second five as at
     /// second one. Against the fixture's <c>twofactor</c> account the pane shows where it is
     /// connecting, the server's banner and that the key was accepted with a second factor still to
-    /// come — before anything else happens, and before the client has a way to answer that factor
-    /// (QS218), which is why the connection then fails by name.
+    /// come — before anything else happens. Opened with nobody to ask, as here, that factor has no
+    /// answer, which is why the connection then fails by name (QS218 answers it from the window).
     /// </summary>
     [Fact]
     public async Task ATwoStepSignInSaysWhereItIsInThePane()
@@ -137,6 +137,109 @@ public sealed class RemoteShellTests : IDisposable
         Assert.Contains("Authorised use only.", screen, StringComparison.Ordinal);
         Assert.Contains("accepted publickey and wants keyboard-interactive next", screen, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// QS218's falsification, first half: a session to a host that wants a password after its key is
+    /// connected from the client. The fixture's <c>twofactor</c> account asks through PAM, and the
+    /// question reaches the window as the server wrote it, hidden, with remembering offered.
+    /// </summary>
+    [Fact]
+    public async Task AServerThatAsksForAPasswordIsAnsweredFromTheWindow()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession mfa = TwoFactor();
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        List<SignInQuestion> asked = [];
+        Emulator emulator = new(100, 25);
+
+        await using RemoteShell shell = await RemoteShell.OpenAsync(
+            mfa, trust, emulator, new DamageSignal(), 100, 25, Stop, ask: (question, _) =>
+            {
+                asked.Add(question);
+
+                return ValueTask.FromResult<SignInAnswer?>(new SignInAnswer("twofactor-pw", Remember: false));
+            }, secrets: SecretStore.In(Path.Combine(_here, "secrets")));
+
+        await shell.Pipeline.TypeAsync(Encoding.ASCII.GetBytes("whoami\r"), Stop);
+        await Until(() => Screen(emulator).Contains("twofactor", StringComparison.Ordinal)
+                          && Screen(emulator).Split('\n').Any(line => line.Trim() == "twofactor"));
+
+        SignInQuestion question = Assert.Single(asked);
+
+        Assert.Contains("assword", question.Prompt, StringComparison.Ordinal);
+        Assert.False(question.Echoed);
+        Assert.True(question.MayRemember);
+        Assert.Equal("twofactor", question.Endpoint.User);
+    }
+
+    /// <summary>
+    /// The second half: a password the person chose to remember is not asked for again. The first
+    /// connection is answered and remembered; the second is answered from the store, and a question
+    /// put to the window would fail the test.
+    /// </summary>
+    [Fact]
+    public async Task ARememberedPasswordIsNotAskedForAgain()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession mfa = TwoFactor();
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        SecretStore secrets = SecretStore.In(Path.Combine(_here, "secrets"));
+
+        await using (await RemoteShell.OpenAsync(mfa, trust, new Emulator(80, 25), new DamageSignal(), 80, 25, Stop,
+                                                 ask: (_, _) => ValueTask.FromResult<SignInAnswer?>(
+                                                     new SignInAnswer("twofactor-pw", Remember: true)),
+                                                 secrets: secrets))
+        {
+        }
+
+        int askedAgain = 0;
+
+        await using (await RemoteShell.OpenAsync(mfa, trust, new Emulator(80, 25), new DamageSignal(), 80, 25, Stop,
+                                                 ask: (_, _) =>
+                                                 {
+                                                     askedAgain++;
+
+                                                     return ValueTask.FromResult<SignInAnswer?>(null);
+                                                 },
+                                                 secrets: secrets))
+        {
+        }
+
+        Assert.Equal(0, askedAgain);
+    }
+
+    /// <summary>A password the server refused is never kept, however hard the person asked to keep it.</summary>
+    [Fact]
+    public async Task ARefusedPasswordIsNotRemembered()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession mfa = TwoFactor();
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        SecretStore secrets = SecretStore.In(Path.Combine(_here, "secrets"));
+        int asked = 0;
+
+        await Assert.ThrowsAnyAsync<Exception>(async () =>
+            await RemoteShell.OpenAsync(mfa, trust, new Emulator(80, 25), new DamageSignal(), 80, 25, Stop,
+                                        ask: (_, _) => ValueTask.FromResult<SignInAnswer?>(
+                                            asked++ == 0 ? new SignInAnswer("not-the-password", Remember: true) : null),
+                                        secrets: secrets));
+
+        Assert.Null(secrets.Load(SshEndpoint.For("127.0.0.1", "twofactor", 2222)));
+    }
+
+    /// <summary>The fixture's two-step account, saved and read back as the window reads it.</summary>
+    private ResolvedSession TwoFactor() =>
+        SessionTree.ReadFrom(Store("""
+            { "Name": "", "Children": [
+                { "Name": "mfa", "Host": "127.0.0.1", "Settings": { "User": "twofactor", "Port": 2222, "Key": "KEY" } }
+            ] }
+            """)).Session("mfa")!;
 
     /// <summary>
     /// QS69: a session's forwards start with it, one that cannot start is said in the pane and costs

@@ -16,7 +16,9 @@ namespace Quickshell.App;
 ///
 /// <para><b>Who it offers, in the order the design asks for.</b> The session's own key file where it
 /// names one; otherwise the keys OpenSSH looks for by default in <c>~/.ssh</c>; and the Windows
-/// agent where one is running. A password is not asked for here yet — QS126 carries the prompt.</para>
+/// agent where one is running. Then, where the window can ask, the server's own prompts — a
+/// password, a one-time code — put to the person, and a password they chose to remember offered
+/// last (QS218, <see cref="SignIn"/>).</para>
 ///
 /// <para><b>Every connection passes the host-key check.</b> The caller hands in a
 /// <see cref="TrustOnFirstUse"/>, so a known key is accepted silently, a changed one is refused with
@@ -59,12 +61,19 @@ public sealed class RemoteShell : IShellSession
     /// Where the connection records what happened — the client's own log, or a trace kept for this
     /// session alone (QS129). Null records nothing.
     /// </param>
+    /// <param name="ask">
+    /// Puts the target's sign-in questions to the person, or null where nobody can be asked, which
+    /// offers keys and the agent alone (QS218).
+    /// </param>
+    /// <param name="secrets">Where remembered passwords are kept, or null to remember none.</param>
     /// <exception cref="SshException">The connection did not happen, and why in words.</exception>
     public static async Task<RemoteShell> OpenAsync(ResolvedSession session, TrustOnFirstUse trust,
                                                     Emulator emulator, DamageSignal damage,
                                                     int columns, int rows,
                                                     CancellationToken cancellationToken = default,
-                                                    SessionLog? log = null)
+                                                    SessionLog? log = null,
+                                                    Func<SignInQuestion, CancellationToken, ValueTask<SignInAnswer?>>? ask = null,
+                                                    SecretStore? secrets = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(trust);
@@ -74,7 +83,14 @@ public sealed class RemoteShell : IShellSession
         SshEndpoint target = SshEndpoint.For(session.Host, session.User?.Value ?? Environment.UserName,
                                              session.Port?.Value ?? SshEndpoint.DefaultPort);
 
-        IReadOnlyList<SshCredential> credentials = Credentials(session);
+        IReadOnlyList<SshCredential> keys = Credentials(session);
+
+        // The keys first, then what a person answers: a key that works never shows them a prompt.
+        (SignIn? answering, IReadOnlyList<SshCredential> answered) = ask is null
+            ? (null, [])
+            : SignIn.For(target, ask, secrets);
+
+        IReadOnlyList<SshCredential> credentials = [.. keys, .. answered];
 
         // A keepalive that detects, not only one that keeps (QS111): a frozen host is noticed.
         TimeSpan keepAlive = TimeSpan.FromSeconds(15);
@@ -86,7 +102,8 @@ public sealed class RemoteShell : IShellSession
 
         ISshTransport transport = session.JumpHost is { } jump
             ? new SshChain([
-                new SshHop(Through(jump.Value, target.User), credentials, trust.CheckAsync),
+                // The jump host takes the keys alone: its questions would be asked as the target's.
+                new SshHop(Through(jump.Value, target.User), keys, trust.CheckAsync),
                 new SshHop(target, credentials, trust.CheckAsync),
               ]) { KeepAlive = keepAlive, SignIn = signIn, Log = log }
             : new SshNetTransport { KeepAlive = keepAlive, SignIn = signIn, Log = log };
@@ -99,6 +116,9 @@ public sealed class RemoteShell : IShellSession
         {
             await transport.ConnectAsync(target, credentials, trust.CheckAsync, cancellationToken)
                            .ConfigureAwait(false);
+
+            // Signed in, so a password the person asked to keep is the right one to keep.
+            answering?.Commit();
 
             IPtyChannel channel = await transport
                 .OpenShellAsync(Math.Max(1, columns), Math.Max(1, rows), cancellationToken)
@@ -132,6 +152,8 @@ public sealed class RemoteShell : IShellSession
         }
         catch
         {
+            answering?.Forget();
+
             await transport.DisposeAsync().ConfigureAwait(false);
 
             // Where the rest of the story is, said where the user is already looking (QS129).

@@ -387,6 +387,11 @@ public static class Entry
 
         Quickshell.Transport.TrustOnFirstUse trusting = new(Quickshell.Transport.KnownHosts.ReadFrom(), window.AskHostKey);
 
+        // Remembered passwords live in Credential Manager, where the user can see and revoke them
+        // with a tool they already trust (QS218). A portable copy remembers none: its store needs a
+        // master password, and nothing here sets one yet.
+        Quickshell.Transport.SecretStore? secrets = Locations.Current.Portable ? null : Quickshell.Transport.SecretStore.Installed();
+
         // A folder is a group: every session in it as a pane of one tab, typing into all of them
         // (QS179).
         if (session is null && tree.Group(path) is { Count: > 0 } members)
@@ -394,7 +399,7 @@ public static class Entry
             (_, int leftOut) = SessionGroup.Open(window, settings, share, members, member =>
                 async (emulator, damage, columns, rows, token) =>
                     await RemoteShell.OpenAsync(member, trusting, emulator, damage, columns, rows, token,
-                                                trace ? Traced(member.Host) : Logged.Value)
+                                                trace ? Traced(member.Host) : Logged.Value, window.AskSignIn, secrets)
                                      .ConfigureAwait(false));
 
             if (leftOut > 0)
@@ -425,7 +430,8 @@ public static class Entry
         Quickshell.Transport.SessionLog log = trace ? Traced(session.Host) : Logged.Value;
 
         _ = tab.Focused.ConnectAsync(async (emulator, damage, columns, rows, token) =>
-            await RemoteShell.OpenAsync(session, trusting, emulator, damage, columns, rows, token, log)
+            await RemoteShell.OpenAsync(session, trusting, emulator, damage, columns, rows, token, log,
+                                        window.AskSignIn, secrets)
                              .ConfigureAwait(false));
     }
 

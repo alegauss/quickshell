@@ -2637,6 +2637,31 @@ public sealed class MainWindow : Window
     public Quickshell.Transport.HostKeyDecision? AskingHostKey { get; set; }
 
     /// <summary>
+    /// Puts one of a server's sign-in questions to the person at this window (QS218): a password, a
+    /// one-time code, whatever the server asks. Asked on this window's thread, which the connection
+    /// waits for, as <see cref="AskHostKey"/> is. Null back means they declined.
+    /// </summary>
+    public ValueTask<SignInAnswer?> AskSignIn(SignInQuestion question, CancellationToken cancellationToken)
+    {
+        if (AskingSignIn is { } asking)
+        {
+            return asking(question, cancellationToken);
+        }
+
+        return new ValueTask<SignInAnswer?>(Dispatcher.InvokeAsync(() =>
+        {
+            SignInDialog dialog = new(question) { Owner = this, ThemeMode = ThemeMode };
+
+            dialog.ShowDialog();
+
+            return dialog.Answered;
+        }, System.Windows.Threading.DispatcherPriority.Normal, cancellationToken).Task);
+    }
+
+    /// <summary>Who answers <see cref="AskSignIn"/> instead of a dialog, which is how a test answers.</summary>
+    public Func<SignInQuestion, CancellationToken, ValueTask<SignInAnswer?>>? AskingSignIn { get; set; }
+
+    /// <summary>
     /// How a folder is shown to the user: Explorer, unless a caller says otherwise — which is how a
     /// test sees which folder without one opening (QS129).
     /// </summary>
