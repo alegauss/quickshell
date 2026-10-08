@@ -86,6 +86,12 @@ public sealed class TerminalLeaf : IAsyncDisposable
     public RemoteFiles? Files => (_session as RemoteShell)?.Files;
 
     /// <summary>
+    /// The forwards of the session in this pane, on the connection there is now (QS70), or null
+    /// where the pane runs a local shell or is between connections.
+    /// </summary>
+    public SessionForwards? Forwards => (_session as RemoteShell)?.ForwardsNow;
+
+    /// <summary>
     /// How the shell in this pane reads a quoted word, which is what a dropped path is typed as.
     /// Read off what the pane runs: a local tab's is Windows' command processor, and anything this
     /// client connects to over SSH is a POSIX shell.

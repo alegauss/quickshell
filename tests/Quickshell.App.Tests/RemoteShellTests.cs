@@ -522,6 +522,58 @@ public sealed class RemoteShellTests : IDisposable
         docker.WaitForExit();
     }
 
+    /// <summary>
+    /// QS70's falsification: a running forward appears in the forwards view, with what it is
+    /// carrying now — nothing, then the one connection a client opens through it — and is gone from
+    /// the view once it is stopped there.
+    /// </summary>
+    [Fact]
+    public async Task ARunningForwardIsListedWithWhatItCarriesNow()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession web = SessionTree.ReadFrom(Store("""
+            { "Name": "", "Children": [
+                { "Name": "web", "Host": "127.0.0.1", "Settings": { "User": "probe", "Port": 2222, "Key": "KEY" },
+                  "Forwards": [ { "Kind": "Local", "ListenPort": 0, "TargetHost": "qs-sshd-jump", "TargetPort": 22 } ] }
+            ] }
+            """)).Session("web")!;
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+
+        await using RemoteShell shell = await RemoteShell.OpenAsync(web, trust, new Emulator(80, 25), new DamageSignal(),
+                                                                    80, 25, Stop);
+
+        SessionForwards forwards = shell.ForwardsNow!;
+        int port = forwards.Started[0].BoundPort;
+
+        string idle = Sta.Run(() => new ForwardsWindow(() => [new SessionForwardsView("127.0.0.1", forwards)]).Lines.Single());
+
+        Assert.Contains("-L 0:qs-sshd-jump:22", idle, StringComparison.Ordinal);
+        Assert.Contains($"127.0.0.1:{port}", idle, StringComparison.Ordinal);
+        Assert.Contains("0 carrying now", idle, StringComparison.Ordinal);
+
+        // A client through it: the jump server's banner arriving is the connection being carried.
+        using (TcpClient through = new())
+        {
+            await through.ConnectAsync("127.0.0.1", port, Stop);
+
+            byte[] banner = new byte[4];
+
+            await through.GetStream().ReadExactlyAsync(banner, Stop);
+
+            string busy = Sta.Run(() => new ForwardsWindow(() => [new SessionForwardsView("127.0.0.1", forwards)]).Lines.Single());
+
+            Assert.Contains("1 carrying now", busy, StringComparison.Ordinal);
+        }
+
+        await forwards.StopAsync(forwards.Started[0].Spec);
+
+        string stopped = Sta.Run(() => new ForwardsWindow(() => [new SessionForwardsView("127.0.0.1", forwards)]).Lines.Single());
+
+        Assert.StartsWith("No forwards are running", stopped, StringComparison.Ordinal);
+    }
+
     /// <summary>One of the fixture's accounts on the target, with the fixture's key, read back from a store.</summary>
     private ResolvedSession Account(string user) =>
         SessionTree.ReadFrom(Store($$"""

@@ -47,6 +47,25 @@ public sealed record ForwardSpec(ForwardKind Kind, int ListenPort, string? Targe
 /// <param name="BoundPort">The port listening, which is the chosen one where zero was asked for.</param>
 public readonly record struct StartedForward(ForwardSpec Spec, int BoundPort);
 
+/// <summary>
+/// One running forward as the forwards view shows it (QS70): what it is, where it listens, and how
+/// much it is doing.
+/// </summary>
+/// <param name="Spec">What was asked for.</param>
+/// <param name="BoundPort">The port listening.</param>
+/// <param name="Carrying">Connections carried right now, or null where the library keeps that to itself (a remote forward).</param>
+/// <param name="Connections">Connections carried since it started.</param>
+public readonly record struct ForwardActivity(ForwardSpec Spec, int BoundPort, int? Carrying, long Connections)
+{
+    /// <summary>
+    /// What to paste into the tool that uses it: this machine's address for a local or SOCKS
+    /// forward, the server's port for a remote one.
+    /// </summary>
+    public string Address => Spec.Kind == ForwardKind.Remote
+        ? string.Create(CultureInfo.InvariantCulture, $"server port {BoundPort}")
+        : string.Create(CultureInfo.InvariantCulture, $"{(Spec.Bind is { Length: > 0 } bind ? bind : "127.0.0.1")}:{BoundPort}");
+}
+
 /// <summary>A forward that did not start, and why in the words a user is shown.</summary>
 /// <param name="Spec">What was asked for.</param>
 /// <param name="Reason">What happened.</param>
@@ -97,6 +116,21 @@ public sealed class SessionForwards : IAsyncDisposable
             {
                 return [.. _failed.Values];
             }
+        }
+    }
+
+    /// <summary>Every running forward with what it is carrying, read now (QS70).</summary>
+    public IReadOnlyList<ForwardActivity> Activity()
+    {
+        lock (_guard)
+        {
+            return [.. _started.Values.Select(started => _running[started.Spec] switch
+            {
+                LocalForward local => new ForwardActivity(started.Spec, started.BoundPort, local.Carrying, local.Connections),
+                DynamicForward socks => new ForwardActivity(started.Spec, started.BoundPort, socks.Carrying, socks.Connections),
+                RemoteForward remote => new ForwardActivity(started.Spec, started.BoundPort, null, remote.Connections),
+                _ => new ForwardActivity(started.Spec, started.BoundPort, null, 0),
+            })];
         }
     }
 

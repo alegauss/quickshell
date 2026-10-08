@@ -88,6 +88,18 @@ public sealed class DynamicForward : IAsyncDisposable
     /// <summary>How many connections have been carried.</summary>
     public long Connections => Interlocked.Read(ref _connections);
 
+    /// <summary>How many connections it is carrying right now (QS70).</summary>
+    public int Carrying
+    {
+        get
+        {
+            lock (_guard)
+            {
+                return _carrying.Count;
+            }
+        }
+    }
+
     /// <summary>Whether the listener is up.</summary>
     public bool IsOpen => !_disposed && !_accepting.IsCompleted;
 

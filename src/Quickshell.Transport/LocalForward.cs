@@ -201,6 +201,21 @@ public sealed class LocalForward : IAsyncDisposable
     public long Connections => Interlocked.Read(ref _connections);
 
     /// <summary>
+    /// How many connections it is carrying right now (QS70): what tells a forward nobody is using
+    /// from one carrying eight, which a list that showed only the total could not.
+    /// </summary>
+    public int Carrying
+    {
+        get
+        {
+            lock (_guard)
+            {
+                return _carrying.Count;
+            }
+        }
+    }
+
+    /// <summary>
     /// What a user is told about this forward, or empty where there is nothing to say.
     ///
     /// <para>Bound wide, this is not a note: it says who else can now reach the remote network

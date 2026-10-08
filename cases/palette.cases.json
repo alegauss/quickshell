@@ -160,6 +160,22 @@
           "reads": "name",
           "expect": "Open session",
           "named": "and a saved session is reached from the palette"
+        },
+        {
+          "locator": "Edit",
+          "act": "set value",
+          "with": "show forwards",
+          "expect": "show forwards",
+          "reads": "value",
+          "named": "the view of every forward this client holds (QS70)"
+        },
+        {
+          // A forward has no window of its own, so this is the one place it can be seen.
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Show forwards",
+          "named": "and the forwards are reachable from the palette"
         }
       ]
     }

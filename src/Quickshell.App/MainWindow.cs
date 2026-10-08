@@ -261,6 +261,10 @@ public sealed class MainWindow : Window
         // found by name, host or tag. No chord, for the reason New session has none.
         InputBindings.Add(new InputBinding(new ChoosingSession(this), new PaletteOnly()));
 
+        // Every forward this client holds, from the palette (QS70): seen rarely, and needed exactly
+        // when a port is mysteriously taken, so no chord.
+        InputBindings.Add(new InputBinding(new ShowingForwards(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
@@ -2506,6 +2510,49 @@ public sealed class MainWindow : Window
         return browser;
     }
 
+    /// <summary>How the forwards view is put on screen; shown unless a caller says otherwise, as a test does.</summary>
+    public Action<ForwardsWindow>? ShowsForwards { get; set; }
+
+    private ForwardsWindow? _forwards;
+
+    /// <summary>
+    /// Every open session's forwards, read now: each pane with an SSH session on a live connection,
+    /// named as its tab names it (QS70).
+    /// </summary>
+    public IReadOnlyList<SessionForwardsView> OpenForwards() =>
+        [.. _open.SelectMany(tab => tab.Leaves)
+                 .Where(leaf => leaf.Forwards is not null)
+                 .Select(leaf => new SessionForwardsView(leaf.Host, leaf.Forwards!))];
+
+    /// <summary>Opens the forwards view, or brings forward the one already open.</summary>
+    public ForwardsWindow ShowForwards()
+    {
+        if (_forwards is { } open)
+        {
+            if (open.IsVisible)
+            {
+                open.Activate();
+            }
+
+            return open;
+        }
+
+        ForwardsWindow view = new(OpenForwards) { ThemeMode = ThemeMode };
+
+        if (IsLoaded)
+        {
+            view.Owner = this;
+        }
+
+        view.Closed += (_, _) => _forwards = null;
+
+        _forwards = view;
+
+        (ShowsForwards ?? (shown => shown.Show()))(view);
+
+        return view;
+    }
+
     /// <summary>The browser's palette entry.</summary>
     private sealed class Browsing(MainWindow window) : Doing(window)
     {
@@ -2744,6 +2791,16 @@ public sealed class MainWindow : Window
                                 "Sessions", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
+    }
+
+    /// <summary>The forwards view's palette entry (QS70).</summary>
+    private sealed class ShowingForwards(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Show forwards";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.ShowForwards();
     }
 
     /// <summary>One saved session as a palette entry: running it opens that session.</summary>

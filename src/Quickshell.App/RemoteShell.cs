@@ -42,6 +42,9 @@ public sealed class RemoteShell : IShellSession
     /// </summary>
     public SessionForwards Forwards => _connection.Forwards ?? throw new InvalidOperationException("the session is between connections");
 
+    /// <summary>The same, or null between connections, for a view that reads it whenever it likes (QS70).</summary>
+    public SessionForwards? ForwardsNow => _connection.Forwards;
+
     /// <summary>The connection there is now, for whatever else a pane opens over it; null between connections.</summary>
     public ISshTransport? Transport => _inner.Transport;
 

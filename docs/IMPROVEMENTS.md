@@ -445,8 +445,8 @@ Recent failures appear in the same view with their reasons. A forward that faile
 hour ago is invisible everywhere else by now, and it is exactly what the user is
 currently trying to explain to somebody.
 
-This is a surface that survives the leanness argument, because the alternative to it is
-`netstat`.
+Built: `ForwardsWindow` from the palette, counts, stop, start, copy and failures, proven
+against the fixture. Left: the chrome's mark while any forward runs.
 
 Falsified when a running forward does not appear in this view.
 
