@@ -314,20 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS206 The save that keeps the character set
-
-Found by QS33's vttest run, cut 022. vttest designates the DEC special graphics set into
-G0, saves the cursor with `ESC 7`, switches G0 back to ASCII, and restores with `ESC 8`,
-expecting the line-drawing set to come back with the position. DEC's DECSC saves the
-character set designations and the shift state with the cursor, and xterm restores them.
-Here they are not saved, so half of every line-drawing run prints as the letter q.
-
-What to build: SaveCursor keeps the four designations and which set is shifted in,
-beside what it keeps already, and RestoreCursor puts them back. The alternate screen's
-save is the same structure and takes the same fields.
-
-Falsified when cut 022 still shows a q.
-
 ### §QS207 Insert mode
 
 Found by QS33's vttest run, cuts 025 and 026. `CSI 4 h` turns on insert mode, in which a

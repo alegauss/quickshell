@@ -86,6 +86,7 @@
 - ✅ **QS198** **A scheme's cursor colour and OSC 12 are stored and never drawn, so every pane's cursor is the same grey** — Each pane hands its own palette's cursor to the renderer as it draws, so a scheme's cursor and a host's OSC 12 are the colour on screen.
 - ✅ **QS203** **Two combining marks on the same side of one base are drawn on the same pixels instead of stacked** — A later mark on the same side of a base is lifted clear of the earlier one's ink, so q with an acute and a diaeresis draws two stacked marks.
 - ✅ **QS205** **Cursor up and down cross the scrolling region's edges, so a program moving inside a region writes outside it** — CUU, CUD, CNL and CPL stop at the margin between the cursor and the screen's edge, so vttest's cuts 014 and 016 now agree with xterm.
+- ✅ **QS206** **Restoring the cursor does not restore the character set, so line drawing after ESC 8 prints letters** — ESC 7 saves the two designations and the shifted-in slot with the cursor and ESC 8 restores them, so vttest's cut 022 draws lines as xterm does.
 
 ## Block D — The tree a user organises work in
 

@@ -70,6 +70,31 @@ public sealed class CharacterSetAndOscTests
         Assert.Equal("q─q", Row(emulator, 0)[..3]);
     }
 
+    /// <summary>
+    /// QS206, vttest's cut 022: a designation saved with the cursor comes back with it, so a box
+    /// drawn after <c>ESC 8</c> is still lines.
+    /// </summary>
+    [Fact]
+    public void RestoringTheCursorRestoresTheDesignationSavedWithIt()
+    {
+        Emulator emulator = Fed(E + "(0" + E + "7" + E + "(B" + "q" + E + "8" + "q");
+
+        Assert.Equal("─", Row(emulator, 0)[..1]);
+    }
+
+    /// <summary>And which slot was shifted in, which is the other half of what DECSC keeps.</summary>
+    [Fact]
+    public void RestoringTheCursorRestoresWhichSlotWasShiftedIn()
+    {
+        // Shift-out and shift-in, as code points, because this repository holds no raw control bytes.
+        string shiftOut = ((char)0x0E).ToString();
+        string shiftIn = ((char)0x0F).ToString();
+
+        Emulator emulator = Fed(E + ")0" + shiftOut + E + "7" + shiftIn + E + "8" + "q");
+
+        Assert.Equal("─", Row(emulator, 0)[..1]);
+    }
+
     [Fact]
     public void TheUnitedKingdomSetDiffersInExactlyOnePlace()
     {

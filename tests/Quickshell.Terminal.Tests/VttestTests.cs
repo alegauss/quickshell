@@ -38,7 +38,6 @@ public sealed class VttestTests
     {
         [10] = "QS208: 132 columns asked for with CSI ? 3 h; xterm obeys, this keeps 80",
         [12] = "QS208: the same 132-column screen, light background",
-        [22] = "QS206: ESC 8 does not restore the line-drawing set ESC 7 saved",
         [25] = "QS207: insert mode (CSI 4 h) overwrites instead of pushing the B right",
         [26] = "QS207: inherits cut 025's row, so its AB is AA",
         [30] = "QS208: the VT102 test's 132-column pass",

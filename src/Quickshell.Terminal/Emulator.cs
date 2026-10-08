@@ -30,6 +30,8 @@ public sealed partial class Emulator : IAnsiHandler
     private int _lastPrinted = ' ';
     private readonly CharacterSet[] _designated = [CharacterSet.Ascii, CharacterSet.Ascii];
     private int _activeSet;
+    private readonly CharacterSet[] _savedDesignated = [CharacterSet.Ascii, CharacterSet.Ascii];
+    private int _savedActiveSet;
 
     /// <summary>Opens a terminal of a given size, with scrollback behind the primary screen.</summary>
     public Emulator(int columns, int rows, int scrollback = 1000)
@@ -505,6 +507,12 @@ public sealed partial class Emulator : IAnsiHandler
         _savedRow = Buffer.CursorRow;
         _savedColumn = Buffer.CursorColumn;
         _savedPen = _pen;
+
+        // And the character sets, as DEC's DECSC does and xterm restores (QS206): a program that
+        // drew a box in line drawing, saved, and switched back to ASCII expects ESC 8 to hand it the
+        // line-drawing set again, or the rest of its box prints as letters.
+        _designated.CopyTo(_savedDesignated, 0);
+        _savedActiveSet = _activeSet;
     }
 
     private void RestoreCursor()
@@ -512,6 +520,8 @@ public sealed partial class Emulator : IAnsiHandler
         Buffer.CursorRow = Math.Clamp(_savedRow, 0, Buffer.Rows - 1);
         Buffer.CursorColumn = Math.Clamp(_savedColumn, 0, Buffer.Columns - 1);
         _pen = _savedPen;
+        _savedDesignated.CopyTo(_designated, 0);
+        _activeSet = _savedActiveSet;
     }
 
     private void Reset()
@@ -536,6 +546,9 @@ public sealed partial class Emulator : IAnsiHandler
         _savedPen = Pen.Default;
         _savedRow = 0;
         _savedColumn = 0;
+        _savedDesignated[0] = CharacterSet.Ascii;
+        _savedDesignated[1] = CharacterSet.Ascii;
+        _savedActiveSet = 0;
 
         if (Screens.IsAlternate)
         {
