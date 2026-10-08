@@ -23,7 +23,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS223** (deps: —) **Clicking a tab on the strip moves its highlight but leaves the other tab's terminal on screen** — Nothing handles the strip's selection changing, so only the chords switch tabs and a click points the keyboard at a session it does not show. → §QS223
+- 📋 **QS231** (deps: —) **No screen reader in another process can read the terminal's output: its TextPattern gives a null document range** — The in-process peer tests pass while Narrator, NVDA and winwright all get nothing, so the screen reader criterion is met only inside the client. → §QS231
 
 ## Block H — The reason to leave the incumbent
 

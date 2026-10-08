@@ -172,6 +172,7 @@
 - ✅ **QS199** **The test that says a chrome theme leaves the terminal's colours alone checks a palette nothing draws with** — The terminal's colours have one model, Settings.Colours; the theme test now reads an open pane's palette across a change of chrome theme and finds its scheme untouched.
 - ✅ **QS217** **A saved session can only be opened by typing its path on a command line** — Open session in the palette lists the store's sessions, found by part of a name; a UI case proves it over a store staged for the launch.
 - ✅ **QS221** **A graphics driver reset leaves every pane frozen, and nothing in the client recovers or says so** — A draw failing on a removed device rebuilds it on the loop's thread and redraws every pane, logged; a closed pane's swapchain leaves the device's list.
+- ✅ **QS223** **Clicking a tab on the strip moves its highlight but leaves the other tab's terminal on screen** — A click on the strip switches tabs as the chords do; a UI case that failed before the fix now reads the clicked tab's session in the window's title.
 
 ## Block H — The reason to leave the incumbent
 

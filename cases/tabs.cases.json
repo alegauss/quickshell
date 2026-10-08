@@ -57,6 +57,61 @@
           "named": "and the second is, because it was opened last"
         }
       ]
+    },
+    {
+      "name": "clicking a tab on the strip puts that tab's terminal on screen",
+      "catches": "a strip whose highlight follows a click while the terminal under it stays the tab that was showing, so the keyboard types into a session the highlight does not name",
+      "filed": "QS223",
+      "tags": ["window", "tabs"],
+      "fixture": "a window with one tab",
+
+      "steps": [
+        {
+          // A name only the first tab has: cmd's own title command, which the tab takes as its title
+          // and the window as its name while that tab is on screen. Read through the title and not
+          // through the terminal's text, because no client outside the process can read that text
+          // yet (QS231).
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "type",
+          "with": "title first-tab-marker",
+          "named": "the first tab is given a name of its own"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "press",
+          "with": "Enter",
+          "named": "and runs it"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "press",
+          "with": "Ctrl+Shift+T",
+          "named": "a second tab is opened, and is the one on screen"
+        },
+        {
+          // A click, which is the act the defect was in: the chords already switched tabs.
+          "locator": "TabItem[order=left]",
+          "act": "click",
+          "with": "PointerIsTheAct",
+          "named": "the first tab is clicked on the strip"
+        },
+        {
+          "locator": "TabItem[order=left]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "its highlight moved"
+        },
+        {
+          // And the window is that tab's: its name is the title of the tab on screen, which is the
+          // tab the keyboard types into.
+          "locator": "TitleBar",
+          "act": "read",
+          "reads": "name",
+          "matches": "^first-tab-marker",
+          "named": "and so did the session on screen"
+        }
+      ]
     }
   ]
 }

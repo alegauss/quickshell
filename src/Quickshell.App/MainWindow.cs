@@ -63,6 +63,10 @@ public sealed class MainWindow : Window
     };
 
     private bool _recording;
+
+    // Set while the window moves or removes a strip item itself, whose passing selections are not
+    // a user choosing a tab (QS223).
+    private bool _rearranging;
     private int _active = -1;
     private DispatcherTimer? _watching;
     private TerminalPane? _showing;
@@ -84,6 +88,19 @@ public sealed class MainWindow : Window
         ThemeMode = Theme.Mode(Appearance.Theme);
 
         _tabs.Visibility = Visibility.Collapsed;
+
+        // A click on the strip switches tabs, as the chords do (QS223). Until this, the strip's
+        // highlight followed a click while the terminal under it stayed the tab that was showing, and
+        // the keyboard typed into a session the highlight did not name. Setting Active sets the
+        // strip's selection in turn, which arrives here already equal and goes no further.
+        _tabs.SelectionChanged += (_, changed) =>
+        {
+            if (!_rearranging && ReferenceEquals(changed.OriginalSource, _tabs)
+                && _tabs.SelectedIndex >= 0 && _tabs.SelectedIndex != _active)
+            {
+                Active = _tabs.SelectedIndex;
+            }
+        };
         _find.Visibility = Visibility.Collapsed;
 
         BuildFindBar();
@@ -1043,7 +1060,11 @@ public sealed class MainWindow : Window
         ArgumentNullException.ThrowIfNull(tab);
 
         _open.Add(tab);
+
+        // The first item is selected the moment it is added, before its panes are held.
+        _rearranging = true;
         _tabs.Items.Add(new TabItem { Header = tab.Title });
+        _rearranging = false;
 
         foreach (TerminalLeaf leaf in tab.Leaves)
         {
@@ -1150,8 +1171,10 @@ public sealed class MainWindow : Window
         _open.RemoveAt(from);
         _open.Insert(to, moving);
 
+        _rearranging = true;
         _tabs.Items.RemoveAt(from);
         _tabs.Items.Insert(to, header);
+        _rearranging = false;
 
         Active = to;
 
@@ -1180,7 +1203,10 @@ public sealed class MainWindow : Window
         going.StopBroadcasting();
 
         _open.RemoveAt(at);
+
+        _rearranging = true;
         _tabs.Items.RemoveAt(at);
+        _rearranging = false;
 
         foreach (TerminalLeaf leaf in going.Leaves)
         {

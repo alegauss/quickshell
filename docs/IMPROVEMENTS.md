@@ -450,27 +450,31 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS223 A click on the strip that switches nothing
+### §QS231 The terminal's text, from outside the process
 
-Found while reading `MainWindow` for QS190. The strip is a `TabControl` whose items
-carry only a header. Which tab's panes are on screen is decided by `Active` and nothing
-else, and `Active` sets the strip's `SelectedIndex`. Nothing goes the other way: no
-handler listens for the strip's selection changing. Read this way, a click on a tab
-moves the strip's highlight while the terminal under it stays the tab that was showing.
-The keyboard and the palette then type into a session other than the one the highlight
-names. Only the chords (Ctrl+Tab, Alt+digit) switch tabs. The `Active` property's own
-comment says a click on the strip does the same as they do.
+Found by QS223's UI case, which read the terminal's text to tell two tabs apart and got
+nothing. A plain UIA client in the guest, in another process, shows why
+(System.Windows.Automation against a freshly started client):
 
-What to build: handle the strip's `SelectionChanged` by setting `Active` to the selected
-index. Guard it so the assignment `Active` makes does not re-enter. Add a UI case that
-clicks the second tab's header in the guest and reads the focused pane's title from the
-accessibility tree.
+- The terminal is found: Document, class Terminal, name "Terminal output".
+- It advertises TextPattern, and IsTextPatternAvailable is true.
+- `GetCurrentPattern(TextPattern.Pattern)` returns a TextPattern, but its `DocumentRange` is
+  null.
+- `GetVisibleRanges()` throws ArgumentOutOfRangeException from
+  `UiaCoreApi.TextPattern_GetVisibleRanges`, which is E_INVALIDARG from UIA core.
 
-Confirm it first. A UIA invoke of the second `TabItem` with two tabs open should leave
-the window title naming the first tab's session if the reading is right.
+So the in-process tests that call `TerminalAutomationPeer` directly pass, and nothing
+outside the process — Narrator, NVDA, winwright — can read a byte of output. The ranges
+are handed out as `TerminalTextRange` built over `ProviderFromPeer(this)`. Whatever WPF
+does to marshal a peer's own `ITextProvider` ranges across the provider boundary, it is
+not happening for these. That is the first place to look, beside how WPF's own text
+peers return theirs.
 
-Falsified when clicking a tab's header leaves another tab's session on screen and
-receiving the keyboard.
+What it owes: an out-of-process client gets the document range and its text, and the
+visible ranges, proven from another process in the guest. A UI case can then read the
+terminal's text, which QS223's case wanted and settled for the window's title instead.
+
+Falsified when a UIA client in another process cannot read what the terminal shows.
 
 ## Block H — The reason to leave the incumbent
 
