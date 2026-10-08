@@ -30,12 +30,14 @@ namespace Quickshell.Cases;
 public sealed class CasesRun
 {
     /// <summary>
-    /// Runs them, or says out loud that this desk could not be observed.
+    /// Runs them, or skips with the reason this desk could not be observed.
     ///
-    /// <para><b>A desk that cannot be observed is a third verdict, and xUnit has no word for it.</b>
-    /// The closest honest thing is a pass that states it checked nothing — which is the same rule
-    /// QS136 asks of the suite as a whole, and the opposite of a green that quietly covered less
-    /// than the last one.</para>
+    /// <para><b>A desk that cannot be observed is a third verdict, and xunit.v3 has the word for
+    /// it (QS222).</b> This used to pass, saying in a message nobody reads that it checked nothing,
+    /// because xUnit had no other verdict; QS136's table then counted a UI suite that drove no case
+    /// as one passed test. A skip shows in that table with the desk's reason and is held to
+    /// <c>tests/skips.json</c>, where this assembly has no allowance — so a desk that lost its
+    /// observer between two runs fails the run instead of passing it quietly.</para>
     /// </summary>
     [Fact]
     public void EveryUiCaseInThisRepositoryRuns()
@@ -44,9 +46,7 @@ public sealed class CasesRun
 
         if (!desk.CanObserve)
         {
-            Assert.True(true, $"nothing ran: this desk lacks {desk.FirstAbsent!.Name}");
-
-            return;
+            Assert.Skip($"no UI case ran: this desk lacks {desk.FirstAbsent!.Name}");
         }
 
         string repository = Repository.Root;

@@ -755,26 +755,6 @@ visible.
 
 Falsified when a week passes with no campaign and nothing says so.
 
-### §QS222 The UI suite that passed by doing nothing
-
-`CasesRun.EveryUiCaseInThisRepositoryRuns` reads the desk first, and where it cannot be
-observed it calls `Assert.True(true, ...)` and returns. Its own comment says why: xUnit
-had no third verdict, so a pass that says it checked nothing was the closest honest
-thing.
-
-xunit.v3 has the word now, and QS136 made it matter. Every run ends with a table of what
-ran, passed, failed and skipped, and holds skips to `tests/skips.json`. A UI suite that
-ran nothing counts there as one passed test. It is exactly the quieter green that table
-exists to expose, and it would pass a desk that lost its observer between two runs
-without a line anywhere.
-
-So the test should skip with the desk's own reason: `Assert.Skip` with what
-`Desk.Read()` says is absent. It then shows in the table with a reason, and it is held
-to the budget. The guest can observe, so its runs do not change; a desk that cannot is
-told so, every time.
-
-Falsified when a run that drove no UI case counts it as passed.
-
 ### §QS224 HEAD only, read from disk
 
 Found while timing QS191. `Send-Tree -CommittedOnly` in `tools/vm-guest.ps1` is
