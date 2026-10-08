@@ -257,6 +257,10 @@ public sealed class MainWindow : Window
         // in the end, and a chord taken now is one that list may want for something else.
         InputBindings.Add(new InputBinding(new Creating(this), new PaletteOnly()));
 
+        // Opening one, from the palette (QS217): the store's sessions listed in the palette itself,
+        // found by name, host or tag. No chord, for the reason New session has none.
+        InputBindings.Add(new InputBinding(new ChoosingSession(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
@@ -2690,6 +2694,43 @@ public sealed class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// The palette's way to a saved session (QS217). Offered only where a session can be opened,
+    /// which is a window the program wired to open them.
+    /// </summary>
+    private sealed class ChoosingSession(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Open session";
+
+        /// <inheritdoc/>
+        public override bool CanExecute(object? parameter) => Window.OpensSession is not null;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter)
+        {
+            try
+            {
+                Window.ChooseSession();
+            }
+            catch (SessionStoreException unreadable)
+            {
+                MessageBox.Show(Window, $"{unreadable.Message}\n\n{unreadable.Means}\n\n{unreadable.Remedy}",
+                                "Sessions", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+    }
+
+    /// <summary>One saved session as a palette entry: running it opens that session.</summary>
+    private sealed class OpeningOne(MainWindow window, string path) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => path;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.OpensSession?.Invoke(path);
+    }
+
     /// <summary>The import binding's command.</summary>
     private sealed class Import(MainWindow window) : Doing(window)
     {
@@ -2764,21 +2805,81 @@ public sealed class MainWindow : Window
     }
 
     /// <summary>Puts a name at the front of what was run recently, without letting it grow.</summary>
-    private void Remember(string name)
-    {
-        _recent.Remove(name);
-        _recent.Insert(0, name);
+    private void Remember(string name) => Remember(_recent, name);
 
-        if (_recent.Count > Remembered)
+    private static void Remember(List<string> recent, string name)
+    {
+        recent.Remove(name);
+        recent.Insert(0, name);
+
+        if (recent.Count > Remembered)
         {
-            _recent.RemoveRange(Remembered, _recent.Count - Remembered);
+            recent.RemoveRange(Remembered, recent.Count - Remembered);
         }
+    }
+
+    /// <summary>The sessions opened from the palette, newest first, ranked on as commands are.</summary>
+    private readonly List<string> _recentSessions = [];
+
+    /// <summary>
+    /// Lists the store's sessions in the palette and opens the one picked (QS217).
+    ///
+    /// <para><b>The store is read when the list opens</b>, so a session saved a moment ago is in it.
+    /// Each entry is the session's path, with its host where a command's chord goes, and is found by
+    /// its host and tags as well as its path. The ones opened most recently come first.</para>
+    /// </summary>
+    /// <exception cref="SessionStoreException">The store is there and cannot be read.</exception>
+    public void ChooseSession()
+    {
+        if (OpensSession is null)
+        {
+            return;
+        }
+
+        SessionTree store = SessionTree.ReadFrom(SessionsFile ?? Locations.Current.Sessions);
+
+        Command[] sessions =
+        [
+            .. store.Sessions().Select(session => new Command(session.Path, session.Host, new OpeningOne(this, session.Path))
+            {
+                Also = string.Join(' ', [session.Host, .. session.Tags]),
+            }),
+        ];
+
+        if (sessions.Length == 0 && Choosing is null)
+        {
+            MessageBox.Show(this, "There are no saved sessions yet. New session, in the palette, makes one.",
+                            "Open session", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            return;
+        }
+
+        if ((Choosing ?? AskedSession)(sessions, _recentSessions) is not { } picked)
+        {
+            return;
+        }
+
+        Remember(_recentSessions, picked.Name);
+
+        picked.Run();
     }
 
     /// <summary>The real palette, which is a window and therefore not what a test asks.</summary>
     private Command? Asked(IReadOnlyList<Command> all, IReadOnlyList<string> recent)
     {
         CommandPalette palette = new(all, recent)
+        {
+            Owner = this,
+            ThemeMode = ThemeMode,
+        };
+
+        return palette.ShowDialog() == true ? palette.Chosen : null;
+    }
+
+    /// <summary>The same palette over the store's sessions, named for what it lists.</summary>
+    private Command? AskedSession(IReadOnlyList<Command> all, IReadOnlyList<string> recent)
+    {
+        CommandPalette palette = new(all, recent, title: "Open session", field: "Session", list: "Sessions")
         {
             Owner = this,
             ThemeMode = ThemeMode,

@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using Quickshell.App;
@@ -371,6 +372,113 @@ public sealed class CommandsTests
         new Command("Split pane right", "Ctrl+Shift+\\", Nothing.At.All),
         new Command("Paste", "Ctrl+Shift+V", Nothing.At.All),
     ];
+
+    // ---- Opening a saved session (QS217) ----
+
+    /// <summary>
+    /// QS217's falsification: a saved session is opened from the palette, found by typing part of
+    /// its host or one of its tags as well as its path, and not only by typing its path somewhere.
+    /// </summary>
+    [Theory]
+    [InlineData("web-01", "prod/web")]
+    [InlineData("db.example", "db")]
+    [InlineData("payments", "prod/web")]
+    public void ASavedSessionIsOpenedFromThePaletteByWhatTheUserRemembers(string typed, string opened)
+    {
+        (List<string> asked, string[] offered) = WithStore(window =>
+        {
+            List<string> seen = [];
+            string[] listed = [];
+
+            window.OpensSession = path => seen.Add(path);
+            window.Choosing = (all, recent) =>
+            {
+                listed = [.. all.Select(one => one.Name)];
+
+                return Commands.Matching(all, typed, recent)[0];
+            };
+
+            window.ChooseSession();
+
+            return (seen, listed);
+        });
+
+        Assert.Equal(["db", "prod/web"], offered.Order(StringComparer.Ordinal));
+        Assert.Equal([opened], asked);
+    }
+
+    /// <summary>With nothing typed, the session opened last is first, as a command run last is.</summary>
+    [Fact]
+    public void TheSessionOpenedLastComesFirst()
+    {
+        string first = WithStore(window =>
+        {
+            window.OpensSession = _ => { };
+
+            window.Choosing = (all, recent) => all.Single(one => one.Name == "db");
+            window.ChooseSession();
+
+            string top = string.Empty;
+
+            window.Choosing = (all, recent) =>
+            {
+                top = Commands.Matching(all, string.Empty, recent)[0].Name;
+
+                return null;
+            };
+            window.ChooseSession();
+
+            return top;
+        });
+
+        Assert.Equal("db", first);
+    }
+
+    /// <summary>Offered only by a window that can open a session; elsewhere it would do nothing.</summary>
+    [Fact]
+    public void OpenSessionIsOfferedOnlyWhereASessionCanBeOpened()
+    {
+        (bool without, bool with) = Sta.Run(() =>
+        {
+            MainWindow window = new();
+            bool before = window.Actions.Any(one => one.Name == "Open session");
+
+            window.OpensSession = _ => { };
+
+            return (before, window.Actions.Any(one => one.Name == "Open session"));
+        });
+
+        Assert.False(without);
+        Assert.True(with);
+    }
+
+    /// <summary>A window over a store holding two sessions, one in a folder with a tag.</summary>
+    private static T WithStore<T>(Func<MainWindow, T> work)
+    {
+        string store = Path.Combine(Path.GetTempPath(), $"quickshell-open-{Guid.NewGuid():N}.json");
+
+        SessionTree.Of(new SessionNode
+        {
+            Children =
+            [
+                new SessionNode
+                {
+                    Name = "prod",
+                    Children = [new SessionNode { Name = "web", Host = "web-01.example", Tags = ["payments"] }],
+                },
+                new SessionNode { Name = "db", Host = "db.example" },
+            ],
+        }).WriteTo(store);
+
+        try
+        {
+            return Sta.Run(() => work(new MainWindow { SessionsFile = store }));
+        }
+        finally
+        {
+            File.Delete(store);
+        }
+    }
 
     /// <summary>A command that does nothing, so a ranking test needs no window.</summary>
     private sealed class Nothing : ICommand

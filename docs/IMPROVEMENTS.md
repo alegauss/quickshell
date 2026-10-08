@@ -556,8 +556,9 @@ program already wires to `RemoteShell`. The store is read when the list opens, s
 session saved a moment ago is in it. The most recently opened come first, as the palette
 already ranks its commands.
 
-A UI case reads it off the accessibility tree: the entry is listed, and typing part of a
-session's name brings that session to the top.
+Built: the entry, the list, and unit tests through `Choosing`; palette.cases.json reads
+"Open session" at the top. Left: a case typing part of a known session's name, which
+needs a fixture that hands the client a store of its own, winwright's WW509.
 
 Falsified when a saved session can only be opened by typing its path.
 

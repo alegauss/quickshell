@@ -143,6 +143,23 @@
           "reads": "name",
           "expect": "Settings",
           "named": "is reachable from the palette as well as its chord"
+        },
+        {
+          "locator": "Edit",
+          "act": "set value",
+          "with": "open session",
+          "expect": "open session",
+          "reads": "value",
+          "named": "the way to a saved session (QS217)"
+        },
+        {
+          // Until QS217 a saved session could only be opened by typing its path on a command line.
+          // Offered only where the program wired sessions to open, which the client always does.
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Open session",
+          "named": "and a saved session is reached from the palette"
         }
       ]
     }

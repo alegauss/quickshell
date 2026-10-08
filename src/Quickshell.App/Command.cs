@@ -40,6 +40,12 @@ public sealed class PaletteOnly : InputGesture
 /// <param name="Runs">The command, so running an entry and pressing the chord are the same path.</param>
 public sealed record Command(string Name, string? Chord, ICommand Runs)
 {
+    /// <summary>
+    /// More it can be found by, beside its name: a saved session's host and tags (QS217). Matched as
+    /// the name is, and never shown.
+    /// </summary>
+    public string? Also { get; init; }
+
     /// <summary>Does it. The same call the key binding makes, so the two cannot diverge.</summary>
     public void Run() => Runs.Execute(null);
 }
@@ -114,7 +120,10 @@ public static class Commands
 
         for (int index = 0; index < all.Count; index++)
         {
-            int score = Score(all[index].Name, query);
+            // The better of the name and what else it is found by, so a host typed in full finds
+            // its session as surely as the session's own name does.
+            int score = Math.Max(Score(all[index].Name, query),
+                                 all[index].Also is { } also ? Score(also, query) : -1);
 
             if (score < 0)
             {

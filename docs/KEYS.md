@@ -12,8 +12,9 @@ palette is how you find something without one.
 and they are not reached for often enough to be worth one. They are in the palette and nowhere
 else: *Browse files* opens the file browser, *Install quickshell for this user* installs the copy
 you are running — it is offered only by a copy that is not already the installed one, and
-[INSTALL.md](INSTALL.md) says what it writes — and *Leave this pane out of broadcast typing* is
-described under [Panes](#panes).
+[INSTALL.md](INSTALL.md) says what it writes — *Open session* turns the palette into a list of
+your saved sessions, found by path, host or tag, with the ones you opened last at the top, and
+*Leave this pane out of broadcast typing* is described under [Panes](#panes).
 
 Nothing here is configurable yet. When it becomes configurable this page becomes the defaults.
 

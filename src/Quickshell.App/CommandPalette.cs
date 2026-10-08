@@ -43,22 +43,26 @@ public sealed class CommandPalette : Window
     /// </summary>
     /// <param name="all">Everything it can offer, from <see cref="Commands.From"/>.</param>
     /// <param name="recent">The names most recently run, newest first.</param>
-    public CommandPalette(IReadOnlyList<Command> all, IReadOnlyList<string>? recent = null)
+    /// <param name="title">What the window is called; the same palette lists saved sessions (QS217).</param>
+    /// <param name="field">What the box is called to a screen reader.</param>
+    /// <param name="list">What the list is called to a screen reader.</param>
+    public CommandPalette(IReadOnlyList<Command> all, IReadOnlyList<string>? recent = null,
+                          string title = "Command palette", string field = "Command", string list = "Commands")
     {
         ArgumentNullException.ThrowIfNull(all);
 
         _all = all;
         _recent = recent ?? [];
 
-        Title = "Command palette";
+        Title = title;
         Width = 560;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
-        AutomationProperties.SetName(_typed, "Command");
-        AutomationProperties.SetName(_showing, "Commands");
+        AutomationProperties.SetName(_typed, field);
+        AutomationProperties.SetName(_showing, list);
 
         _showing.ItemTemplate = Row();
         _showing.ItemContainerStyle = Announcing();

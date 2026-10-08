@@ -165,6 +165,7 @@
 - ✅ **QS174** **A settings value the client could not use is not mentioned anywhere the user will look** — The settings window names every value the client could not use: an unparsable file, an unknown key, a wrong-kind value, or a scheme path that leads nowhere.
 - ✅ **QS178** **Five command-line flags exist and no page names them, so a script author finds them by reading the source** — Every flag lives in one list the entry points read, docs/COMMAND-LINE.md names exactly that list, and the client spells no flag outside it.
 - ✅ **QS199** **The test that says a chrome theme leaves the terminal's colours alone checks a palette nothing draws with** — The terminal's colours have one model, Settings.Colours; the theme test now reads an open pane's palette across a change of chrome theme and finds its scheme untouched.
+- ✅ **QS217 (the palette opens sessions)** **A saved session can only be opened by typing its path on a command line** — Open session in the palette lists the store's sessions, found by path, host or tag with the last opened first, and opens the one chosen.
 
 ## Block H — The reason to leave the incumbent
 
