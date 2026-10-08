@@ -314,21 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS205 A movement that respects the region
-
-Found by QS33's vttest run, cuts 014 and 016. vttest turns origin mode on, sets the
-region to rows 12 and 13, and moves with `CSI 24 B` and later `CSI 24 A`, expecting both
-to stop at the region's edge. Here `CSI A` clamps only to row 0 and `CSI B` only to the
-last row, so the cursor leaves the region and the soft-scroll test writes over row 1.
-
-What to build: CUU stops at the top margin when the cursor starts at or below it, and
-CUD at the bottom margin when it starts at or above it, which is DEC's rule and xterm's.
-A cursor already outside the region moves to the screen's edge as now. CNL and CPL are
-the same movement plus a carriage return and take the same clamp.
-
-Falsified when vttest's cuts 014 and 016 still disagree with xterm after the change, or
-when esctest's CUU and CUD sections lose a test.
-
 ### §QS206 The save that keeps the character set
 
 Found by QS33's vttest run, cut 022. vttest designates the DEC special graphics set into

@@ -85,6 +85,7 @@
 - ✅ **QS183** **A paste pressed while another process holds the clipboard open does nothing and says nothing** — Copy and paste wait up to a tenth of a second for a clipboard somebody else holds, and past that say in the title that they did not happen.
 - ✅ **QS198** **A scheme's cursor colour and OSC 12 are stored and never drawn, so every pane's cursor is the same grey** — Each pane hands its own palette's cursor to the renderer as it draws, so a scheme's cursor and a host's OSC 12 are the colour on screen.
 - ✅ **QS203** **Two combining marks on the same side of one base are drawn on the same pixels instead of stacked** — A later mark on the same side of a base is lifted clear of the earlier one's ink, so q with an acute and a diaeresis draws two stacked marks.
+- ✅ **QS205** **Cursor up and down cross the scrolling region's edges, so a program moving inside a region writes outside it** — CUU, CUD, CNL and CPL stop at the margin between the cursor and the screen's edge, so vttest's cuts 014 and 016 now agree with xterm.
 
 ## Block D — The tree a user organises work in
 

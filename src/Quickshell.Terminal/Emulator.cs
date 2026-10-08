@@ -619,11 +619,11 @@ public sealed partial class Emulator : IAnsiHandler
         switch (final)
         {
             case (byte)'A':
-                buffer.CursorRow = Math.Max(0, buffer.CursorRow - count);
+                buffer.CursorRow = Up(buffer, count);
                 break;
 
             case (byte)'B':
-                buffer.CursorRow = Math.Min(buffer.Rows - 1, buffer.CursorRow + count);
+                buffer.CursorRow = Down(buffer, count);
                 break;
 
             case (byte)'C':
@@ -635,12 +635,12 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'E':
-                buffer.CursorRow = Math.Min(buffer.Rows - 1, buffer.CursorRow + count);
+                buffer.CursorRow = Down(buffer, count);
                 buffer.CursorColumn = 0;
                 break;
 
             case (byte)'F':
-                buffer.CursorRow = Math.Max(0, buffer.CursorRow - count);
+                buffer.CursorRow = Up(buffer, count);
                 buffer.CursorColumn = 0;
                 break;
 
@@ -781,6 +781,34 @@ public sealed partial class Emulator : IAnsiHandler
     private int RowFor(int oneBased) => OriginMode
         ? Math.Clamp(MarginTop + oneBased - 1, MarginTop, MarginBottom)
         : Math.Clamp(oneBased - 1, 0, Buffer.Rows - 1);
+
+    /// <summary>
+    /// Where CUU and CPL leave the cursor: <paramref name="count"/> rows up, stopping at the top
+    /// margin when the cursor starts at or below it, and at the screen's top otherwise (QS205).
+    ///
+    /// <para><b>DEC's rule and xterm's, whatever DECOM says.</b> A movement inside the region is a
+    /// program working inside the region, and one that ran past its edge would write into rows the
+    /// program set aside, which is what vttest's soft-scroll test caught over row 1. A cursor
+    /// already above the region has no margin between it and the top, so it goes to the top.</para>
+    /// </summary>
+    private int Up(TerminalBuffer buffer, int count)
+    {
+        int stop = buffer.CursorRow >= MarginTop ? MarginTop : 0;
+
+        return Math.Max(stop, buffer.CursorRow - count);
+    }
+
+    /// <summary>
+    /// Where CUD and CNL leave the cursor: <paramref name="count"/> rows down, stopping at the
+    /// bottom margin when the cursor starts at or above it, and at the screen's bottom otherwise.
+    /// <see cref="Up"/> says why.
+    /// </summary>
+    private int Down(TerminalBuffer buffer, int count)
+    {
+        int stop = buffer.CursorRow <= MarginBottom ? MarginBottom : buffer.Rows - 1;
+
+        return Math.Min(stop, buffer.CursorRow + count);
+    }
 
     private void SetTabStop(int column)
     {

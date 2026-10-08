@@ -14,7 +14,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS205** (deps: —) **Cursor up and down cross the scrolling region's edges, so a program moving inside a region writes outside it** — CUU and CUD clamp only to the screen, where DEC and xterm stop them at the margin the cursor started inside. → §QS205
 - 📋 **QS206** (deps: —) **Restoring the cursor does not restore the character set, so line drawing after ESC 8 prints letters** — DECSC saves the designations and shift state with the position, and a program that switched sets in between relies on getting them back. → §QS206
 - 📋 **QS207** (deps: —) **Insert mode is ignored, so text printed with CSI 4 h overwrites the row instead of pushing it right** — Editors and readline-style prompts use IRM to insert in place, and a terminal that overwrites shows the line the program did not draw. → §QS207
 - 📋 **QS208** (deps: —) **A request for 132 columns is ignored without its side effects, and nothing says whether that is the intent** — DECCOLM also clears the screen and resets the margins, so a program that asks gets neither the width nor the clean screen it assumes. → §QS208

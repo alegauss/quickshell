@@ -88,6 +88,34 @@ public sealed class WrapAndMarginTests
 
     // ---- The scrolling region ----
 
+    /// <summary>
+    /// QS205, vttest's cuts 014 and 016: cursor up stops at the top margin unless it starts above
+    /// it, and cursor down at the bottom margin unless it starts below it — with origin mode on or
+    /// off, and with CNL and CPL taking the same clamp. A cursor on the far side of a margin has
+    /// nothing between it and the screen's edge, so it goes to the edge, as it did before.
+    /// </summary>
+    [Theory]
+    // Inside the region, rows twelve and thirteen as vttest sets them.
+    [InlineData("\e[?6h", "\e[24B", 12)]
+    [InlineData("\e[?6h", "\e[24A", 11)]
+    [InlineData("\e[?6l\e[13;1H", "\e[24B", 12)]
+    [InlineData("\e[?6l\e[12;1H", "\e[24A", 11)]
+    [InlineData("\e[?6l\e[12;1H", "\e[24E", 12)]
+    [InlineData("\e[?6l\e[13;1H", "\e[24F", 11)]
+    // Outside it: past the far margin to the screen's edge, and stopped by the near one.
+    [InlineData("\e[2;1H", "\e[24A", 0)]
+    [InlineData("\e[20;1H", "\e[24B", 23)]
+    [InlineData("\e[2;1H", "\e[24B", 12)]
+    [InlineData("\e[20;1H", "\e[24A", 11)]
+    public void UpAndDownStopAtTheMarginBetweenTheCursorAndTheEdge(string placed, string moved, int row)
+    {
+        Emulator emulator = new(80, 24, scrollback: 0);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("\e[12;13r" + placed + moved));
+
+        Assert.Equal(row, emulator.Buffer.CursorRow);
+    }
+
     [Fact]
     public void ScrollingInsideARegionLeavesTheRowsOutsideItAlone()
     {
