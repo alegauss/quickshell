@@ -354,11 +354,12 @@ nothing in `Quickshell.Terminal` rents from `ArrayPool`; the measurement is
 allocations are not counted. What differs is the machine — fewer cores and less memory
 than the host, and whatever the suite ran before it on that thread.
 
-What to do first is make it say where: on failure, repeat the second pass under an
-allocation listener (an `EventListener` on the runtime's `GCAllocationTick`, or a
-`dotnet-trace` session in the guest) and report the type allocated, so a red run carries
-its own diagnosis instead of a number. Then fix whatever that names — the other four
-recordings never did this, so it is likely a path only a resize stream reaches.
+Done first: on failure the test refeeds the stream in 512-byte pieces and names each
+piece that allocated, offset and bytes. The type cannot come from inside the test: an
+in-process listener gets no sampled-allocation events, which need startup, and the tick
+fires per 100 KB; `dotnet-trace` in the guest is the way to a type. Then fix whatever
+that names — the other four recordings never did this, so it is likely a path only a
+resize stream reaches.
 
 Falsified when the guest suite runs ten times without this test counting a byte.
 
@@ -1008,8 +1009,8 @@ edit.
 Twice running on 2026-10-08, with no test failing, the guest suite went red on the skip
 budget: the guest's clipboard held a bitmap, so the clipboard case could not put it back
 exactly and measured nothing, which is App.Tests' third skip against a budget of two.
-The bitmap was the guest's own, left from an earlier session; the host held text the
-whole time.
+The bitmap was the guest's own; the host held text each time, and it came back between
+runs, so something in the guest writes it and no code in this repository does.
 
 It was cleared by hand, and in this order because of QS180: VMware shares the clipboard,
 so setting the guest's while sharing is on would also overwrite the host's, the very

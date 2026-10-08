@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 using Quickshell.Terminal;
@@ -247,7 +248,67 @@ public sealed class HostileInputTests
 
         Assert.True(
             allocated == 0,
-            $"replaying {name} allocated {allocated} bytes in steady state, and the parse path may allocate none");
+            $"replaying {name} allocated {allocated} bytes in steady state, and the parse path may allocate none.\n"
+            + (allocated == 0 ? string.Empty : WhereItAllocated(emulator, stream)));
+    }
+
+    /// <summary>
+    /// Which part of a stream allocated, for a failure to carry its own diagnosis (QS214).
+    ///
+    /// <para><b>Where and not what.</b> The type would be better, and an in-process listener cannot
+    /// get it: the runtime's sampled-allocation events are enabled only at startup, and its
+    /// allocation tick fires every hundred kilobytes, far past a few thousand bytes. So the stream
+    /// is fed again in small pieces, each measured, and every piece that allocated is named with its
+    /// offset and the bytes in it - which is the sequence to look at.</para>
+    ///
+    /// <para>Smaller pieces put read boundaries where the measured pass had none, and a boundary can
+    /// be the cause (QS101), so the answer says so rather than claiming to be the same pass.</para>
+    /// </summary>
+    private static string WhereItAllocated(Emulator emulator, byte[] stream)
+    {
+        const int Piece = 512;
+        StringBuilder found = new();
+        int named = 0;
+
+        for (int at = 0; at < stream.Length && named < 8; at += Piece)
+        {
+            int take = Math.Min(Piece, stream.Length - at);
+            long before = GC.GetAllocatedBytesForCurrentThread();
+
+            emulator.Feed(stream.AsSpan(at, take));
+            emulator.ClearReply();
+
+            long cost = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            if (cost > 0)
+            {
+                found.Append(CultureInfo.InvariantCulture, $"  {cost} bytes at offset {at}: {Spelled(stream.AsSpan(at, take))}\n");
+                named++;
+            }
+        }
+
+        return found.Length == 0
+            ? $"Fed again in {Piece}-byte pieces it allocated nothing, so the cost is in a read boundary of the 64 KB pass or did not repeat."
+            : $"Fed again in {Piece}-byte pieces, which cut it at boundaries the measured pass did not have, these allocated:\n{found}";
+    }
+
+    /// <summary>A piece of stream as text a failure message can carry: escapes and controls spelled out.</summary>
+    private static string Spelled(ReadOnlySpan<byte> piece)
+    {
+        StringBuilder text = new();
+
+        foreach (byte value in piece[..Math.Min(piece.Length, 160)])
+        {
+            text.Append(value switch
+            {
+                Escape => "ESC",
+                < 0x20 or 0x7F => $"<{value:X2}>",
+                < 0x80 => ((char)value).ToString(),
+                _ => $"<{value:X2}>",
+            });
+        }
+
+        return piece.Length > 160 ? text.Append(" ...").ToString() : text.ToString();
     }
 
     /// <summary>
