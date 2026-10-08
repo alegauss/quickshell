@@ -179,29 +179,6 @@ than break.
 
 Falsified when the derivation changes without a way to read what the old one wrote.
 
-### §QS218 A password has nowhere to be typed
-
-`RemoteShell` offers a session's key file, OpenSSH's default keys and the Windows agent,
-and nothing else. A host that takes a password, or asks its own questions through
-keyboard-interactive — a one-time code, a push to approve — refuses every connection the
-client makes to it, and the user is told only that no method was accepted.
-
-The pieces exist. `SshCredential.Interactive` hands each of the server's prompts to a
-callback with whether it may be echoed (QS41), and `SshCredential.Password` takes a
-`Secret`. `SecretStore` saves a secret against an endpoint under DPAPI (QS44), and a
-session's `Credential` names a saved one. What is missing is the window's half: a prompt
-that shows the server's own words, masks what must not be echoed, and offers to remember
-the answer in `SecretStore` — and `RemoteShell` offering a remembered password and the
-interactive callback after the keys, password last as QS41 orders them.
-
-Built: `SignIn` and `SignInDialog`, keyboard-interactive answered from the window, a
-kept password in Credential Manager. Left: a password-only server (kbd-int off, Ubuntu's
-default) offers no prompt; the transport must report the methods it allows, so ask and
-retry.
-
-Falsified when a session to a host that takes only a password cannot be connected from
-the client, or when a password the user chose to remember is asked for again.
-
 ## Block C — Emulation that does not lie about the remote
 
 ### §QS92 The three environments this machine is not

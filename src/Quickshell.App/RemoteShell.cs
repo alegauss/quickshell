@@ -100,13 +100,16 @@ public sealed class RemoteShell : IShellSession
         Narration said = new(emulator, damage);
         Progress signIn = new(said);
 
-        ISshTransport transport = session.JumpHost is { } jump
+        ISshTransport Transport(IReadOnlyList<SshCredential> offered) => session.JumpHost is { } jump
             ? new SshChain([
                 // The jump host takes the keys alone: its questions would be asked as the target's.
                 new SshHop(Through(jump.Value, target.User), keys, trust.CheckAsync),
-                new SshHop(target, credentials, trust.CheckAsync),
+                new SshHop(target, offered, trust.CheckAsync),
               ]) { KeepAlive = keepAlive, SignIn = signIn, Log = log }
             : new SshNetTransport { KeepAlive = keepAlive, SignIn = signIn, Log = log };
+
+        ISshTransport transport = Transport(credentials);
+        SshCredential.Password? typed = null;
 
         said.Line(session.JumpHost is { } through
             ? $"Connecting to {target} through {through.Value}..."
@@ -114,8 +117,38 @@ public sealed class RemoteShell : IShellSession
 
         try
         {
-            await transport.ConnectAsync(target, credentials, trust.CheckAsync, cancellationToken)
-                           .ConfigureAwait(false);
+            try
+            {
+                await transport.ConnectAsync(target, credentials, trust.CheckAsync, cancellationToken)
+                               .ConfigureAwait(false);
+            }
+            catch (SshException refused) when (answering is not null && answering.ShouldAskForPassword(refused))
+            {
+                // The password method has no prompt of its own, so a server whose only way in is a
+                // password - OpenSSH's default on Ubuntu - is asked about here, once, and connected
+                // to again with what the person typed (QS218).
+                await transport.DisposeAsync().ConfigureAwait(false);
+
+                said.Line($"{target.Host} asks for a password.");
+
+                typed = await answering.AskPasswordAsync(cancellationToken).ConfigureAwait(false);
+
+                if (typed is null)
+                {
+                    throw;
+                }
+
+                credentials = [.. credentials, typed];
+                transport = Transport(credentials);
+
+                await transport.ConnectAsync(target, credentials, trust.CheckAsync, cancellationToken)
+                               .ConfigureAwait(false);
+            }
+            finally
+            {
+                // The library has had the bytes it needed; the copy this client holds goes now.
+                typed?.Dispose();
+            }
 
             // Signed in, so a password the person asked to keep is the right one to keep.
             answering?.Commit();

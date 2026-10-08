@@ -117,6 +117,14 @@ public sealed class SshException : Exception
     /// </summary>
     public string? Origin { get; }
 
+    /// <summary>
+    /// The methods the server said it would accept, where it said — <c>password</c>,
+    /// <c>publickey</c>, <c>keyboard-interactive</c> — and empty where it said nothing. What a caller
+    /// with a person in front of it decides on (QS218): a server that takes a password and was
+    /// offered none is one to ask the person about, and a key-only server is not.
+    /// </summary>
+    public IReadOnlyList<string> ServerAccepts { get; init; } = [];
+
     /// <summary>The three clauses, in order, for a log or a place with room for all of them.</summary>
     public string Full =>
         string.Join(" ", new[] { Message, Means, Remedy }.Where(clause => clause.Length > 0));

@@ -3,13 +3,17 @@ set -e
 
 mkdir -p /run/sshd
 
-for user in probe certonly twofactor; do
+for user in probe certonly twofactor passonly; do
     id -u "$user" >/dev/null 2>&1 || useradd -m -s /bin/bash "$user"
 done
 
 echo 'probe:probe-pw' | chpasswd
 echo 'twofactor:twofactor-pw' | chpasswd
 echo 'certonly:certonly-pw' | chpasswd
+
+# QS218: passonly has no key and no keyboard-interactive, only the password method - OpenSSH's
+# default on Ubuntu - so a client that signs in as it can only have asked for the password itself.
+echo 'passonly:passonly-pw' | chpasswd
 
 # probe and twofactor authorise the key directly. certonly deliberately does not: the only way
 # in for that account is a certificate the CA signed, which is what makes its answer evidence.

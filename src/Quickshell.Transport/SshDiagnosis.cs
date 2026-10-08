@@ -138,7 +138,7 @@ internal static partial class SshDiagnosis
             ? offered.Groups[1].Value.Replace(",", ", ", StringComparison.Ordinal)
             : string.Empty;
 
-        return SshException.From(
+        SshException told = SshException.From(
             SshFailureKind.NoMethodAccepted,
             $"{endpoint} would not accept any of the ways this client offered to identify itself.",
             authentication,
@@ -146,6 +146,13 @@ internal static partial class SshDiagnosis
                 ? $"The server accepts {wanted}, and none of those was offered."
                 : "The server declined every method offered before any credential was tried.",
             "Offer a credential of a kind the server allows.");
+
+        return offered.Success
+            ? new SshException(told.Kind, told.Message, told.Means, told.Remedy, told.Origin)
+            {
+                ServerAccepts = [.. offered.Groups[1].Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)],
+            }
+            : told;
     }
 
     /// <summary>

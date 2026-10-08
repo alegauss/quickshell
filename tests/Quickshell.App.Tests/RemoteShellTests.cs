@@ -233,6 +233,93 @@ public sealed class RemoteShellTests : IDisposable
         Assert.Null(secrets.Load(SshEndpoint.For("127.0.0.1", "twofactor", 2222)));
     }
 
+    /// <summary>
+    /// QS218's criterion: a host whose only way in is the password method, with keyboard-interactive
+    /// off as Ubuntu ships it, is connected from the client — asked about once, in this client's
+    /// words since the server asks none, and not asked again once the password is kept.
+    /// </summary>
+    [Fact]
+    public async Task AHostThatTakesOnlyAPasswordIsAskedForItOnceAndThenRemembered()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession only = Account("passonly");
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        SecretStore secrets = SecretStore.In(Path.Combine(_here, "secrets"));
+        List<SignInQuestion> asked = [];
+        Emulator emulator = new(80, 25);
+
+        await using (RemoteShell shell = await RemoteShell.OpenAsync(
+                         only, trust, emulator, new DamageSignal(), 80, 25, Stop, ask: (question, _) =>
+                         {
+                             asked.Add(question);
+
+                             return ValueTask.FromResult<SignInAnswer?>(new SignInAnswer("passonly-pw", Remember: true));
+                         }, secrets: secrets))
+        {
+            await shell.Pipeline.TypeAsync(Encoding.ASCII.GetBytes("whoami\r"), Stop);
+            await Until(() => Screen(emulator).Split('\n').Any(line => line.Trim() == "passonly"));
+        }
+
+        SignInQuestion question = Assert.Single(asked);
+
+        Assert.Equal("Password:", question.Prompt);
+        Assert.False(question.Echoed);
+        Assert.True(question.MayRemember);
+
+        int again = 0;
+
+        await using (await RemoteShell.OpenAsync(only, trust, new Emulator(80, 25), new DamageSignal(), 80, 25, Stop,
+                                                 ask: (_, _) =>
+                                                 {
+                                                     again++;
+
+                                                     return ValueTask.FromResult<SignInAnswer?>(null);
+                                                 },
+                                                 secrets: secrets))
+        {
+        }
+
+        Assert.Equal(0, again);
+    }
+
+    /// <summary>
+    /// A server that takes keys alone is never asked about a password: the question would be one
+    /// whose answer could not be used, and a person who typed one would be taught the wrong thing.
+    /// </summary>
+    [Fact]
+    public async Task AKeyOnlyHostIsNeverAskedForAPassword()
+    {
+        SkipWithoutFixture();
+
+        // certonly authorises no key and takes publickey alone, so the fixture's key is refused.
+        ResolvedSession keyOnly = Account("certonly");
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        int asked = 0;
+
+        await Assert.ThrowsAsync<SshException>(async () =>
+            await RemoteShell.OpenAsync(keyOnly, trust, new Emulator(80, 25), new DamageSignal(), 80, 25, Stop,
+                                        ask: (_, _) =>
+                                        {
+                                            asked++;
+
+                                            return ValueTask.FromResult<SignInAnswer?>(null);
+                                        },
+                                        secrets: SecretStore.In(Path.Combine(_here, "secrets"))));
+
+        Assert.Equal(0, asked);
+    }
+
+    /// <summary>One of the fixture's accounts on the target, with the fixture's key, read back from a store.</summary>
+    private ResolvedSession Account(string user) =>
+        SessionTree.ReadFrom(Store($$"""
+            { "Name": "", "Children": [
+                { "Name": "it", "Host": "127.0.0.1", "Settings": { "User": "{{user}}", "Port": 2222, "Key": "KEY" } }
+            ] }
+            """)).Session("it")!;
+
     /// <summary>The fixture's two-step account, saved and read back as the window reads it.</summary>
     private ResolvedSession TwoFactor() =>
         SessionTree.ReadFrom(Store("""

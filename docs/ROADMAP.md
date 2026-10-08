@@ -9,8 +9,6 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- ⏳ **QS218** (deps: QS126 ✅) **A saved session to a host that takes a password or a one-time code cannot be connected from the client** — A server that offers only the password method gets no prompt: the transport must say which methods it allows so the client can ask and retry. → §QS218
-
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
@@ -329,12 +327,6 @@
 - **A UI case finds a known session by part of its name** A case in cases\ launches the
   client over a store of its own, opens Open session, types part of a session's name and
   reads that session at the top of the list.
-
-## Done when — QS218
-
-- **A host that takes only the password method connects from the client** An sshd with
-  KbdInteractiveAuthentication off and PasswordAuthentication on, in the fixture,
-  connects through the window's prompt, and a kept password is not asked for again.
 
 ## Non-goals
 

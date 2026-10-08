@@ -70,6 +70,45 @@ public sealed class SignIn
         return (signIn, offered);
     }
 
+    /// <summary>
+    /// Whether a password is worth asking for after this refusal: the server said it takes one, and
+    /// none was offered — neither a kept one nor one the person typed for this connection.
+    /// </summary>
+    public bool ShouldAskForPassword(SshException refused)
+    {
+        ArgumentNullException.ThrowIfNull(refused);
+
+        return refused.Kind == SshFailureKind.NoMethodAccepted
+               && refused.ServerAccepts.Contains("password", StringComparer.OrdinalIgnoreCase)
+               && _store?.Load(_endpoint) is null;
+    }
+
+    /// <summary>
+    /// Asks for the password itself, for a server whose only way in is the password method, which
+    /// has no prompt of its own to show (QS218). The question is this client's, since the server
+    /// asked none; remembering is offered as for any password.
+    /// </summary>
+    /// <returns>The password as a credential, or null where the person declined.</returns>
+    public async ValueTask<SshCredential.Password?> AskPasswordAsync(CancellationToken cancellationToken)
+    {
+        SignInAnswer? answer = await _ask(new SignInQuestion(_endpoint, "Password:", Echoed: false,
+                                                             MayRemember: _store is not null), cancellationToken)
+                                   .ConfigureAwait(false);
+
+        if (answer is null)
+        {
+            return null;
+        }
+
+        if (_store is not null && answer.Remember)
+        {
+            _keep?.Dispose();
+            _keep = Secret.From(answer.Text.AsSpan());
+        }
+
+        return new SshCredential.Password(Secret.From(answer.Text.AsSpan()));
+    }
+
     /// <summary>Saves what the person asked to remember, now that the connection has succeeded.</summary>
     public void Commit()
     {

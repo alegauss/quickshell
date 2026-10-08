@@ -31,3 +31,9 @@ Match User probe
 
 Match User certonly
     AuthenticationMethods publickey
+
+# QS218: the password method alone, with keyboard-interactive off, which is Ubuntu's default.
+Match User passonly
+    AuthenticationMethods password
+    PasswordAuthentication yes
+    KbdInteractiveAuthentication no
