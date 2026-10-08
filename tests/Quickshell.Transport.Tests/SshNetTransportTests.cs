@@ -201,8 +201,12 @@ public sealed class SshNetTransportTests
 
         await using SshNetTransport transport = new() { Timeout = TimeSpan.FromSeconds(10) };
 
+        // A password and not the fixture's key: this needs no fixture, and a key file a desk does not
+        // have fails before the network is reached, which would leave the listener waiting forever.
+        using SshCredential.Password password = new(Secret.From("not-used".AsSpan()));
+
         SshException failed = await Assert.ThrowsAsync<SshException>(async () =>
-            await transport.ConnectAsync(SshEndpoint.For("127.0.0.1", "anyone", port), [Key()],
+            await transport.ConnectAsync(SshEndpoint.For("127.0.0.1", "anyone", port), [password],
                 (_, _, _) =>
                 {
                     asked = true;
@@ -210,7 +214,9 @@ public sealed class SshNetTransportTests
                     return ValueTask.FromResult(SshHostKeyVerdict.Refuse);
                 }, Stop));
 
-        await closing;
+        // Bounded, so a connection that never reached the listener fails this test rather than
+        // holding the whole run open.
+        await closing.WaitAsync(TimeSpan.FromSeconds(15), Stop);
 
         Assert.False(asked);
         Assert.NotEqual(SshFailureKind.HostKey, failed.Kind);
