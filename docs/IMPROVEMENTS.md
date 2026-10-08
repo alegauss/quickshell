@@ -917,27 +917,6 @@ true of the shipped build and not of the plan.
 
 Falsified when a figure in it cannot be reproduced from a documented run.
 
-### §QS216 An import that replaces instead of adding
-
-`MainWindow.ImportSessions` writes `SessionTree.Of(preview.Tree())` to the store's path,
-which is the imported tree and nothing else. Whatever the store held before — sessions
-made through the dialog since QS121, or a store edited by hand — is gone, and the
-preview the user agreed to said only what would be imported, not what would be lost.
-
-Until QS121 nothing else wrote the store, so an import landing on an empty file was the
-only case there was. Now a user can make sessions, import from MobaXterm a week later to
-pick up the ones they forgot, and lose every session they made here.
-
-What to build: the import goes into the store as it is, read at the moment of writing,
-the way `NewSession` writes. The imported sessions go under a folder of their own —
-"Imported from MobaXterm", with the date — so they never collide by name with what is
-already there, and moving them out is the user's decision. The preview says how many
-sessions the store already has and that they stay. Comments survive through `StoreText`
-as for any write.
-
-Falsified when a store holding sessions, imported into and agreed to, holds fewer
-sessions afterwards than it did before plus what was imported.
-
 ## Block K — The build and the harness — what a green run is evidence of
 
 ### §QS210 A campaign nobody has to remember

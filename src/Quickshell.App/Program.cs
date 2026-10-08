@@ -234,7 +234,7 @@ public static class Entry
                 ? Path.GetFullPath(arguments[import + 1])
                 : null;
 
-            window.Dispatcher.BeginInvoke(() => window.ImportSessions(from));
+            window.Dispatcher.BeginInvoke(() => window.ImportOrSay(from));
         }
 
         // `--session <path>` opens a saved session in a tab of its own, by its path in the store

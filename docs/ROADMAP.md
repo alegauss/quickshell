@@ -48,8 +48,6 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- 📋 **QS216** (deps: —) **Importing sessions writes over the whole session store, so sessions made since are lost without a word** — The import writes the imported tree alone, and since QS121 the store can hold sessions the user made here. → §QS216
-
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS222** (deps: —) **A desk that cannot be observed runs no UI case, and the run counts it as a pass** — CasesRun passes with nothing run where it should skip with the desk's reason, so the QS136 table shows a green that covered nothing. → §QS222

@@ -67,7 +67,7 @@ public static class CommandLine
         new(Broadcast, "", "Types into every pane of the first tab at once, after the split."),
         new(Session, "<path>", "Opens a saved session in a tab of its own, by its path in the session store. A folder's path opens every session in it as panes of one tab, typing into all of them."),
         new(Trace, "", "With --session: records that session's negotiation and channels in a log of its own, for this run only."),
-        new(Import, "[file]", "Previews importing MobaXterm's sessions, from the file named or from where MobaXterm keeps them; nothing is written until you agree."),
+        new(Import, "[file]", "Previews importing MobaXterm's sessions, from the file named or from where MobaXterm keeps them; nothing is written until you agree. The import is added under a folder of its own, Imported from MobaXterm and the date, and the sessions already in your store stay."),
         new(Browse, "", "Opens the file browser."),
         new(Palette, "", "Opens the palette."),
         new(StartupReport, "<file>", "Times this start and writes the milestones to the file once the shell is on screen."),

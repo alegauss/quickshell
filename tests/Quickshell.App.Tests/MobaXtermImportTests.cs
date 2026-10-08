@@ -172,7 +172,11 @@ public sealed class MobaXtermImportTests : IDisposable
         (int namedSessions, string namedSource, string missingSource) = Sta.Run(() =>
         {
             List<ImportPreview> seen = [];
-            MainWindow window = new() { Importing = preview => { seen.Add(preview); return false; } };
+            MainWindow window = new()
+            {
+                Importing = preview => { seen.Add(preview); return false; },
+                SessionsFile = Path.Combine(_here, "sessions.json"),
+            };
 
             window.ImportSessions(named);
             window.ImportSessions(missing);
@@ -183,6 +187,91 @@ public sealed class MobaXtermImportTests : IDisposable
         Assert.Equal(1, namedSessions);
         Assert.Equal(named, namedSource);
         Assert.Equal(string.Empty, missingSource);
+    }
+
+    /// <summary>
+    /// QS216's falsification: a store holding a session, imported into and agreed to, holds that
+    /// session and every imported one afterwards — the import under a folder of its own, and the
+    /// preview having said the session already there would stay.
+    /// </summary>
+    [Fact]
+    public void AnImportAddsToTheStoreAndKeepsWhatWasThere()
+    {
+        string from = File(Line("theirs", 0, "theirs.example", "22", "alex"));
+        string store = Path.Combine(_here, "sessions.json");
+
+        SessionTree.Of(new SessionNode { Children = [new SessionNode { Name = "mine", Host = "mine.example" }] })
+                   .WriteTo(store);
+
+        ImportPreview shown = Sta.Run(() =>
+        {
+            ImportPreview? seen = null;
+            MainWindow window = new() { Importing = preview => { seen = preview; return true; }, SessionsFile = store };
+
+            window.ImportSessions(from);
+
+            return seen!;
+        });
+
+        SessionTree after = SessionTree.ReadFrom(store);
+        string folder = $"Imported from MobaXterm {DateTime.Now:yyyy-MM-dd}";
+
+        Assert.Equal(1, shown.Kept);
+        Assert.Equal(folder, shown.Folder);
+        Assert.Equal("mine.example", after.Find("mine")?.Host);
+        Assert.Equal("theirs.example", after.Find($"{folder}/theirs")?.Host);
+        Assert.Equal(2, after.Sessions().Count);
+    }
+
+    /// <summary>A second import the same day is a second folder, not a merge into the first.</summary>
+    [Fact]
+    public void ASecondImportTheSameDayGoesUnderAFolderOfItsOwn()
+    {
+        string from = File(Line("theirs", 0, "theirs.example", "22", "alex"));
+        string store = Path.Combine(_here, "sessions.json");
+
+        Sta.Run(() =>
+        {
+            MainWindow window = new() { Importing = _ => true, SessionsFile = store };
+
+            window.ImportSessions(from);
+            window.ImportSessions(from);
+
+            return 0;
+        });
+
+        SessionTree after = SessionTree.ReadFrom(store);
+        string folder = $"Imported from MobaXterm {DateTime.Now:yyyy-MM-dd}";
+
+        Assert.NotNull(after.Find($"{folder}/theirs"));
+        Assert.NotNull(after.Find($"{folder} (2)/theirs"));
+        Assert.Equal(2, after.Sessions().Count);
+    }
+
+    /// <summary>
+    /// A store that will not read is refused before anything is asked, and left exactly as it was:
+    /// writing the import over it would be the silent loss this exists to stop.
+    /// </summary>
+    [Fact]
+    public void AStoreThatWillNotReadIsRefusedAndLeftAlone()
+    {
+        string from = File(Line("theirs", 0, "theirs.example", "22", "alex"));
+        string store = Path.Combine(_here, "sessions.json");
+
+        System.IO.File.WriteAllText(store, "{ this is not json");
+
+        bool asked = Sta.Run(() =>
+        {
+            bool shown = false;
+            MainWindow window = new() { Importing = _ => shown = true, SessionsFile = store };
+
+            Assert.Throws<SessionStoreException>(() => window.ImportSessions(from));
+
+            return shown;
+        });
+
+        Assert.False(asked);
+        Assert.Equal("{ this is not json", System.IO.File.ReadAllText(store));
     }
 
     // ---- Against a real file, where there is one ----

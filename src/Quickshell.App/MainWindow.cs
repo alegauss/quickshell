@@ -1367,12 +1367,19 @@ public sealed class MainWindow : Window
     /// <para><b>Nothing lands unseen</b>, which is the design's own requirement and the reason this
     /// is two steps rather than one: the preview is built and shown, and the tree is written after
     /// the answer and not before it.</para>
+    ///
+    /// <para><b>Added to the store, never in place of it (QS216).</b> The store is read at the moment
+    /// of writing, as <see cref="NewSession"/> reads it, and the import goes under a folder of its
+    /// own named for where it came from and when, so it never collides by name with what is there
+    /// and moving it out is the user's decision. The preview says how many sessions the store
+    /// already holds and that they stay.</para>
     /// </summary>
     /// <param name="from">
     /// The session file to read, or null to look where MobaXterm keeps it. A named file that is not
     /// there is answered the way a machine with no MobaXterm is: there is nothing to import.
     /// </param>
     /// <returns>Where the sessions were written, or empty where nothing was.</returns>
+    /// <exception cref="SessionStoreException">The store is there and cannot be read.</exception>
     public string ImportSessions(string? from = null)
     {
         string? found = MobaXtermImport.Find();
@@ -1389,18 +1396,76 @@ public sealed class MainWindow : Window
             return string.Empty;
         }
 
-        ImportPreview preview = MobaXtermImport.Preview(found);
+        string into = SessionsFile ?? Locations.Current.Sessions;
+
+        // Read before asking, for the count the preview states - and so a store that will not read
+        // refuses here, before a user agrees to anything, rather than being written over.
+        SessionTree before = SessionTree.ReadFrom(into);
+
+        ImportPreview preview = MobaXtermImport.Preview(found) with
+        {
+            Kept = before.Sessions().Count,
+            Folder = ImportFolder(before, DateTime.Now),
+        };
 
         if (!(Importing ?? Asked)(preview))
         {
             return string.Empty;
         }
 
-        string into = SessionsFile ?? Locations.Current.Sessions;
+        // And again at the moment of writing: a session made or a hand edit saved while the preview
+        // was up is in the file now, and must still be there afterwards.
+        SessionTree store = SessionTree.ReadFrom(into);
+        string folder = ImportFolder(store, DateTime.Now, preview.Folder);
 
-        SessionTree.Of(preview.Tree()).WriteTo(into);
+        store.With(folder, preview.Tree() with { Name = folder }).WriteTo(into);
 
         return into;
+    }
+
+    /// <summary>
+    /// Imports, and says so where the store will not read instead of throwing (QS216): the import
+    /// command and <c>--import</c> both arrive here, and neither has anyone above it to catch.
+    /// </summary>
+    public string ImportOrSay(string? from = null)
+    {
+        try
+        {
+            return ImportSessions(from);
+        }
+        catch (SessionStoreException unreadable)
+        {
+            MessageBox.Show(this, $"{unreadable.Message}\n\n{unreadable.Means}\n\n{unreadable.Remedy}",
+                            "Import sessions", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// The folder an import goes under: where it came from and the day, with a number after it where
+    /// a folder of that name is already in the store, so a second import the same day is a second
+    /// folder and not a merge into the first.
+    /// </summary>
+    /// <param name="store">The store it is going into.</param>
+    /// <param name="when">The day it is happening.</param>
+    /// <param name="wanted">The name the preview showed, kept where it is still free.</param>
+    private static string ImportFolder(SessionTree store, DateTime when, string? wanted = null)
+    {
+        if (wanted is not null && store.Find(wanted) is null)
+        {
+            return wanted;
+        }
+
+        string named = string.Create(CultureInfo.InvariantCulture, $"Imported from MobaXterm {when:yyyy-MM-dd}");
+        string free = named;
+
+        for (int again = 2; store.Find(free) is not null; again++)
+        {
+            free = string.Create(CultureInfo.InvariantCulture, $"{named} ({again})");
+        }
+
+        return free;
     }
 
     /// <summary>
@@ -1873,7 +1938,13 @@ public sealed class MainWindow : Window
 
         said.AppendLine(preview.Source)
             .AppendLine()
-            .AppendLine(Count(preview.Carrying, "session") + " would be imported.");
+            .AppendLine(Count(preview.Carrying, "session") + $" would be imported, into a folder of their own: {preview.Folder}.");
+
+        // What the store already holds, and that it stays (QS216): an import adds and never replaces.
+        if (preview.Kept > 0)
+        {
+            said.AppendLine(Count(preview.Kept, "session") + " already in your store stay as they are.");
+        }
 
         if (preview.Skipping > 0)
         {
@@ -2626,7 +2697,7 @@ public sealed class MainWindow : Window
         public override string Name => "Import sessions from another client";
 
         /// <inheritdoc/>
-        public override void Execute(object? parameter) => Window.ImportSessions();
+        public override void Execute(object? parameter) => Window.ImportOrSay();
     }
 
     /// <summary>

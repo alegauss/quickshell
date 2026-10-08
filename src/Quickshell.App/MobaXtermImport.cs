@@ -34,6 +34,15 @@ public sealed record ImportPreview(IReadOnlyList<ImportedSession> Sessions, stri
     public int Skipping => Sessions.Count(session => !session.Carried);
 
     /// <summary>
+    /// How many sessions the store already holds, all of which stay (QS216). Said in the preview,
+    /// because a user agreeing to an import is also agreeing to what happens to those.
+    /// </summary>
+    public int Kept { get; init; }
+
+    /// <summary>The folder the import goes under, so nothing it brings collides with what is there.</summary>
+    public string Folder { get; init; } = "imported";
+
+    /// <summary>
     /// The tree this would produce, folders and all.
     ///
     /// <para>Built rather than written: nothing lands until a caller takes this and saves it, which
@@ -75,7 +84,7 @@ public sealed record ImportPreview(IReadOnlyList<ImportedSession> Sessions, stri
             children.Add(new SessionNode { Name = folder, Children = inside });
         }
 
-        return new SessionNode { Name = "imported", Children = children };
+        return new SessionNode { Name = Folder, Children = children };
     }
 }
 

@@ -82,7 +82,7 @@ prompt), and the title says which. A name already taken there is left alone.
 | `Ctrl+Shift+P` | The command palette: everything this client does, found by typing part of its name. Each entry shows its chord, so this is also how you learn them. |
 | `Ctrl+Shift+,` | Opens the settings window. Each change is written to [the settings file](SETTINGS.md) as you make it, and applied at once. |
 | `Ctrl+Shift+R` | Rereads [the settings file](SETTINGS.md). Saving it is normally enough; this is what to press when it was not. |
-| `Ctrl+Shift+I` | Imports sessions from another client. |
+| `Ctrl+Shift+I` | Imports sessions from another client, into a folder of their own; the sessions you already have stay. |
 | `Ctrl+Shift+F1` | Help: opens the palette, which lists everything this client can do and the keys that do it. The diagnostic report is in there too, as *Write a diagnostic report*. |
 
 ## In the file browser

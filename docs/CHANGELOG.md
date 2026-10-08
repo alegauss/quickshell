@@ -206,6 +206,7 @@
 ## Block J — Leaving MobaXterm, proven by the switch
 
 - ✅ **QS80** **A MobaXterm or PuTTY user has to recreate every session by hand before they can start** — PuTTY's registry reads with the same accounting as MobaXterm's file, and a UI case reads the preview and refuses it — the dialog no capture could reach.
+- ✅ **QS216** **Importing sessions writes over the whole session store, so sessions made since are lost without a word** — An import is added to the store under a dated folder of its own, the preview says the sessions already there stay, and a store that will not read is refused.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
