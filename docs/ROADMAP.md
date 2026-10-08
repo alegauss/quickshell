@@ -21,8 +21,7 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-- ⏳ **QS69** (deps: QS66 ✅, QS67 ✅, QS68 ✅, QS38 ✅, QS220 ✅) **A forward is set up by hand each time and dies silently when its session drops** — A reconnect does not bring forwards back, since an SSH tab does not reconnect until QS220, and what holds a busy port is not named. → §QS69
-- 📋 **QS70** (deps: QS69 ⏳) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — A forward is invisible by nature, and a client that will not show its own listeners makes the user consult netstat to understand the client. → §QS70
+- 📋 **QS70** (deps: QS69 ✅) **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — A forward is invisible by nature, and a client that will not show its own listeners makes the user consult netstat to understand the client. → §QS70
 
 ## Block G — The clean interface, defended
 
@@ -276,12 +275,6 @@
 
 - **A recorded blank names its cause** A guest contrast.txt carries a reference retry
   line saying whether the second read of the same target had ink.
-
-## Done when — QS69
-
-- **Forwards come back after a reconnect, each said** An SSH tab whose link dropped
-  reconnects with every forward it had started again, and the pane names any that did
-  not come back and what holds its port.
 
 ## Done when — QS129
 

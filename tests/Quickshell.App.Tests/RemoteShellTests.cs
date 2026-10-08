@@ -586,6 +586,9 @@ public sealed class RemoteShellTests : IDisposable
             Assert.Contains("is listening on port", screen, StringComparison.Ordinal);
             Assert.Contains($"-L {taken}:qs-sshd-jump:22 did not start", screen, StringComparison.Ordinal);
 
+            // And who holds the port: this test, which is the process listening on it (QS69).
+            Assert.Contains($"process {Environment.ProcessId}", failed.Reason + " " + screen, StringComparison.Ordinal);
+
             await shell.TypeAsync(Encoding.ASCII.GetBytes("hostname\r"), Stop);
             await Until(() => Screen(emulator).Contains("qs-sshd-target", StringComparison.Ordinal));
 

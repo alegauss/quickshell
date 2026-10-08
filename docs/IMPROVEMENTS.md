@@ -422,34 +422,6 @@ that file there, byte for byte.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-### §QS69 A forward has a life, and it outlives attention
-
-A forward is configured on a session rather than created ad hoc, so it survives the
-session being closed and reopened, and so it travels with the session store when that
-store is shared.
-
-It starts with the session where it is marked to, and a start that fails does not stop
-the session connecting. The terminal is the primary thing, and a port conflict must
-never cost the user their shell.
-
-A local port already in use is the most common failure here by a wide margin. The client
-names the port and, where it can, what is holding it — the answer is usually a previous
-instance of this client, and knowing that saves somebody a reboot.
-
-Reconnect re-establishes every forward the session had, and reports which came back and
-which did not. A forward silently absent after a reconnect is worse than one that failed
-loudly, because the application using it then fails in a way that points at the
-application.
-
-Stopping and starting one individually, without touching the session, is available,
-since a user debugging a port conflict needs exactly that and nothing else.
-
-The teardown path is the one tested least and mattering most: closing a session closes
-its listeners and its live channels, and a listener outliving its session is what makes
-the next start fail.
-
-Falsified when a closed session leaves a listening socket behind.
-
 ### §QS70 Showing the thing that has no window of its own
 
 Forwards have no window, no output and no obvious presence, which is exactly why they

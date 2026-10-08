@@ -142,7 +142,10 @@ public sealed class DynamicForward : IAsyncDisposable
         {
             throw new SshException(
                 SshFailureKind.Refused,
-                $"The local port {listenPort} could not be opened.",
+                // Who holds it, in the sentence a pane shows (QS69).
+                PortHolder.Describe(listenPort) is { } holder
+                    ? $"The local port {listenPort} could not be opened: {holder} is listening on it."
+                    : $"The local port {listenPort} could not be opened.",
                 "Something on this machine is already listening on it.",
                 "Choose another port, or pass zero and let the system choose a free one.",
                 taken.Message);
