@@ -202,7 +202,7 @@ public sealed class SettingsFileTests : IDisposable
         Directory.CreateDirectory(_here);
         File.WriteAllText(Path.Combine(_here, Locations.Marker), string.Empty);
 
-        Locations portable = Locations.Discover(_here);
+        Locations portable = Locations.Discover(_here, named: string.Empty);
 
         Assert.True(portable.Portable);
         Assert.Equal(Path.Combine(_here, "data"), portable.Root);
@@ -219,13 +219,33 @@ public sealed class SettingsFileTests : IDisposable
         Assert.Contains("portable", portable.Means, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A folder named for the launch wins over the marker, and moves every file with it: a second
+    /// profile that left its logs in the first one's would not be a second profile (QS217).
+    /// </summary>
+    [Fact]
+    public void AFolderNamedForTheLaunchHoldsEverythingOverTheMarker()
+    {
+        Directory.CreateDirectory(_here);
+        File.WriteAllText(Path.Combine(_here, Locations.Marker), string.Empty);
+
+        string elsewhere = Path.Combine(_here, "elsewhere");
+        Locations named = Locations.Discover(_here, named: elsewhere);
+
+        Assert.False(named.Portable);
+        Assert.Equal(elsewhere, named.Root);
+        Assert.Equal(Path.Combine(elsewhere, "sessions.json"), named.Sessions);
+        Assert.StartsWith(elsewhere, named.Logs, StringComparison.Ordinal);
+        Assert.Contains(Locations.Variable, named.Means, StringComparison.Ordinal);
+    }
+
     /// <summary>And without one it follows the platform, where a user's backup already looks.</summary>
     [Fact]
     public void WithoutAMarkerItFollowsThePlatform()
     {
         Directory.CreateDirectory(_here);
 
-        Locations installed = Locations.Discover(_here);
+        Locations installed = Locations.Discover(_here, named: string.Empty);
 
         Assert.False(installed.Portable);
         Assert.Equal(

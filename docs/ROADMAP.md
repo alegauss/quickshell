@@ -23,7 +23,6 @@
 
 ## Block G — The clean interface, defended
 
-- ⏳ **QS217** (deps: QS126 ✅, winwright WW509) **A saved session can only be opened by typing its path on a command line** — A UI case typing part of a known session's name and reading it at the top, once a fixture can hand the client a store. → §QS217
 - 📋 **QS221** (deps: QS116 ✅) **A graphics driver reset leaves every pane frozen, and nothing in the client recovers or says so** — The device can recover and nothing asks it to, and a recovery would rebuild closed panes' swapchains because no resource ever leaves its list. → §QS221
 - 📋 **QS223** (deps: —) **Clicking a tab on the strip moves its highlight but leaves the other tab's terminal on screen** — Nothing handles the strip's selection changing, so only the chords switch tabs and a click points the keyboard at a session it does not show. → §QS223
 
@@ -311,12 +310,6 @@
 - **The guest suite runs ten times without this test counting a byte** Ten consecutive
   run-tests-vm passes with tmux-resize at zero, after the sequence the diagnosis names
   is fixed.
-
-## Done when — QS217
-
-- **A UI case finds a known session by part of its name** A case in cases\ launches the
-  client over a store of its own, opens Open session, types part of a session's name and
-  reads that session at the top of the list.
 
 ## Non-goals
 

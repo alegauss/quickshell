@@ -21,6 +21,13 @@ That copy is **portable**. The file `quickshell.portable` beside the executable 
 saved sessions and logs in `data\` next to it, and nothing is written to your profile. Deleting the
 folder removes all of it.
 
+## Keep the files somewhere else
+
+Set `QUICKSHELL_DATA` to a folder and that launch keeps its settings, saved sessions and logs
+there, whichever copy it is: a second profile beside your usual one, or a store on another drive.
+It wins over `quickshell.portable` and over `%AppData%`, and installing or uninstalling never
+touches the folder it names.
+
 ## Install it for yourself
 
 From that copy, open the palette with `Ctrl+Shift+P` and choose **Install quickshell for this

@@ -138,7 +138,7 @@ public static class Setup
     /// </summary>
     private static string Carry(Installation target) =>
         Locations.Current.Portable
-            ? PortableData.Carry(Locations.Current.Root, Locations.Discover(target.Folder).Root)
+            ? PortableData.Carry(Locations.Current.Root, Locations.Discover(target.Folder, named: string.Empty).Root)
             : string.Empty;
 
     /// <summary>
@@ -153,8 +153,9 @@ public static class Setup
         target.Uninstall();
 
         // The installed copy's own, which is never a portable copy's data folder — whichever copy
-        // was asked to do the uninstalling.
-        string settings = Locations.Discover(target.Folder).Root;
+        // was asked to do the uninstalling. Nor a folder QUICKSHELL_DATA names for this launch, which
+        // is not the installed copy's to offer to delete.
+        string settings = Locations.Discover(target.Folder, named: string.Empty).Root;
 
         if (quiet || !Directory.Exists(settings))
         {

@@ -57,11 +57,9 @@ public sealed class CasesRun
 
         using ProcessRegister register = ProcessRegister.For(project);
 
-        // The application inherits this process's directory, and a fixture argument naming a file
-        // in the repository means that file only from its root (QS181). Set here because the engine
-        // starts the application without a working directory of its own, which is WW508.
-        Directory.SetCurrentDirectory(repository);
-
+        // No working directory set here since winwright 1.0.1: the engine starts the application in
+        // the directory winwright.json sits in, so a fixture argument naming a file in the repository
+        // means that file under every runner (QS181, WW508).
         SuiteVerdict verdict = Suite.Launch(declared, Selection.All, register, project);
 
         // The whole reading and not the outcome: xUnit shows one message, so the message has to be

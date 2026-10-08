@@ -450,26 +450,6 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS217 Sessions in the palette
-
-QS126 made a saved session openable as an SSH tab, and the only way to ask for one is
-`quickshell --session <path>` on a command line. The palette, which is where every other
-action in this client is reached, lists none of them: a user with forty saved hosts has
-to know the path of the one they want and type it into a shortcut.
-
-What to build: an "Open session" entry in the palette that turns the palette into a list
-of the store's sessions — path, host and tags, searched the way `SessionTree.Search`
-already searches — and opens the chosen one through `MainWindow.OpensSession`, which the
-program already wires to `RemoteShell`. The store is read when the list opens, so a
-session saved a moment ago is in it. The most recently opened come first, as the palette
-already ranks its commands.
-
-Built: the entry, the list, and unit tests through `Choosing`; palette.cases.json reads
-"Open session" at the top. Left: a case typing part of a known session's name, which
-needs a fixture that hands the client a store of its own, winwright's WW509.
-
-Falsified when a saved session can only be opened by typing its path.
-
 ### §QS221 A device loss the client comes back from
 
 `GraphicsDevice` can survive a loss: `RemovedReason` says one happened, and `Recover`

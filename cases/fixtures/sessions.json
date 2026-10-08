@@ -1,0 +1,21 @@
+// A session store the palette case opens the client over (QS217). Synthetic: these hosts are
+// never connected to, only listed. Three, so that what rises to the top is chosen by what was
+// typed and not by being the only entry.
+{
+  "name": "",
+  "children": [
+    {
+      "name": "Work",
+      "children": [
+        { "name": "build-box", "host": "build.example.invalid", "tags": ["ci"] },
+        { "name": "db-primary", "host": "db1.example.invalid", "tags": ["postgres"] }
+      ]
+    },
+    {
+      "name": "Home",
+      "children": [
+        { "name": "nas", "host": "nas.example.invalid" }
+      ]
+    }
+  ]
+}

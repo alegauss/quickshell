@@ -16,6 +16,8 @@ namespace Quickshell.App;
 /// <para><b>Otherwise it follows the platform.</b> <c>%AppData%\quickshell</c>, which is where a
 /// Windows program's data goes and where a user's own backup already looks.</para>
 ///
+/// <para><b>And <see cref="Variable"/> overrides both</b> for the launch that sets it.</para>
+///
 /// <para><b>Discovered once and cached</b>, because the answer cannot change while the process runs
 /// — a marker file created underneath a running client is not a layout change, it is a layout change
 /// next time. The check is one <c>File.Exists</c> and it happens the first time somebody needs a
@@ -26,6 +28,9 @@ public sealed class Locations
 {
     /// <summary>The file whose presence beside the executable chooses portable mode.</summary>
     public const string Marker = "quickshell.portable";
+
+    /// <summary>The environment variable that names a data folder for this launch, over both layouts.</summary>
+    public const string Variable = "QUICKSHELL_DATA";
 
     private static Locations? _current;
 
@@ -91,9 +96,24 @@ public sealed class Locations
     /// and a test has to be able to, since a marker file cannot be dropped beside a test runner
     /// without changing what every later test sees.
     /// </param>
-    public static Locations Discover(string? beside = null)
+    /// <param name="named">
+    /// The folder <see cref="Variable"/> names, or null to read it from this process's environment.
+    /// </param>
+    public static Locations Discover(string? beside = null, string? named = null)
     {
         string here = beside ?? Beside();
+
+        // Before the marker, because it is said for this launch and the marker for every launch of
+        // this copy: a second profile beside the first, or a store kept on another drive. It is
+        // also the only way to hand the client a store from outside it, since %AppData% is a known
+        // folder no variable redirects (QS217; winwright WW519).
+        if ((named ?? Environment.GetEnvironmentVariable(Variable)) is { Length: > 0 } chosen)
+        {
+            string root = Path.GetFullPath(chosen);
+
+            return new Locations(portable: false, root,
+                                 $"named: {Variable} is set, so everything is under {root}");
+        }
 
         if (File.Exists(Path.Combine(here, Marker)))
         {

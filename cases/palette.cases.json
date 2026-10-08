@@ -19,6 +19,18 @@
       "name": "a window to open the palette over",
       "arguments": ["--tabs", "2"],
       "shareable": true
+    },
+    {
+      // A session store of the case's own, so the session it types for is one it knows is there
+      // on every desk (QS217). Staged by the engine into a directory of this launch's own (WW509)
+      // and named by QUICKSHELL_DATA, because the client's usual store is under %AppData%, a known
+      // folder no variable redirects (winwright WW519). Not lent: its store is not the other
+      // cases' window.
+      "name": "a client over a store of its own",
+      // Two tabs only so the chord has a tab on the strip to be pressed at, as above.
+      "arguments": ["--tabs", "2"],
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": ["cases/fixtures/sessions.json"]
     }
   ],
 
@@ -176,6 +188,78 @@
           "reads": "name",
           "expect": "Show forwards",
           "named": "and the forwards are reachable from the palette"
+        }
+      ]
+    },
+    {
+      "name": "part of a saved session's name brings it to the top of Open session",
+      "catches": "an Open session list that reads some other store than the one the client was given, or one that lists sessions without finding them by what a user remembers of the name",
+      "filed": "QS217",
+      "tags": ["palette", "sessions"],
+      "fixture": "a client over a store of its own",
+
+      "steps": [
+        {
+          "locator": "TabItem[order=right]",
+          "act": "press",
+          "with": "Ctrl+Shift+P",
+          "named": "the palette is opened the way a user opens it"
+        },
+        {
+          "locator": "Edit",
+          "act": "set value",
+          "with": "open session",
+          "expect": "open session",
+          "reads": "value",
+          "named": "the way to a saved session"
+        },
+        {
+          // Enter takes what is selected, which is the top of the list: the same key a user presses.
+          "locator": "Edit",
+          "act": "press",
+          "with": "Enter",
+          "named": "and taken"
+        },
+        {
+          // Found by the name the session palette gives its box, which the command palette's box
+          // does not have: reaching it at all is reading that the second palette is up.
+          "locator": "Edit[name=\"Session\"]",
+          "act": "set value",
+          "with": "primary",
+          "expect": "primary",
+          "reads": "value",
+          "named": "a word of the name somebody remembers, not its path"
+        },
+        {
+          // Only in the store this fixture staged. A client reading the desk's own store would show
+          // something else here, or nothing.
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Work/db-primary",
+          "named": "the session rises to the top by its path"
+        },
+        {
+          "locator": "Edit[name=\"Session\"]",
+          "act": "set value",
+          "with": "nas",
+          "expect": "nas",
+          "reads": "value",
+          "named": "and another, from another folder"
+        },
+        {
+          "locator": "ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Home/nas",
+          "named": "is found the same way"
+        },
+        {
+          // Escape and not Enter: choosing would open an SSH tab to a host that is not there.
+          "locator": "Edit[name=\"Session\"]",
+          "act": "press",
+          "with": "Escape",
+          "named": "and the list is left without opening anything"
         }
       ]
     }

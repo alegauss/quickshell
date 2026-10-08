@@ -18,8 +18,8 @@
       // Given a file, and not left to find whatever this desk has installed (QS181): a desk with no
       // MobaXterm shows an OK-only notice instead of the Yes/No preview, so the same case asserted
       // two different dialogs depending on where it ran. The file is synthetic and committed; the
-      // path is relative to the repository, which CasesRun makes the application's working
-      // directory because a fixture cannot say so itself (WW508).
+      // path is relative to the repository, which the engine makes the application's working
+      // directory since winwright 1.0.1 (WW508).
       "name": "the import preview",
       "arguments": ["--import", "cases/fixtures/MobaXterm.ini"],
       "shareable": true
