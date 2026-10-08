@@ -1,6 +1,6 @@
 # esctest
 
-`esctest` from the terminal working group, run against the headless model on xps, 2026-10-08. No renderer and no pseudo-console: the suite runs on a Linux pty in WSL whose other end is a socket the emulator reads and answers, so every reply it judges is this client's own (QS211). 103 s, 667,148 bytes parsed.
+`esctest` from the terminal working group, run against the headless model on xps, 2026-10-08. No renderer and no pseudo-console: the suite runs on a Linux pty in WSL whose other end is a socket the emulator reads and answers, so every reply it judges is this client's own (QS211). 101 s, 667,147 bytes parsed.
 
 | | tests | of total |
 |---|---:|---:|

@@ -343,29 +343,250 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS227 Turning the faithful esctest figure into lines
+### §QS232 LF, IND, VT and FF behave as NEL
 
-QS211 took conhost out of the esctest run, and the first faithful figure is 216 passed,
-43 xterm's own known bugs and 309 failed of 568, in `docs/measurements/esctest-xps.md`.
-Block C's criterion asks for above ninety per cent with every failure named. Until now
-no line could aim at the failures, because conhost's answers hid which were the
-emulator's.
+`Emulator.NextLine` sets `CursorColumn = 0` before it moves down, and LF, VT, FF and ESC
+D all call it. Only NEL (ESC E) and a line feed under LNM (mode 20) return the carriage.
+A shell never shows it, because the pty's ONLCR turns every LF into CR LF first. esctest
+writes through a raw pty, so it does: LFTests, INDTests, VTTests and FFTests each fail
+Basic, MovesDoesNotScrollOutsideLeftRight and ScrollsInTopBottomRegionStartingAbove (12
+tests), with the cursor at column one where five was expected. The screen checksums of
+other classes that print after a line feed may move with it.
 
-The failures are spread over 60 classes, and twelve hold more than half of them:
-XtermWinopsTests 28, DECRQMTests 26, DECSEDTests 15, DECSETTests 14, the three colour
-query families 40 between them (ChangeColor, ChangeDynamicColor, ChangeSpecialColor),
-DECDSRTests 11, DECSELTests 10, DECRQSSTests 9, DECCRATests 8 and BSTests 8.
+What to build: NextLine moves down and leaves the column; ESC E and LNM add the carriage
+return. Then SMTests.test_SM_LNM, which wants LNM honoured, is the same change's other
+half.
 
-What to build first: one line per class family, filed from the log with the traceback
-that names the difference, starting with the families where one missing answer fails
-many tests. DECRQM's 26 are probably modes this client answers zero for, and the colour
-queries probably OSC 4, 10, 11 and 12 replies in a form esctest does not read. Each line
-names the tests it should turn and is shipped against a rerun of `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`.
+Falsified when a line feed moves the cursor to column one with LNM reset.
 
-A filtered run rewrites the measurement with only that class, so restore the file after
-one and rewrite it whole with an unfiltered run before the commit that cites a figure.
-Falsified when a failing class has no line and no non-goal naming it.
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS233 Left and right margins
+
+Neither DECLRMM (CSI ? 69 h) nor DECSLRM (CSI Pl ; Pr s) exists, so every test that sets
+a column region measures a terminal without one. 64 tests share it: DECBI 4, DECFI 4,
+DECIC 6, DECDC 6, SD 4, SU 4, DL 4, IL 2, DCH 3, ICH 2, CR 2, CUB 1, CUF 1, NEL 1, RI 1,
+REP 1, CNL 2, CPL 2, the LeftRight halves of LF, IND, VT and FF, and the origin-mode
+cases that read the left margin.
+
+What to build: the two sequences, the region they define, and every cursor, insert,
+delete and scroll operation clamped to it as xterm does; CSI s keeps meaning SCOSC while
+DECLRMM is reset. DECRQM 69 and DECRQSS for DECSLRM answer it.
+
+Falsified when a column region set by DECSLRM is ignored by an operation inside it.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS234 Colour queries and resets
+
+OSC 4, 10, 11 and 12 set colours; a `?` in place of a colour, which asks for it, is
+counted as unhandled and nothing replies. OSC 5 (special colours), 13 to 19, and the
+resets 104, 105 and 110 to 119 are not handled at all. esctest waits for each reply and
+times out: ChangeColorTests 13, ChangeDynamicColorTests 13, ChangeSpecialColorTests 14,
+ResetSpecialColorTests 5, ResetColorTests 2. Several also set colours in spellings this
+client counts rather than reads (CIELab, CIEXYZ, rgbi, named), which is a choice the
+line has to make deliberately.
+
+What to build: replies in xterm's form (`OSC n ; rgb:RRRR/GGGG/BBBB ST` with the
+terminator the query used), the resets back to the session's own scheme, and either the
+remaining spellings or a non-goal naming them.
+
+Falsified when OSC 4 ; 1 ; ? goes unanswered.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS235 Character protection
+
+No cell carries a protected attribute. DECSCA (CSI Ps " q), SPA and EPA (ESC V, ESC W)
+do nothing, so DECSED and DECSEL behave exactly as ED and EL, and ED, EL and ECH ignore
+ISO protection. 36 tests: DECSEDTests 15, DECSELTests 10, DECSERATests 6, the
+ISOProtection cases of ED, EL and ECH, DECRQSS for DECSCA and DECSTR's reset of it.
+
+What to build: one attribute bit, set by DECSCA and SPA/EPA, respected by the selective
+erases and, for ISO protection, by ED, EL and ECH as xterm does; DECRQSS answers DECSCA.
+Whether the protected bit is worth a cell's attribute space is the first thing to
+settle, and a non-goal is an acceptable answer if it is not.
+
+Falsified when DECSED erases a cell DECSCA protected.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS236 Window operations (CSI t)
+
+CSI t is not handled. Its reports (8t ... 21t: the window's size in cells and pixels,
+the screen's size, the title) are never answered, so 26 tests time out, and its
+manipulations (iconify, move, resize, maximise, fullscreen, DECSLPP) do nothing.
+RISTests.test_RIS_ResetTitleMode times out on the title-mode report for the same reason.
+
+What to build: the reports that describe the pane honestly (sizes in cells and pixels,
+the title stack 22t/23t), and a decision about the manipulations. A host resizing or
+moving the client's window is a remote program reaching into local chrome, and refusing
+it is defensible as a non-goal, as long as the refusal is a decision with a line and not
+an omission.
+
+Falsified when CSI 18 t goes unanswered.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS237 DECRQM answers
+
+A mode this client does not model is answered as 0, not recognised. xterm answers 4,
+permanently reset, for the ANSI modes it knows and ignores (EBM, FEAM, FETM, GATM, HEM,
+MATM, PUM, SATM, SRTM, TSM, TTM, VEM and the like), and the DEC modes the tests ask
+about are answered with their state. 26 DECRQMTests and
+DECSCLTests.test_DECSCL_Level2DoesntSupportDECRQM fail on it.
+
+What to build: the table of modes xterm knows, each answered 4 where this client
+deliberately does not implement it and with its state where it does; every mode another
+line adds (69, 1045) joins the table there.
+
+Falsified when DECRQM for EBM answers anything but 4.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS238 Rectangular area operations
+
+CSI ... $ v (DECCRA), CSI ... $ x (DECFRA), CSI ... $ z (DECERA) and CSI ... * x
+(DECSACE) are not handled. DECCRATests 8, DECFRATests 5, DECERATests 5 and DECRQSS of
+DECSACE fail on it. DECSERA, the selective form, is filed with protection.
+
+What to build: the three operations over the buffer, clipped to the screen as xterm
+clips them, honouring origin mode and DECSACE's stream or rectangle extent. They are
+VT420 features used by few programs, so a non-goal is a fair answer here too, if the
+line decides it.
+
+Falsified when DECFRA leaves the rectangle unfilled.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS239 Saved cursor and saved modes
+
+xterm keeps a saved cursor per screen, so DECSC on the main screen and DECRC on the
+alternate do not meet; here they do (test_SaveRestoreCursor_AltVsMain, in SCORC, DECRC
+and DECSETTiteInhibit). DECRC with nothing saved should home the cursor and reset origin
+mode (Reset, ResetsOriginMode). XTSAVE and XTRESTORE (CSI ? Pm s / r) are not handled
+(XtermSaveTests 2). DECSTR leaves the saved cursor, DECOM and protection as they were
+(DECSTRTests 5).
+
+What to build: a saved cursor per screen, xterm's DECRC defaults, XTSAVE/XTRESTORE for
+the modes this client has, and DECSTR's full list of resets.
+
+Falsified when DECRC on the alternate screen restores what DECSC saved on the main one.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS240 DSR variants
+
+CSI ? Ps n answers 6 (DECXCPR) and nothing else, and DECXCPR adds a page number esctest
+does not expect ([6, 5, 1] for [6, 5]). The printer, user-defined keys, keyboard,
+locator, macro space, memory checksum (DECCKSR, which the screen checksums also lean
+on), data integrity and multiple-session reports time out.
+
+What to build: each report in xterm's answer, the ones about hardware this client does
+not have answered as absent rather than left silent, and DECXCPR's form settled against
+what xterm sends.
+
+Falsified when CSI ? 15 n goes unanswered.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS241 HPR and VPR
+
+HPR (CSI Pn a) and VPR (CSI Pn e), relative moves that ignore origin mode and stop at
+the screen's edge, are not dispatched. HPRTests and VPRTests fail all four each,
+DefaultParams included. They are one line each in the dispatcher beside CUF and CUD,
+which they differ from only in ignoring margins.
+
+Falsified when CSI a leaves the cursor where it was.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS242 Reverse wraparound
+
+Mode 45 is modelled, but BS and CUB do not move back across a wrapped line the way
+xterm's tests expect: from column one to the last column of the line above when that
+line wrapped, and not at all when the mode is reset (test_BS_NoWrapByDefault). BSTests 6
+to 8, CUBTests 2, and DECSETTests ReverseWraparoundLastCol_BS and
+ReverseWraparound_Multi. xterm's extended reverse wraparound (1045) is absent.
+
+What to build: xterm's rules for BS and CUB at column one with 45 and 1045, including
+that only a line that actually wrapped is crossed.
+
+Falsified when BS at column one with 45 reset moves the cursor up.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS243 DECRQSS answers and device identity
+
+DECRQSS answers 0 dollar r (invalid) for DECSASD, DECSCL, DECSCUSR, DECSLPP, DECSNLS and
+DECSSDT, each a setting this client holds or can answer. DA answers a VT level of its
+own and DA2 a terminal type of 1 where esctest, judging against xterm, wants 64 and the
+xterm feature list; DECID times out.
+
+What to build: DECRQSS for every setting held, and a decision on identity: answering as
+xterm is what lets programs enable what this client supports, and answering otherwise is
+a claim that has to be written down with its reason.
+
+Falsified when DECRQSS for DECSCUSR answers invalid.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
+
+### §QS244 The remaining esctest failures
+
+DECALN (ESC # 8) neither homes the cursor nor clears the margins, and fills differently
+(DECALNTests 3). CHA, CUP and HVP each fail RespectsOriginMode once and DECSET fails
+DECOM and DECOM_DECRQCRA. DECSET's ALTBUF and OPT_ALTBUF read a wrong cursor after
+switching screens, and MoreFix wants mode 41. DCH fails two margin-free cases. CHT
+ignores the scrolling region by stopping at 33 where 30 was wanted. DECSCL level 4 and 5
+report the wrong support. ED 3 erases the visible lines as well as the scrollback. SM's
+IRM truncation at the right margin belongs with left and right margins.
+
+What to build: each in its own commit against its class, or a non-goal where a case is
+not worth it. DECSET DECCOLM, Allow80To132 and RIS ResetDECCOLM are already the DECCOLM
+non-goal.
+
+Falsified when one of these classes fails with no line or non-goal naming it.
+
+Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
+failed), grouped by the traceback's last line. Shipped against `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
+by an unfiltered run before the commit that cites a figure.
 
 ## Block D — The tree a user organises work in
 

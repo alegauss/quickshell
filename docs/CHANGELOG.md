@@ -94,6 +94,7 @@
 - ✅ **QS208** **A request for 132 columns is ignored without its side effects, and nothing says whether that is the intent** — DECCOLM keeps the pane's width, now a non-goal, and still clears the screen, resets the margins and homes the cursor; DECRQM calls mode 3 permanently off.
 - ✅ **QS211** **esctest is judged through a pseudo-console that answers its queries itself, so the figure measures conhost** — esctest runs on a Linux pty bridged to a socket, so every reply is the emulator's: 216 passed of 568, up from conhost's 151 (design recorded in `docs/measurements/esctest-xps.md`).
 - ✅ **QS214 (the failure names where)** **Replaying the tmux resize recording sometimes allocates in steady state in the guest, and the failure says no more** — A steady-state allocation failure now refeeds the stream in 512-byte pieces and names each piece that allocated, with its offset and its bytes spelled out.
+- ✅ **QS227** **esctest fails 309 of 568 tests now that the emulator answers its queries, and no line names which to fix** — Every failing esctest class now has a line, QS232 to QS244, grouped from the log by cause; QS232's line feed is the emulator's own bug.
 
 ## Block D — The tree a user organises work in
 

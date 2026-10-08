@@ -11,7 +11,19 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS227** (deps: —) **esctest fails 309 of 568 tests now that the emulator answers its queries, and no line names which to fix** — Block C asks for above ninety per cent; the failures are spread over 60 classes and twelve hold more than half. → §QS227
+- 📋 **QS232** (deps: —) **A line feed, VT, FF or IND also returns the cursor to column one, as though every one were NEL** — NextLine sets the column to zero for all four, which LNM alone should do; real sessions hide it because the pty sends CR LF. → §QS232
+- 📋 **QS233** (deps: —) **No left or right margin can be set, so everything esctest checks inside a column region fails** — DECLRMM (mode 69) and DECSLRM are absent, and they are what 64 failing tests across 25 classes have in common. → §QS233
+- 📋 **QS234** (deps: —) **Asking for a colour with OSC 4, 5 or 10 to 19 gets no answer, and their resets are ignored** — The emulator sets these colours but answers no query and handles no reset, which is 47 esctest failures, each a timeout. → §QS234
+- 📋 **QS235** (deps: —) **Character protection is not modelled, so selective erase and protected fields erase everything** — DECSCA, SPA and EPA are absent and DECSED, DECSEL and DECSERA erase like their plain forms, which is 36 failures. → §QS235
+- 📋 **QS236** (deps: —) **Window operations through CSI t neither report the window nor say they are refused** — XtermWinopsTests fails 28 of its tests, 26 by timing out, because no CSI t report is answered and no resize is acted on. → §QS236
+- 📋 **QS237** (deps: —) **DECRQM answers not recognised for modes xterm reports as permanently reset or as set** — Twenty-six DECRQM tests and one DECSCL test fail because the answer is 0 where xterm answers 4, 1 or 2. → §QS237
+- 📋 **QS238** (deps: —) **The rectangular area operations DECCRA, DECFRA and DECERA do nothing** — Copy, fill and erase of a rectangle are absent, and so is DECSACE that shapes them, which is 19 esctest failures. → §QS238
+- 📋 **QS239** (deps: —) **The saved cursor is one for both screens, and XTSAVE, XTRESTORE and DECSTR leave saved state behind** — Sixteen failures across SCORC, DECRC, the tite-inhibit tests, XtermSave and DECSTR come from how saved state is kept. → §QS239
+- 📋 **QS240** (deps: —) **Most DSR variants and the checksum report get no answer** — Ten of eleven DECDSR tests time out, because only the cursor position report is answered. → §QS240
+- 📋 **QS241** (deps: —) **HPR and VPR move the cursor nowhere** — CSI a and CSI e are not handled, so all eight HPR and VPR tests fail, the default parameter included. → §QS241
+- 📋 **QS242** (deps: —) **Reverse wraparound does not follow a backspace back across a wrapped line as xterm does** — BS and CUB fail seven tests and DECSET two on reverse wraparound, the mode 45 cases and xterm 1045. → §QS242
+- 📋 **QS243** (deps: —) **DECRQSS answers invalid for settings the client holds, and DA, DA2 and DECID answer another identity** — Six DECRQSS tests and five identity tests fail on replies that are well formed but not the ones xterm gives. → §QS243
+- 📋 **QS244** (deps: —) **Seventeen esctest failures in eleven classes have no family of their own** — Each is one or two tests and one cause, and together they are the rest of what Block C needs named. → §QS244
 
 ## Block D — The tree a user organises work in
 
