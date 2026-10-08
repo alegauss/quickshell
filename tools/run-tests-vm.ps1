@@ -127,7 +127,20 @@ Write-Host "  running the suite in the guest ($Configuration). The host is yours
 #
 # -activeWindow deliberately not. It brings this batch's console to the foreground in the guest, and
 # the fixtures take the foreground for themselves - the console must never compete for it.
-$ran = Invoke-VmRun -Guest -Arguments @('runProgramInGuest', $vmxPath, '-interactive', "$script:GuestSync\run.cmd")
+#
+# The guest's clipboard is made to hold text first (QS226), and where that meant turning VMware's
+# sharing off it is turned back on in the finally, so neither a red run nor a refusal leaves it off.
+$sharingOff = Use-TextGuestClipboard -Stage $stage
+try {
+    $ran = Invoke-VmRun -Guest -Arguments @('runProgramInGuest', $vmxPath, '-interactive', "$script:GuestSync\run.cmd")
+}
+finally {
+    if ($sharingOff) {
+        Set-ClipboardSharing -Off $false
+        Write-Host '  clipboard   sharing is back on'
+    }
+}
+
 if (-not $ran.Ok) {
     if ($ran.Output -match 'logged in interactively') {
         Refuse 'the guest has no interactive desktop session' 'Log in at the guest console once, and leave it unlocked. A locked desk renders nothing.'

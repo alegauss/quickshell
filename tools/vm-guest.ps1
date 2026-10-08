@@ -476,6 +476,94 @@ exit /b %ERRORLEVEL%
     return $syncSaid
 }
 
+function Use-TextGuestClipboard {
+    <#
+    .SYNOPSIS
+      Makes the guest's clipboard hold text for a run, without touching the host's (QS226).
+
+    .DESCRIPTION
+      Something in the guest leaves a bitmap on its clipboard, and the clipboard case cannot put a
+      bitmap back exactly, so it measures nothing and the run goes red on the skip budget with no
+      test failing. The guest's formats are read first, and where they are text nothing is done.
+      Otherwise sharing is turned off before the guest's clipboard is written, because with VMware
+      sharing the clipboard, writing the guest's would overwrite the host's too - the thing QS180
+      stopped the suite doing.
+
+      Returns whether sharing was turned off, which the caller hands to Restore-ClipboardSharing in a
+      finally, so a failed run never leaves it off.
+    #>
+    param([Parameter(Mandatory)] [string] $Stage)
+
+    @"
+param([string] `$Mode)
+`$out = '$script:GuestSync\clipboard.txt'
+try {
+    Add-Type -AssemblyName System.Windows.Forms
+    if (`$Mode -eq 'text') { [Windows.Forms.Clipboard]::SetText('quickshell-suite') }
+    `$data = [Windows.Forms.Clipboard]::GetDataObject()
+    `$formats = if (`$data) { `$data.GetFormats() } else { @() }
+    'formats ' + (`$formats -join ',') | Set-Content -LiteralPath `$out -Encoding ascii
+}
+catch { 'failed ' + `$_.Exception.Message | Set-Content -LiteralPath `$out -Encoding ascii }
+"@ | Set-Content -LiteralPath (Join-Path $Stage 'clipboard.ps1') -Encoding ascii
+
+    foreach ($mode in @('read', 'text')) {
+        @"
+@echo off
+powershell -NoProfile -STA -ExecutionPolicy Bypass -File "$script:GuestSync\clipboard.ps1" $mode
+"@ | Set-Content -LiteralPath (Join-Path $Stage "clipboard-$mode.cmd") -Encoding ascii
+    }
+
+    foreach ($file in @('clipboard.ps1', 'clipboard-read.cmd', 'clipboard-text.cmd')) {
+        $sent = Invoke-VmRun -Guest -Arguments @('copyFileFromHostToGuest', $script:VmxPath, (Join-Path $Stage $file), "$script:GuestSync\$file")
+        if (-not $sent.Ok) { Refuse "could not copy $file into the guest: $($sent.Output)" }
+    }
+
+    function Ask([string] $Mode) {
+        # -interactive, because the clipboard belongs to the logged-in desktop and a session-0
+        # process has a clipboard of its own that nothing on the desk ever reads.
+        $null = Invoke-VmRun -Guest -Arguments @('runProgramInGuest', $script:VmxPath, '-interactive', "$script:GuestSync\clipboard-$Mode.cmd")
+        $answer = Join-Path $Stage 'clipboard.txt'
+        if (Test-Path -LiteralPath $answer) { Remove-Item -LiteralPath $answer -Force }
+        $null = Invoke-VmRun -Guest -Arguments @('copyFileFromGuestToHost', $script:VmxPath, "$script:GuestSync\clipboard.txt", $answer)
+        if (Test-Path -LiteralPath $answer) { return (Read-ConsoleText $answer).Trim() }
+        return 'failed nothing came back'
+    }
+
+    $said = Ask 'read'
+    if ($said -notmatch '^formats ') { Refuse "the guest's clipboard could not be read: $said" }
+
+    $text = @('Text', 'UnicodeText', 'OEMText', 'Locale', 'System.String')
+    $other = @(($said -replace '^formats ', '') -split ',' | Where-Object { $_ -and $text -notcontains $_ })
+
+    if ($other.Count -eq 0) {
+        Write-Host '  clipboard   the guest holds text; sharing left as it was'
+        return $false
+    }
+
+    Set-ClipboardSharing -Off $true
+    $written = Ask 'text'
+
+    if ($written -notmatch '^formats ') {
+        Set-ClipboardSharing -Off $false
+        Refuse "the guest's clipboard could not be written: $written"
+    }
+
+    Write-Host "  clipboard   the guest held $($other -join ', '); sharing is off for this run and the guest holds text"
+    return $true
+}
+
+function Set-ClipboardSharing {
+    <# Turns VMware's clipboard sharing off or back on, for this VM's running session only. #>
+    param([Parameter(Mandatory)] [bool] $Off)
+
+    $value = if ($Off) { 'TRUE' } else { 'FALSE' }
+    foreach ($variable in @('isolation.tools.copy.disable', 'isolation.tools.paste.disable')) {
+        $set = Invoke-VmRun -Arguments @('writeVariable', $script:VmxPath, 'runtimeConfig', $variable, $value)
+        if (-not $set.Ok) { Write-Host "  clipboard   could not set $variable to ${value}: $($set.Output)" -ForegroundColor Yellow }
+    }
+}
+
 function Clear-GuestFile {
     <#
       Deleted in the guest before a run, never merely overwritten after it. A run that writes nothing

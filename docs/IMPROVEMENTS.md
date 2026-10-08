@@ -759,28 +759,6 @@ visible.
 
 Falsified when a week passes with no campaign and nothing says so.
 
-### §QS226 Clearing the guest clipboard without touching the host's
-
-Twice running on 2026-10-08, with no test failing, the guest suite went red on the skip
-budget: the guest's clipboard held a bitmap, so the clipboard case could not put it back
-exactly and measured nothing, which is App.Tests' third skip against a budget of two.
-The bitmap was the guest's own; the host held text each time, and it came back between
-runs, so something in the guest writes it and no code in this repository does.
-
-It was cleared by hand, and in this order because of QS180: VMware shares the clipboard,
-so setting the guest's while sharing is on would also overwrite the host's, the very
-thing QS180 stopped the suite doing. So `vmrun writeVariable <vmx> runtimeConfig
-isolation.tools.copy.disable TRUE` and `paste.disable TRUE` first, then
-`[Windows.Forms.Clipboard]::SetText` inside the guest from a script run with
-`runProgramInGuest -interactive`, then the suite, then both variables back to FALSE.
-
-What to build: `run-tests-vm.ps1` does exactly that around the run. It reads the guest
-clipboard's formats first and does nothing when they are text. When they are not, it
-turns sharing off, writes plain text in the guest, runs, and restores sharing in a
-`finally`, so a failed run never leaves it off. It says on the console which of the two
-it did. Falsified when a guest whose clipboard holds a bitmap runs green and the host
-clipboard is unchanged.
-
 ### §QS230 A guest run that says where it is
 
 On 2026-10-08 a transport test waited forever in the guest: it awaited a listener that a

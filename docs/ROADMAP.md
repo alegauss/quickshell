@@ -38,7 +38,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS226** (deps: —) **A guest run goes red on the skip budget when the guest's clipboard holds a bitmap from an earlier session** — No test fails, yet the run is red and a commit waits until someone clears the guest by hand. → §QS226
 - 📋 **QS230** (deps: —) **A test that hangs in the guest holds the whole run, and the host shows nothing that says which one** — One stuck transport test held a guest run for over an hour, and only listing the guest's processes named it. → §QS230
 
 ## Done when — Block A
