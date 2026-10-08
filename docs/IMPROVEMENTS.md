@@ -894,10 +894,10 @@ conditions of its own: the swapchain covering its window, no transform, and a ho
 does not redirect the window.
 
 Done first: photon reports each echo's presentation mode from DXGI's media statistics,
-and on 2026-10-08 every echo in every arm was composed (photon-h.md). Next, time the
-client's real window host, the WPF child HWND, in the same tool, since the photon tool's
-popup is not that host. Only then choose the change, whether a DirectComposition visual,
-the child window's styles, or a non-goal that says 60 Hz composition is the floor.
+and on 2026-10-08 every echo in every arm was composed (photon-h.md). `--host wpf` then
+timed the client's own WPF child HWND: composed too, 29 to 31 ms. Next, present a
+composition swapchain through a DirectComposition visual in photon and read whether it
+reaches an overlay plane; if not, file a non-goal that 60 Hz composition is the floor.
 
 ## Block I — An error a user can act on
 

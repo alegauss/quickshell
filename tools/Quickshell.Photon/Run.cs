@@ -89,17 +89,19 @@ internal static class Run
     /// <param name="stream">Captured output, to fill the screen and to stream while busy.</param>
     /// <param name="length">How long to run.</param>
     /// <param name="seed">For the echo intervals, so two arms see the same rhythm.</param>
-    internal static Outcome Time(Arm arm, Workload workload, byte[] stream, TimeSpan length, int seed)
+    /// <param name="host">Makes the window to present into, at the size asked for in pixels.</param>
+    internal static Outcome Time(Arm arm, Workload workload, byte[] stream, TimeSpan length, int seed,
+                                 Func<int, int, IPhotonHost> host)
     {
         using GlyphRasteriser rasteriser = new();
         CellMetrics metrics = rasteriser.Measure(FontSettings.Default);
 
-        uint width = (uint)(metrics.Width * Columns);
-        uint height = (uint)(metrics.Height * Rows);
-
-        using DeskWindow window = new((int)width, (int)height);
+        using IPhotonHost window = host(metrics.Width * Columns, metrics.Height * Rows);
         using GraphicsDevice device = GraphicsDevice.Open(outputWindow: window.Handle);
-        using PresentSurface surface = PresentSurface.For(device, window.Handle, width, height,
+
+        // The window's own size and not the one asked for, which a host that lays out in its own
+        // units may not have honoured to the pixel.
+        using PresentSurface surface = PresentSurface.For(device, window.Handle, window.Width, window.Height,
                                                           arm.Latency, arm.Waitable, arm.Buffers);
         using GlyphAtlas atlas = GlyphAtlas.For(device, FontSettings.Default, rasteriser: rasteriser);
         using CellRenderer renderer = CellRenderer.For(device, atlas, metrics);

@@ -8,6 +8,11 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Quickshell.Photon</RootNamespace>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <!-- QS201: the client's own window host, a WPF window around a child HWND, is one of the hosts. -->
+    <UseWPF>true</UseWPF>
+    <!-- WPF0001: ThemeMode is [Experimental], as the client's own project says; the host sets it
+         because the client does. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -12,7 +12,7 @@ namespace Quickshell.Photon;
 /// <para><b>Never activated.</b> It takes no foreground and no input from whoever is at the desk; it
 /// sits on top of what they are doing for the length of a run and goes.</para>
 /// </summary>
-internal sealed class DeskWindow : IDisposable
+internal sealed class DeskWindow : IPhotonHost
 {
     private const uint WsPopup = 0x80000000;
     private const uint WsVisible = 0x10000000;
@@ -49,9 +49,16 @@ internal sealed class DeskWindow : IDisposable
         }
 
         UpdateWindow(Handle);
+
+        Width = (uint)width;
+        Height = (uint)height;
     }
 
-    internal nint Handle { get; private set; }
+    public nint Handle { get; private set; }
+
+    public uint Width { get; }
+
+    public uint Height { get; }
 
     public void Dispose()
     {

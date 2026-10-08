@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.IO.Compression;
 using System.Text;
 
@@ -33,6 +34,8 @@ public static class Photon
                   --seconds <n>   how long each run times (default 20)
                   --passes <n>    how many times each arm runs under each workload (default 3)
                   --out <file>    append the report here as well as printing it
+                  --host <kind>   popup (default): a bare topmost popup; wpf: the client's own
+                                  arrangement, a WPF window with a child HWND the chain presents to
 
                 It puts a large topmost window on this desk for every run and never activates it.
                 Nothing may cover it: an occluded frame has no photon end, and a run that saw one
@@ -45,6 +48,17 @@ public static class Photon
         TimeSpan length = TimeSpan.FromSeconds(Number(arguments, "--seconds", 20));
         int passes = Number(arguments, "--passes", 3);
         byte[] stream = Stream("cat-log");
+
+        // Which window the chain presents to (QS201): the popup this tool started with, or the
+        // client's own WPF arrangement, which is the one a user's echoes reach the glass through.
+        string hostName = Argument(arguments, "--host") is { Length: > 0 } named ? named : "popup";
+
+        Func<int, int, IPhotonHost> host = hostName switch
+        {
+            "popup" => (width, height) => new DeskWindow(width, height),
+            "wpf" => (width, height) => new WpfHost(width, height),
+            _ => throw new ArgumentException($"--host takes popup or wpf, not {hostName}"),
+        };
 
         Arm[] arms = [Arm.Client, Arm.Early, Arm.Unbought, Arm.Deep];
         Workload[] workloads = [Workload.Typing, Workload.Busy];
@@ -64,12 +78,12 @@ public static class Photon
                         $"pass {pass + 1}/{passes}: {arm.Name} while {workload.Name}…"));
 
                     // The same seed for both arms of a pass, so they see the same rhythm of echoes.
-                    outcomes.Add(Run.Time(arm, workload, stream, length, seed: 86 + pass));
+                    outcomes.Add(Run.Time(arm, workload, stream, length, seed: 86 + pass, host));
                 }
             }
         }
 
-        string report = Report(outcomes, length, passes);
+        string report = Report(outcomes, length, passes, hostName);
 
         Console.WriteLine(report);
 
@@ -81,12 +95,12 @@ public static class Photon
         return outcomes.Any(each => each.Occlusions > 0 || each.Latencies.Count == 0) ? 1 : 0;
     }
 
-    private static string Report(List<Outcome> outcomes, TimeSpan length, int passes)
+    private static string Report(List<Outcome> outcomes, TimeSpan length, int passes, string host)
     {
         StringBuilder text = new();
 
         text.AppendLine(CultureInfo.InvariantCulture,
-                        $"## Input to photon — {passes} passes of {length.TotalSeconds:F0} s per arm")
+                        $"## Input to photon — {passes} passes of {length.TotalSeconds:F0} s per arm, {host} host")
             .AppendLine()
             .AppendLine(CultureInfo.InvariantCulture,
                         $"measured {DateTimeOffset.Now:yyyy-MM-dd HH:mm} local on {Environment.MachineName}, echo due to the vblank DXGI reports it shown at, in milliseconds")

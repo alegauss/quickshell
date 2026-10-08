@@ -181,7 +181,7 @@
 - ✅ **QS196** **Figure 3 of the budget, steady-state frame cost, is measured by nothing, so no gate can hold it** — The replay harness times one filled 200x50 grid redrawn 2000 times, CPU and GPU apart; the reference desk drew it at 0.11 ms GPU and 0.016 ms CPU median.
 - ✅ **QS197 (steadier parse arm)** **The parse figure spreads by a fifth between runs on the reference machine, so the gate lets a regression that big pass** — The replay pins its timing thread to the quickest P-core at high priority and feeds parse 8 times a pass; its threshold fell from 44.8% to 6.1 and 9.9.
 - ✅ **QS200** **The release gate times parse and emulate on the replay harness's build, not on the assemblies being archived** — Parse and emulate run on the published client's assemblies and runtimeconfig; a client-only tiering-off publish now fails the gate (design recorded in `docs/PERFORMANCE.md`).
-- ✅ **QS201 (presentation mode reported)** **An echo at a prompt reaches the glass two refresh intervals after it arrives, one more than the vblank wait explains** — Photon now reports how each echo reached the glass; on the 60 Hz panel every echo in every arm was composed, never overlay or independent flip.
+- ✅ **QS201 (mode reported, client host timed)** **An echo at a prompt reaches the glass two refresh intervals after it arrives, one more than the vblank wait explains** — Photon reports how each echo reached the glass, popup or the client's WPF child HWND; on the 60 Hz panel every echo was composed.
 
 ## Block I — An error a user can act on
 

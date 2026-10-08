@@ -112,3 +112,26 @@ Since QS201 the tool asks DXGI how the frame carrying each timed echo was shown
 so the compositor drew every frame into the desktop and showed it at the vblank after its own
 pass. That is consistent with the second interval being composition's, and it is still the
 photon tool's popup, not the client's WPF child HWND, which is the next thing to time.
+
+### The client's own window host
+
+`--host wpf` presents to the client's arrangement instead of the popup: a WPF window with its
+ordinary chrome and `ThemeMode.System`, a `WS_CHILD` window inside it through `HwndHost`, the
+swapchain on the child at the child's real client size, and the window on its own STA thread.
+One pass of 10 s per arm, 2026-10-08, guest suspended:
+
+| workload | arm | echoes | shown as | median ms |
+|---|---|---|---|---|
+| typing | client | 66 | composed 66 | 30.7 |
+| typing | wait-first | 67 | composed 67 | 29.1 |
+| typing | unbought | 67 | composed 67 | 30.3 |
+| typing | unbought-3 | 67 | composed 67 | 30.1 |
+| busy | client | 99 | composed 99 | 44.7 |
+| busy | wait-first | 99 | composed 99 | 42.9 |
+| busy | unbought | 99 | composed 99 | 42.4 |
+| busy | unbought-3 | 99 | composed 99 | 39.1 |
+
+**The client's host is composed too, every echo, and costs the same two intervals as the
+popup.** The WPF chrome and the child window are not what keeps the chain composed: a bare
+popup the compositor could have flipped was composed as well. What is left to try is a chain
+the compositor can put on an overlay plane, which a windowed HWND chain here never got.
