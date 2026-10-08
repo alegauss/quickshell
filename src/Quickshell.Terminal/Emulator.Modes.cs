@@ -56,6 +56,32 @@ public sealed partial class Emulator
     public bool OriginMode { get; private set; }
 
     /// <summary>
+    /// IRM, <c>CSI 4 h</c>: with it on, a printed character pushes the rest of the row right
+    /// instead of overwriting it, and what is pushed past the right edge is lost (QS207). Editors and
+    /// readline-style prompts insert in place this way. Off by default.
+    /// </summary>
+    public bool InsertMode { get; private set; }
+
+    /// <summary>
+    /// SM and RM: the modes a host turns on and off without the private marker. Only IRM is one this
+    /// client honours; the rest are counted, as <see cref="PrivateMode"/> counts the private ones.
+    /// </summary>
+    private void AnsiMode(in CsiParameters parameters, bool set)
+    {
+        for (int group = 0; group < parameters.Count; group++)
+        {
+            if (parameters.Value(group, -1) == 4)
+            {
+                InsertMode = set;
+            }
+            else
+            {
+                Unhandled++;
+            }
+        }
+    }
+
+    /// <summary>
     /// DECCKM. With it on the arrows send their SS3 form instead of their CSI one.
     ///
     /// <para>This is why a key map cannot be a static table: a shell editing a line and the same
@@ -297,13 +323,12 @@ public sealed partial class Emulator
     /// it on; told it is permanently off, it falls back. So a mode this client refuses on purpose
     /// answers four, a mode it honours answers one or two by its state, and anything it never heard
     /// of answers zero — which is also the answer for a mode that is planned but not built, such as
-    /// insert mode (QS207) and 132 columns (QS208), because "off" would invite the program to set
-    /// it.</para>
+    /// 132 columns (QS208), because "off" would invite the program to set it.</para>
     /// </summary>
     private void ModeReport(in CsiParameters parameters, bool dec)
     {
         int mode = parameters.Value(0, 0);
-        ModeState state = dec ? DecModeState(mode) : ModeState.Unrecognised;
+        ModeState state = dec ? DecModeState(mode) : AnsiModeState(mode);
 
         Send(dec ? Answer.DecModeReport : Answer.AnsiModeReport, mode, (int)state);
     }
@@ -327,6 +352,12 @@ public sealed partial class Emulator
         // unambiguously, and sixel display mode, which is a non-goal.
         1005 or 80 => ModeState.PermanentlyReset,
 
+        _ => ModeState.Unrecognised,
+    };
+
+    private ModeState AnsiModeState(int mode) => mode switch
+    {
+        4 => On(InsertMode),
         _ => ModeState.Unrecognised,
     };
 

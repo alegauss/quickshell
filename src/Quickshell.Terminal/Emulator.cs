@@ -237,6 +237,13 @@ public sealed partial class Emulator : IAnsiHandler
             }
         }
 
+        // IRM: room for this character first, pushing the rest of the row right and losing what
+        // goes past the edge (QS207). The buffer's own insert, so the damage is recorded.
+        if (InsertMode)
+        {
+            buffer.InsertCells(buffer.CursorRow, buffer.CursorColumn, width);
+        }
+
         Cell cell = cluster.Length == 1 || (cluster.Length == 2 && char.IsSurrogatePair(cluster[0], cluster[1]))
             ? Cell.For(codepoint, _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, width, _pen.Link)
             : ClusterCell(buffer, cluster, codepoint, width);
@@ -530,6 +537,7 @@ public sealed partial class Emulator : IAnsiHandler
         AutoWrap = true;
         ReverseWrap = false;
         OriginMode = false;
+        InsertMode = false;
         ApplicationCursorKeys = false;
         ApplicationKeypad = false;
         BracketedPaste = false;
@@ -674,6 +682,11 @@ public sealed partial class Emulator : IAnsiHandler
 
             case (byte)'r':
                 SetMargins(parameters);
+                break;
+
+            case (byte)'h':
+            case (byte)'l':
+                AnsiMode(parameters, final == (byte)'h');
                 break;
 
             case (byte)'g':

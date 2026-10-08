@@ -86,6 +86,47 @@ public sealed class WrapAndMarginTests
         Assert.Equal(2, emulator.Buffer.Screen(1)[0].Width);
     }
 
+    // ---- Insert mode ----
+
+    /// <summary>
+    /// QS207, vttest's cut 025: in insert mode a printed character pushes the row right, and what
+    /// is pushed past the right edge is lost.
+    /// </summary>
+    [Fact]
+    public void InInsertModeTextPushesTheRowRightAndLosesWhatFallsOffTheEdge()
+    {
+        Emulator emulator = new(6, 2, scrollback: 0);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("abcdef\e[1;1H\e[4hXY"));
+
+        Assert.Equal("XYabcd", Row(emulator, 0));
+        Assert.True(emulator.InsertMode);
+    }
+
+    /// <summary>A wide character takes two cells, so it pushes the row two to the right.</summary>
+    [Fact]
+    public void InInsertModeAWideCharacterPushesTheRowTwoCells()
+    {
+        Emulator emulator = new(6, 2, scrollback: 0);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("abcdef\e[1;1H\e[4h中"));
+
+        Assert.Equal('中', emulator.Buffer.Screen(0)[0].Codepoint);
+        Assert.Equal('a', emulator.Buffer.Screen(0)[2].Codepoint);
+        Assert.Equal('d', emulator.Buffer.Screen(0)[5].Codepoint);
+    }
+
+    [Fact]
+    public void WithInsertModeResetTextOverwritesAsBefore()
+    {
+        Emulator emulator = new(6, 2, scrollback: 0);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("abcdef\e[1;1H\e[4h\e[4lXY"));
+
+        Assert.Equal("XYcdef", Row(emulator, 0));
+        Assert.False(emulator.InsertMode);
+    }
+
     // ---- The scrolling region ----
 
     /// <summary>

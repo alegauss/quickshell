@@ -314,21 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS207 Insert mode
-
-Found by QS33's vttest run, cuts 025 and 026. `CSI 4 h` turns on insert mode, in which a
-printed character pushes the rest of the row right instead of overwriting it, and the
-character pushed off the right margin is lost. vttest prints 78 stars in insert mode in
-front of a B and expects the B at the right edge; here the stars overwrite it. Cut 026
-only inherits that row.
-
-What to build: IRM as a mode bit, set and reset by SM and RM 4, and in PrintCluster an
-insert of the character's width at the cursor before the write, using the buffer's
-existing InsertCells so damage is recorded. A wide character inserts two cells. DECRQM
-(QS104) reports it once both exist.
-
-Falsified when cut 025 does not end in B.
-
 ### §QS208 132 columns, obeyed or refused
 
 Found by QS33's vttest run, cuts 010, 012 and 030. `CSI ? 3 h` asks for 132 columns; the

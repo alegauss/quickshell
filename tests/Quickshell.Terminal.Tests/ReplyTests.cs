@@ -220,7 +220,9 @@ public sealed class ReplyTests
     [InlineData("", "[?1005$p", "[?1005;4$y")]      // refused on purpose: permanently off
     [InlineData("", "[?80$p", "[?80;4$y")]          // sixel, a non-goal
     [InlineData("", "[?12345$p", "[?12345;0$y")]    // never heard of
-    [InlineData("", "[4$p", "[4;0$y")]              // insert mode: planned, not built, so not "off"
+    [InlineData("", "[4$p", "[4;2$y")]              // insert mode, an ANSI mode, off by default
+    [InlineData("[4h", "[4$p", "[4;1$y")]           // and on (QS207)
+    [InlineData("", "[12345$p", "[12345;0$y")]      // an ANSI mode never heard of
     public void AModeIsReportedWithOneOfItsFiveAnswers(string before, string asked, string answer)
     {
         string setup = before.Length == 0 ? string.Empty : E + before;
