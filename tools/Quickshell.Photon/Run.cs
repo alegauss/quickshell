@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Quickshell.Render;
 using Quickshell.Terminal;
+using Vortice.DXGI;
 
 namespace Quickshell.Photon;
 
@@ -119,6 +120,7 @@ internal static class Run
         Random rhythm = new(seed);
         List<(long Present, long Arrived)> pending = [];
         List<double> latencies = [];
+        Dictionary<string, int> modes = new(StringComparer.Ordinal);
         int unresolved = 0;
         long frames = 0;
 
@@ -182,7 +184,7 @@ internal static class Run
                 Thread.Sleep(1);
             }
 
-            unresolved += Resolve(surface, pending, latencies);
+            unresolved += Resolve(surface, pending, latencies, modes);
         }
 
         // The last echoes are still in the queue: give them the time a frame takes to land.
@@ -191,11 +193,11 @@ internal static class Run
         while (pending.Count > 0 && Stopwatch.GetTimestamp() < drain)
         {
             Thread.Sleep(1);
-            unresolved += Resolve(surface, pending, latencies);
+            unresolved += Resolve(surface, pending, latencies, modes);
         }
 
         return new Outcome(arm, workload, latencies, unresolved + pending.Count, frames,
-                           surface.Occlusions);
+                           surface.Occlusions, modes);
     }
 
     /// <summary>
@@ -207,7 +209,7 @@ internal static class Run
     /// </summary>
     /// <returns>How many echoes went past unseen.</returns>
     private static int Resolve(PresentSurface surface, List<(long Present, long Arrived)> pending,
-                               List<double> latencies)
+                               List<double> latencies, Dictionary<string, int> modes)
     {
         if (pending.Count == 0 || !surface.OnGlass(out long shown, out long vblank))
         {
@@ -228,6 +230,12 @@ internal static class Run
             if (present == shown)
             {
                 latencies.Add(Stopwatch.GetElapsedTime(arrived, vblank).TotalMilliseconds);
+
+                // Asked of the same frame the latency was, so the two can be read side by side: a
+                // composed echo and an overlaid one are two different costs, and a pooled median
+                // over both would describe neither (QS201).
+                string mode = Mode(surface.PresentationMode());
+                modes[mode] = modes.GetValueOrDefault(mode) + 1;
             }
             else
             {
@@ -239,6 +247,16 @@ internal static class Run
 
         return missed;
     }
+
+    /// <summary>What the report calls each way a frame reaches the glass.</summary>
+    private static string Mode(FramePresentationMode? mode) => mode switch
+    {
+        FramePresentationMode.Composed => "composed",
+        FramePresentationMode.Overlay => "overlay",
+        FramePresentationMode.None => "independent flip",
+        FramePresentationMode.CompositionFailure => "composition failed",
+        _ => "not reported",
+    };
 
     /// <summary>Feeds the next frame's worth of stream, wrapping at the end.</summary>
     private static int Next(Emulator emulator, byte[] stream, int offset)
@@ -269,5 +287,12 @@ internal static class Run
 }
 
 /// <summary>What one run found.</summary>
+/// <param name="Arm">The swapchain it presented through.</param>
+/// <param name="Workload">What the host was doing.</param>
+/// <param name="Latencies">Milliseconds from each timed echo being due to the vblank it was shown at.</param>
+/// <param name="Unresolved">Echoes whose vblank went past unseen.</param>
+/// <param name="Frames">Frames presented.</param>
+/// <param name="Occlusions">Presents that went nowhere because the window was covered.</param>
+/// <param name="Modes">How each timed echo reached the glass, counted by the report's word for it.</param>
 internal sealed record Outcome(Arm Arm, Workload Workload, List<double> Latencies, int Unresolved,
-                               long Frames, long Occlusions);
+                               long Frames, long Occlusions, Dictionary<string, int> Modes);

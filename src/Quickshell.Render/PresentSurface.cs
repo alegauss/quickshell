@@ -179,6 +179,43 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
         return true;
     }
 
+    /// <summary>
+    /// How the latest frame shown reached the glass: drawn into the desktop by the compositor, put
+    /// on a hardware overlay plane, or flipped straight to the display (QS201). Null until DXGI has
+    /// shown a frame, or where it keeps the answer to itself.
+    ///
+    /// <para><b>This is what decides whether a present costs one refresh or two.</b> A composed
+    /// frame is shown at the vblank after the compositor's next pass, which is one interval later
+    /// than an overlay or an independent flip shows the same present.</para>
+    /// </summary>
+    public FramePresentationMode? PresentationMode()
+    {
+        if (_swapChain is null)
+        {
+            return null;
+        }
+
+        using IDXGISwapChainMedia? media = _swapChain.QueryInterfaceOrNull<IDXGISwapChainMedia>();
+
+        if (media is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            FrameStatisticsMedia statistics = media.FrameStatisticsMedia;
+
+            return statistics.PresentCount == 0 ? null : statistics.CompositionMode;
+        }
+        catch (SharpGen.Runtime.SharpGenException)
+        {
+            // DXGI refuses statistics until a frame has been shown, as QueueDepth's do: a state and
+            // not an error.
+            return null;
+        }
+    }
+
     /// <summary>Blocks until the swapchain is ready for the next frame.</summary>
     public void WaitForNextFrame(int timeoutMilliseconds = 1000)
     {

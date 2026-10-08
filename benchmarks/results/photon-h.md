@@ -90,3 +90,25 @@ the next vblank, which would flatter it by up to a frame.
   desktop duplication, a different instrument whose timestamp is the composed desktop frame and
   not the vblank. The two are not one number.
 - **120 Hz.** Nothing here has run on a panel faster than 60 Hz.
+
+## How each echo reached the glass (QS201)
+
+Since QS201 the tool asks DXGI how the frame carrying each timed echo was shown
+(`IDXGISwapChainMedia`, `DXGI_FRAME_STATISTICS_MEDIA.CompositionMode`) and reports it in a
+*shown as* column. One pass of 10 s per arm on **2026-10-08**, same desk, the VM guest suspended:
+
+| workload | arm | echoes | shown as | median ms |
+|---|---|---|---|---|
+| typing | client | 66 | composed 66 | 31.1 |
+| typing | wait-first | 66 | composed 66 | 33.5 |
+| typing | unbought | 67 | composed 67 | 31.9 |
+| typing | unbought-3 | 66 | composed 66 | 31.1 |
+| busy | client | 98 | composed 98 | 43.2 |
+| busy | wait-first | 99 | composed 99 | 40.5 |
+| busy | unbought | 98 | composed 98 | 70.0 |
+| busy | unbought-3 | 99 | composed 99 | 42.9 |
+
+**Every echo in every arm was composed.** None reached an overlay plane or an independent flip,
+so the compositor drew every frame into the desktop and showed it at the vblank after its own
+pass. That is consistent with the second interval being composition's, and it is still the
+photon tool's popup, not the client's WPF child HWND, which is the next thing to time.

@@ -91,8 +91,8 @@ public static class Photon
             .AppendLine(CultureInfo.InvariantCulture,
                         $"measured {DateTimeOffset.Now:yyyy-MM-dd HH:mm} local on {Environment.MachineName}, echo due to the vblank DXGI reports it shown at, in milliseconds")
             .AppendLine()
-            .AppendLine("| workload | arm | echoes | unresolved | frames | occluded | min | p10 | median | p90 | max |")
-            .AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
+            .AppendLine("| workload | arm | echoes | unresolved | frames | occluded | shown as | min | p10 | median | p90 | max |")
+            .AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|");
 
         foreach (IGrouping<(string, string), Outcome> group in outcomes.GroupBy(
                      each => (each.Workload.Name, each.Arm.Name)))
@@ -108,8 +108,16 @@ public static class Photon
             long frames = group.Sum(each => each.Frames);
             long occluded = group.Sum(each => each.Occlusions);
 
+            // Every way the arm's echoes reached the glass, most first: a median is one cost only
+            // when this says one mode.
+            string shown = string.Join(", ", group.SelectMany(each => each.Modes)
+                                                  .GroupBy(pair => pair.Key, StringComparer.Ordinal)
+                                                  .Select(mode => (Mode: mode.Key, Count: mode.Sum(pair => pair.Value)))
+                                                  .OrderByDescending(mode => mode.Count)
+                                                  .Select(mode => string.Create(CultureInfo.InvariantCulture, $"{mode.Mode} {mode.Count}")));
+
             text.AppendLine(CultureInfo.InvariantCulture,
-                $"| {first.Workload.Name} | {first.Arm.Name} (latency {first.Arm.Latency}, {how}) | {pooled.Count} | {unresolved} | {frames} | {occluded} | {Quantile(pooled, 0):F1} | {Quantile(pooled, 0.10):F1} | {Quantile(pooled, 0.50):F1} | {Quantile(pooled, 0.90):F1} | {Quantile(pooled, 1):F1} |");
+                $"| {first.Workload.Name} | {first.Arm.Name} (latency {first.Arm.Latency}, {how}) | {pooled.Count} | {unresolved} | {frames} | {occluded} | {shown} | {Quantile(pooled, 0):F1} | {Quantile(pooled, 0.10):F1} | {Quantile(pooled, 0.50):F1} | {Quantile(pooled, 0.90):F1} | {Quantile(pooled, 1):F1} |");
         }
 
         text.AppendLine()

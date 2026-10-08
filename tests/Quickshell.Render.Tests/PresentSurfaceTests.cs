@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using Quickshell.Terminal;
+using Vortice.DXGI;
 using Vortice.Mathematics;
 using Xunit;
 
@@ -168,6 +169,39 @@ public sealed class PresentSurfaceTests
         Assert.True(depths.Max() <= 8,
             $"the frame queue reached {depths.Max()}, which is deeper than any presentation path " +
             "this has been measured on and deeper than a latency of one can explain");
+    }
+
+    /// <summary>
+    /// QS201: how a frame reached the glass is read off the frame DXGI showed, so there is nothing
+    /// to say before one was, and once one has been the answer is one of the four modes DXGI names.
+    /// </summary>
+    [Fact]
+    public void HowAFrameReachedTheGlassIsSaidOnlyOnceOneHas()
+    {
+        using TestWindow window = new(320, 200);
+        using GraphicsDevice device = GraphicsDevice.Open(outputWindow: window.Handle);
+        using PresentSurface surface = PresentSurface.For(device, window.Handle, 320, 200);
+
+        Assert.Null(surface.PresentationMode());
+
+        Stopwatch waiting = Stopwatch.StartNew();
+        FramePresentationMode? mode = null;
+
+        while (waiting.Elapsed < Patience && mode is null)
+        {
+            surface.WaitForNextFrame();
+            device.Context.ClearRenderTargetView(surface.View, new Color4(0.02f, 0.02f, 0.08f, 1.0f));
+            surface.Present();
+
+            mode = surface.PresentationMode();
+        }
+
+        Assert.SkipWhen(mode is null && (surface.Occlusions > 0 || surface.PresentedOnGlass() == 0),
+            $"the window was covered for {surface.Occlusions} frames and DXGI showed {surface.PresentedOnGlass()}, " +
+            "so there was no frame on the glass to ask about");
+
+        Assert.NotNull(mode);
+        Assert.True(Enum.IsDefined(mode.Value), $"DXGI answered {mode}, which is not a mode it names");
     }
 
     /// <summary>

@@ -893,12 +893,11 @@ overlay plane, shows it at the next vblank, and the compositor grants those only
 conditions of its own: the swapchain covering its window, no transform, and a host that
 does not redirect the window.
 
-What to build first: report the presentation mode beside the latency, from PresentMon or
-the DXGI and DWM events it reads, so each arm says composed or independent flip. Then
-time the client's real window host, the WPF child HWND, in the same tool, since the
-photon tool's popup is not that host. Only then choose the change, whether a
-DirectComposition visual, the child window's styles, or a non-goal that says 60 Hz
-composition is the floor.
+Done first: photon reports each echo's presentation mode from DXGI's media statistics,
+and on 2026-10-08 every echo in every arm was composed (photon-h.md). Next, time the
+client's real window host, the WPF child HWND, in the same tool, since the photon tool's
+popup is not that host. Only then choose the change, whether a DirectComposition visual,
+the child window's styles, or a non-goal that says 60 Hz composition is the floor.
 
 ## Block I — An error a user can act on
 
