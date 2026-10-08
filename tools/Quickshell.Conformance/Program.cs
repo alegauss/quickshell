@@ -11,9 +11,10 @@ using Quickshell.Transport;
 // the parser tests that person's understanding of the specification, and that understanding is the
 // thing most likely to be wrong.
 //
-// It runs as the pseudo-console's child and this client is the terminal it is judging. There is no
-// renderer and no network in the loop - a fidelity result should not be able to fail because of a
-// font.
+// It runs on a Linux pty in WSL whose other end is a socket this reads and writes (pty-bridge.py,
+// BridgeChannel), and this client's emulator is the terminal it is judging. There is no renderer in
+// the loop - a fidelity result should not be able to fail because of a font - and, since QS211, no
+// pseudo-console either: conhost answered esctest's queries itself, so the old figure measured it.
 //
 // Usage:  quickshell-conformance [include-regex]
 //
@@ -24,18 +25,20 @@ string include = args.Length > 0 ? args[0] : ".*";
 string suite = Environment.GetEnvironmentVariable("QUICKSHELL_ESCTEST") ?? "/home/ubuntu/esctest";
 string log = "/tmp/quickshell-esctest.log";
 
-string command =
-    $"wsl.exe -- bash -c \"cd {suite} && python3 esctest.py --expected-terminal=xterm "
-    + $"--logfile={log} --include='{include}' --timeout=1\"";
+string[] command =
+[
+    "bash", "-c",
+    $"cd {suite} && python3 esctest.py --expected-terminal=xterm --logfile={log} --include='{include}' --timeout=1",
+];
 
-Console.WriteLine($"esctest: include={include}, suite={suite}");
+Console.WriteLine($"esctest: include={include}, suite={suite}, judged through a Linux pty and a socket");
 
 Stopwatch clock = Stopwatch.StartNew();
 Emulator emulator = new(80, 25);
 PtyExit exit;
 long parsed;
 
-await using (ConPtyChannel channel = await ConPtyChannel.StartAsync(command, 80, 25))
+await using (BridgeChannel channel = await BridgeChannel.StartAsync(command, 80, 25))
 await using (SessionPipeline pipeline = SessionPipeline.Start(channel, emulator))
 {
     Task<PtyExit> closed = channel.Closed;
@@ -126,8 +129,9 @@ static string Report(Tally tally, TimeSpan took, long parsed)
     report.AppendLine(string.Format(
         CultureInfo.InvariantCulture,
         "`esctest` from the terminal working group, run against the headless model on {0}, "
-        + "{1:yyyy-MM-dd}. No renderer and no network: the suite runs as the pseudo-console's child "
-        + "and this client is the terminal it judges. {2:F0} s, {3:N0} bytes parsed.",
+        + "{1:yyyy-MM-dd}. No renderer and no pseudo-console: the suite runs on a Linux pty in WSL "
+        + "whose other end is a socket the emulator reads and answers, so every reply it judges is "
+        + "this client's own (QS211). {2:F0} s, {3:N0} bytes parsed.",
         Machine(),
         DateTime.Now,
         took.TotalSeconds,
@@ -149,7 +153,9 @@ static string Report(Tally tally, TimeSpan took, long parsed)
     report.AppendLine();
     report.AppendLine("| cause | tests |");
     report.AppendLine("|---|---:|");
-    report.AppendLine($"| the screen could not be read back at all | {tally.Checksum} |");
+    // A checksum failure used to mean nothing came back: conhost answered DECRQCRA with zeros. Since
+    // QS211 the emulator answers, so it means the cells it holds differ from xterm's.
+    report.AppendLine($"| the screen read back differs from xterm's (a checksum) | {tally.Checksum} |");
     report.AppendLine($"| the suite declined the test itself | {tally.Internal} |");
     report.AppendLine($"| a real difference in behaviour | {tally.Other} |");
     report.AppendLine();

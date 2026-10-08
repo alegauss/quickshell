@@ -14,8 +14,8 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS211** (deps: —) **esctest is judged through a pseudo-console that answers its queries itself, so the figure measures conhost** — A DECRQCRA sent through ConPtyChannel came back as conhost's 0000 and never reached the emulator, so 228 failures cannot move. → §QS211
 - 📋 **QS214** (deps: —) **Replaying the tmux resize recording sometimes allocates in steady state in the guest, and the failure says no more** — One guest run counted 7,288 bytes and the next none, and a number with no type is a failure nobody can act on. → §QS214
+- 📋 **QS227** (deps: —) **esctest fails 309 of 568 tests now that the emulator answers its queries, and no line names which to fix** — Block C asks for above ninety per cent; the failures are spread over 60 classes and twelve hold more than half. → §QS227
 
 ## Block D — The tree a user organises work in
 

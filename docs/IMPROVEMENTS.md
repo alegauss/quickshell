@@ -314,31 +314,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS211 A judge with nothing in between
-
-Found shipping QS103. The emulator answered DECRQCRA correctly in its own tests, and the
-esctest run still read every checksum as zero. A probe sent `A`, then DECRQCRA, then DA1
-from WSL through the client's own `ConPtyChannel` and recorded what reached the
-emulator. It received `ESC P 7 ! ~ 0000 ESC \` and `ESC [ ? 61;6;7;… c` as text: the
-console host behind the pseudo-console had answered both queries itself and the tty
-echoed its answers. The queries never arrived.
-
-So `tools/Quickshell.Conformance` measures conhost for every sequence conhost
-intercepts: the device attributes, the cursor and status reports, DECRQCRA and likely
-DECRQM. The 151 of 568 in `docs/measurements/esctest-xps.md` is that mixture, and no
-change to the emulator can move the part that is conhost's.
-
-What to build, in order of preference. First, try `PSEUDOCONSOLE_PASSTHROUGH_MODE` (0x8)
-in `CreatePseudoConsole` for the conformance run only, and record whether this Windows
-build honours it; the in-box console host may not, since the flag arrived with the
-console host Windows Terminal ships. Second, take conhost out entirely: esctest runs in
-WSL on a Linux pty whose other end is a socket the conformance tool reads and writes, so
-every byte esctest sends reaches the emulator and every reply goes back unchanged.
-
-Then rerun esctest and rewrite the measurement, naming which path judged it.
-
-Falsified when an esctest reply is produced by anything other than this emulator.
-
 ### §QS212 Symmetric, or the same as Windows
 
 QS107 measured it, in `docs/measurements/contrast.md`. Against Direct2D's own text, this
@@ -408,6 +383,30 @@ the reference draw on a blank read and recording whether a second read of the sa
 target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
+
+### §QS227 Turning the faithful esctest figure into lines
+
+QS211 took conhost out of the esctest run, and the first faithful figure is 216 passed,
+43 xterm's own known bugs and 309 failed of 568, in `docs/measurements/esctest-xps.md`.
+Block C's criterion asks for above ninety per cent with every failure named. Until now
+no line could aim at the failures, because conhost's answers hid which were the
+emulator's.
+
+The failures are spread over 60 classes, and twelve hold more than half of them:
+XtermWinopsTests 28, DECRQMTests 26, DECSEDTests 15, DECSETTests 14, the three colour
+query families 40 between them (ChangeColor, ChangeDynamicColor, ChangeSpecialColor),
+DECDSRTests 11, DECSELTests 10, DECRQSSTests 9, DECCRATests 8 and BSTests 8.
+
+What to build first: one line per class family, filed from the log with the traceback
+that names the difference, starting with the families where one missing answer fails
+many tests. DECRQM's 26 are probably modes this client answers zero for, and the colour
+queries probably OSC 4, 10, 11 and 12 replies in a form esctest does not read. Each line
+names the tests it should turn and is shipped against a rerun of `dotnet run --project
+tools/Quickshell.Conformance -c Release -- <Class>`.
+
+A filtered run rewrites the measurement with only that class, so restore the file after
+one and rewrite it whole with an unfiltered run before the commit that cites a figure.
+Falsified when a failing class has no line and no non-goal naming it.
 
 ## Block D — The tree a user organises work in
 

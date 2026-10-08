@@ -89,6 +89,7 @@
 - ✅ **QS206** **Restoring the cursor does not restore the character set, so line drawing after ESC 8 prints letters** — ESC 7 saves the two designations and the shifted-in slot with the cursor and ESC 8 restores them, so vttest's cut 022 draws lines as xterm does.
 - ✅ **QS207** **Insert mode is ignored, so text printed with CSI 4 h overwrites the row instead of pushing it right** — CSI 4 h turns on insert mode: printed text pushes the row right and loses what falls off, DECRQM reports it, and vttest's cuts 025 and 026 agree with xterm.
 - ✅ **QS208** **A request for 132 columns is ignored without its side effects, and nothing says whether that is the intent** — DECCOLM keeps the pane's width, now a non-goal, and still clears the screen, resets the margins and homes the cursor; DECRQM calls mode 3 permanently off.
+- ✅ **QS211** **esctest is judged through a pseudo-console that answers its queries itself, so the figure measures conhost** — esctest runs on a Linux pty bridged to a socket, so every reply is the emulator's: 216 passed of 568, up from conhost's 151 (design recorded in `docs/measurements/esctest-xps.md`).
 
 ## Block D — The tree a user organises work in
 

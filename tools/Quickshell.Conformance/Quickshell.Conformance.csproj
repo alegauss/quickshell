@@ -14,4 +14,9 @@
     <ProjectReference Include="..\..\src\Quickshell.App\Quickshell.App.csproj" />
   </ItemGroup>
 
+  <!-- QS211: the Linux half of the judging path, handed to WSL's python on stdin. -->
+  <ItemGroup>
+    <None Include="pty-bridge.py" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
