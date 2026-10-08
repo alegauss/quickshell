@@ -45,6 +45,9 @@ public sealed class RemoteShell : IShellSession
     /// <summary>The same, or null between connections, for a view that reads it whenever it likes (QS70).</summary>
     public SessionForwards? ForwardsNow => _connection.Forwards;
 
+    /// <summary>The host as the session names it.</summary>
+    public string Host => _connection.Host;
+
     /// <summary>The connection there is now, for whatever else a pane opens over it; null between connections.</summary>
     public ISshTransport? Transport => _inner.Transport;
 
@@ -65,6 +68,21 @@ public sealed class RemoteShell : IShellSession
     /// the connection does and goes, before the connection, when the session ends.</para>
     /// </summary>
     public RemoteFiles? Files => _connection.Files;
+
+    /// <summary>
+    /// Records this session into <paramref name="log"/> from a new connection made now, so the
+    /// handshake is in it (QS129). A reconnect, with what a reconnect costs: the remote shell is a
+    /// new one, and the scrollback stays.
+    /// </summary>
+    /// <returns>Whether there was a connection to make again; between connections the next one is recorded.</returns>
+    public bool TraceInto(SessionLog log)
+    {
+        ArgumentNullException.ThrowIfNull(log);
+
+        _connection.RecordInto(log);
+
+        return _inner.ConnectAgain();
+    }
 
     /// <inheritdoc/>
     public async ValueTask TypeAsync(ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken = default) =>
@@ -222,7 +240,8 @@ public sealed class RemoteShell : IShellSession
         private readonly TrustOnFirstUse _trust;
         private readonly Narration _said;
         private readonly Progress _signIn;
-        private readonly SessionLog? _log;
+        private SessionLog? _log;
+        private int _announce;
         private readonly Func<SignInQuestion, CancellationToken, ValueTask<SignInAnswer?>>? _ask;
         private readonly SecretStore? _secrets;
         private readonly IReadOnlyList<SshCredential> _keys;
@@ -248,9 +267,18 @@ public sealed class RemoteShell : IShellSession
 
         public SshEndpoint Target { get; }
 
+        public string Host => _session.Host;
+
         public SessionForwards? Forwards => Volatile.Read(ref _forwards);
 
         public RemoteFiles? Files => Volatile.Read(ref _files) is { IsCompletedSuccessfully: true } opened ? opened.Result : null;
+
+        /// <summary>Where every connection from the next one on records what happened (QS129).</summary>
+        public void RecordInto(SessionLog log)
+        {
+            Volatile.Write(ref _log, log);
+            Volatile.Write(ref _announce, 1);
+        }
 
         /// <summary>Connects, signs in, and starts what the session runs over the connection.</summary>
         public async ValueTask<ISshTransport> ConnectAsync(CancellationToken cancellationToken)
@@ -258,6 +286,12 @@ public sealed class RemoteShell : IShellSession
             // What the last connection left behind goes first: its listeners would hold the ports
             // the new forwards want, and its file channel is on a connection that has gone.
             await ReleaseAsync().ConfigureAwait(false);
+
+            // Said here, between connections, where nothing else writes to the pane (QS129).
+            if (Interlocked.Exchange(ref _announce, 0) == 1 && Volatile.Read(ref _log) is { } recording)
+            {
+                _said.Line($"This connection is traced into {recording.Path}");
+            }
 
             // The keys first, then what a person answers: a key that works never shows them a prompt.
             (SignIn? answering, IReadOnlyList<SshCredential> answered) = _ask is null
@@ -356,14 +390,15 @@ public sealed class RemoteShell : IShellSession
             // A keepalive that detects, not only one that keeps (QS111): a frozen host is noticed,
             // and noticing it is what lets a reconnect begin within seconds (QS220).
             TimeSpan keepAlive = TimeSpan.FromSeconds(15);
+            SessionLog? log = Volatile.Read(ref _log);
 
             return _session.JumpHost is { } jump
                 ? new SshChain([
                     // The jump host takes the keys alone: its questions would be asked as the target's.
                     new SshHop(Through(jump.Value, Target.User), _keys, _trust.CheckAsync),
                     new SshHop(Target, offered, _trust.CheckAsync),
-                  ]) { KeepAlive = keepAlive, SignIn = _signIn, Log = _log }
-                : new SshNetTransport { KeepAlive = keepAlive, SignIn = _signIn, Log = _log };
+                  ]) { KeepAlive = keepAlive, SignIn = _signIn, Log = log }
+                : new SshNetTransport { KeepAlive = keepAlive, SignIn = _signIn, Log = log };
         }
 
         /// <summary>The file channel and the side over it, or null where the server will not open one.</summary>

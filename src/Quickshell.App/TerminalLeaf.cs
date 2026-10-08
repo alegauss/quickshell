@@ -91,6 +91,9 @@ public sealed class TerminalLeaf : IAsyncDisposable
     /// </summary>
     public SessionForwards? Forwards => (_session as RemoteShell)?.ForwardsNow;
 
+    /// <summary>The saved session in this pane, or null where it runs a local shell or nothing yet (QS129).</summary>
+    public RemoteShell? Remote => _session as RemoteShell;
+
     /// <summary>
     /// How the shell in this pane reads a quoted word, which is what a dropped path is typed as.
     /// Read off what the pane runs: a local tab's is Windows' command processor, and anything this

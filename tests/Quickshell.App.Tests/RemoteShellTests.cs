@@ -769,6 +769,110 @@ public sealed class RemoteShellTests : IDisposable
         Assert.Contains("failed", written, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// QS129: a session already open, with reconnecting off, is traced from a new connection, so
+    /// the trace holds the handshake a trace exists for; the pane says where it is and keeps what
+    /// it showed.
+    /// </summary>
+    [Fact]
+    public async Task AnOpenSessionTracedFromANewConnectionHasItsHandshakeInTheTrace()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession probe = Account("probe");
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        Emulator emulator = new(120, 25);
+
+        await using SessionLog trace = SessionLog.InFolder(Path.Combine(_here, "trace"), LogDetail.Trace);
+        await using RemoteShell shell = await RemoteShell.OpenAsync(probe, trust, emulator, new DamageSignal(),
+                                                                    120, 25, Stop);
+
+        await shell.TypeAsync(Encoding.ASCII.GetBytes("echo before-the-trace\r"), Stop);
+        await Until(() => Screen(emulator).Contains("before-the-trace", StringComparison.Ordinal));
+
+        Assert.True(shell.TraceInto(trace), "a live session had no connection to make again");
+
+        await Until(() => shell.Connections == 2 && shell.Status.IsLive);
+
+        string pane = Screen(emulator).Replace("\n", string.Empty, StringComparison.Ordinal);
+
+        Assert.Contains($"This connection is traced into {trace.Path}", pane, StringComparison.Ordinal);
+        Assert.Contains("before-the-trace", pane, StringComparison.Ordinal);
+
+        StringBuilder traced = new();
+
+        foreach (string file in trace.Files)
+        {
+            // Shared with the writer, which still has it open, as a user tailing it would.
+            await using FileStream reading = new(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using StreamReader text = new(reading);
+
+            traced.Append(await text.ReadToEndAsync(Stop));
+        }
+
+        Assert.Contains("negotiated what=kex", traced.ToString(), StringComparison.Ordinal);
+        Assert.Contains("SSH-2.0-", traced.ToString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// QS129's remaining criterion: an open tab turns its trace on from the palette. Offered where
+    /// the pane with the keyboard holds a saved session and nowhere else, and running it connects
+    /// that session again into the trace the program makes for its host.
+    /// </summary>
+    [Fact]
+    public async Task AnOpenTabTurnsItsTraceOnFromThePalette()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession probe = Account("probe");
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+
+        await using SessionLog trace = SessionLog.InFolder(Path.Combine(_here, "trace"), LogDetail.Trace);
+
+        RemoteShell shell = await RemoteShell.OpenAsync(probe, trust, new Emulator(80, 25), new DamageSignal(), 80, 25, Stop);
+
+        try
+        {
+            (bool withoutASession, bool withOne, string? tracedFor) = Sta.Run(() =>
+            {
+                MainWindow window = new();
+                string? asked = null;
+
+                window.TraceFor = host =>
+                {
+                    asked = host;
+
+                    return trace;
+                };
+
+                bool none = window.Actions.Any(one => one.Name == "Trace this session");
+
+                TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "127.0.0.1");
+
+                window.Add(tab);
+                tab.Focused.ConnectAsync((_, _, _, _, _) => Task.FromResult<IShellSession>(shell)).GetAwaiter().GetResult();
+
+                bool offered = window.Actions.Any(one => one.Name == "Trace this session");
+
+                window.Actions.Single(one => one.Name == "Trace this session").Run();
+
+                return (none, offered, asked);
+            });
+
+            Assert.False(withoutASession, "a window with no saved session in it offered to trace one");
+            Assert.True(withOne, "a pane holding a saved session was not offered a trace");
+            Assert.Equal("127.0.0.1", tracedFor);
+
+            await Until(() => shell.Connections == 2 && shell.Status.IsLive);
+        }
+        finally
+        {
+            await shell.DisposeAsync();
+        }
+    }
+
     /// <summary>A jump host is written as OpenSSH writes one, and every part of it is optional but the host.</summary>
     [Theory]
     [InlineData("bastion.example", "me", "bastion.example", 22)]

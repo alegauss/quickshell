@@ -35,8 +35,7 @@
 
 ## Block I — An error a user can act on
 
-- ⏳ **QS129** (deps: QS71 ✅, QS220 ✅) **Nothing in the client says where its log is, or turns the trace on** — An open tab cannot turn its trace on, since a trace records the handshake and the tab cannot reconnect until QS220. → §QS129
-- 📋 **QS134** (deps: QS73 ✅, QS129 ⏳) **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The recorder and the title's indication both work, and the only caller that can begin one is a test, so the feature reaches no user. → §QS134
+- 📋 **QS134** (deps: QS73 ✅, QS129 ✅) **Nothing in the window can start a recording, so nobody can capture the defect they hit** — The recorder and the title's indication both work, and the only caller that can begin one is a test, so the feature reaches no user. → §QS134
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
@@ -272,12 +271,6 @@
 
 - **A recorded blank names its cause** A guest contrast.txt carries a reference retry
   line saying whether the second read of the same target had ink.
-
-## Done when — QS129
-
-- **An open tab turns its trace on from the palette** The palette's trace entry
-  reconnects the tab with its session traced, the pane says where the trace is written,
-  and the next run starts untraced.
 
 ## Done when — QS153
 

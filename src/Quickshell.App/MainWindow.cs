@@ -265,6 +265,10 @@ public sealed class MainWindow : Window
         // when a port is mysteriously taken, so no chord.
         InputBindings.Add(new InputBinding(new ShowingForwards(this), new PaletteOnly()));
 
+        // A trace for the session in the pane with the keyboard, from a new connection so the
+        // handshake is in it (QS129): offered only where that pane holds a saved session.
+        InputBindings.Add(new InputBinding(new TracingSession(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
@@ -2673,6 +2677,29 @@ public sealed class MainWindow : Window
     public Action<string>? OpensSession { get; set; }
 
     /// <summary>
+    /// Makes the trace a session is recorded into, by its host (QS129). The program sets it, because
+    /// it owns the log folder and closes every trace when it leaves.
+    /// </summary>
+    public Func<string, Quickshell.Transport.SessionLog>? TraceFor { get; set; }
+
+    /// <summary>
+    /// Traces the session in the pane with the keyboard from a new connection, which says in the
+    /// pane where the trace is.
+    /// </summary>
+    /// <returns>Whether that pane held a saved session to trace.</returns>
+    public bool TraceFocused()
+    {
+        if (TraceFor is not { } trace || Current?.Focused.Remote is not { } remote)
+        {
+            return false;
+        }
+
+        remote.TraceInto(trace(remote.Host));
+
+        return true;
+    }
+
+    /// <summary>
     /// Asks the person at this window about a host key nobody has seen, which is the one question a
     /// connection cannot answer for itself (QS126).
     ///
@@ -2832,6 +2859,20 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.ShowForwards();
+    }
+
+    /// <summary>The trace's palette entry (QS129).</summary>
+    private sealed class TracingSession(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Trace this session";
+
+        /// <inheritdoc/>
+        public override bool CanExecute(object? parameter) =>
+            Window.TraceFor is not null && Window.Current?.Focused.Remote is not null;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.TraceFocused();
     }
 
     /// <summary>One saved session as a palette entry: running it opens that session.</summary>

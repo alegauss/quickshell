@@ -35,6 +35,7 @@ public sealed class RemoteSession : IAsyncDisposable
     private PtyExit? _exit;
     private int _scrollback = -1;
     private bool _disposed;
+    private TaskCompletionSource? _again;
 
     private RemoteSession(Func<CancellationToken, ValueTask<ISshTransport>> connect,
                           Emulator emulator, ReconnectPolicy policy, DamageSignal damage)
@@ -115,6 +116,14 @@ public sealed class RemoteSession : IAsyncDisposable
     /// visible, and it is a verb because it is a thing the user does.
     /// </summary>
     public void Stop() => _stopping.CancelAsync().GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Ends the connection there is now and makes a new one at once, whatever the policy says: the
+    /// user asked for this one, which is not the unasked login a policy that is off protects a host
+    /// from (QS129, where it is how a trace gets the handshake of a tab already open).
+    /// </summary>
+    /// <returns>Whether there was a live connection to end.</returns>
+    public bool ConnectAgain() => Volatile.Read(ref _again)?.TrySetResult() == true;
 
     /// <summary>Sends what the user typed, or nothing where there is no connection to send it on.</summary>
     /// <returns>Whether there was a shell to take it.</returns>
@@ -204,9 +213,11 @@ public sealed class RemoteSession : IAsyncDisposable
             string reason;
             bool worthRetrying;
 
+            bool asked;
+
             try
             {
-                (reason, worthRetrying) = await LiveAsync().ConfigureAwait(false);
+                (reason, worthRetrying, asked) = await LiveAsync().ConfigureAwait(false);
 
                 attempt = 0;
             }
@@ -217,6 +228,7 @@ public sealed class RemoteSession : IAsyncDisposable
             catch (SshException failure)
             {
                 reason = failure.Message;
+                asked = false;
 
                 // An authentication failure and a refused host key will not fix themselves by being
                 // asked again, and asking again is how a client locks an account out. Only the ways
@@ -226,6 +238,12 @@ public sealed class RemoteSession : IAsyncDisposable
                 // is given up on in the same minute and a half as one that is unreachable.
                 worthRetrying = failure.Kind is SshFailureKind.Unreachable or SshFailureKind.Dropped
                                                 or SshFailureKind.Refused;
+            }
+
+            if (asked)
+            {
+                // Straight back, with no wait: the connection ended because it was asked to.
+                continue;
             }
 
             if (!_policy.Enabled || !worthRetrying || attempt >= _policy.MaximumAttempts)
@@ -255,8 +273,11 @@ public sealed class RemoteSession : IAsyncDisposable
     /// <summary>
     /// One connection, from its first byte to its last.
     /// </summary>
-    /// <returns>Why it ended, and whether that ending is one worth trying again.</returns>
-    private async Task<(string Reason, bool WorthRetrying)> LiveAsync()
+    /// <returns>
+    /// Why it ended, whether that ending is one worth trying again, and whether it ended because
+    /// <see cref="ConnectAgain"/> asked it to.
+    /// </returns>
+    private async Task<(string Reason, bool WorthRetrying, bool Asked)> LiveAsync()
     {
         ISshTransport transport = await _connect(_stopping.Token).ConfigureAwait(false);
 
@@ -279,7 +300,10 @@ public sealed class RemoteSession : IAsyncDisposable
                 pipeline.KeepScrollback(depth);
             }
 
+            TaskCompletionSource again = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
             Volatile.Write(ref _pipeline, pipeline);
+            Volatile.Write(ref _again, again);
             Connections++;
 
             Publish(new SessionStatus(SessionState.Live, 0, TimeSpan.Zero, string.Empty));
@@ -290,15 +314,21 @@ public sealed class RemoteSession : IAsyncDisposable
                 // socket that will never say anything, so the transport's verdict is the only thing
                 // that ends this connection — waiting for the pipeline alone is how a session sat
                 // "live" on a dead host (QS38, QS111). Disposing the pipeline below is what cancels
-                // that read.
-                await Task.WhenAny(pipeline.Completed, transport.Disconnected)
+                // that read. And the user, who can ask for a new connection (QS129).
+                await Task.WhenAny(pipeline.Completed, transport.Disconnected, again.Task)
                           .WaitAsync(_stopping.Token).ConfigureAwait(false);
             }
             finally
             {
+                Volatile.Write(ref _again, null);
                 Volatile.Write(ref _pipeline, null);
 
                 await pipeline.DisposeAsync().ConfigureAwait(false);
+            }
+
+            if (again.Task.IsCompleted)
+            {
+                return ("asked to connect again", true, true);
             }
 
             if (!channel.Closed.IsCompleted && transport.Disconnected.IsCompleted)
@@ -307,8 +337,8 @@ public sealed class RemoteSession : IAsyncDisposable
                 SshException? gone = await transport.Disconnected.ConfigureAwait(false);
 
                 return gone is null
-                    ? ("the connection ended", true)
-                    : (gone.Message, gone.Kind is SshFailureKind.Dropped or SshFailureKind.Unreachable);
+                    ? ("the connection ended", true, false)
+                    : (gone.Message, gone.Kind is SshFailureKind.Dropped or SshFailureKind.Unreachable, false);
             }
 
             // The pipeline has ended, so the channel's close is moments away or never coming - a
@@ -321,7 +351,7 @@ public sealed class RemoteSession : IAsyncDisposable
 
             if (said != channel.Closed)
             {
-                return ("the connection ended", true);
+                return ("the connection ended", true, false);
             }
 
             PtyExit exit = await channel.Closed.ConfigureAwait(false);
@@ -334,8 +364,8 @@ public sealed class RemoteSession : IAsyncDisposable
             // A program that exited said so, and a new login is not what the user asked for by
             // typing `exit`. Anything else is the link, and the link is what reconnecting is for.
             return exit.IsExit
-                ? ($"the shell exited with {exit.Code}", false)
-                : (exit.Reason.Length > 0 ? exit.Reason : "the connection ended", true);
+                ? ($"the shell exited with {exit.Code}", false, false)
+                : (exit.Reason.Length > 0 ? exit.Reason : "the connection ended", true, false);
         }
         finally
         {

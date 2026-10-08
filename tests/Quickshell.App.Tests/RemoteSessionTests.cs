@@ -307,6 +307,29 @@ public sealed class RemoteSessionTests
     }
 
     /// <summary>
+    /// Asked to, it connects again at once even with reconnecting off, which protects a host from a
+    /// login nobody asked for and not from one the user just did ask for (QS129). The model stays.
+    /// </summary>
+    [Fact]
+    public async Task AskedToConnectAgainItDoesSoWhateverThePolicy()
+    {
+        List<ReplayTransport> made = [];
+
+        await using RemoteSession session = RemoteSession.Start(
+            _ => Connect(made, $"connection {made.Count + 1}\r\n"), new Emulator(80, 25), ReconnectPolicy.Off);
+
+        await Until(() => session.Status.IsLive && Screen(session).Contains("connection 1", StringComparison.Ordinal));
+
+        Assert.True(session.ConnectAgain(), "a live session had no connection to make again");
+
+        await Until(() => session.Connections == 2 && session.Status.IsLive);
+        await Until(() => Screen(session).Contains("connection 2", StringComparison.Ordinal));
+
+        Assert.Equal(2, made.Count);
+        Assert.Contains("connection 1", Screen(session), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// While there is no connection, a keystroke is refused rather than queued. Held across a
     /// reconnect it would arrive at a shell the user was not typing at, in an order nobody chose.
     /// </summary>

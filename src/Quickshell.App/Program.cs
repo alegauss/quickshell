@@ -146,6 +146,9 @@ public static class Entry
         // own connection (QS219). A local pane has none, and the browser says so.
         window.RemoteFiles = tab => tab.Focused.Files;
 
+        // A trace turned on for an open tab, in the same place --trace puts one (QS129).
+        window.TraceFor = Traced;
+
         // Only a copy that is not the installed one offers to install itself: the installed copy
         // installing itself would be a copy of a folder onto the same folder.
         if (Installation.Of(AppContext.BaseDirectory) is null)

@@ -727,31 +727,6 @@ worst of it.
 Falsified when a failed negotiation against the `legacy` fixture leaves a log naming
 both sides' algorithm lists.
 
-### §QS129 The log, reachable from inside the window
-
-QS71 built the log and the guarantee that it holds no secret. It did not attach one to
-anything a user drives: the app never constructs a transport itself yet — sessions are
-started through a delegate the tests supply — so today the only caller that gets a log
-is a test.
-
-Three things this owes a person at the terminal. A log **exists** for every session,
-opened where the client's own data lives, at the ordinary level, without anybody asking.
-Its location is **reachable from the window** — a menu item that opens the folder is
-enough, and it is what a support reply can say in one sentence. And the trace is a
-**per-session toggle**, on the session rather than global, because the whole point of
-the second level is to turn it on for the one host that will not negotiate and leave
-every other session cheap.
-
-The toggle is a setting, and this project treats a setting as a surface with a cost, so
-it is named for the behaviour and it appears wherever settings are documented. There is
-no README today; that is the moment to decide where a user reads about this at all.
-
-The trace is off by default and stays off across a restart: a client that quietly keeps
-tracing after somebody diagnosed something once is a client writing a large file nobody
-asked for.
-
-Falsified when a running client cannot tell a user where its log is.
-
 ### §QS134 Starting a recording from the window
 
 QS73 built the recorder, fed it from the parser stage where the user's keystrokes cannot
