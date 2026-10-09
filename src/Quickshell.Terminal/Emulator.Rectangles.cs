@@ -131,6 +131,27 @@ public sealed partial class Emulator
         }
     }
 
+    /// <summary>
+    /// DECALN: every cell an E in the default colours, every margin gone and the cursor home, as
+    /// xterm does it (QS244). The margins go first, so home is the screen's corner whatever
+    /// origin mode says.
+    /// </summary>
+    private void AlignmentTest()
+    {
+        MarginTop = 0;
+        MarginBottom = Buffer.Rows - 1;
+        ClearColumnMargins();
+
+        Cell fill = Cell.For('E', Colour.Default, Colour.Default);
+
+        for (int row = 0; row < Buffer.Rows; row++)
+        {
+            Buffer.Fill(row, 0, Buffer.Columns, fill);
+        }
+
+        Home();
+    }
+
     /// <summary>DECSACE, <c>CSI Ps * x</c>: held for DECRQSS, a value outside 0 to 2 counted and ignored.</summary>
     private void SelectAttributeExtent(int extent)
     {

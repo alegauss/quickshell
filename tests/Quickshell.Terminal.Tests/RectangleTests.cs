@@ -134,6 +134,29 @@ public sealed class RectangleTests
         Assert.Equal("YZ6789rs", Row(emulator, 7));
     }
 
+    // ---- DECALN (QS244) ----
+
+    [Fact]
+    public void DecalnFillsTheScreenWithE()
+    {
+        Emulator emulator = new(8, 4, scrollback: 0);
+        emulator.Feed(Encoding.ASCII.GetBytes(E + "[1;31m" + E + "#8"));
+
+        Assert.Equal("EEEEEEEE", Row(emulator, 0));
+        Assert.Equal("EEEEEEEE", Row(emulator, 3));
+        Assert.Equal(Colour.Default, emulator.Buffer.Screen(3)[7].Foreground);
+    }
+
+    [Fact]
+    public void DecalnHomesTheCursorAndClearsTheMargins()
+    {
+        Emulator emulator = Fed(E + "[?69h" + E + "[2;3s" + E + "[4;5r" + E + "[5;5H" + E + "#8");
+
+        Assert.Equal((0, 0), (emulator.Buffer.CursorRow, emulator.Buffer.CursorColumn));
+        Assert.Equal((0, 23), (emulator.MarginTop, emulator.MarginBottom));
+        Assert.Equal(0, emulator.MarginLeft);
+    }
+
     // ---- DECSACE ----
 
     [Theory]

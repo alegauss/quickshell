@@ -498,6 +498,13 @@ public sealed partial class Emulator : IAnsiHandler
             // `ESC ( x` and `ESC ) x` designate the two slots. Everything else with an intermediate
             // is counted rather than guessed at: a sequence answered wrongly is worse than one not
             // answered at all.
+            // DECALN, ESC # 8: the screen alignment test, a screenful of E (QS244).
+            if (intermediates.Length == 1 && intermediates[0] == (byte)'#' && final == (byte)'8')
+            {
+                AlignmentTest();
+                return;
+            }
+
             int slot = intermediates[0] switch { (byte)'(' => 0, (byte)')' => 1, _ => -1 };
 
             if (slot >= 0 && CharacterSets.Designated(final) is CharacterSet set)
