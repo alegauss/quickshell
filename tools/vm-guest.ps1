@@ -531,10 +531,11 @@ powershell -NoProfile -STA -ExecutionPolicy Bypass -File "$script:GuestSync\clip
     }
 
     $said = Ask 'read'
-    if ($said -notmatch '^formats ') { Refuse "the guest's clipboard could not be read: $said" }
+    # An empty clipboard answers 'formats' and nothing after it, which is an answer and not a failure.
+    if ($said -notmatch '^formats\b') { Refuse "the guest's clipboard could not be read: $said" }
 
     $text = @('Text', 'UnicodeText', 'OEMText', 'Locale', 'System.String')
-    $other = @(($said -replace '^formats ', '') -split ',' | Where-Object { $_ -and $text -notcontains $_ })
+    $other = @(($said -replace '^formats\s*', '') -split ',' | Where-Object { $_ -and $text -notcontains $_ })
 
     if ($other.Count -eq 0) {
         Write-Host '  clipboard   the guest holds text; sharing left as it was'
@@ -544,7 +545,7 @@ powershell -NoProfile -STA -ExecutionPolicy Bypass -File "$script:GuestSync\clip
     Set-ClipboardSharing -Off $true
     $written = Ask 'text'
 
-    if ($written -notmatch '^formats ') {
+    if ($written -notmatch '^formats\b') {
         Set-ClipboardSharing -Off $false
         Refuse "the guest's clipboard could not be written: $written"
     }
