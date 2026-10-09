@@ -343,27 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS234 Colour queries and resets
-
-OSC 4, 10, 11 and 12 set colours; a `?` in place of a colour, which asks for it, is
-counted as unhandled and nothing replies. OSC 5 (special colours), 13 to 19, and the
-resets 104, 105 and 110 to 119 are not handled at all. esctest waits for each reply and
-times out: ChangeColorTests 13, ChangeDynamicColorTests 13, ChangeSpecialColorTests 14,
-ResetSpecialColorTests 5, ResetColorTests 2. Several also set colours in spellings this
-client counts rather than reads (CIELab, CIEXYZ, rgbi, named), which is a choice the
-line has to make deliberately.
-
-What to build: replies in xterm's form (`OSC n ; rgb:RRRR/GGGG/BBBB ST` with the
-terminator the query used), the resets back to the session's own scheme, and either the
-remaining spellings or a non-goal naming them.
-
-Falsified when OSC 4 ; 1 ; ? goes unanswered.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS235 Character protection
 
 No cell carries a protected attribute. DECSCA (CSI Ps " q), SPA and EPA (ESC V, ESC W)

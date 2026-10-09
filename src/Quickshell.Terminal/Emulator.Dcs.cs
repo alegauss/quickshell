@@ -29,6 +29,7 @@ public sealed partial class Emulator
 
     private readonly List<byte> _dcs = [];
     private bool _requestingSetting;
+    private bool _requestingCapability;
     private bool _dcsTruncated;
 
     /// <summary>
@@ -43,6 +44,11 @@ public sealed partial class Emulator
         _requestingSetting = final == (byte)'q'
             && intermediates.Length == 1
             && intermediates[0] == (byte)'$';
+
+        // XTGETTCAP, DCS + q: a terminfo capability by its hex-encoded name (QS234).
+        _requestingCapability = final == (byte)'q'
+            && intermediates.Length == 1
+            && intermediates[0] == (byte)'+';
     }
 
     void IAnsiHandler.DcsPut(ReadOnlySpan<byte> bytes)
@@ -68,6 +74,21 @@ public sealed partial class Emulator
     /// </summary>
     void IAnsiHandler.DcsUnhook()
     {
+        if (_requestingCapability)
+        {
+            // Answered for "Co" alone, the one a host asks before it addresses colours past the
+            // 256: anything else is told "not one I know", and nothing of what it sent comes back.
+            ReadOnlySpan<byte> name = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_dcs);
+            bool colours = !_dcsTruncated && name.Length == 4
+                && System.Text.Ascii.EqualsIgnoreCase(name, "436F"u8);
+
+            Send(Answer.CapabilityReport, colours ? CapabilityColours : 0);
+
+            _dcs.Clear();
+            _requestingCapability = false;
+            return;
+        }
+
         if (!_requestingSetting)
         {
             Unhandled++;

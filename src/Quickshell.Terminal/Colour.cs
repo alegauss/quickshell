@@ -107,6 +107,9 @@ public sealed class Palette
             byte level = (byte)(8 + (index * 10));
             _entries[232 + index] = new Rgb(level, level, level);
         }
+
+        // A palette no scheme has painted yet is its own baseline, so a reset always has one.
+        Remember();
     }
 
     /// <summary>The theme's foreground, which every default-foreground cell resolves to.</summary>
@@ -124,6 +127,104 @@ public sealed class Palette
         get => _entries[index];
         set => _entries[index] = value;
     }
+
+    // ---- What a host can set and ask about beyond the 256 (QS234) ----
+
+    /// <summary>How many special colours OSC 5 addresses: bold, underline, blink, reverse, italic.</summary>
+    public const int SpecialColours = 5;
+
+    // Held so a host that sets one can read it back and reset it, as xterm keeps them. None of them is
+    // drawn: bold here is a weight and not a colour, and the rest name things this client has none of
+    // (a Tektronix window, a separate mouse pointer colour). A program asking is answered honestly
+    // with what it set.
+    private readonly Rgb[] _special = new Rgb[SpecialColours];
+    private readonly Rgb[] _dynamic = new Rgb[10];
+
+    private Rgb[] _rememberedEntries = [];
+    private Rgb[] _rememberedSpecial = [];
+    private Rgb[] _rememberedDynamic = [];
+
+    /// <summary>A special colour, OSC 5's <paramref name="index"/> or OSC 4's 256 plus it.</summary>
+    public Rgb Special(int index) => _special[index];
+
+    /// <summary>Sets a special colour.</summary>
+    public void SetSpecial(int index, Rgb colour) => _special[index] = colour;
+
+    /// <summary>
+    /// A dynamic colour by its OSC number, 10 to 19: 10, 11 and 12 are the foreground, background
+    /// and cursor this palette draws with; 13 to 19 are held and reported.
+    /// </summary>
+    public Rgb Dynamic(int command) => command switch
+    {
+        10 => Foreground,
+        11 => Background,
+        12 => Cursor,
+        _ => _dynamic[command - 10],
+    };
+
+    /// <summary>Sets a dynamic colour by its OSC number.</summary>
+    public void SetDynamic(int command, Rgb colour)
+    {
+        switch (command)
+        {
+            case 10:
+                Foreground = colour;
+                break;
+
+            case 11:
+                Background = colour;
+                break;
+
+            case 12:
+                Cursor = colour;
+                break;
+
+            default:
+                _dynamic[command - 10] = colour;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Takes what this palette holds now as the colours a reset returns to: the session's own scheme,
+    /// which <see cref="ColourScheme.ApplyTo"/> calls this after painting. A host's OSC 104, 105 or
+    /// 110 to 119 then undoes what the host set, and never what the user chose.
+    /// </summary>
+    public void Remember()
+    {
+        // The held colours follow the drawn ones, so a host that asks before setting is answered with
+        // something it can recognise rather than black, and a scheme change carries them along.
+        Array.Fill(_special, Foreground);
+        _dynamic[3] = Foreground;
+        _dynamic[4] = Background;
+        _dynamic[5] = Foreground;
+        _dynamic[6] = Background;
+        _dynamic[7] = Foreground;
+        _dynamic[8] = Cursor;
+        _dynamic[9] = Background;
+
+        _rememberedEntries = [.. _entries];
+        _rememberedSpecial = [.. _special];
+        _rememberedDynamic = [.. _dynamic];
+        _rememberedDynamic[0] = Foreground;
+        _rememberedDynamic[1] = Background;
+        _rememberedDynamic[2] = Cursor;
+    }
+
+    /// <summary>OSC 104 with an index: one entry back to the scheme's.</summary>
+    public void ResetEntry(byte index) => _entries[index] = _rememberedEntries[index];
+
+    /// <summary>OSC 104 alone: every entry back.</summary>
+    public void ResetEntries() => _rememberedEntries.CopyTo(_entries, 0);
+
+    /// <summary>OSC 105 with an index: one special colour back.</summary>
+    public void ResetSpecial(int index) => _special[index] = _rememberedSpecial[index];
+
+    /// <summary>OSC 105 alone: every special colour back.</summary>
+    public void ResetSpecials() => _rememberedSpecial.CopyTo(_special, 0);
+
+    /// <summary>OSC 110 to 119: the dynamic colour of that number less a hundred, back.</summary>
+    public void ResetDynamic(int command) => SetDynamic(command, _rememberedDynamic[command - 10]);
 
     /// <summary>
     /// What a colour looks like right now. <paramref name="background"/> says which default this

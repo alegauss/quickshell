@@ -140,19 +140,21 @@ public sealed partial class Emulator
                 break;
 
             case 4:
-                SetPaletteEntries(argument);
+            case 5:
+                SetPaletteEntries(argument, command);
                 break;
 
-            case 10:
-                Palette.Foreground = ReadColour(argument) ?? Palette.Foreground;
+            case >= 10 and <= 19:
+                SetDynamicColours(argument, command);
                 break;
 
-            case 11:
-                Palette.Background = ReadColour(argument) ?? Palette.Background;
+            case 104:
+            case 105:
+                ResetIndexed(argument, command);
                 break;
 
-            case 12:
-                Palette.Cursor = ReadColour(argument) ?? Palette.Cursor;
+            case >= 110 and <= 119:
+                Palette.ResetDynamic(command - 100);
                 break;
 
             case 7:
@@ -177,11 +179,17 @@ public sealed partial class Emulator
     private static bool Same(string held, ReadOnlySpan<char> incoming) => incoming.SequenceEqual(held);
 
     /// <summary>
-    /// OSC 4: pairs of index and colour. Several pairs in one command is ordinary, which is how a
-    /// theme arrives in a single write rather than two hundred.
+    /// OSC 4 and OSC 5: pairs of index and colour. Several pairs in one command is ordinary, which is
+    /// how a theme arrives in a single write rather than two hundred.
+    ///
+    /// <para><b>A <c>?</c> in place of the colour asks for it (QS234)</b>, and each one is answered in
+    /// turn. OSC 4 reaches the special colours too, as 256 to 260, which is where xterm puts them and
+    /// what XTGETTCAP's <c>Co</c> tells a host to count from; OSC 5 addresses them from zero.</para>
     /// </summary>
-    private void SetPaletteEntries(ReadOnlySpan<char> argument)
+    private void SetPaletteEntries(ReadOnlySpan<char> argument, int command)
     {
+        int first = command == 5 ? 256 : 0;
+
         while (!argument.IsEmpty)
         {
             if (!TryField(ref argument, out ReadOnlySpan<char> number)
@@ -191,17 +199,107 @@ public sealed partial class Emulator
                 return;
             }
 
-            if (!int.TryParse(number, NumberStyles.None, CultureInfo.InvariantCulture, out int index)
-                || index is < 0 or > 255
-                || ReadColour(colour) is not Rgb value)
+            if (!int.TryParse(number, NumberStyles.None, CultureInfo.InvariantCulture, out int asked)
+                || first + asked is < 0 or > 255 + Palette.SpecialColours)
             {
                 Unhandled++;
                 continue;
             }
 
-            Palette[(byte)index] = value;
+            int index = first + asked;
+
+            if (colour is "?")
+            {
+                Rgb held = index < 256 ? Palette[(byte)index] : Palette.Special(index - 256);
+                Send(Answer.ColourReport, command, asked, Packed(held));
+                continue;
+            }
+
+            if (ReadColour(colour) is not Rgb value)
+            {
+                continue;
+            }
+
+            if (index < 256)
+            {
+                Palette[(byte)index] = value;
+            }
+            else
+            {
+                Palette.SetSpecial(index - 256, value);
+            }
         }
     }
+
+    /// <summary>
+    /// OSC 10 to 19: a colour each, and more than one in a command is the next number's - OSC 10 with
+    /// two colours sets the foreground and then the background, as xterm reads it. A <c>?</c> asks.
+    /// </summary>
+    private void SetDynamicColours(ReadOnlySpan<char> argument, int command)
+    {
+        for (int at = command; at <= 19 && TryField(ref argument, out ReadOnlySpan<char> colour); at++)
+        {
+            if (colour is "?")
+            {
+                Send(Answer.ColourReport, at, -1, Packed(Palette.Dynamic(at)));
+            }
+            else if (ReadColour(colour) is Rgb value)
+            {
+                Palette.SetDynamic(at, value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// OSC 104 and 105: the listed entries back to the session's own scheme, or every one of them
+    /// where none is listed. OSC 104 reaches the special colours as 256 up, as OSC 4 does.
+    /// </summary>
+    private void ResetIndexed(ReadOnlySpan<char> argument, int command)
+    {
+        if (argument.IsEmpty)
+        {
+            if (command == 104)
+            {
+                Palette.ResetEntries();
+            }
+            else
+            {
+                Palette.ResetSpecials();
+            }
+
+            return;
+        }
+
+        int first = command == 105 ? 256 : 0;
+
+        while (TryField(ref argument, out ReadOnlySpan<char> number))
+        {
+            if (!int.TryParse(number, NumberStyles.None, CultureInfo.InvariantCulture, out int asked)
+                || first + asked is < 0 or > 255 + Palette.SpecialColours)
+            {
+                Unhandled++;
+                continue;
+            }
+
+            int index = first + asked;
+
+            if (index < 256)
+            {
+                Palette.ResetEntry((byte)index);
+            }
+            else
+            {
+                Palette.ResetSpecial(index - 256);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A colour as the reply carries it: twenty-four bits, and above them whether the question ended
+    /// with BEL, so the answer is closed the way it was asked.
+    /// </summary>
+    private int Packed(Rgb colour) =>
+        (int)colour.Packed | (_parser.EndedWithBell ? 1 << 24 : 0);
 
     /// <summary>Takes the next semicolon-separated field, leaving the rest.</summary>
     private static bool TryField(ref ReadOnlySpan<char> text, out ReadOnlySpan<char> field)
@@ -269,15 +367,32 @@ public sealed partial class Emulator
             return channels.IsEmpty ? new Rgb(values[0], values[1], values[2]) : null;
         }
 
-        if (text.StartsWith('#') && text.Length == 7)
+        // X's older form: one to four digits a channel, and unlike rgb: they are the high bits and
+        // not a fraction - #fff is f0f0f0, which is what X and xterm make of it (QS234).
+        if (text.StartsWith('#') && text.Length is 4 or 7 or 10 or 13)
         {
-            return Scale(text[1..3]) is byte red && Scale(text[3..5]) is byte green
-                   && Scale(text[5..7]) is byte blue
+            int width = (text.Length - 1) / 3;
+
+            return High(text.Slice(1, width)) is byte red && High(text.Slice(1 + width, width)) is byte green
+                   && High(text.Slice(1 + (2 * width), width)) is byte blue
                 ? new Rgb(red, green, blue)
                 : null;
         }
 
         return null;
+    }
+
+    /// <summary>One channel of the <c>#</c> form: its digits as the top bits of a byte.</summary>
+    private static byte? High(ReadOnlySpan<char> digits)
+    {
+        if (!int.TryParse(digits, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int value))
+        {
+            return null;
+        }
+
+        int bits = 4 * digits.Length;
+
+        return (byte)(bits >= 8 ? value >> (bits - 8) : value << (8 - bits));
     }
 
     /// <summary>

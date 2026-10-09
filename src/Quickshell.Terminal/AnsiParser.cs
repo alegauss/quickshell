@@ -27,6 +27,9 @@ public sealed class AnsiParser
     private readonly byte[] _intermediates = new byte[MaximumIntermediates];
 
     private ParserState _state = ParserState.Ground;
+
+    /// <summary>Whether the operating system command that just ended was ended by BEL rather than ST.</summary>
+    public bool EndedWithBell { get; private set; }
     private int _valueCount;
     private int _groupCount;
     private int _intermediateCount;
@@ -151,6 +154,13 @@ public sealed class AnsiParser
 
         if (next != _state)
         {
+            // Read by a handler from inside OscEnd: a reply to a query goes back with the terminator
+            // the query came with, which is xterm's rule and what an older program waits for (QS234).
+            if (_state == ParserState.OscString)
+            {
+                EndedWithBell = input == 0x07;
+            }
+
             Leave(_state, ref handler);
             Enter(next, input, ref handler);
             _state = next;

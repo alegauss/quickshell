@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS234** (deps: —) **Asking for a colour with OSC 4, 5 or 10 to 19 gets no answer, and their resets are ignored** — The emulator sets these colours but answers no query and handles no reset, which is 47 esctest failures, each a timeout. → §QS234
 - 📋 **QS235** (deps: —) **Character protection is not modelled, so selective erase and protected fields erase everything** — DECSCA, SPA and EPA are absent and DECSED, DECSEL and DECSERA erase like their plain forms, which is 36 failures. → §QS235
 - 📋 **QS236** (deps: —) **Window operations through CSI t neither report the window nor say they are refused** — XtermWinopsTests fails 28 of its tests, 26 by timing out, because no CSI t report is answered and no resize is acted on. → §QS236
 - 📋 **QS237** (deps: —) **DECRQM answers not recognised for modes xterm reports as permanently reset or as set** — Twenty-six DECRQM tests and one DECSCL test fail because the answer is 0 where xterm answers 4, 1 or 2. → §QS237
@@ -358,3 +357,7 @@
   has no single size to become, and xterm too ignores DECCOLM's width unless allowC132
   is set. QS208 keeps its clear, margin reset and home; vttest cuts 010, 012 and 030
   differ for this.
+- **No X device-independent colour spellings: CIELab and its kind, TekHVC, rgbi** Xcms
+  converts them through the X display's characterisation, so the answer is a property of
+  a server this client does not have; rgb: and the # forms are what hosts send.
+  esctest's 21 tests of them stay failed and named here.

@@ -141,6 +141,9 @@ public sealed record ColourScheme
         palette.Foreground = Foreground;
         palette.Background = Background;
         palette.Cursor = Cursor;
+
+        // What a host's reset returns to is the scheme the user chose (QS234).
+        palette.Remember();
     }
 
     /// <summary>

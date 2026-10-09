@@ -41,6 +41,19 @@ internal enum Answer : byte
 
     /// <summary>The same for a private mode, which carries the question mark it was asked with.</summary>
     DecModeReport,
+
+    /// <summary>
+    /// A colour asked for with <c>?</c> (QS234): the command, the index where it takes one, and the
+    /// colour as this palette holds it. Three numbers, so the colour a host set comes back as one
+    /// this terminal computed and not as the text the host wrote.
+    /// </summary>
+    ColourReport,
+
+    /// <summary>
+    /// XTGETTCAP's answer: a capability this client recognises, by a code below, or "not one I know"
+    /// with nothing of the host's request echoed (QS234).
+    /// </summary>
+    CapabilityReport,
 }
 
 public sealed partial class Emulator
@@ -63,6 +76,10 @@ public sealed partial class Emulator
     private const byte Escape = 0x1B;
     private const byte Bracket = (byte)'[';
     private const byte Backslash = 0x5C;
+    private const byte Bell = 0x07;
+
+    /// <summary>The one capability XTGETTCAP is answered for: how many colours there are.</summary>
+    private const int CapabilityColours = 1;
 
     private readonly List<byte> _reply = [];
 
@@ -177,6 +194,50 @@ public sealed partial class Emulator
                 Literal("$y");
                 break;
 
+            case Answer.ColourReport:
+                // OSC n ; [index ;] rgb:RRRR/GGGG/BBBB, each channel's eight bits written twice,
+                // which is how X widens them and what xterm reads back. Closed with the terminator
+                // the question used, carried in the bit above the colour.
+                _reply.Add(Escape);
+                _reply.Add((byte)']');
+                Number(first);
+
+                if (second >= 0)
+                {
+                    Literal(";");
+                    Number(second);
+                }
+
+                Literal(";rgb:");
+                Hex2Twice(third >> 16);
+                Literal("/");
+                Hex2Twice(third >> 8);
+                Literal("/");
+                Hex2Twice(third);
+
+                if ((third & (1 << 24)) != 0)
+                {
+                    _reply.Add(Bell);
+                }
+                else
+                {
+                    _reply.Add(Escape);
+                    _reply.Add(Backslash);
+                }
+
+                break;
+
+            case Answer.CapabilityReport:
+                _reply.Add(Escape);
+                _reply.Add((byte)'P');
+
+                // Co, the number of colours: "436F" is its name and "323536" is 256, both in hex,
+                // which is how the request and the answer spell them.
+                Literal(first == CapabilityColours ? "1+r436F=323536" : "0+r");
+                _reply.Add(Escape);
+                _reply.Add(Backslash);
+                break;
+
             case Answer.RectangleChecksum:
                 _reply.Add(Escape);
                 _reply.Add((byte)'P');
@@ -276,6 +337,19 @@ public sealed partial class Emulator
         {
             int digit = (value >> shift) & 0xF;
             _reply.Add((byte)(digit < 10 ? '0' + digit : 'A' + digit - 10));
+        }
+    }
+
+    /// <summary>One channel's eight bits as four lower-case hex digits, the byte written twice.</summary>
+    private void Hex2Twice(int value)
+    {
+        for (int repeat = 0; repeat < 2; repeat++)
+        {
+            for (int shift = 4; shift >= 0; shift -= 4)
+            {
+                int digit = (value >> shift) & 0xF;
+                _reply.Add((byte)(digit < 10 ? '0' + digit : 'a' + digit - 10));
+            }
         }
     }
 

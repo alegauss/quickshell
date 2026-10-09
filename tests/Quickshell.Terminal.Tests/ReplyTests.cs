@@ -15,7 +15,9 @@ public sealed class ReplyTests
     /// <summary>Every question this terminal answers, and the two it refuses to.</summary>
     private const string EveryQuestion =
         E + "[c" + E + "[>c" + E + "[5n" + E + "[6n" + E + "[?6n"
-        + E + "[18t" + E + "[20t" + E + "[21t" + E + "[7;1;1;1;24;80*y" + E + "[?7$p" + E + "[4$p";
+        + E + "[18t" + E + "[20t" + E + "[21t" + E + "[7;1;1;1;24;80*y" + E + "[?7$p" + E + "[4$p"
+        + E + "]4;1;?\a" + E + "]5;0;?" + E + "\\" + E + "]10;?" + E + "\\"
+        + E + "P+q436F" + E + "\\" + E + "P+qMARKERa1b2c3" + E + "\\";
 
     // ---- The falsification ----
 
@@ -56,8 +58,9 @@ public sealed class ReplyTests
     {
         Emulator emulator = Fed(E + "]2;a title\a" + EveryQuestion);
         // P, ! and ~ frame DECRQCRA's answer, A to F are its hex digits and the backslash ends it.
-        // and $ and y close DECRQM's.
-        const string allowed = "\u001b[]?>;0123456789cnRtP!~ABCDEF\\$y";
+        // and $ and y close DECRQM's. A colour report is rgb:, lower-case hex and slashes, closed by
+        // BEL where it was asked with one; + and = frame XTGETTCAP's (QS234).
+        const string allowed = "\u001b[]?>;0123456789cnRtP!~ABCDEF\\$yrgb:/abcdef\a+=";
 
         foreach (byte sent in emulator.Reply)
         {
@@ -286,6 +289,66 @@ public sealed class ReplyTests
         string sent = Sent(Fed("中" + E + "[6;1;1;1;1;2*y"));
 
         Assert.Equal(-0x4E2D & 0xFFFF, Convert.ToInt32(sent[5..9], 16));
+    }
+
+    // ---- Colours asked for and reset (QS234) ----
+
+    /// <summary>
+    /// The line's falsification: OSC 4 ; 1 ; ? is answered, in xterm's sixteen-bit form and with the
+    /// terminator it was asked with.
+    /// </summary>
+    [Fact]
+    public void AColourAskedForIsAnsweredWithTheTerminatorItCameWith()
+    {
+        Assert.Equal(E + "]4;1;rgb:cdcd/0000/0000\a", Sent(Fed(E + "]4;1;?\a")));
+        Assert.Equal(E + "]4;1;rgb:cdcd/0000/0000" + E + "\\", Sent(Fed(E + "]4;1;?" + E + "\\")));
+    }
+
+    /// <summary>X's # form is the high bits, so #fff reads back as f0f0 and #aaaabbbbcccc as aaaa.</summary>
+    [Theory]
+    [InlineData("#fff", "f0f0/f0f0/f0f0")]
+    [InlineData("#808080", "8080/8080/8080")]
+    [InlineData("#800800800", "8080/8080/8080")]
+    [InlineData("#aaaabbbbcccc", "aaaa/bbbb/cccc")]
+    [InlineData("rgb:f/f/f", "ffff/ffff/ffff")]
+    public void ColourSpellingsReadBackAsXtermReadsThem(string spelling, string answer)
+    {
+        Assert.Equal(E + "]10;rgb:" + answer + "\a", Sent(Fed(E + "]10;" + spelling + "\a" + E + "]10;?\a")));
+    }
+
+    /// <summary>
+    /// A reset returns to the session's own scheme, not to built-in defaults, and the special colours
+    /// are the same five whether OSC 5 or OSC 4 past 255 reaches them.
+    /// </summary>
+    [Fact]
+    public void AResetReturnsToTheSchemeAndSpecialColoursAreOneSetUnderTwoNumbers()
+    {
+        // A scheme whose colour 3 and background are not the built-in ones, so a reset that went to
+        // the built-in palette would be seen.
+        Rgb[] sixteen = [.. ColourScheme.Default.Palette];
+        sixteen[3] = new Rgb(1, 2, 3);
+        ColourScheme mine = new() { Palette = sixteen, Background = new Rgb(4, 5, 6) };
+
+        Emulator emulator = new(80, 24);
+        mine.ApplyTo(emulator.Palette);
+
+        emulator.Feed(Encoding.UTF8.GetBytes(E + "]4;3;#aabbcc\a" + E + "]104;3\a"));
+        Assert.Equal(new Rgb(1, 2, 3), emulator.Palette[3]);
+
+        emulator.Feed(Encoding.UTF8.GetBytes(E + "]5;1;#123456\a" + E + "]4;257;?\a"));
+        Assert.Equal(E + "]4;257;rgb:1212/3434/5656\a", Sent(emulator));
+
+        emulator.ClearReply();
+        emulator.Feed(Encoding.UTF8.GetBytes(E + "]11;#010203\a" + E + "]111\a"));
+        Assert.Equal(new Rgb(4, 5, 6), emulator.Palette.Background);
+    }
+
+    /// <summary>XTGETTCAP answers Co with 256, and anything else as unknown with nothing echoed.</summary>
+    [Fact]
+    public void TheColourCountIsTheOneCapabilityAnswered()
+    {
+        Assert.Equal(E + "P1+r436F=323536" + E + "\\", Sent(Fed(E + "P+q436F" + E + "\\")));
+        Assert.Equal(E + "P0+r" + E + "\\", Sent(Fed(E + "P+q544E" + E + "\\")));
     }
 
     private static Emulator Fed(string stream)

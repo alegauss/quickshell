@@ -97,6 +97,7 @@
 - ✅ **QS227** **esctest fails 309 of 568 tests now that the emulator answers its queries, and no line names which to fix** — Every failing esctest class now has a line, QS232 to QS244, grouped from the log by cause; QS232's line feed is the emulator's own bug.
 - ✅ **QS232** **A line feed, VT, FF or IND also returns the cursor to column one, as though every one were NEL** — A line feed, VT, FF and IND move down and keep the column, LNM returns the carriage, and esctest passes 231 where it passed 216.
 - ✅ **QS233** **No left or right margin can be set, so everything esctest checks inside a column region fails** — DECLRMM and DECSLRM set a column region every cursor, edit, scroll and wrap respects, with DECIC, DECDC, DECBI and DECFI; esctest passes 299 where it passed 231.
+- ✅ **QS234** **Asking for a colour with OSC 4, 5 or 10 to 19 gets no answer, and their resets are ignored** — OSC 4, 5 and 10 to 19 answer a colour query in xterm's form, 104, 105 and 110 to 119 reset to the session's scheme, and XTGETTCAP answers Co; esctest passes 323.
 
 ## Block D — The tree a user organises work in
 
