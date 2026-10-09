@@ -208,6 +208,7 @@
 - ✅ **QS197 (steadier parse arm)** **The parse figure spreads by a fifth between runs on the reference machine, so the gate lets a regression that big pass** — The replay pins its timing thread to the quickest P-core at high priority and feeds parse 8 times a pass; its threshold fell from 44.8% to 6.1 and 9.9.
 - ✅ **QS200** **The release gate times parse and emulate on the replay harness's build, not on the assemblies being archived** — Parse and emulate run on the published client's assemblies and runtimeconfig; a client-only tiering-off publish now fails the gate (design recorded in `docs/PERFORMANCE.md`).
 - ✅ **QS201** **An echo at a prompt reaches the glass two refresh intervals after it arrives, one more than the vblank wait explains** — Every windowed chain, window or composition, popup or WPF host, was composed at two intervals; a non-goal names that floor (design recorded in `benchmarks/results/photon-h.md`).
+- ✅ **QS247** **A copy started a moment before an install is not found running, so the install is not refused** — The running check reads the kernel's image path, so a copy started a moment before an install or uninstall is found and refused instead of being missed.
 
 ## Block I — An error a user can act on
 

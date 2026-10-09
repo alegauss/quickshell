@@ -164,6 +164,39 @@ public sealed class InstallationTests : IDisposable
     }
 
     /// <summary>
+    /// QS247: a copy asked about in the instant it starts is found, where reading its modules lost
+    /// it while its loader was still building the list. Asked straight after the start, several
+    /// times, since one try can land after the window.
+    /// </summary>
+    [Fact]
+    public void ACopyStartedThisInstantIsAlreadyRunning()
+    {
+        string download = Path.Combine(_root, "download");
+
+        Directory.CreateDirectory(download);
+        File.Copy(Path.Combine(Environment.SystemDirectory, "PING.EXE"), Path.Combine(download, "quickshell.exe"));
+
+        Installation installed = At();
+
+        installed.Install(download, "1.0.0");
+
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            using Process running = Hold(installed.Program, seconds: 30);
+
+            try
+            {
+                Assert.Throws<SetupException>(() => installed.Install(download, "1.0.1"));
+            }
+            finally
+            {
+                running.Kill();
+                running.WaitForExit();
+            }
+        }
+    }
+
+    /// <summary>
     /// QS194: a file of the installed copy held open the way a virus scanner holds one — for most of
     /// a second, sharing everything — is waited for, where it used to fail the install outright.
     /// </summary>

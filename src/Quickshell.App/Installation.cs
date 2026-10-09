@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace Quickshell.App;
@@ -278,29 +279,64 @@ public sealed class Installation
         {
             using (process)
             {
-                try
+                if (process.Id != Environment.ProcessId
+                    && ImagePath(process.Id) is { } path
+                    && path.StartsWith(Folder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 {
-                    if (process.Id != Environment.ProcessId
-                        && process.MainModule?.FileName is { } path
-                        && path.StartsWith(Folder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                    {
-                        running++;
-                    }
-                }
-                catch (Win32Exception)
-                {
-                    // Another user's, which this process may not ask about. Its files are still in
-                    // use, and the copy that meets them says so.
-                }
-                catch (InvalidOperationException)
-                {
-                    // Gone between the list and the question, which is the answer wanted anyway.
+                    running++;
                 }
             }
         }
 
         return running;
     }
+
+    /// <summary>
+    /// The program a process is running, or null where it cannot be asked.
+    ///
+    /// <para><b>From the kernel's record, not the process's modules</b> (QS247).
+    /// <c>Process.MainModule</c> walks the target's loader list, which a process started a moment
+    /// ago has not built yet: it threw, the throw was read as another user's process, and a copy
+    /// launched just before an install went uncounted. The image name is there from the moment
+    /// the process exists.</para>
+    ///
+    /// <para>Null is a process that is gone, or one this user may not query at all - another
+    /// user's, which cannot be running from a folder under this user's own profile.</para>
+    /// </summary>
+    private static string? ImagePath(int processId)
+    {
+        const uint QueryLimitedInformation = 0x1000;
+
+        IntPtr handle = OpenProcess(QueryLimitedInformation, false, processId);
+
+        if (handle == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        try
+        {
+            char[] path = new char[32768];
+            int length = path.Length;
+
+            return QueryFullProcessImageName(handle, 0, path, ref length) ? new string(path, 0, length) : null;
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint access, bool inherit, int processId);
+
+    [DllImport("kernel32.dll", EntryPoint = "QueryFullProcessImageNameW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool QueryFullProcessImageName(IntPtr process, uint flags, char[] name, ref int size);
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr handle);
 
     /// <summary>
     /// Writes the copy beside the installed one and swaps it in, putting the old one back where the
