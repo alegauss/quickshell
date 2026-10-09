@@ -23,6 +23,21 @@ internal enum Setting : byte
 
     /// <summary>DECSACE: whether an attribute change runs as a stream or a rectangle (QS238).</summary>
     AttributeExtent,
+
+    /// <summary>DECSCUSR: the cursor's style (QS243).</summary>
+    CursorStyle,
+
+    /// <summary>DECSASD: which display output goes to, always the main one here (QS243).</summary>
+    ActiveDisplay,
+
+    /// <summary>DECSSDT: the status line's type, always none here (QS243).</summary>
+    StatusLine,
+
+    /// <summary>DECSLPP: lines per page, which is the rows the pane has (QS243).</summary>
+    LinesPerPage,
+
+    /// <summary>DECSNLS: lines per screen, the same rows (QS243).</summary>
+    LinesPerScreen,
 }
 
 public sealed partial class Emulator
@@ -131,6 +146,11 @@ public sealed partial class Emulator
             [(byte)'"', (byte)'p'] => Setting.ConformanceLevel,
             [(byte)'"', (byte)'q'] => Setting.CharacterProtection,
             [(byte)'*', (byte)'x'] => Setting.AttributeExtent,
+            [(byte)' ', (byte)'q'] => Setting.CursorStyle,
+            [(byte)'$', (byte)'}'] => Setting.ActiveDisplay,
+            [(byte)'$', (byte)'~'] => Setting.StatusLine,
+            [(byte)'t'] => Setting.LinesPerPage,
+            [(byte)'*', (byte)'|'] => Setting.LinesPerScreen,
             _ => Setting.Unknown,
         };
     }
@@ -175,6 +195,32 @@ public sealed partial class Emulator
                 Literal("1$r");
                 Number(AttributeExtentReport);
                 Literal("*x");
+                break;
+
+            case Setting.CursorStyle:
+                Literal("1$r");
+                Number(CursorStyle);
+                Literal(" q");
+                break;
+
+            case Setting.ActiveDisplay:
+                Literal("1$r0$}");
+                break;
+
+            case Setting.StatusLine:
+                Literal("1$r0$~");
+                break;
+
+            case Setting.LinesPerPage:
+                Literal("1$r");
+                Number(Buffer.Rows);
+                Literal("t");
+                break;
+
+            case Setting.LinesPerScreen:
+                Literal("1$r");
+                Number(Buffer.Rows);
+                Literal("*|");
                 break;
 
             case Setting.ConformanceLevel:

@@ -34,8 +34,8 @@ public sealed class SettingRequestTests
     }
 
     [Theory]
-    [InlineData("t")]
-    [InlineData(" q")]
+    [InlineData("u")]
+    [InlineData("$t")]
     [InlineData("|")]
     [InlineData("")]
     public void EveryUnreportedSettingGetsTheSameRefusal(string name)
@@ -56,6 +56,67 @@ public sealed class SettingRequestTests
     }
 
     // ---- What is reported ----
+
+    /// <summary>The design's falsifier (QS243): <em>falsified when DECRQSS for DECSCUSR answers invalid</em>.</summary>
+    [Theory]
+    [InlineData("", "0")]
+    [InlineData("4", "4")]
+    [InlineData("6", "6")]
+    public void TheCursorStyleIsReportedAsItWasSet(string style, string reported)
+    {
+        Assert.Equal(Dcs + "1$r" + reported + " q" + St, Sent(Fed(Csi + style + " q" + Request(" q"))));
+    }
+
+    [Fact]
+    public void AStyleOutsideTheSixIsIgnored()
+    {
+        Emulator emulator = Fed(Csi + "5 q" + Csi + "9 q");
+
+        Assert.Equal(5, emulator.CursorStyle);
+        Assert.True(emulator.Unhandled > 0);
+    }
+
+    [Theory]
+    [InlineData(0, CursorShape.None)]
+    [InlineData(1, CursorShape.Block)]
+    [InlineData(2, CursorShape.Block)]
+    [InlineData(3, CursorShape.Underline)]
+    [InlineData(4, CursorShape.Underline)]
+    [InlineData(5, CursorShape.Bar)]
+    [InlineData(6, CursorShape.Bar)]
+    public void EachStyleNamesAShape(int style, CursorShape shape)
+    {
+        Assert.Equal(shape, Emulator.ShapeFor(style));
+    }
+
+    [Fact]
+    public void AStyleChangeIsDamageAndAResetForgetsIt()
+    {
+        Emulator emulator = Fed(Csi + "6 q");
+
+        Assert.Equal(6, emulator.Damage.CursorStyle);
+
+        emulator.Feed(Encoding.ASCII.GetBytes(Escape + "c"));
+
+        Assert.Equal(0, emulator.Damage.CursorStyle);
+    }
+
+    /// <summary>The page, screen and status-line settings, answered from what this client has (QS243).</summary>
+    [Theory]
+    [InlineData("t", "1$r24t")]
+    [InlineData("*|", "1$r24*|")]
+    [InlineData("$}", "1$r0$}")]
+    [InlineData("$~", "1$r0$~")]
+    public void TheScreenSettingsAreReportedFromThePane(string name, string reply)
+    {
+        Assert.Equal(Dcs + reply + St, Sent(Fed(Request(name))));
+    }
+
+    [Fact]
+    public void DecidAnswersAsDaDoes()
+    {
+        Assert.Equal(Sent(Fed(Csi + "c")), Sent(Fed(Escape + "Z")));
+    }
 
     [Fact]
     public void ThePenIsReportedAsTheSgrThatWouldSetIt()

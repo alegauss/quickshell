@@ -95,9 +95,10 @@ and a ligature is drawn across them.
 
 `Block`, `Underline` or `Bar`.
 
-A host may ask for a different shape while it runs, and today this client does not listen — so this
-is the shape, not a starting point. When it starts listening this becomes what a host that says
-nothing gets.
+This is the shape a program gets when it says nothing. A program can ask for another while it runs
+(DECSCUSR) — an editor switching to a bar in insert mode is the usual one — and that shape is drawn
+until the program asks for the default back or the terminal is reset. Whether the cursor blinks
+stays `cursorBlink`'s to decide, whatever the program asked.
 
 ### `cursorBlink`
 

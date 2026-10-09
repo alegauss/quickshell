@@ -549,7 +549,7 @@ public sealed class EmulatorTests
     [Fact]
     public void AnUnknownSequenceIsCountedRatherThanThrown()
     {
-        Emulator emulator = Fed("\u001b[99999;99999`\u001b[?2004h\u001bZa");
+        Emulator emulator = Fed("\u001b[99999;99999`\u001b[?2004h\u001bYa");
 
         Assert.True(emulator.Unhandled > 0);
         Assert.Contains("a", Row(emulator, 0), StringComparison.Ordinal);

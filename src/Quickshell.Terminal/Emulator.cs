@@ -75,7 +75,8 @@ public sealed partial class Emulator : IAnsiHandler
         Buffer.CursorRow,
         Buffer.CursorColumn,
         CursorVisible,
-        Screens.IsAlternate);
+        Screens.IsAlternate,
+        CursorStyle);
 
     /// <summary>How this session sends alt. Escape-prefix, which is what a shell expects.</summary>
     public AltSends AltSends { get; set; } = AltSends.Escape;
@@ -566,6 +567,11 @@ public sealed partial class Emulator : IAnsiHandler
                 Reset();
                 break;
 
+            case (byte)'Z':
+                // DECID, the VT52-era spelling of DA1, answered the same (QS243).
+                Send(Answer.DeviceAttributes);
+                break;
+
             case (byte)'V':
                 ProtectedArea(start: true);
                 break;
@@ -722,6 +728,7 @@ public sealed partial class Emulator : IAnsiHandler
         _designated[1] = CharacterSet.Ascii;
         _activeSet = 0;
         ResetTitles();
+        CursorStyle = 0;
         _saved[0] = SavedCursor.Home;
         _saved[1] = SavedCursor.Home;
         _savedModes?.Clear();
@@ -820,6 +827,13 @@ public sealed partial class Emulator : IAnsiHandler
         if (intermediates.Length == 1 && intermediates[0] == (byte)'!' && final == (byte)'p')
         {
             SoftReset();
+            return;
+        }
+
+        // DECSCUSR, the cursor's style (QS243).
+        if (intermediates.Length == 1 && intermediates[0] == (byte)' ' && final == (byte)'q')
+        {
+            SetCursorStyle(parameters.Value(0, 0));
             return;
         }
 

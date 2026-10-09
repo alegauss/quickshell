@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS243** (deps: —) **DECRQSS answers invalid for settings the client holds, and DA, DA2 and DECID answer another identity** — Six DECRQSS tests and five identity tests fail on replies that are well formed but not the ones xterm gives. → §QS243
 - 📋 **QS244** (deps: —) **Seventeen esctest failures in eleven classes have no family of their own** — Each is one or two tests and one cause, and together they are the rest of what Block C needs named. → §QS244
 - 📋 **QS246** (deps: —) **Reverse screen mode DECSCNM is not drawn, so a visual bell never flashes** — vim and readline flash the screen with mode 5 when the audible bell is off, and here nothing shows, so that user hears and sees no bell. → §QS246
 - 📋 **QS248** (deps: —) **An SGR in the last column cancels the owed wrap, so the next character overwrites that column** — Every non-report CSI clears the pending wrap, where xterm clears it only on cursor movement, so a coloured full-width line prints one character short. → §QS248
@@ -360,3 +359,7 @@
   title read back types host text at the shell (QS19). Reports describe the pane and
   titles come back empty, so 15 esctest cases (move, iconify, DECSLPP, title readback)
   fail by decision (QS236).
+- **No claim to be xterm or a VT5xx in DA, DA2 or DECSCL** xterm's VT525 answer lists
+  132 columns, a printer, national sets, a locator and more that this client refuses,
+  and a program that believes it sends what cannot be honoured. It stays a VT220 with
+  colour, so 4 DA and DA2 cases and DECRQSS of DECSCL fail by decision (QS243).

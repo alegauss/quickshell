@@ -30,6 +30,10 @@ namespace Quickshell.Terminal;
 /// <param name="CursorColumn">The cursor's column.</param>
 /// <param name="CursorVisible">Whether the host has asked for the cursor to be shown at all.</param>
 /// <param name="Alternate">Whether a full-screen program has taken the screen.</param>
+/// <param name="CursorStyle">
+/// The cursor style the host asked for with DECSCUSR, 0 for none (QS243). It changes the cursor's
+/// shape and nothing else on screen, so it is damage of its own.
+/// </param>
 public readonly record struct Damage(
     long Generation,
     long TopLine,
@@ -38,4 +42,5 @@ public readonly record struct Damage(
     int CursorRow,
     int CursorColumn,
     bool CursorVisible,
-    bool Alternate);
+    bool Alternate,
+    int CursorStyle = 0);

@@ -343,24 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS243 DECRQSS answers and device identity
-
-DECRQSS answers 0 dollar r (invalid) for DECSASD, DECSCL, DECSCUSR, DECSLPP, DECSNLS and
-DECSSDT, each a setting this client holds or can answer. DA answers a VT level of its
-own and DA2 a terminal type of 1 where esctest, judging against xterm, wants 64 and the
-xterm feature list; DECID times out.
-
-What to build: DECRQSS for every setting held, and a decision on identity: answering as
-xterm is what lets programs enable what this client supports, and answering otherwise is
-a claim that has to be written down with its reason.
-
-Falsified when DECRQSS for DECSCUSR answers invalid.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS244 The remaining esctest failures
 
 DECALN (ESC # 8) neither homes the cursor nor clears the margins, and fills differently

@@ -104,13 +104,15 @@ public sealed class TerminalView : IDisposable
     public long Draws => _draws;
 
     /// <summary>
-    /// What the cursor is drawn as.
-    ///
-    /// <para>A block, because nothing parses DECSCUSR yet and inventing a shape the host did not ask
-    /// for would be worse than the one every terminal starts with. It is settable so the shape has
-    /// somewhere to arrive when it becomes the model's.</para>
+    /// What the cursor is drawn as when the host has not asked: the user's setting. A shape the
+    /// host asks for with DECSCUSR is drawn instead while it stands, and DECSCUSR 0 or a reset gives
+    /// this one back (QS243).
     /// </summary>
     public CursorShape Cursor { get; set; } = CursorShape.Block;
+
+    /// <summary>The host's DECSCUSR shape where it asked for one, the user's where it did not.</summary>
+    private CursorShape Shape(Damage damage) =>
+        Emulator.ShapeFor(damage.CursorStyle) is var asked and not CursorShape.None ? asked : Cursor;
 
     /// <summary>The renderer, for the blink and the colours a settings surface changes.</summary>
     public CellRenderer Renderer => _renderer;
@@ -439,7 +441,7 @@ public sealed class TerminalView : IDisposable
         Viewport.Produced();
 
         _painter.Paint(buffer, _cells, caret ? damage.CursorRow : -1, damage.CursorColumn,
-                       caret ? Cursor : CursorShape.None, _renderer.Metrics, Selection, Viewport,
+                       caret ? Shape(damage) : CursorShape.None, _renderer.Metrics, Selection, Viewport,
                        Composing);
 
         // Waited for here and not at the top of the loop: the wait is for a queue slot, and a

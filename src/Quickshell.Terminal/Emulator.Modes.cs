@@ -27,6 +27,37 @@ public sealed partial class Emulator
     public bool ReverseWrap { get; private set; }
 
     /// <summary>
+    /// DECSCUSR's style, <c>CSI Ps SP q</c>: 0 for none asked, which leaves the user's own shape;
+    /// 1 and 2 a block, 3 and 4 an underline, 5 and 6 a bar, odd blinking and even steady (QS243).
+    /// </summary>
+    public int CursorStyle { get; private set; }
+
+    /// <summary>
+    /// The shape a DECSCUSR style asks for, or <see cref="CursorShape.None"/> for 0, which asks for
+    /// nothing and leaves the shape the user chose. Blinking and steady draw alike: whether the
+    /// cursor blinks is the user's setting, not the host's.
+    /// </summary>
+    public static CursorShape ShapeFor(int style) => style switch
+    {
+        1 or 2 => CursorShape.Block,
+        3 or 4 => CursorShape.Underline,
+        5 or 6 => CursorShape.Bar,
+        _ => CursorShape.None,
+    };
+
+    private void SetCursorStyle(int style)
+    {
+        if (style is >= 0 and <= 6)
+        {
+            CursorStyle = style;
+        }
+        else
+        {
+            Unhandled++;
+        }
+    }
+
+    /// <summary>
     /// xterm's extended reverse wraparound, mode 1045: a backspace at the left margin wraps to the
     /// row above whether or not that row wrapped, and from the top margin to the bottom one. Mode 45
     /// crosses only a row that really wrapped into the cursor's (QS242).
