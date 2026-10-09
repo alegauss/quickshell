@@ -343,31 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS249 Keys typed while a session opens
-
-Typist.Deliver drops a keystroke while Sending is null, with a comment saying there is
-no host to give it to. TerminalLeaf.ConnectAsync sets Sending only once the session's
-open returns, so for the start of every pane there is a host on its way and the keys
-still go nowhere: a user who opens a window or a tab and types at once loses the first
-characters.
-
-Seen on 2026-10-09: the guest's tabs.cases.json case "clicking a tab on the strip puts
-that tab's terminal on screen" typed `title first-tab-marker` and Enter into a fresh
-window. The screen read back held cmd's banner and no echo of the command, so the case
-went red once, after a dozen passing guest runs that day.
-
-What to build: a pane whose session is still opening keeps what is typed, bounded (a few
-KB, counted when it overflows), and hands it to the session in order the moment Sending
-is set, before anything typed after. A pane whose open failed, or that is closed, drops
-what it held. Broadcast typing goes through the same path, so a group's panes that open
-at different speeds all get the same keys.
-
-Falsified when a key typed between a pane's creation and its shell's start does not
-reach the shell.
-
-Evidence: a unit test on Typist (keys before Sending arrive after it, in order, and the
-bound holds), and the tabs case passing repeatedly in the guest.
-
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates

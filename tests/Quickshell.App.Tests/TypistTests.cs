@@ -23,6 +23,80 @@ namespace Quickshell.App.Tests;
 /// </summary>
 public sealed class TypistTests
 {
+    // ---- Keys typed while a session opens (QS249) ----
+
+    /// <summary>
+    /// The design's falsifier: <em>falsified when a key typed between a pane's creation and its
+    /// shell's start does not reach the shell</em>. They arrive first, in order, before what follows.
+    /// </summary>
+    [Fact]
+    public void KeysTypedWhileASessionOpensReachItFirstAndInOrder()
+    {
+        Typist typist = new(new Emulator(80, 25));
+        List<string> wrote = [];
+
+        typist.Hold();
+        typist.Type("title marker", ModifierKeys.None);
+        typist.Press(Key.Enter, ModifierKeys.None);
+
+        typist.Sending = Recording(wrote);
+        typist.Type("x", ModifierKeys.None);
+
+        Assert.Equal(["title marker\r", "x"], wrote);
+    }
+
+    [Fact]
+    public void WhatIsHeldIsBounded()
+    {
+        Typist typist = new(new Emulator(80, 25));
+        List<string> wrote = [];
+
+        typist.Hold();
+        typist.Type(new string('a', Typist.MaximumHeld), ModifierKeys.None);
+        typist.Type("b", ModifierKeys.None);
+
+        typist.Sending = Recording(wrote);
+
+        Assert.Equal(1, typist.Overflowed);
+        Assert.Equal(Typist.MaximumHeld, wrote.Single().Length);
+    }
+
+    [Fact]
+    public void AnOpenThatFailedDropsWhatWasHeld()
+    {
+        Typist typist = new(new Emulator(80, 25));
+        List<string> wrote = [];
+
+        typist.Hold();
+        typist.Type("lost", ModifierKeys.None);
+        typist.Release();
+        typist.Type("also", ModifierKeys.None);
+
+        typist.Sending = Recording(wrote);
+
+        Assert.Empty(wrote);
+    }
+
+    [Fact]
+    public void WithNoSessionOnItsWayNothingIsKept()
+    {
+        Typist typist = new(new Emulator(80, 25));
+        List<string> wrote = [];
+
+        Assert.True(typist.Type("nowhere", ModifierKeys.None));
+
+        typist.Sending = Recording(wrote);
+
+        Assert.Empty(wrote);
+    }
+
+    private static Func<ReadOnlyMemory<byte>, ValueTask> Recording(List<string> wrote) => bytes =>
+    {
+        wrote.Add(Encoding.UTF8.GetString(bytes.Span));
+
+        return ValueTask.CompletedTask;
+    };
+
     /// <summary>
     /// An arrow pressed on the window arrives at the far end as the arrow's own sequence.
     /// </summary>

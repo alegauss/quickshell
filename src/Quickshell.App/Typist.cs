@@ -23,7 +23,19 @@ namespace Quickshell.App;
 /// </summary>
 public sealed class Typist
 {
+    /// <summary>
+    /// How much is kept for a session still opening (QS249): a few lines of fast typing or a short
+    /// paste, and a bound, because a pane whose open hangs must not grow without one.
+    /// </summary>
+    public const int MaximumHeld = 4096;
+
     private readonly Emulator _emulator;
+
+    // The UI thread types and a session's open completes on a pool thread; this orders the two, so
+    // a key typed while the held ones are being handed over cannot overtake them.
+    private readonly Lock _gate = new();
+    private Func<ReadOnlyMemory<byte>, ValueTask>? _sending;
+    private List<byte>? _held;
 
     /// <summary>Types into a model, whose modes decide what the keys mean.</summary>
     public Typist(Emulator emulator)
@@ -36,11 +48,66 @@ public sealed class Typist
     /// <summary>
     /// Where the bytes go: a session's <c>TypeAsync</c>, or null while there is no session.
     ///
-    /// <para>Null is the shipped client's state today, and it is not a stub — there is nowhere for a
-    /// keystroke to go until QS126 gives this window a connection. What null must not do is throw,
-    /// because a user typing into a window that has not connected is not an error.</para>
+    /// <para>Null must not throw, because a user typing into a window that has not connected is not
+    /// an error. While <see cref="Hold"/> says a session is on its way, what is typed is kept, and
+    /// setting this hands it over first, in order, before anything typed after (QS249).</para>
     /// </summary>
-    public Func<ReadOnlyMemory<byte>, ValueTask>? Sending { get; set; }
+    public Func<ReadOnlyMemory<byte>, ValueTask>? Sending
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _sending;
+            }
+        }
+
+        set
+        {
+            lock (_gate)
+            {
+                _sending = value;
+
+                if (value is not null && _held is { } held)
+                {
+                    _held = null;
+
+                    if (held.Count > 0)
+                    {
+                        Sent++;
+                        _ = Deliver(value, held.ToArray());
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>How many keystrokes' bytes were dropped because a session took too long to open (QS249).</summary>
+    public long Overflowed { get; private set; }
+
+    /// <summary>
+    /// A session is opening into this pane: keep what is typed until <see cref="Sending"/> is set,
+    /// rather than dropping it because the host is not there yet (QS249).
+    /// </summary>
+    public void Hold()
+    {
+        lock (_gate)
+        {
+            if (_sending is null)
+            {
+                _held ??= [];
+            }
+        }
+    }
+
+    /// <summary>The session did not open: what was kept for it goes nowhere, and nothing more is kept.</summary>
+    public void Release()
+    {
+        lock (_gate)
+        {
+            _held = null;
+        }
+    }
 
     /// <summary>
     /// Something was typed, which is how a view scrolled back learns the reading is finished.
@@ -120,22 +187,35 @@ public sealed class Typist
 
         Typed?.Invoke();
 
-        Func<ReadOnlyMemory<byte>, ValueTask>? sending = Sending;
-
-        if (sending is null)
+        lock (_gate)
         {
-            // Taken, and dropped. The key was the terminal's; there is no host to give it to. It is
-            // reported as handled either way, because a window with no session must not let a
-            // keystroke fall through to whatever else might be listening.
-            return true;
+            if (_sending is { } sending)
+            {
+                Sent++;
+
+                // Not awaited: this is a UI thread, and a keystroke that blocked it until a socket
+                // accepted the write would be a window that stops repainting while the network is
+                // slow. The write itself is ordered by the channel behind it, and this lock orders
+                // it after anything held for the session.
+                _ = Deliver(sending, bytes.AsMemory(0, written));
+            }
+            else if (_held is { } held)
+            {
+                // A session on its way (QS249): kept for it, within the bound.
+                if (held.Count + written <= MaximumHeld)
+                {
+                    held.AddRange(bytes.AsSpan(0, written));
+                }
+                else
+                {
+                    Overflowed++;
+                }
+            }
+
+            // Otherwise taken, and dropped: there is no host coming to give it to. It is reported
+            // as handled either way, because a window with no session must not let a keystroke fall
+            // through to whatever else might be listening.
         }
-
-        Sent++;
-
-        // Not awaited: this is a UI thread, and a keystroke that blocked it until a socket accepted
-        // the write would be a window that stops repainting while the network is slow. The write
-        // itself is ordered by the channel behind it.
-        _ = Deliver(sending, bytes.AsMemory(0, written));
 
         return true;
     }

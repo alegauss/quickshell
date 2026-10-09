@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS249** (deps: —) **Keys typed before a new pane's shell has started are dropped, so a fast first command loses its start** — Typist drops a key while no session is attached, which during start-up is a host still on its way, and one guest UI case went red on it. → §QS249
 
 ## Block D — The tree a user organises work in
 

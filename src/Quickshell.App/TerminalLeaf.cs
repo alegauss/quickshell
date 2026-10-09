@@ -295,6 +295,9 @@ public sealed class TerminalLeaf : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(open);
 
+        // What is typed while the session opens is kept for it, not dropped (QS249).
+        Typist.Hold();
+
         try
         {
             IShellSession session = await open(Emulator, _damage, Emulator.Buffer.Columns, Emulator.Buffer.Rows,
@@ -332,6 +335,7 @@ public sealed class TerminalLeaf : IAsyncDisposable
         catch (Exception failed)
         {
             Ended = failed.Message;
+            Typist.Release();
 
             // Onto the terminal itself, because that is where the user is already looking. Safe to
             // write from here for the one reason that matters: no pipeline started, so this is the
