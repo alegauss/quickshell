@@ -19,7 +19,7 @@ public sealed partial class Emulator
     {
         if (parameters.Count == 0)
         {
-            _pen = Pen.Default;
+            _pen = Unrendered();
             return;
         }
 
@@ -71,12 +71,18 @@ public sealed partial class Emulator
         _ => UnderlineStyle.Single,
     };
 
+    /// <summary>
+    /// What SGR 0 leaves: the default pen, still protected if it was. Protection is DECSCA's and
+    /// SPA's to set and clear, not a rendition, and xterm's SGR 0 leaves it as it was (QS235).
+    /// </summary>
+    private Pen Unrendered() => Pen.Default with { Flags = _pen.Flags & CellFlags.Protected };
+
     private void ApplySimple(int code)
     {
         switch (code)
         {
             case 0:
-                _pen = Pen.Default;
+                _pen = Unrendered();
                 break;
 
             case 1:

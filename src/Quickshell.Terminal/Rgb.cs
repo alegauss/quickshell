@@ -69,6 +69,12 @@ public enum CellFlags : ushort
     /// <summary>Hidden: the cell holds its character and shows the background instead.</summary>
     Conceal = 256,
 
+    /// <summary>
+    /// Protected from a selective erase: set by DECSCA or SPA, never drawn, and not a rendition,
+    /// so SGR 0 leaves it set (QS235).
+    /// </summary>
+    Protected = 512,
+
     /// <summary>The six the renderer has a way to draw. Everything else is the model's alone.</summary>
     Drawn = Bold | Slant | Inverse | Overline | Strike | Selected,
 }

@@ -17,6 +17,9 @@ internal enum Setting : byte
 
     /// <summary>DECSLRM: the left and right margins (QS233).</summary>
     ColumnMargins,
+
+    /// <summary>DECSCA: whether what is printed next is protected (QS235).</summary>
+    CharacterProtection,
 }
 
 public sealed partial class Emulator
@@ -123,6 +126,7 @@ public sealed partial class Emulator
             [(byte)'r'] => Setting.ScrollRegion,
             [(byte)'s'] => Setting.ColumnMargins,
             [(byte)'"', (byte)'p'] => Setting.ConformanceLevel,
+            [(byte)'"', (byte)'q'] => Setting.CharacterProtection,
             _ => Setting.Unknown,
         };
     }
@@ -155,6 +159,12 @@ public sealed partial class Emulator
                 Literal(";");
                 Number(Right + 1);
                 Literal("s");
+                break;
+
+            case Setting.CharacterProtection:
+                Literal("1$r");
+                Number(ProtectionReport);
+                Literal("\"q");
                 break;
 
             case Setting.ConformanceLevel:

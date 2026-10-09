@@ -37,6 +37,7 @@
 - ✅ **QS120** **The pipeline test's drain guard counts reads rather than bytes, so a loaded machine fails it** — Lag is measured in the unit the work is done in: bytes outstanding, never reads per drain, which is a property of the producer and not of the consumer.
 - ✅ **QS91** **A combining mark takes no cell and is then drawn nowhere, so an accent typed as two codepoints vanishes** — A cluster is one atlas glyph shaped whole, never extra instances: the shader derives a cell's position from its instance index.
 - ✅ **QS208** **A request for 132 columns is ignored without its side effects, and nothing says whether that is the intent** — DECCOLM's width is refused and its clear, margin reset and home are kept, as xterm does without allowC132; obeying was rejected because a split pane has no single size to become.
+- ✅ **QS235** **Character protection is not modelled, so selective erase and protected fields erase everything** — Protection is one cell flag plus xterm's off/DEC/ISO mode on the emulator, taking a bit from the link index (17 bits) so the cell stays sixteen bytes; a per-cell protection kind was rejected.
 
 ## Block D — The tree a user organises work in
 

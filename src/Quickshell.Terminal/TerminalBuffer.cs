@@ -513,14 +513,33 @@ public sealed class TerminalBuffer
     /// <summary>
     /// Clears a run of a visible row, which is what every erase sequence reduces to, leaving it in
     /// <paramref name="background"/> — the pen's, for an erase the host asked for (QS204).
+    /// <paramref name="keepProtected"/> leaves every cell DECSCA or SPA protected as it was, which
+    /// is a selective erase, and an ordinary one under ISO protection (QS235).
     /// </summary>
-    public void Clear(int row, int from, int count, Colour background = default)
+    public void Clear(int row, int from, int count, Colour background = default, bool keepProtected = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(from);
         ArgumentOutOfRangeException.ThrowIfNegative(count);
 
-        Span<Cell> line = MutableScreen(row);
-        line.Slice(from, Math.Min(count, line.Length - from)).Fill(Cell.ErasedIn(background));
+        Span<Cell> run = MutableScreen(row);
+        run = run.Slice(from, Math.Min(count, run.Length - from));
+        Cell erased = Cell.ErasedIn(background);
+
+        if (!keepProtected)
+        {
+            run.Fill(erased);
+        }
+        else
+        {
+            foreach (ref Cell cell in run)
+            {
+                if ((cell.Flags & CellFlags.Protected) == 0)
+                {
+                    cell = erased;
+                }
+            }
+        }
+
         TouchScreen(row);
     }
 

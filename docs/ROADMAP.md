@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS235** (deps: —) **Character protection is not modelled, so selective erase and protected fields erase everything** — DECSCA, SPA and EPA are absent and DECSED, DECSEL and DECSERA erase like their plain forms, which is 36 failures. → §QS235
 - 📋 **QS236** (deps: —) **Window operations through CSI t neither report the window nor say they are refused** — XtermWinopsTests fails 28 of its tests, 26 by timing out, because no CSI t report is answered and no resize is acted on. → §QS236
 - 📋 **QS237** (deps: —) **DECRQM answers not recognised for modes xterm reports as permanently reset or as set** — Twenty-six DECRQM tests and one DECSCL test fail because the answer is 0 where xterm answers 4, 1 or 2. → §QS237
 - 📋 **QS238** (deps: —) **The rectangular area operations DECCRA, DECFRA and DECERA do nothing** — Copy, fill and erase of a rectangle are absent, and so is DECSACE that shapes them, which is 19 esctest failures. → §QS238

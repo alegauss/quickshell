@@ -343,25 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS235 Character protection
-
-No cell carries a protected attribute. DECSCA (CSI Ps " q), SPA and EPA (ESC V, ESC W)
-do nothing, so DECSED and DECSEL behave exactly as ED and EL, and ED, EL and ECH ignore
-ISO protection. 36 tests: DECSEDTests 15, DECSELTests 10, DECSERATests 6, the
-ISOProtection cases of ED, EL and ECH, DECRQSS for DECSCA and DECSTR's reset of it.
-
-What to build: one attribute bit, set by DECSCA and SPA/EPA, respected by the selective
-erases and, for ISO protection, by ED, EL and ECH as xterm does; DECRQSS answers DECSCA.
-Whether the protected bit is worth a cell's attribute space is the first thing to
-settle, and a non-goal is an acceptable answer if it is not.
-
-Falsified when DECSED erases a cell DECSCA protected.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS236 Window operations (CSI t)
 
 CSI t is not handled. Its reports (8t ... 21t: the window's size in cells and pixels,
@@ -425,8 +406,10 @@ xterm keeps a saved cursor per screen, so DECSC on the main screen and DECRC on 
 alternate do not meet; here they do (test_SaveRestoreCursor_AltVsMain, in SCORC, DECRC
 and DECSETTiteInhibit). DECRC with nothing saved should home the cursor and reset origin
 mode (Reset, ResetsOriginMode). XTSAVE and XTRESTORE (CSI ? Pm s / r) are not handled
-(XtermSaveTests 2). DECSTR leaves the saved cursor, DECOM and protection as they were
-(DECSTRTests 5).
+(XtermSaveTests 2). DECSTR (CSI ! p, dispatched since QS235, which resets protection and
+nothing else yet) leaves the saved cursor and DECOM as they were (DECSTRTests 5).
+esctest's own reset is a DECSTR, so every gap here also leaks state from one case into
+the next.
 
 What to build: a saved cursor per screen, xterm's DECRC defaults, XTSAVE/XTRESTORE for
 the modes this client has, and DECSTR's full list of resets.

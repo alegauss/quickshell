@@ -1,12 +1,12 @@
 # esctest
 
-`esctest` from the terminal working group, run against the headless model on xps, 2026-10-09. No renderer and no pseudo-console: the suite runs on a Linux pty in WSL whose other end is a socket the emulator reads and answers, so every reply it judges is this client's own (QS211). 54 s, 546,571 bytes parsed.
+`esctest` from the terminal working group, run against the headless model on xps, 2026-10-09. No renderer and no pseudo-console: the suite runs on a Linux pty in WSL whose other end is a socket the emulator reads and answers, so every reply it judges is this client's own (QS211). 55 s, 502,738 bytes parsed.
 
 | | tests | of total |
 |---|---:|---:|
-| passed | 323 | 56.9% |
+| passed | 359 | 63.2% |
 | known bugs in xterm itself | 43 | 7.6% |
-| failed | 202 | 35.6% |
+| failed | 166 | 29.2% |
 
 ## Why the failures fail
 
@@ -15,9 +15,9 @@ finding and 'one missing sequence and seventy real gaps' is.
 
 | cause | tests |
 |---|---:|
-| the screen read back differs from xterm's (a checksum) | 66 |
+| the screen read back differs from xterm's (a checksum) | 31 |
 | the suite declined the test itself | 39 |
-| a real difference in behaviour | 97 |
+| a real difference in behaviour | 96 |
 
 ## The failing tests
 
@@ -28,20 +28,17 @@ another shows up as a number rather than as a feeling.
 |---|---:|
 | `XtermWinopsTests` | 28 |
 | `DECRQMTests` | 24 |
-| `DECSEDTests` | 15 |
 | `DECDSRTests` | 11 |
-| `DECSELTests` | 10 |
 | `DECSETTests` | 9 |
 | `DECCRATests` | 8 |
-| `DECRQSSTests` | 8 |
 | `ChangeColorTests` | 7 |
 | `ChangeDynamicColorTests` | 7 |
 | `ChangeSpecialColorTests` | 7 |
+| `DECRQSSTests` | 7 |
 | `BSTests` | 6 |
-| `DECSERATests` | 6 |
-| `DECSTRTests` | 6 |
 | `DECERATests` | 5 |
 | `DECFRATests` | 5 |
+| `DECSTRTests` | 5 |
 | `HPRTests` | 4 |
 | `VPRTests` | 4 |
 | `DECALNTests` | 3 |
@@ -52,13 +49,11 @@ another shows up as a number rather than as a feeling.
 | `CUBTests` | 2 |
 | `DA2Tests` | 2 |
 | `DATests` | 2 |
-| `EDTests` | 2 |
 | `RISTests` | 2 |
 | `ResetSpecialColorTests` | 2 |
 | `XtermSaveTests` | 2 |
 | `DECIDTests` | 1 |
-| `ECHTests` | 1 |
-| `ELTests` | 1 |
+| `EDTests` | 1 |
 
 ## Reproducing this
 

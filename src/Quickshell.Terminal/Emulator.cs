@@ -566,6 +566,14 @@ public sealed partial class Emulator : IAnsiHandler
                 Reset();
                 break;
 
+            case (byte)'V':
+                ProtectedArea(start: true);
+                break;
+
+            case (byte)'W':
+                ProtectedArea(start: false);
+                break;
+
             default:
                 Unhandled++;
                 break;
@@ -654,6 +662,7 @@ public sealed partial class Emulator : IAnsiHandler
     private void Reset()
     {
         _pen = Pen.Default;
+        _protection = Protection.Off;
         AutoWrap = true;
         ReverseWrap = false;
         OriginMode = false;
@@ -720,6 +729,16 @@ public sealed partial class Emulator : IAnsiHandler
                     DeviceStatus(parameters.Value(0, 0), priv: true);
                     break;
 
+                // DECSED and DECSEL, the selective erases: ED and EL that leave protected cells
+                // alone (QS235).
+                case (byte)'J':
+                    EraseDisplay(parameters.Value(0, 0), selective: true);
+                    break;
+
+                case (byte)'K':
+                    EraseLine(parameters.Value(0, 0), selective: true);
+                    break;
+
                 default:
                     Unhandled++;
                     break;
@@ -749,6 +768,28 @@ public sealed partial class Emulator : IAnsiHandler
         if (intermediates.Length == 1 && intermediates[0] == (byte)'*' && final == (byte)'y')
         {
             RectangleChecksum(parameters);
+            return;
+        }
+
+        // DECSTR, the soft reset. What it resets so far is protection (QS235); the rest of its list
+        // is QS239's.
+        if (intermediates.Length == 1 && intermediates[0] == (byte)'!' && final == (byte)'p')
+        {
+            ResetProtection();
+            return;
+        }
+
+        // DECSCA, which protects what is printed next from the selective erases (QS235).
+        if (intermediates.Length == 1 && intermediates[0] == (byte)'"' && final == (byte)'q')
+        {
+            SelectCharacterProtection(parameters.Value(0, 0));
+            return;
+        }
+
+        // DECSERA, the selective erase of a rectangle (QS235).
+        if (intermediates.Length == 1 && intermediates[0] == (byte)'$' && final == (byte)'{')
+        {
+            SelectiveEraseRectangle(parameters);
             return;
         }
 
@@ -881,7 +922,7 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'X':
-                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, count, _pen.Background);
+                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, count, _pen.Background, KeepsProtected(false));
                 break;
 
             case (byte)'S':
@@ -1056,20 +1097,23 @@ public sealed partial class Emulator : IAnsiHandler
     /// <summary>
     /// ED. Every erase here, and EL and ECH beside it, leaves the pen's background behind and
     /// nothing else of it — QS204, xterm's background colour erase.
+    /// <paramref name="selective"/> is DECSED, which leaves protected cells alone and whose 3
+    /// drops the scrollback without touching the screen (QS235).
     /// </summary>
-    private void EraseDisplay(int mode)
+    private void EraseDisplay(int mode, bool selective = false)
     {
         TerminalBuffer buffer = Buffer;
         Colour ground = _pen.Background;
+        bool keep = KeepsProtected(selective);
 
         switch (mode)
         {
             case 0:
-                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, buffer.Columns, ground);
+                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, buffer.Columns, ground, keep);
 
                 for (int row = buffer.CursorRow + 1; row < buffer.Rows; row++)
                 {
-                    buffer.Clear(row, 0, buffer.Columns, ground);
+                    buffer.Clear(row, 0, buffer.Columns, ground, keep);
                 }
 
                 break;
@@ -1077,14 +1121,26 @@ public sealed partial class Emulator : IAnsiHandler
             case 1:
                 for (int row = 0; row < buffer.CursorRow; row++)
                 {
-                    buffer.Clear(row, 0, buffer.Columns, ground);
+                    buffer.Clear(row, 0, buffer.Columns, ground, keep);
                 }
 
-                buffer.Clear(buffer.CursorRow, 0, buffer.CursorColumn + 1, ground);
+                buffer.Clear(buffer.CursorRow, 0, buffer.CursorColumn + 1, ground, keep);
+                break;
+
+            case 2 when keep:
+                for (int row = 0; row < buffer.Rows; row++)
+                {
+                    buffer.Clear(row, 0, buffer.Columns, ground, keep);
+                }
+
                 break;
 
             case 2:
                 buffer.ClearScreen(ground);
+                break;
+
+            case 3 when selective:
+                buffer.DropScrollback();
                 break;
 
             case 3:
@@ -1098,23 +1154,25 @@ public sealed partial class Emulator : IAnsiHandler
         }
     }
 
-    private void EraseLine(int mode)
+    /// <summary>EL, and with <paramref name="selective"/> DECSEL, as <see cref="EraseDisplay"/> has it.</summary>
+    private void EraseLine(int mode, bool selective = false)
     {
         TerminalBuffer buffer = Buffer;
         Colour ground = _pen.Background;
+        bool keep = KeepsProtected(selective);
 
         switch (mode)
         {
             case 0:
-                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, buffer.Columns, ground);
+                buffer.Clear(buffer.CursorRow, buffer.CursorColumn, buffer.Columns, ground, keep);
                 break;
 
             case 1:
-                buffer.Clear(buffer.CursorRow, 0, buffer.CursorColumn + 1, ground);
+                buffer.Clear(buffer.CursorRow, 0, buffer.CursorColumn + 1, ground, keep);
                 break;
 
             case 2:
-                buffer.Clear(buffer.CursorRow, 0, buffer.Columns, ground);
+                buffer.Clear(buffer.CursorRow, 0, buffer.Columns, ground, keep);
                 break;
 
             default:

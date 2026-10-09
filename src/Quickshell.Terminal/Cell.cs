@@ -18,19 +18,21 @@ namespace Quickshell.Terminal;
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct Cell : IEquatable<Cell>
 {
-    private const int WidthShift = 12;
-    private const int UnderlineShift = 9;
-    private const int LinkShift = 14;
-    private const uint FlagMask = 0x1FF;
+    private const int WidthShift = 13;
+    private const int UnderlineShift = 10;
+    private const int LinkShift = 15;
+    private const uint FlagMask = 0x3FF;
 
     /// <summary>
     /// How many distinct hyperlinks a screen's worth of cells can point at.
     ///
     /// <para>The attribute word had eighteen bits spare above the width, so a link costs nothing:
     /// the cell is the same sixteen bytes it was, and the renderer needs no change at all because a
-    /// link is a fact about a cell rather than a thing drawn differently.</para>
+    /// link is a fact about a cell rather than a thing drawn differently. Seventeen since QS235,
+    /// which took one for <see cref="CellFlags.Protected"/>: 131,071 links on one screen is still
+    /// more than a screen has cells.</para>
     /// </summary>
-    public const int MaximumLinks = (1 << 18) - 1;
+    public const int MaximumLinks = (1 << 17) - 1;
 
     private readonly int _text;
     private readonly uint _foreground;
@@ -71,7 +73,7 @@ public readonly struct Cell : IEquatable<Cell>
     /// <summary>The background as the host expressed it, which may be "the theme's".</summary>
     public Colour Background => Colour.FromPacked(_background);
 
-    /// <summary>Bold, slant, inverse, overline, strike and selection.</summary>
+    /// <summary>Bold, slant, inverse, overline, strike, selection and protection.</summary>
     public CellFlags Flags => (CellFlags)(_attributes & FlagMask);
 
     /// <summary>Which underline this cell carries, if any.</summary>
