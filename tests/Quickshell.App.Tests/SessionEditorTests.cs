@@ -185,6 +185,55 @@ public sealed class SessionEditorTests
         Assert.Equal("deploy", saved.Session("prod/db")!.User!.Value.Value);
     }
 
+    // ---- Reconnect, which until QS229 only the file could set ----
+
+    /// <summary>
+    /// Reconnecting is a field of the dialog like the rest: shown with the folder it came from, set
+    /// here as a yes or a no, and refused as anything else (QS229).
+    /// </summary>
+    [Fact]
+    public void ReconnectIsSetInTheDialogAndShowsWhereItCameFrom()
+    {
+        SessionTree fleet = Fleet().With("prod", Fleet().Find("prod")! with
+        {
+            Settings = Fleet().Find("prod")!.Settings with { Reconnect = true },
+        });
+
+        SessionEditor editor = SessionEditor.Editing(fleet, "prod/web");
+        EditableField reconnect = editor.Field(nameof(SessionSettings.Reconnect));
+
+        Assert.Equal("true", reconnect.Effective);
+        Assert.Equal("inherited from prod", reconnect.Explains);
+
+        reconnect.Override("maybe");
+
+        Assert.Contains(editor.Complaints, said => said.Contains("Reconnect after a drop", StringComparison.Ordinal));
+
+        reconnect.Override("no");
+
+        SessionTree saved = editor.Save();
+
+        Assert.False(saved.Find("prod/web")!.Settings.Reconnect);
+        Assert.Equal(new Source<bool>(false, "prod/web"), saved.Session("prod/web")!.Reconnect);
+    }
+
+    /// <summary>
+    /// A Reconnect somebody wrote into the file survives the dialog being opened and saved, which it
+    /// did not while the dialog had no field for it: a save wrote back only the fields it showed.
+    /// </summary>
+    [Fact]
+    public void AReconnectWrittenByHandSurvivesADialogSave()
+    {
+        SessionTree fleet = Fleet().With("prod/web", Fleet().Find("prod/web")! with
+        {
+            Settings = new SessionSettings { Reconnect = true },
+        });
+
+        SessionTree saved = SessionEditor.Editing(fleet, "prod/web").Save();
+
+        Assert.True(saved.Find("prod/web")!.Settings.Reconnect);
+    }
+
     /// <summary>A new session lands in its folder and inherits from it.</summary>
     [Fact]
     public void ANewSessionLandsInItsFolder()

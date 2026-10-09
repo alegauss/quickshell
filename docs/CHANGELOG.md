@@ -107,6 +107,7 @@
 - ✅ **QS119** **A jump carries traffic through a local port anything running as this user can connect to** — A jump's local port stops listening once its hop is through, so no second process reaches the next machine past the bastion (design recorded in `src/Quickshell.Transport/SshChain.cs`).
 - ✅ **QS121** **Nothing owns the session store file and nothing opens the session dialog, so neither is reachable** — The store lives in Locations.Sessions, New session opens the dialog, and saving writes into the file as it is then (design superseded: connecting to a session moved to QS126).
 - ✅ **QS179** **A fleet has no saved group to broadcast to, so the same split is rebuilt by hand before every broadcast** — A folder of saved sessions opens as one tab, every session a pane connected to it, broadcasting to those panes alone; past sixteen it says what it left out.
+- ✅ **QS229** **The session store's fields are documented nowhere, and Reconnect can only be set by editing the file** — docs/SESSIONS.md documents every store field, kept so by a test both ways, and the dialog sets Reconnect and no longer drops one set by hand.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

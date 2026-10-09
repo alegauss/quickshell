@@ -590,31 +590,34 @@ by an unfiltered run before the commit that cites a figure.
 
 ## Block D — The tree a user organises work in
 
-### §QS229 A reference for the session store
+### §QS245 Session fields that do nothing
 
-The session store, `sessions.json` under `%AppData%\quickshell` or beside a portable
-copy, is a format this client commits to (SessionTree's own words): readable, diffable
-and edited by hand. No page says what it holds. `docs/SETTINGS.md` covers
-`settings.json` key by key and `docs/KEYS.md` the chords, and nothing covers a session's
-fields: `User`, `Port`, `Key`, `JumpHost`, `Scheme`, `Credential`, `FontSize`,
-`TerminalType`, `Scrollback`, `Reconnect` (QS220), `PostLogin`, `Tags`, `Forwards`,
-which of them a folder hands down, and which never are (`PostLogin`, `Forwards`).
+Found writing QS229's reference for the session store. Five of SessionSettings' fields
+are read from the file, inherited through folders, shown in the session dialog with
+where each came from, and then used by nothing. Opening a session
+(`Program.OpenSessionInTab`, `RemoteShell.OpenAsync`, `SessionGroup.Open`) reads none of
+them:
 
-QS220 made it concrete. Reconnecting is off unless a session or a folder sets
-`Reconnect`, deliberately, and the only way to set it is to edit the file, because the
-session dialog has no switch for it. A user who has never read SessionTree.cs cannot
-find it.
+- `Scheme`: the pane wears the window's colour scheme whatever the session says.
+- `FontSize`: one font for every pane since QS135, so a per-session size has nowhere to go
+  without a decision about panes of different sizes in one window.
+- `TerminalType`: the transport always claims `xterm-256color` (`SshNetTransport.TerminalType`).
+- `Scrollback`: the pane keeps the global setting.
+- `Credential`: sign-in looks up remembered passwords by endpoint (QS218's `SignIn.For`), not
+  by the name a session gives.
 
-What to build: `docs/SESSIONS.md`, the store's reference written the way SETTINGS.md is,
-one heading per field with its type, its default, whether it inherits and an example,
-plus the Forwards shapes; linked from SETTINGS.md and KEYS.md. And a Reconnect switch in
-the session dialog beside the other inherited fields, showing what the folder above says
-as the dialog already does for the rest. A test that reads SessionSettings' properties
-and finds a heading for each keeps the page from drifting, as CommandLineReferenceTests
-keeps the flags page.
+A field the dialog shows as "inherited from Work" and the client then ignores is worse
+than no field: the user believes they configured something. docs/SESSIONS.md says this
+plainly for each of the five until this lands.
 
-Falsified when a SessionSettings field has no heading on the page, or Reconnect can only
-be set by editing the file.
+What to build: each one either applied when the session opens, which for Scheme,
+TerminalType, Scrollback and Credential is a few lines at the point the tab and the
+transport are made, or removed from the model with a non-goal that says why (FontSize is
+the likely one, against QS135's one font per window). The dialog and the reference
+change with it.
+
+Falsified when a session's own Scheme, TerminalType, Scrollback or Credential has no
+effect on the session it opens.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

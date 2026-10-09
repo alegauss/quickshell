@@ -27,7 +27,7 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS229** (deps: —) **The session store's fields are documented nowhere, and Reconnect can only be set by editing the file** — A field a user cannot find is a field nobody uses, and reconnecting is off unless one is set on purpose. → §QS229
+- 📋 **QS245** (deps: —) **A session's scheme, font size, terminal type, scrollback and credential are stored and inherited but never applied** — The dialog shows each with the folder it came from, so a user believes it configured something the client then ignores. → §QS245
 
 ## Block E — SCP and SFTP as a thing a person operates
 

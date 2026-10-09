@@ -8,6 +8,9 @@ it is not a setting — it is a decision, and changing it takes an argument rath
 you may put it under version control — which is the point. When this client writes it back it edits
 the values in place, so your comments, your blank lines and your spacing survive.
 
+Saved sessions are a file of their own, `sessions.json` beside this one, and
+[SESSIONS.md](SESSIONS.md) is its reference.
+
 A key you leave out is that key at its default. A key this build has never heard of is carried
 through untouched, so a newer build's settings survive being opened by an older one.
 

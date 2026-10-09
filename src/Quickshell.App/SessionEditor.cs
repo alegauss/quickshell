@@ -138,6 +138,12 @@ public sealed class SessionEditor
         Add(nameof(SessionSettings.TerminalType), "Terminal type", own.TerminalType);
         Add(nameof(SessionSettings.Scrollback), "Scrollback", Text(own.Scrollback));
 
+        // Spelled as the store's inheritance reports it, so what a folder hands down reads the same
+        // as what this session says (QS229). Until it was here, a dialog save dropped a Reconnect
+        // somebody had set by hand, because only the fields shown were written back.
+        Add(nameof(SessionSettings.Reconnect), "Reconnect after a drop",
+            own.Reconnect is { } again ? (again ? "true" : "false") : null);
+
         void Add(string name, string label, string? mine)
         {
             EditableField field = new(name, label,
@@ -214,6 +220,13 @@ public sealed class SessionEditor
                 && !IsPort(port))
             {
                 wrong.Add($"A port is a number from 1 to 65535, and {port} is not.");
+            }
+
+            if (Field(nameof(SessionSettings.Reconnect)) is { IsOverridden: true, Own: { Length: > 0 } again }
+                && Toggle(again) is null)
+            {
+                wrong.Add($"Reconnect after a drop is true or false, and {again} is neither. Leave it empty to "
+                          + "take what the folder says.");
             }
 
             if (PostLogin is { Length: > 0 } command)
@@ -308,6 +321,7 @@ public sealed class SessionEditor
                 FontSize = Size(nameof(SessionSettings.FontSize)),
                 TerminalType = Mine(nameof(SessionSettings.TerminalType)),
                 Scrollback = Number(nameof(SessionSettings.Scrollback)),
+                Reconnect = Toggle(Mine(nameof(SessionSettings.Reconnect))),
             },
         };
 
@@ -350,6 +364,14 @@ public sealed class SessionEditor
     private static bool IsPort(string text) =>
         int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int port)
         && port is >= 1 and <= 65535;
+
+    /// <summary>A yes or a no as somebody types one, or null where it is neither.</summary>
+    private static bool? Toggle(string? text) => text?.Trim().ToLowerInvariant() switch
+    {
+        "true" or "yes" or "on" => true,
+        "false" or "no" or "off" => false,
+        _ => null,
+    };
 
     private static string? Text<T>(T? value) where T : struct, IFormattable =>
         value?.ToString(null, CultureInfo.InvariantCulture);
