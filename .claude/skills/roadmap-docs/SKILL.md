@@ -267,7 +267,9 @@ mutations on every build; this instruments `Quickshell.Terminal.dll` with SharpF
 with libFuzzer for as long as it is given (`-Seconds`, `-Jobs`), with a corpus that grows in
 `artifacts\fuzz\corpus` across runs. A crash lands in `artifacts\fuzz\findings` as the input that
 caused it, and is added to `HostileInputTests`' shapes in the commit that fixes it, so the build
-fails on it from then on.
+fails on it from then on. It also runs every night in CI (`.github/workflows/fuzz.yml`, QS210), with
+the corpus kept in the Actions cache and a crash uploaded as the run's `fuzz-findings` artifact; CI
+warns on every push once the last campaign is more than a week old.
 
 **`.\run-perf-gate.cmd` is the performance gate, and `release.cmd` runs it before it archives.** It
 times parse and emulate throughput and warm start against `benchmarks\gate\<machine>.json`, and fails

@@ -560,28 +560,3 @@ true of the shipped build and not of the plan.
 Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
-
-### §QS210 A campaign nobody has to remember
-
-QS102 built the campaign (`run-fuzz.cmd`) and made every finding fail the suite, and
-left the one thing that makes fuzzing continuous rather than occasional: something that
-starts a campaign without a person remembering to.
-
-There are three places it could run, and choosing between them is the owner's call
-because each is a standing change to somebody's machine or account. A Windows scheduled
-task on the reference machine is the cheapest, and it competes with the person at the
-desk for the CPU; `-Jobs` should then stay at one, and the window should be overnight.
-The VMware guest is quieter, but it is up only while somebody started it, and its runs
-would have to be brought back the way `run-tests-vm` brings reports back. A scheduled CI
-job runs on a machine that is different every time, which suits fuzzing better than it
-suits the performance gate, because a crash is a crash on any machine. It needs the
-corpus kept between runs as a cache or an artifact, and the driver fetched under the
-pinned hash.
-
-Whichever it is, the run writes a line somewhere a person reads, with the date, the
-length, the coverage gained and any finding, so that "it has not run for a month" is
-visible.
-
-Decided by the owner, 2026-10-09: a nightly scheduled CI job.
-
-Falsified when a week passes with no campaign and nothing says so.

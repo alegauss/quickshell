@@ -34,8 +34,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS210** (deps: —) **The fuzzing campaign runs only when somebody types run-fuzz.cmd** — Owner decided 2026-10-09: a nightly scheduled CI job runs the campaign, keeping the corpus between runs. → §QS210
-
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a

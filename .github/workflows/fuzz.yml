@@ -1,0 +1,78 @@
+name: fuzz
+
+# QS210: the campaign QS102 built (run-fuzz.cmd), every night, without anybody remembering to run
+# it. The owner chose CI for it on 2026-10-09. A hosted runner is a different machine every run,
+# which is wrong for the performance gate and right for this: a crash is a crash on any machine.
+#
+# The corpus is what makes nights add up, so it is kept between runs in the Actions cache, saved
+# under a new key each night and restored from the latest. A crash fails the run, and the input
+# that caused it is uploaded. It goes into HostileInputTests' shapes in the commit that fixes it,
+# as run-fuzz.cmd says. Every run writes a line to its summary - the date, how long, how big the
+# corpus is now and what it found - and ci.yml warns on every push once the last campaign is more
+# than a week old, so a schedule GitHub quietly stopped is not mistaken for a quiet one.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: "How long the campaign runs, in seconds"
+        default: "2700"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz
+  cancel-in-progress: false
+
+jobs:
+  campaign:
+    runs-on: windows-latest
+    timeout-minutes: 75
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore the corpus
+        uses: actions/cache/restore@v4
+        with:
+          path: artifacts/fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+
+      - name: Fuzz
+        id: fuzz
+        shell: pwsh
+        env:
+          SECONDS_GIVEN: ${{ github.event.inputs.seconds || '2700' }}
+        run: |
+          $before = @(Get-ChildItem artifacts/fuzz/corpus -File -ErrorAction SilentlyContinue).Count
+          .\run-fuzz.cmd -Seconds $env:SECONDS_GIVEN
+          $code = $LASTEXITCODE
+          $after = @(Get-ChildItem artifacts/fuzz/corpus -File -ErrorAction SilentlyContinue).Count
+          $crashes = @(Get-ChildItem artifacts/fuzz/findings -File -Filter 'crash-*' -ErrorAction SilentlyContinue).Count
+          $verdict = switch ($code) { 0 { 'no crash' } 1 { "$crashes crash(es)" } default { "did not run (exit $code)" } }
+          "| $(Get-Date -Format 'yyyy-MM-dd') | $env:SECONDS_GIVEN s | corpus $before -> $after | $verdict |" |
+            Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          exit $code
+
+      - name: Keep the corpus
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: artifacts/fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+
+      - name: Keep what crashed
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-findings
+          path: artifacts/fuzz/findings
+          if-no-files-found: ignore

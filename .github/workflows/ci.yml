@@ -61,3 +61,28 @@ jobs:
           path: artifacts/release/
           retention-days: 5
           if-no-files-found: error
+
+  # QS210: says so when the nightly fuzz campaign (fuzz.yml) has not completed for more than a
+  # week, which is how a schedule GitHub quietly stopped stops looking like a quiet one. A warning
+  # on the run and not a failure: a stale campaign is news, not a broken build.
+  fuzz-freshness:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Last fuzz campaign
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(gh api "repos/${{ github.repository }}/actions/workflows/fuzz.yml/runs?status=completed&per_page=1" \
+                   --jq '.workflow_runs[0].updated_at // empty' 2>/dev/null || true)
+          if [ -z "$last" ]; then
+            echo "::warning title=fuzzing::the nightly fuzz campaign (fuzz.yml) has never completed"
+            exit 0
+          fi
+          age=$(( ( $(date +%s) - $(date -d "$last" +%s) ) / 86400 ))
+          echo "the last fuzz campaign completed $last, $age day(s) ago" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$age" -gt 7 ]; then
+            echo "::warning title=fuzzing::the last fuzz campaign completed $age days ago ($last)"
+          fi
