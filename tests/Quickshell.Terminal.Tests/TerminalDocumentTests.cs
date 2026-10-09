@@ -62,6 +62,51 @@ public sealed class TerminalDocumentTests
                     "the document is only as tall as the screen, so the scrollback is unreachable");
     }
 
+    /// <summary>
+    /// QS231: once a buffer has let lines go - ESC [ 3 J, which a console session sends almost at
+    /// once, or a scrollback that filled - the document still reads. It used to address the buffer
+    /// by a line's place in the buffer's whole life where the buffer wants its place among the lines
+    /// kept, so every read past the first discard threw, and no screen reader outside the process
+    /// could read a byte of a live session.
+    /// </summary>
+    [Fact]
+    public void AfterTheScrollbackIsDroppedTheScreenStillReads()
+    {
+        string[] lines = [.. Enumerable.Range(0, 40).Select(number => $"line {number}")];
+
+        Emulator emulator = Printed(80, 10, lines);
+
+        emulator.Feed("\e[3J"u8);
+        emulator.Feed("\r\nafter the clear"u8);
+
+        TerminalDocument document = new(emulator.Buffer);
+
+        string all = document.Text(0, document.Length);
+
+        // What the screen holds after the clear, and nothing of the history that was let go. (This
+        // emulator's ED 3 also clears the screen, which xterm's does not - QS244 - so what stood on
+        // screen before it is not asserted either way.)
+        Assert.Contains("after the clear", all, StringComparison.Ordinal);
+        Assert.DoesNotContain("line 0\n", all, StringComparison.Ordinal);
+        Assert.Equal(emulator.Buffer.LineCount, document.Lines);
+    }
+
+    /// <summary>And a scrollback that is full, so the oldest line goes with every new one, reads too.</summary>
+    [Fact]
+    public void AFullScrollbackStillReads()
+    {
+        Emulator emulator = new(80, 10, scrollback: 20);
+
+        emulator.Feed(Encoding.UTF8.GetBytes(string.Join("\r\n", Enumerable.Range(0, 200).Select(number => $"line {number}"))));
+
+        TerminalDocument document = new(emulator.Buffer);
+
+        string all = document.Text(0, document.Length);
+
+        Assert.Contains("line 199", all, StringComparison.Ordinal);
+        Assert.DoesNotContain("line 10\n", all, StringComparison.Ordinal);
+    }
+
     /// <summary>Trailing padding is not text: a terminal pads every row and a reader should not hear it.</summary>
     [Fact]
     public void TheBlanksATerminalPadsWithAreNotRead()

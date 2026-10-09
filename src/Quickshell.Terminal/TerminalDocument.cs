@@ -257,7 +257,10 @@ public sealed class TerminalDocument
     /// </summary>
     private string LineText(int row, Span<char> cell)
     {
-        ReadOnlySpan<Cell> cells = _buffer.Line((int)(_buffer.TopLine - _buffer.ScrollbackLines) + row);
+        // The row among the lines kept, oldest first, which is what Line takes. Not its place in the
+        // buffer's whole life: those agree only until the first line is let go, and after that every
+        // read threw - which is every live session within a second of ESC [ 3 J (QS231).
+        ReadOnlySpan<Cell> cells = _buffer.Line(row);
         int extent = cells.Length;
 
         while (extent > 0 && cells[extent - 1].IsErased)

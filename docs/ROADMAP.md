@@ -35,8 +35,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS231** (deps: —) **No screen reader in another process can read the terminal's output: its TextPattern gives a null document range** — The in-process peer tests pass while Narrator, NVDA and winwright all get nothing, so the screen reader criterion is met only inside the client. → §QS231
-
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS75** (deps: QS2 ✅, QS46 ✅, the incumbent closed on the reference desk) **Nothing has been measured starting, so the cold start figure is an aspiration** — The incumbent has not been started beside it on the same machine, so the comparison the figure exists for is not made. → §QS75

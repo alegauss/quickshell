@@ -68,9 +68,7 @@
       "steps": [
         {
           // A name only the first tab has: cmd's own title command, which the tab takes as its title
-          // and the window as its name while that tab is on screen. Read through the title and not
-          // through the terminal's text, because no client outside the process can read that text
-          // yet (QS231).
+          // and the window as its name while that tab is on screen.
           "locator": "Document[class=\"Terminal\"]",
           "act": "type",
           "with": "title first-tab-marker",
@@ -110,6 +108,16 @@
           "reads": "name",
           "matches": "^first-tab-marker",
           "named": "and so did the session on screen"
+        },
+        {
+          // And the terminal on screen reads as the first tab's, from outside the process, through
+          // the text pattern a screen reader uses: the command typed into it is there. Unreadable
+          // from any other process until QS231.
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "read",
+          "reads": "text",
+          "matches": "title first-tab-marker",
+          "named": "and its text is the first tab's, read the way a screen reader reads it"
         }
       ]
     }

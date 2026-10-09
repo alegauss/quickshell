@@ -175,6 +175,7 @@
 - ✅ **QS217** **A saved session can only be opened by typing its path on a command line** — Open session in the palette lists the store's sessions, found by part of a name; a UI case proves it over a store staged for the launch.
 - ✅ **QS221** **A graphics driver reset leaves every pane frozen, and nothing in the client recovers or says so** — A draw failing on a removed device rebuilds it on the loop's thread and redraws every pane, logged; a closed pane's swapchain leaves the device's list.
 - ✅ **QS223** **Clicking a tab on the strip moves its highlight but leaves the other tab's terminal on screen** — A click on the strip switches tabs as the chords do; a UI case that failed before the fix now reads the clicked tab's session in the window's title.
+- ✅ **QS231** **No screen reader in another process can read the terminal's output: its TextPattern gives a null document range** — TerminalDocument addressed lines by their place in the buffer's life, so every read threw once a line was let go; a reader in another process now reads the text.
 
 ## Block H — The reason to leave the incumbent
 

@@ -674,32 +674,6 @@ wires one window's surfaces, and closing the first window ends the process.
 
 Falsified when detaching a tab reconnects its session.
 
-### §QS231 The terminal's text, from outside the process
-
-Found by QS223's UI case, which read the terminal's text to tell two tabs apart and got
-nothing. A plain UIA client in the guest, in another process, shows why
-(System.Windows.Automation against a freshly started client):
-
-- The terminal is found: Document, class Terminal, name "Terminal output".
-- It advertises TextPattern, and IsTextPatternAvailable is true.
-- `GetCurrentPattern(TextPattern.Pattern)` returns a TextPattern, but its `DocumentRange` is
-  null.
-- `GetVisibleRanges()` throws ArgumentOutOfRangeException from
-  `UiaCoreApi.TextPattern_GetVisibleRanges`, which is E_INVALIDARG from UIA core.
-
-So the in-process tests that call `TerminalAutomationPeer` directly pass, and nothing
-outside the process — Narrator, NVDA, winwright — can read a byte of output. The ranges
-are handed out as `TerminalTextRange` built over `ProviderFromPeer(this)`. Whatever WPF
-does to marshal a peer's own `ITextProvider` ranges across the provider boundary, it is
-not happening for these. That is the first place to look, beside how WPF's own text
-peers return theirs.
-
-What it owes: an out-of-process client gets the document range and its text, and the
-visible ranges, proven from another process in the guest. A UI case can then read the
-terminal's text, which QS223's case wanted and settled for the window's title instead.
-
-Falsified when a UIA client in another process cannot read what the terminal shows.
-
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
