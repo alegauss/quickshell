@@ -510,6 +510,27 @@ public sealed class TerminalBuffer
         TouchScreen(row);
     }
 
+    /// <summary>Writes a run of cells into a visible row from <paramref name="column"/>, as DECCRA does (QS238).</summary>
+    public void WriteRun(int row, int column, ReadOnlySpan<Cell> cells)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(column);
+
+        Span<Cell> line = MutableScreen(row);
+        cells[..Math.Min(cells.Length, Math.Max(0, line.Length - column))].CopyTo(line[column..]);
+        TouchScreen(row);
+    }
+
+    /// <summary>Fills a run of a visible row with one cell, as DECFRA does (QS238).</summary>
+    public void Fill(int row, int from, int count, Cell cell)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(from);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+
+        Span<Cell> line = MutableScreen(row);
+        line.Slice(from, Math.Min(count, line.Length - from)).Fill(cell);
+        TouchScreen(row);
+    }
+
     /// <summary>
     /// Clears a run of a visible row, which is what every erase sequence reduces to, leaving it in
     /// <paramref name="background"/> — the pen's, for an erase the host asked for (QS204).

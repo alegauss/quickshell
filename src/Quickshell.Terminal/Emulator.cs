@@ -664,6 +664,7 @@ public sealed partial class Emulator : IAnsiHandler
     {
         _pen = Pen.Default;
         _protection = Protection.Off;
+        _attributeExtent = 0;
         AutoWrap = true;
         ReverseWrap = false;
         OriginMode = false;
@@ -792,6 +793,33 @@ public sealed partial class Emulator : IAnsiHandler
         if (intermediates.Length == 1 && intermediates[0] == (byte)'$' && final == (byte)'{')
         {
             SelectiveEraseRectangle(parameters);
+            return;
+        }
+
+        // The rectangle operations, DECCRA, DECFRA and DECERA, and DECSACE beside them (QS238).
+        if (intermediates.Length == 1 && intermediates[0] == (byte)'$' && final is (byte)'v' or (byte)'x' or (byte)'z')
+        {
+            switch (final)
+            {
+                case (byte)'v':
+                    CopyRectangle(parameters);
+                    break;
+
+                case (byte)'x':
+                    FillRectangle(parameters);
+                    break;
+
+                default:
+                    EraseRectangle(parameters);
+                    break;
+            }
+
+            return;
+        }
+
+        if (intermediates.Length == 1 && intermediates[0] == (byte)'*' && final == (byte)'x')
+        {
+            SelectAttributeExtent(parameters.Value(0, 0));
             return;
         }
 

@@ -93,7 +93,7 @@ public sealed partial class Emulator
     /// </summary>
     private void SelectiveEraseRectangle(in CsiParameters parameters)
     {
-        if (!Rectangle(parameters, out int top, out int left, out int bottom, out int right))
+        if (!Rectangle(parameters, 0, out int top, out int left, out int bottom, out int right))
         {
             return;
         }
@@ -104,29 +104,5 @@ public sealed partial class Emulator
         {
             Buffer.Clear(row, left, right - left + 1, _pen.Background, keep);
         }
-    }
-
-    /// <summary>
-    /// The rectangle a VT420 rectangle operation names, zero-based and inclusive, or false when it
-    /// names none. Missing or zero edges are the screen's; under DECOM the numbers count from the
-    /// margins and the rectangle is clipped to them, otherwise to the screen; one whose top is below
-    /// its bottom or whose left is past its right does nothing, as xterm's does.
-    /// </summary>
-    private bool Rectangle(in CsiParameters parameters, out int top, out int left, out int bottom, out int right)
-    {
-        int firstRow = OriginMode ? MarginTop : 0;
-        int lastRow = OriginMode ? MarginBottom : Buffer.Rows - 1;
-        int firstColumn = OriginMode ? MarginLeft : 0;
-        int lastColumn = OriginMode ? Right : Buffer.Columns - 1;
-
-        top = firstRow + Math.Max(1, parameters.Value(0, 1)) - 1;
-        left = firstColumn + Math.Max(1, parameters.Value(1, 1)) - 1;
-        bottom = parameters.Value(2, 0) > 0 ? firstRow + parameters.Value(2, 0) - 1 : lastRow;
-        right = parameters.Value(3, 0) > 0 ? firstColumn + parameters.Value(3, 0) - 1 : lastColumn;
-
-        bottom = Math.Min(bottom, lastRow);
-        right = Math.Min(right, lastColumn);
-
-        return top <= bottom && left <= right;
     }
 }

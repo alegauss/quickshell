@@ -343,24 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS238 Rectangular area operations
-
-CSI ... $ v (DECCRA), CSI ... $ x (DECFRA), CSI ... $ z (DECERA) and CSI ... * x
-(DECSACE) are not handled. DECCRATests 8, DECFRATests 5, DECERATests 5 and DECRQSS of
-DECSACE fail on it. DECSERA, the selective form, is filed with protection.
-
-What to build: the three operations over the buffer, clipped to the screen as xterm
-clips them, honouring origin mode and DECSACE's stream or rectangle extent. They are
-VT420 features used by few programs, so a non-goal is a fair answer here too, if the
-line decides it.
-
-Falsified when DECFRA leaves the rectangle unfilled.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS239 Saved cursor and saved modes
 
 xterm keeps a saved cursor per screen, so DECSC on the main screen and DECRC on the

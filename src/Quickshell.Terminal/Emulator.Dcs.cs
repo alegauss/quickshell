@@ -20,6 +20,9 @@ internal enum Setting : byte
 
     /// <summary>DECSCA: whether what is printed next is protected (QS235).</summary>
     CharacterProtection,
+
+    /// <summary>DECSACE: whether an attribute change runs as a stream or a rectangle (QS238).</summary>
+    AttributeExtent,
 }
 
 public sealed partial class Emulator
@@ -127,6 +130,7 @@ public sealed partial class Emulator
             [(byte)'s'] => Setting.ColumnMargins,
             [(byte)'"', (byte)'p'] => Setting.ConformanceLevel,
             [(byte)'"', (byte)'q'] => Setting.CharacterProtection,
+            [(byte)'*', (byte)'x'] => Setting.AttributeExtent,
             _ => Setting.Unknown,
         };
     }
@@ -165,6 +169,12 @@ public sealed partial class Emulator
                 Literal("1$r");
                 Number(ProtectionReport);
                 Literal("\"q");
+                break;
+
+            case Setting.AttributeExtent:
+                Literal("1$r");
+                Number(AttributeExtentReport);
+                Literal("*x");
                 break;
 
             case Setting.ConformanceLevel:
