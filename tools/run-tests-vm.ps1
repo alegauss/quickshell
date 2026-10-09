@@ -51,7 +51,15 @@ param(
 
     [switch] $CommittedOnly,
 
-    [string] $Vmx
+    [string] $Vmx,
+
+    # How long one test may run in the guest before it is ended and named (QS230), as
+    # run-tests.cmd spells it: 10m unless given. A shorter one is how the timeout is seen working.
+    [string] $Hang,
+
+    # How long the whole run may take before this stops waiting for it. A hung test is ended by
+    # $Hang; this is for a guest that stopped answering altogether.
+    [int] $CeilingMinutes = 120
 )
 
 Set-StrictMode -Version Latest
@@ -63,6 +71,48 @@ $script:RepoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'vm-guest.ps1')
 
 $vmxPath = Connect-Guest -Vmx $Vmx
+
+function Watch-GuestRun {
+    <#
+      Follows a run started with -noWait until run.cmd writes its exit code (QS230). The guest's log
+      is copied back every few seconds and the lines that say where the run is are printed: each
+      assembly as it starts, its summary as it finishes, and a hang the platform ended. The last
+      line of a copy may be half written, so it is printed only once a later line follows it.
+    #>
+    param([Parameter(Mandatory)] [string] $Stage, [Parameter(Mandatory)] [int] $CeilingMinutes)
+
+    $deadline = (Get-Date).AddMinutes($CeilingMinutes)
+    $progress = Join-Path $Stage 'progress.log'
+    $exit = Join-Path $Stage 'vm-exit.txt'
+    $shown = 0
+    $telling = '^=== |[Hh]ang|Resumo da execu|Test run summary|^\s+(total|com falha|failed|bem-sucedido|succeeded|ignorado|skipped):|Building '
+
+    while ($true) {
+        Start-Sleep -Seconds 10
+
+        if (Test-Path -LiteralPath $progress) { Remove-Item -LiteralPath $progress -Force }
+        $copied = Invoke-VmRun -Guest -Arguments @('copyFileFromGuestToHost', $script:VmxPath, "$script:GuestSync\vm-run.log", $progress)
+
+        if ($copied.Ok -and (Test-Path -LiteralPath $progress)) {
+            $lines = (Read-ConsoleText $progress) -split "`r?`n"
+            $complete = $lines.Count - 1
+
+            for ($at = $shown; $at -lt $complete; $at++) {
+                if ($lines[$at] -match $telling) { Write-Host "  guest       $($lines[$at].Trim())" }
+            }
+
+            if ($complete -gt $shown) { $shown = $complete }
+        }
+
+        if (Test-Path -LiteralPath $exit) { Remove-Item -LiteralPath $exit -Force }
+        $done = Invoke-VmRun -Guest -Arguments @('copyFileFromGuestToHost', $script:VmxPath, "$script:GuestSync\vm-exit.txt", $exit)
+        if ($done.Ok -and (Test-Path -LiteralPath $exit)) { return }
+
+        if ((Get-Date) -gt $deadline) {
+            Refuse "the guest run passed its ceiling of $CeilingMinutes minutes without finishing" 'Look at TestResults\vm and the guest console; a hung test is ended by the hang timeout, so this is the guest itself.'
+        }
+    }
+}
 
 # --- the tree the guest will test ---------------------------------------------------------------
 
@@ -93,6 +143,7 @@ rem The guest has no docker, so the SSH fixture is never up here, and saying so 
 rem pass while printing every test that did not run as waived (QS136). A host run does not set it,
 rem so a fixture somebody forgot to start is a run over its skip budget there.
 set "QUICKSHELL_NO_FIXTURE=1"
+$(if ($Hang) { "set `"QUICKSHELL_HANG=$Hang`"" } else { 'rem The hang timeout is run-tests.cmd''s own.' })
 
 cd /d "$script:GuestRepo"
 call "$script:GuestRepo\run-tests.cmd" $Configuration > "$script:GuestSync\vm-run.log" 2>&1
@@ -130,22 +181,29 @@ Write-Host "  running the suite in the guest ($Configuration). The host is yours
 #
 # The guest's clipboard is made to hold text first (QS226), and where that meant turning VMware's
 # sharing off it is turned back on in the finally, so neither a red run nor a refusal leaves it off.
+#
+# -noWait, and the run followed from here (QS230). Waiting on vmrun left the host blind until the
+# run ended: a test that hung held a run for over an hour with one line on screen. Now the guest's
+# log is copied back every few seconds and each assembly is named as it starts and as it finishes,
+# so a slow run and a dead one look different; the end is the exit code run.cmd writes down.
 $sharingOff = Use-TextGuestClipboard -Stage $stage
 try {
-    $ran = Invoke-VmRun -Guest -Arguments @('runProgramInGuest', $vmxPath, '-interactive', "$script:GuestSync\run.cmd")
+    $ran = Invoke-VmRun -Guest -Arguments @('runProgramInGuest', $vmxPath, '-noWait', '-interactive', "$script:GuestSync\run.cmd")
+
+    if (-not $ran.Ok) {
+        if ($ran.Output -match 'logged in interactively') {
+            Refuse 'the guest has no interactive desktop session' 'Log in at the guest console once, and leave it unlocked. A locked desk renders nothing.'
+        }
+        Refuse "the guest would not start the run: $($ran.Output)"
+    }
+
+    Watch-GuestRun -Stage $stage -CeilingMinutes $CeilingMinutes
 }
 finally {
     if ($sharingOff) {
         Set-ClipboardSharing -Off $false
         Write-Host '  clipboard   sharing is back on'
     }
-}
-
-if (-not $ran.Ok) {
-    if ($ran.Output -match 'logged in interactively') {
-        Refuse 'the guest has no interactive desktop session' 'Log in at the guest console once, and leave it unlocked. A locked desk renders nothing.'
-    }
-    Refuse "the guest never finished the run: $($ran.Output)"
 }
 
 # --- back to the host -----------------------------------------------------------------------------

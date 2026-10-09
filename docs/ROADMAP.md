@@ -50,8 +50,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS230** (deps: —) **A test that hangs in the guest holds the whole run, and the host shows nothing that says which one** — One stuck transport test held a guest run for over an hour, and only listing the guest's processes named it. → §QS230
-
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a

@@ -20,6 +20,11 @@
 
   <ItemGroup>
     <PackageReference Include="xunit.v3" Version="4.0.0" />
+
+    <!-- QS230: a test that never returns is ended by its timeout, and the console names it, rather
+         than holding the whole run with nothing said. The platform's own version, 2.3.3, which
+         xunit.v3 brings; run-tests.cmd turns it on and sets the timeout. -->
+    <PackageReference Include="Microsoft.Testing.Extensions.HangDump" Version="2.3.3" />
   </ItemGroup>
 
   <!-- QS99: every test assembly refuses to run when it is older than the source it is built from,

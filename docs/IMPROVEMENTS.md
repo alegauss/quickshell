@@ -982,28 +982,3 @@ length, the coverage gained and any finding, so that "it has not run for a month
 visible.
 
 Falsified when a week passes with no campaign and nothing says so.
-
-### §QS230 A guest run that says where it is
-
-On 2026-10-08 a transport test waited forever in the guest: it awaited a listener that a
-connection never reached, because the fixture's key file is not on that desk.
-run-tests-vm printed "running the suite in the guest" and nothing else for over an hour.
-The guest's console was blank, and the only way to find the culprit was vmrun
-listProcessesInGuest, which named Quickshell.Transport.Tests.exe, and killProcessInGuest
-to end it.
-
-Two things are missing. Progress: the host learns nothing until run.cmd exits, because
-the suite's output lands in a log the script copies back at the end. A hang: nothing
-bounds how long one assembly may run, so a stuck test is a stuck run, and the person
-waiting has no way to tell a slow run from a dead one.
-
-What to build: run.cmd writes the assembly it is starting, and the summary line of each
-that finished, to a progress file in the guest; run-tests-vm copies that file back every
-few seconds (CopyFileFromGuestToHost) and prints what is new, so the host shows which
-assembly is running. And each assembly runs with Microsoft.Testing.Platform's hang dump
-(`--hangdump --hangdump-timeout 10m`), which names the test that hung and ends the
-process, so the run continues and the report says which test it was. The timeout goes in
-one place beside the skip budget.
-
-Falsified when a test that never returns, put in on purpose, holds a guest run past the
-timeout or leaves the host unable to name it.

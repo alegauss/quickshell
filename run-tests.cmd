@@ -19,6 +19,12 @@ rem CI runs it as:  run-tests.cmd Release
 set "CONFIG=%~1"
 if "%CONFIG%"=="" set "CONFIG=Debug"
 
+rem QS230: how long one test may run before it is taken as hung, ended, and named - the one place
+rem this is set, beside the skip budget the end of the run is held to. A hung test used to hold a
+rem guest run for over an hour with nothing on screen. Ten minutes is far past the slowest test this
+rem suite has; QUICKSHELL_HANG overrides it for a run that means to show the timeout working.
+if "%QUICKSHELL_HANG%"=="" set "QUICKSHELL_HANG=10m"
+
 pushd "%~dp0"
 
 set "REPORTS=%CD%\TestResults\reports"
@@ -54,7 +60,9 @@ for /d %%P in (tests\*) do (
     if exist "!APP!" (
         echo.
         echo === %%~nxP ===
-        "!APP!" --results-directory "%REPORTS%" --report-xunit-trx --report-xunit-trx-filename %%~nxP.trx
+        rem A mini dump, because a full one is gigabytes and the point is the name of the test,
+        rem which the platform prints when it ends the process.
+        "!APP!" --results-directory "%REPORTS%" --report-xunit-trx --report-xunit-trx-filename %%~nxP.trx --hangdump --hangdump-timeout %QUICKSHELL_HANG% --hangdump-type Mini
         if errorlevel 1 (
             set /a FAILED+=1
             set "BROKEN=!BROKEN! %%~nxP"

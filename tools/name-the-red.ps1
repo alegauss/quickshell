@@ -75,6 +75,21 @@ foreach ($report in $reports) {
     }
 }
 
+# QS230: a test that ran past the hang timeout was ended by the platform, which writes its name and
+# how long it had run into a *_hang.log beside a mini dump. That test failed nothing a report can
+# record - its process was ended - so it is named here or nowhere.
+$hung = @(Get-ChildItem -LiteralPath $From -Filter '*_hang.log' -File -ErrorAction SilentlyContinue)
+
+foreach ($log in $hung) {
+    foreach ($line in (Get-Content -LiteralPath $log.FullName | Where-Object { $_.Trim() })) {
+        Write-Host "  HUNG      $($line.Trim()), still running at the hang timeout" -ForegroundColor Red
+        $found++
+    }
+
+    $dump = [IO.Path]::ChangeExtension($log.FullName, '.dmp')
+    if (Test-Path -LiteralPath $dump) { Write-Host "            dump: $dump" }
+}
+
 if ($found -eq 0) {
     # A red run whose reports name nothing failed is itself the finding: the assembly died before it
     # could write one, which is a crash or a thread left running rather than a test.
