@@ -41,6 +41,7 @@
 - ✅ **QS235** **Character protection is not modelled, so selective erase and protected fields erase everything** — Protection is one cell flag plus xterm's off/DEC/ISO mode on the emulator, taking a bit from the link index (17 bits) so the cell stays sixteen bytes; a per-cell protection kind was rejected.
 - ✅ **QS237** **DECRQM answers not recognised for modes xterm reports as permanently reset or as set** — DECRQM answers 4 or 3 for a mode refused by design (KAM, SRM, printer, NRC, smooth scroll); storing a flag that changes nothing was rejected as a lie to the host.
 - ✅ **QS242** **Reverse wraparound does not follow a backspace back across a wrapped line as xterm does** — Reverse wraparound follows xterm since 2023 (45 within a wrapped line, 1045 anywhere), and esctest is run with --xterm-reverse-wrap=383; the older rule where 45 crossed every row was rejected.
+- ✅ **QS212** **Dark text on a light theme carries 12 to 17 % less ink than Windows draws, while light-on-dark carries more** — Coverage is weighted by polarity with DirectWrite's a(k+1)/(ak+1) curve, k 2.0 grayscale and 1.0 ClearType, fitted against Direct2D; keeping QS9's symmetry was rejected.
 
 ## Block D — The tree a user organises work in
 

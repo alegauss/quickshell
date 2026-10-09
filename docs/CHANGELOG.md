@@ -113,6 +113,7 @@
 - ✅ **QS246** **Reverse screen mode DECSCNM is not drawn, so a visual bell never flashes** — Mode 5 swaps the default colours in the palette lookup and redraws on each edge, so the visual bell vim and readline send now flashes; esctest went from 465 to 466 passed.
 - ✅ **QS248** **An SGR in the last column cancels the owed wrap, so the next character overwrites that column** — Only sequences that move the cursor or change the grid cancel an owed wrap, as xterm's ResetWrap sites do, so a full-width line that changes colour at its end still wraps.
 - ✅ **QS249** **Keys typed before a new pane's shell has started are dropped, so a fast first command loses its start** — Keys typed while a pane's session opens are kept, bounded, and handed over first and in order once it attaches, so a fast first command no longer loses its start.
+- ✅ **QS212** **Dark text on a light theme carries 12 to 17 % less ink than Windows draws, while light-on-dark carries more** — Dark text on a light theme carries Direct2D's ink within 1 % in both antialiasing modes, and light-on-dark is drawn as before (design recorded in `docs/measurements/contrast.md`).
 
 ## Block D — The tree a user organises work in
 

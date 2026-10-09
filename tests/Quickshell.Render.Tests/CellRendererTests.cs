@@ -128,6 +128,10 @@ public sealed class CellRendererTests
     {
         using Harness harness = new();
 
+        // The blend itself, without the contrast QS212 adds for dark ink: the linear-light claim
+        // this test was written for still holds once that is set to nothing.
+        harness.Renderer.DarkContrast = 0f;
+
         GlyphPlacement glyph = harness.Atlas.Cache('B');
         Assert.False(glyph.IsEmpty);
 
@@ -161,6 +165,52 @@ public sealed class CellRendererTests
         Assert.True(difference < 0.05,
             $"the same character weighs {lightOnDark:F2} light-on-dark and {darkOnLight:F2} " +
             $"dark-on-light, a difference of {difference:P0} - the blend is not happening in linear light");
+    }
+
+    /// <summary>
+    /// QS212: by default dark ink on a light ground is thickened, as Windows' own text is, and light
+    /// ink on a dark ground is drawn exactly as the plain linear blend draws it.
+    /// </summary>
+    [Fact]
+    public void DarkInkIsThickenedAndLightInkIsNot()
+    {
+        using Harness harness = new();
+
+        GlyphPlacement glyph = harness.Atlas.Cache('B');
+        CellInstance[] cells =
+        [
+            CellInstance.For(glyph, Rgb.White, Rgb.Black),
+            CellInstance.For(glyph, Rgb.Black, Rgb.White),
+        ];
+        CellMetrics metrics = harness.Metrics;
+
+        (double Light, double Dark) Weigh(float? k)
+        {
+            harness.Renderer.DarkContrast = k;
+            harness.Renderer.Draw(harness.Surface, cells, 2);
+
+            byte[] frame = harness.ReadBack();
+            double light = 0;
+            double dark = 0;
+
+            for (int y = 0; y < metrics.Height; y++)
+            {
+                for (int x = 0; x < metrics.Width; x++)
+                {
+                    light += Linear(Pixel(frame, x, y).Green);
+                    dark += 1.0 - Linear(Pixel(frame, metrics.Width + x, y).Green);
+                }
+            }
+
+            return (light, dark);
+        }
+
+        (double plainLight, double plainDark) = Weigh(0f);
+        (double light, double dark) = Weigh(null);
+
+        Assert.InRange(light, plainLight * 0.999, plainLight * 1.001);
+        Assert.True(dark > plainDark * 1.05,
+            $"dark ink weighs {dark:F2} with the default contrast and {plainDark:F2} without it");
     }
 
     [Fact]

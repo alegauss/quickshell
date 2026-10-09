@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS212** (deps: —) **Dark text on a light theme carries 12 to 17 % less ink than Windows draws, while light-on-dark carries more** — Owner decided 2026-10-09: match Windows, with a correction by polarity fitted against the Direct2D reference. → §QS212
 
 ## Block D — The tree a user organises work in
 

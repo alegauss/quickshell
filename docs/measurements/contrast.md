@@ -40,3 +40,21 @@ Reference machine, 2026-10-06, hardware adapter:
 
 What this does not settle: the per-pixel shape of the curve, since a total is not a profile. The
 guest, on WARP and with no ClearType panel, measures its own numbers and is not the reference.
+
+## Matching Windows (QS212)
+
+The owner chose to match Windows on 2026-10-09. The grid shader now applies DirectWrite's own
+enhanced-contrast curve, `a(k+1)/(ak+1)`, to coverage. The weight is full for ink darker than a
+quarter's lightness and zero past three quarters, so light text on a dark ground is drawn as
+before. The k was fitted by the same test's sweep, run in the guest on 2026-10-09; at k 0 the
+guest reproduces the reference desk's rows above:
+
+| antialiasing | k 0 | k 1.0 | k 2.0 |
+|---|---:|---:|---:|
+| grayscale | 0.826 | 0.943 | **1.007** |
+| ClearType | 0.883 | **1.005** | — |
+
+The defaults are `CellRenderer.DefaultDarkContrastGrayscale` (2.0) and
+`DefaultDarkContrastClearType` (1.0). The test now holds dark on light within 3 % of Direct2D,
+and light on dark keeps its 1.043 and 1.065. QS9's symmetry is still tested, with the curve
+turned off (`DarkContrast = 0`).

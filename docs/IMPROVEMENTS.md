@@ -221,34 +221,6 @@ it is the same grid.
 
 Falsified when a composition is on screen in a font the session did not choose.
 
-### §QS212 Symmetric, or the same as Windows
-
-QS107 measured it, in `docs/measurements/contrast.md`. Against Direct2D's own text, this
-renderer's dark-on-light text carries 12 to 17 % less ink, and its light-on-dark text 4
-to 7 % more. This renderer weighs the same both ways because it blends coverage in
-linear light, which QS9 built on purpose and tests:
-`TheSameCharacterLightOnDarkAndDarkOnLightHasMatchingWeight`. Windows does not, so a
-light theme here looks thinner than the editor beside it.
-
-Two ways to go, and choosing between them is a judgement about what this client should
-look like:
-
-- Keep the symmetry. Text weighs what its coverage says on any theme, and the light-theme gap
-  to Windows is the price. Then this line retires into a decision record naming the measured
-  gap.
-- Match Windows. Fit a correction by polarity, a curve applied to coverage when the ink is
-  darker than the ground, fitted against the Direct2D reference `ContrastTests` already draws.
-  That rewrites QS9's symmetry test into "matches Windows within N %" for both polarities. A
-  lookup table fitted to the measurement is honest where a guessed exponent is not, and the
-  fit is checked by the same test going to a ratio near one on both rows.
-
-Either way the fit is per pixel and not per total, so the first step of the second
-option is a profile: ink by coverage level, from the same two pictures.
-
-Decided by the owner, 2026-10-09: match Windows.
-
-Falsified when a light theme is called fixed without the dark-on-light ratio near one.
-
 ### §QS214 A steady-state allocation only the guest sees
 
 `HostileInputTests.ReplayingARealStreamAllocatesNothingInSteadyState("tmux-resize")`

@@ -92,7 +92,7 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
         public float OutlineRed;
         public float OutlineGreen;
         public float OutlineBlue;
-        public float Reserved4;
+        public float DarkContrast;
     }
 
     /// <summary>Opens the renderer and registers it, so a device loss rebuilds its shaders with everything else.</summary>
@@ -131,6 +131,27 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
 
     /// <summary>The cursor's colour, which a block cursor inverts the glyph against.</summary>
     public Rgb CursorColour { get; set; } = Brand.Cursor;
+
+    /// <summary>
+    /// How much dark ink is thickened, as DirectWrite's enhanced contrast thickens it (QS212): the k
+    /// of its a(k+1)/(ak+1) curve, applied in full to ink darker than a quarter's lightness and to
+    /// none past three quarters, so light text on a dark ground is drawn as it always was. Null is
+    /// the fitted default for the atlas's antialiasing.
+    /// </summary>
+    public float? DarkContrast { get; set; }
+
+    /// <summary>
+    /// The k that brings dark text on a light ground to Direct2D's ink in grayscale, fitted by
+    /// ContrastTests' sweep (QS212): 2.0 gives a ratio of 1.007, where 0 gave 0.826.
+    /// </summary>
+    public const float DefaultDarkContrastGrayscale = 2.0f;
+
+    /// <summary>The same under ClearType, which needs half as much: 1.0 gives 1.005, where 0 gave 0.883.</summary>
+    public const float DefaultDarkContrastClearType = 1.0f;
+
+    /// <summary>The k this frame draws with: the one set, or the default for the atlas's antialiasing.</summary>
+    public float EffectiveDarkContrast =>
+        DarkContrast ?? (_atlas.IsClearType ? DefaultDarkContrastClearType : DefaultDarkContrastGrayscale);
 
     /// <summary>The background a selected cell takes.</summary>
     public Rgb SelectionColour { get; set; } = Brand.Selection;
@@ -372,6 +393,7 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
             // The atlas's answer and not the renderer's: it is the one that knows both what the font
             // asked for and what the display said about its stripes.
             ClearType = _atlas.IsClearType ? 1f : 0f,
+            DarkContrast = EffectiveDarkContrast,
             CursorRed = CursorColour.Red / 255f,
             CursorGreen = CursorColour.Green / 255f,
             CursorBlue = CursorColour.Blue / 255f,

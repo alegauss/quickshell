@@ -27,7 +27,7 @@ cbuffer Frame : register(b0)
     float3 SelectionColour;
     uint   Rows;                // rows the grid holds, which with Columns is where its edge is
     float3 OutlineColour;
-    float  Reserved4;
+    float  DarkContrast;        // DirectWrite's enhanced contrast, for ink darker than its ground (QS212)
 };
 
 // One per atlas page. D3D feature level 11_0 cannot index a texture array dynamically, so the page
@@ -247,6 +247,14 @@ float4 PixelMain(Fragment input) : SV_Target
         else
         {
             coverage = SampleAtlas(input.Page, input.Glyph.xy + inGlyph);
+
+            // Weighted by polarity, as DirectWrite weights it (QS212): its enhanced-contrast curve,
+            // a(k+1)/(ak+1), at full strength for dark ink and fading to none as the ink's
+            // lightness passes three quarters - DWrite's own light-on-dark adjustment. Light text on
+            // a dark ground is therefore untouched, and dark text on a light one carries the ink
+            // Windows' own text does rather than the thinner symmetric weight.
+            float k = DarkContrast * saturate(4.0 * (0.75 - dot(ink, float3(0.30, 0.59, 0.11))));
+            coverage = coverage * (k + 1.0) / (coverage * k + 1.0);
         }
     }
 

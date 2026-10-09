@@ -51,6 +51,11 @@ param(
 
     [switch] $CommittedOnly,
 
+    # Writes the golden-image references in the guest and brings them back into the tree (QS212),
+    # for a change that moves every scene on purpose. Look at what comes back before committing it:
+    # a reference written wrong is a test that passes wrong.
+    [switch] $WriteGoldens,
+
     [string] $Vmx,
 
     # How long one test may run in the guest before it is ended and named (QS230), as
@@ -144,6 +149,7 @@ rem pass while printing every test that did not run as waived (QS136). A host ru
 rem so a fixture somebody forgot to start is a run over its skip budget there.
 set "QUICKSHELL_NO_FIXTURE=1"
 $(if ($Hang) { "set `"QUICKSHELL_HANG=$Hang`"" } else { 'rem The hang timeout is run-tests.cmd''s own.' })
+$(if ($WriteGoldens) { 'set "QUICKSHELL_GOLDEN=write"' } else { 'rem References are only read.' })
 
 cd /d "$script:GuestRepo"
 call "$script:GuestRepo\run-tests.cmd" $Configuration > "$script:GuestSync\vm-run.log" 2>&1
@@ -156,6 +162,8 @@ dotnet build-server shutdown >nul 2>&1
 rem Whatever the golden-image suite wrote when a scene failed - reference, actual and difference -
 rem comes back as one archive, because vmrun cannot glob and those names are not known up here.
 if exist "$script:GuestRepo\TestResults" powershell -NoProfile -Command "Compress-Archive -Path '$script:GuestRepo\TestResults\*' -DestinationPath '$script:GuestSync\results.zip' -Force" >nul 2>&1
+
+$(if ($WriteGoldens) { "powershell -NoProfile -Command `"Compress-Archive -Path '$script:GuestRepo\tests\Quickshell.Render.Tests\references\*' -DestinationPath '$script:GuestSync\references.zip' -Force`" >nul 2>&1" } else { 'rem No references were written.' })
 
 rem The redirect leads, and that is not a style choice. `echo %RC%> file` is parsed by cmd as
 rem `echo` redirected to handle %RC% whenever the code is a single digit, so a run that exited 1
@@ -255,6 +263,27 @@ if ($code -ne 0) {
         catch {
             Write-Host "  the artefacts would not unpack: $($_.Exception.Message)" -ForegroundColor Yellow
         }
+    }
+}
+
+if ($WriteGoldens) {
+    $written = Join-Path $results 'references.zip'
+    $writtenBack = Invoke-VmRun -Guest -Arguments @('copyFileFromGuestToHost', $vmxPath, "$script:GuestSync\references.zip", $written)
+
+    if ($writtenBack.Ok) {
+        $into = Join-Path $script:RepoRoot 'tests\Quickshell.Render.Tests\references'
+        Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+        $zip = [IO.Compression.ZipFile]::OpenRead($written)
+        try {
+            foreach ($entry in $zip.Entries) {
+                [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, (Join-Path $into $entry.Name), $true)
+            }
+        }
+        finally { $zip.Dispose() }
+        Write-Host "  references  written in the guest and copied into $into" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "  references  none came back: $($writtenBack.Output)" -ForegroundColor Yellow
     }
 }
 

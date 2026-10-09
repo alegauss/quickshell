@@ -18,13 +18,14 @@ namespace Quickshell.Render.Tests;
 /// <para><b>Why a measurement.</b> DirectWrite's coverage comes back raw. Direct2D applies the
 /// rendering parameters on top — gamma, and an enhanced contrast that thickens stems — in a shader
 /// whose curve is not published. This renderer blends coverage in linear light, which stands in for
-/// the gamma, and applies no enhancement. So the same run is drawn both ways, white on black, and
+/// the gamma, and applies DirectWrite's enhancement only to ink darker than its ground (QS212). So the same run is drawn both ways, white on black, and
 /// the total light each put on the glass is compared. Direct2D here is the reference a test reads,
 /// and nothing the client draws with.</para>
 ///
 /// <para>The number is written to <c>TestResults/contrast.txt</c> and recorded in
-/// <c>docs/measurements/contrast.md</c>. What this asserts is only that both drew the run, within a
-/// factor that a missing glyph or a blank target would fall outside.</para>
+/// <c>docs/measurements/contrast.md</c>. What this asserts is that both drew the run, within a
+/// factor that a missing glyph or a blank target would fall outside, and that dark text on a light
+/// ground carries Direct2D's ink within 3 % (QS212).</para>
 /// </summary>
 public sealed class ContrastTests
 {
@@ -37,6 +38,7 @@ public sealed class ContrastTests
     {
         List<string> lines = [];
         List<double> ratios = [];
+        List<double> darkOnLight = [];
 
         foreach (bool dark in new[] { true, false })
         {
@@ -57,6 +59,28 @@ public sealed class ContrastTests
                     $"{(dark ? "light on dark" : "dark on light")}, {(honoured ? "cleartype" : "grayscale")}: "
                     + $"ours {ours:F1}, direct2d {reference:F1}, ratio {ratio:F3}{retried}"));
                 ratios.Add(ratio);
+
+                // QS212: dark on light carries Windows' own ink, within the 3 % the sweep's steps
+                // resolve. Light on dark keeps only the coarse bound below, its weight unchanged.
+                if (!dark)
+                {
+                    darkOnLight.Add(ratio);
+                }
+            }
+        }
+
+        // The profile the default was fitted from (QS212): dark on light at a range of k, so the
+        // fit can be read again on any desk rather than taken on trust.
+        foreach (bool clearType in new[] { false, true })
+        {
+            foreach (float k in new[] { 0f, 0.5f, 1f, 1.5f, 2f, 3f, 4f })
+            {
+                byte[] drawn = Ours(clearType, dark: false, out bool honoured, out int across, out int down, k);
+                double ours = Ink(drawn, dark: false, across, down);
+                double reference = Ink(Direct2D(honoured, dark: false, across, down, []), dark: false, across, down);
+
+                lines.Add(string.Create(CultureInfo.InvariantCulture,
+                    $"sweep dark on light, {(honoured ? "cleartype" : "grayscale")}, k {k:F1}: ratio {ours / reference:F3}"));
             }
         }
 
@@ -65,10 +89,12 @@ public sealed class ContrastTests
         File.WriteAllLines(Path.Combine(results, "contrast.txt"), lines);
 
         Assert.All(ratios, ratio => Assert.InRange(ratio, 0.5, 2.0));
+        Assert.All(darkOnLight, ratio => Assert.InRange(ratio, 0.97, 1.03));
     }
 
     /// <summary>The run through this renderer, as a pane draws it: one cell per character.</summary>
-    private static byte[] Ours(bool clearType, bool dark, out bool honoured, out int across, out int down)
+    private static byte[] Ours(bool clearType, bool dark, out bool honoured, out int across, out int down,
+                               float? darkContrast = null)
     {
         Rgb ink = dark ? Rgb.White : Rgb.Black;
         Rgb ground = dark ? Rgb.Black : Rgb.White;
@@ -83,6 +109,7 @@ public sealed class ContrastTests
         using GlyphAtlas atlas = GlyphAtlas.For(device, font, rasteriser: rasteriser);
         CellMetrics metrics = rasteriser.Measure(font);
         using CellRenderer renderer = CellRenderer.For(device, atlas, metrics);
+        renderer.DarkContrast = darkContrast;
 
         honoured = atlas.IsClearType;
 
