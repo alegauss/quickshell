@@ -11,7 +11,7 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS244** (deps: —) **Seventeen esctest failures in eleven classes have no family of their own** — Each is one or two tests and one cause, and together they are the rest of what Block C needs named. → §QS244
+- ⏳ **QS244** (deps: —) **Seventeen esctest failures in eleven classes have no family of their own** — DECALN, DECSET's ALTBUF and OPT_ALTBUF cursor and MoreFix, and DECSCL's levels still fail; the rest of the list passes since QS233 to QS243. → §QS244
 - 📋 **QS246** (deps: —) **Reverse screen mode DECSCNM is not drawn, so a visual bell never flashes** — vim and readline flash the screen with mode 5 when the audible bell is off, and here nothing shows, so that user hears and sees no bell. → §QS246
 - 📋 **QS248** (deps: —) **An SGR in the last column cancels the owed wrap, so the next character overwrites that column** — Every non-report CSI clears the pending wrap, where xterm clears it only on cursor movement, so a coloured full-width line prints one character short. → §QS248
 
@@ -295,6 +295,13 @@
 - **The guest suite runs ten times without this test counting a byte** Ten consecutive
   run-tests-vm passes with tmux-resize at zero, after the sequence the diagnosis names
   is fixed.
+
+## Done when — QS244
+
+- **DECALN, DECSET and DECSCL fail nothing that no line or non-goal names** Checked by a
+  full esctest run: each failing case left in DECALNTests, DECSETTests and DECSCLTests
+  is either fixed or named by a non-goal (DECCOLM, identity, CSI t), which is the
+  design's own falsifier read class by class.
 
 ## Non-goals
 

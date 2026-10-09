@@ -219,6 +219,9 @@ public sealed class EmulatorTests
 
         Assert.Equal(0, emulator.Buffer.ScrollbackLines);
         Assert.Equal(2, emulator.Buffer.LineCount);
+
+        // What was on screen is still there, as xterm leaves it (QS244).
+        Assert.Contains("dd", Row(emulator, 1), StringComparison.Ordinal);
     }
 
     /// <summary>

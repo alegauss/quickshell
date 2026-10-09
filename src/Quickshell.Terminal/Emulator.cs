@@ -1200,8 +1200,7 @@ public sealed partial class Emulator : IAnsiHandler
     /// <summary>
     /// ED. Every erase here, and EL and ECH beside it, leaves the pen's background behind and
     /// nothing else of it — QS204, xterm's background colour erase.
-    /// <paramref name="selective"/> is DECSED, which leaves protected cells alone and whose 3
-    /// drops the scrollback without touching the screen (QS235).
+    /// <paramref name="selective"/> is DECSED, which leaves protected cells alone (QS235).
     /// </summary>
     private void EraseDisplay(int mode, bool selective = false)
     {
@@ -1242,12 +1241,9 @@ public sealed partial class Emulator : IAnsiHandler
                 buffer.ClearScreen(ground);
                 break;
 
-            case 3 when selective:
-                buffer.DropScrollback();
-                break;
-
             case 3:
-                buffer.ClearScreen(ground);
+                // The scrollback and nothing else, as xterm's ED 3 and DECSED 3 both are (QS244):
+                // a host clearing history has not asked for the screen to go with it.
                 buffer.DropScrollback();
                 break;
 

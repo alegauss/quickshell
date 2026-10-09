@@ -83,10 +83,10 @@ public sealed class TerminalDocumentTests
 
         string all = document.Text(0, document.Length);
 
-        // What the screen holds after the clear, and nothing of the history that was let go. (This
-        // emulator's ED 3 also clears the screen, which xterm's does not - QS244 - so what stood on
-        // screen before it is not asserted either way.)
+        // What the screen holds after the clear, which ED 3 leaves as it was (QS244), and nothing
+        // of the history that was let go.
         Assert.Contains("after the clear", all, StringComparison.Ordinal);
+        Assert.Contains("line 39", all, StringComparison.Ordinal);
         Assert.DoesNotContain("line 0\n", all, StringComparison.Ordinal);
         Assert.Equal(emulator.Buffer.LineCount, document.Lines);
     }
