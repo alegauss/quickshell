@@ -4,13 +4,17 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-- 📋 **QS142** (deps: QS139 ⏸) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
+- 📋 **QS142** (deps: QS139 📋) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
 
 ## Block B — Keys, agents, and the host you think you reached
 
+- 📋 **QS115** (deps: QS44 ✅) **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — Owner decided 2026-10-09: take an audited Argon2id package, with a format version that migrates existing secrets. → §QS115
+
 ## Block C — Emulation that does not lie about the remote
 
-- ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
+- ⏳ **QS141** (deps: QS139 📋) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
+- 📋 **QS139** (deps: —) **A host sending faster than the parser consumes buffers gigabytes inside the channel** — Owner decided 2026-10-09: bump SSH.NET to its newest release and rerun ChannelBackpressureTests first; only if no bound exists, bring the result back. → §QS139
+- 📋 **QS212** (deps: —) **Dark text on a light theme carries 12 to 17 % less ink than Windows draws, while light-on-dark carries more** — Owner decided 2026-10-09: match Windows, with a correction by polarity fitted against the Direct2D reference. → §QS212
 
 ## Block D — The tree a user organises work in
 
@@ -20,18 +24,25 @@
 
 ## Block G — The clean interface, defended
 
+- 📋 **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — Owner decided 2026-10-09: closing one of several windows ends only its own sessions, and the process leaves with the last window. → §QS160
+
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS75** (deps: QS2 ✅, QS46 ✅, the incumbent closed on the reference desk) **Nothing has been measured starting, so the cold start figure is an aspiration** — The incumbent has not been started beside it on the same machine, so the comparison the figure exists for is not made. → §QS75
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
-- ⏳ **QS78** (deps: QS139 ⏸) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
+- ⏳ **QS78** (deps: QS139 📋) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
+- 📋 **QS190** (deps: —) **The window's constructor takes about 200 ms of a start, half of it the Fluent theme** — Owner decided 2026-10-09: apply the theme after the first frame, with DWM asked for the dark title bar first so nothing flashes. → §QS190
 
 ## Block I — An error a user can act on
+
+- 📋 **QS128** (deps: QS71 ✅) **A trace shows what this client offered and never what the server did** — Owner decided 2026-10-09: check the newest SSH.NET with QS139's bump; if it exposes no server lists, wait for it, and read no protocol here. → §QS128
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+- 📋 **QS210** (deps: —) **The fuzzing campaign runs only when somebody types run-fuzz.cmd** — Owner decided 2026-10-09: a nightly scheduled CI job runs the campaign, keeping the corpus between runs. → §QS210
 
 ## Done when — Block A
 
@@ -366,3 +377,7 @@
   glyph atlas (QS135), so a per-session size would mean panes of different cell sizes in
   one window, two atlases and a divider that cannot line up. FontSize stays readable in
   the file and is offered nowhere (QS245).
+- **No agent forwarding; a jump host reaches the third machine instead** SSH.NET has
+  none, and writing it here is the protocol work a non-goal forbids; while open it lets
+  root on the far host sign as the user. JumpHost already reaches a machine behind a
+  bastion with no agent exposed (QS45, decided by the owner 2026-10-09).

@@ -82,31 +82,6 @@ to be worth it.
 
 Falsified when a token-backed key cannot authenticate a session.
 
-### §QS45 The most dangerous convenience in the protocol
-
-Agent forwarding lets a remote host ask the local agent to sign. It is genuinely useful
-— it is how a user reaches a third machine from a bastion without leaving a key on the
-bastion — and it is also the sharpest edge in ordinary SSH use: while the session is
-open, anyone with root on that host can sign as the user, to anywhere the user's key
-opens.
-
-So the design is refusal by default and consent per host. Not a global setting, because
-the entire risk is host-specific: forwarding to a bastion the user administers is
-reasonable, and forwarding to a shared jump box is handing over a key.
-
-Where it is enabled for a host, the session's settings show it as enabled with the risk
-in a sentence, and the running session shows it too — a forward the user has forgotten
-about is a forward they cannot reason about.
-
-The forwarded socket closes with the session and is not left behind.
-
-The alternative worth offering in the same breath is a jump host configuration, which
-reaches the third machine without any agent ever being exposed on the second. Where that
-solves the user's actual problem it is the better answer, and the settings surface says
-so instead of staying neutral.
-
-Falsified when a session forwards an agent with no per-host consent recorded.
-
 ### §QS114 The other transport under the same protocol
 
 QS43's design names two agents to reach on Windows and says the useful thing about them:
@@ -295,6 +270,8 @@ look like:
 
 Either way the fit is per pixel and not per total, so the first step of the second
 option is a profile: ink by coverage level, from the same two pictures.
+
+Decided by the owner, 2026-10-09: match Windows.
 
 Falsified when a light theme is called fixed without the dark-on-light ratio near one.
 
@@ -680,5 +657,7 @@ pinned hash.
 Whichever it is, the run writes a line somewhere a person reads, with the date, the
 length, the coverage gained and any finding, so that "it has not run for a month" is
 visible.
+
+Decided by the owner, 2026-10-09: a nightly scheduled CI job.
 
 Falsified when a week passes with no campaign and nothing says so.
