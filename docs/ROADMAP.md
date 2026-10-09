@@ -34,8 +34,6 @@
 
 ## Block I — An error a user can act on
 
-- 📋 **QS128** (deps: QS71 ✅) **A trace shows what this client offered and never what the server did** — Owner decided 2026-10-09: check the newest SSH.NET with QS139's bump; if it exposes no server lists, wait for it, and read no protocol here. → §QS128
-
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of
