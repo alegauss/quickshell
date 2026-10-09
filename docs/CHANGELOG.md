@@ -109,6 +109,7 @@
 - ✅ **QS243** **DECRQSS answers invalid for settings the client holds, and DA, DA2 and DECID answer another identity** — DECSCUSR is drawn and reported, DECRQSS answers every setting held, DECID answers, and the VT220 identity is kept by a non-goal; esctest went from 454 to 458 passed.
 - ✅ **QS244** **Seventeen esctest failures in eleven classes have no family of their own** — Every class the line listed now passes or is named by a non-goal, DECSCL's levels by a new one; esctest went from 458 to 465 passed across the parts.
 - ✅ **QS246** **Reverse screen mode DECSCNM is not drawn, so a visual bell never flashes** — Mode 5 swaps the default colours in the palette lookup and redraws on each edge, so the visual bell vim and readline send now flashes; esctest went from 465 to 466 passed.
+- ✅ **QS248** **An SGR in the last column cancels the owed wrap, so the next character overwrites that column** — Only sequences that move the cursor or change the grid cancel an owed wrap, as xterm's ResetWrap sites do, so a full-width line that changes colour at its end still wraps.
 
 ## Block D — The tree a user organises work in
 

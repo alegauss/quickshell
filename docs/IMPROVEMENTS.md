@@ -343,30 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS248 The owed wrap and sequences that do not move
-
-Every CSI sequence that reaches the movement switch in Emulator.cs clears PendingWrap
-before it is dispatched. QS242 exempted the reports (DA, DSR, CSI t), because esctest
-asks for the cursor position between printing in the last column and the backspace it
-judges. SGR, the margins' report-free setters, mode changes and the like still clear it.
-xterm calls ResetWrap only where the cursor moves.
-
-What it costs: a prompt or a status line that fills the last column and then changes
-colour (`...text\e[0m` or `\e[7m` followed by more text) loses the owed wrap. The next
-character overwrites the last column instead of starting the next row, so a coloured
-full-width line prints one character short and the rest lands on top of its last cell.
-Shells with a right-aligned coloured prompt hit exactly this.
-
-What to build: clear PendingWrap only in the finals that move the cursor or change the
-grid under it (CUU, CUD, CUF, CUB, CNL, CPL, CHA, HPA, VPA, CUP, HVP, HPR, VPR, CHT,
-CBT, the erases, inserts and deletes, scrolls, DECSTBM, DECSLRM and the rest xterm's
-charproc names), and leave it set for SGR and every other final. Read xterm's charproc.c
-case by case rather than guessing. The current exemption list is the start of the other
-one.
-
-Falsified when `\e[1;80H` + `ab` + `\e[31m` + `c` on an 80-column screen leaves `c` in
-row 1 instead of at the start of row 2.
-
 ### §QS249 Keys typed while a session opens
 
 Typist.Deliver drops a keystroke while Sending is null, with a comment saying there is

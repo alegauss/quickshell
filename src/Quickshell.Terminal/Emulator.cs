@@ -915,12 +915,14 @@ public sealed partial class Emulator : IAnsiHandler
 
         TerminalBuffer buffer = Buffer;
 
-        // CUB needs to know the cursor was waiting to wrap, which every other movement forgets. A
-        // report - DA, DSR, a window report - moves nothing, so it leaves an owed wrap owed, as
-        // xterm's do: a host asking where the cursor is must not change what it prints next (QS242).
+        // CUB needs to know the cursor was waiting to wrap, which every other movement forgets. And
+        // only a sequence that moves the cursor or changes the grid under it cancels an owed wrap,
+        // as xterm's ResetWrap sites are (QS248): SGR, a mode, a tab stop, REP and every report
+        // leave it owed, so a full-width line that changes colour at its end still wraps (QS242
+        // started this with the reports).
         bool wasPending = PendingWrap;
 
-        if (final is not ((byte)'c' or (byte)'n' or (byte)'t'))
+        if (Moves(final))
         {
             PendingWrap = false;
         }
@@ -1118,6 +1120,23 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
         }
     }
+
+    /// <summary>
+    /// Whether a CSI final moves the cursor or changes the grid under it, which is what cancels an
+    /// owed wrap (QS248): the cursor movements, CUP and HVP, the erases, inserts and deletes, the
+    /// scrolls, the tab moves, DECSTBM, and <c>s</c> while it is DECSLRM - each homes or moves.
+    /// SCOSC, the other <c>s</c>, saves and moves nothing.
+    /// </summary>
+    private bool Moves(byte final) => final switch
+    {
+        (byte)'A' or (byte)'B' or (byte)'C' or (byte)'D' or (byte)'E' or (byte)'F' or (byte)'G'
+            or (byte)'`' or (byte)'a' or (byte)'d' or (byte)'e' or (byte)'H' or (byte)'f' => true,
+        (byte)'I' or (byte)'Z' => true,
+        (byte)'J' or (byte)'K' or (byte)'X' or (byte)'L' or (byte)'M' or (byte)'@' or (byte)'P' => true,
+        (byte)'S' or (byte)'T' or (byte)'r' or (byte)'u' => true,
+        (byte)'s' => LeftRightMarginMode,
+        _ => false,
+    };
 
     /// <summary>
     /// Which screen row a one-based row number means. Under DECOM it is relative to the top margin
