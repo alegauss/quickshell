@@ -33,6 +33,11 @@
          open elsewhere. Not private: nothing above needs to name it, but nothing above is harmed
          by being able to either, and it is Microsoft's own. -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.6" />
+
+    <!-- Argon2id for the master password (QS115). The owner accepted it on 2026-10-09 because .NET
+         ships no memory-hard derivation; NSec calls libsodium's audited implementation rather than
+         carrying a managed one. Pinned, because the derivation is part of the stored format. -->
+    <PackageReference Include="NSec.Cryptography" Version="[26.4.0]" />
   </ItemGroup>
 
 </Project>

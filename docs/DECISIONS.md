@@ -12,6 +12,7 @@
 
 - ✅ **QS42** **Nothing checks the host key, so a machine in the middle is indistinguishable from the server** — A changed host key is never a dialog: the decision delegate is not consulted, so no caller can accept one however it answers.
 - ✅ **QS44** **A saved password would rest on disk where anything running as the user can read it** — A secret is never held in a string; where a dependency's signature leaves no choice, the copy is named ToUnprotectedArray and carries a comment saying which dependency.
+- ✅ **QS115** **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — The master-password KDF is Argon2id (64 MiB, 3 passes) via NSec/libsodium, accepted as a dependency by the owner; staying on PBKDF2 or a managed Argon2 were rejected.
 
 ## Block C — Emulation that does not lie about the remote
 

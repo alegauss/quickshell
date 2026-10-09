@@ -8,8 +8,6 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- 📋 **QS115** (deps: QS44 ✅) **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — Owner decided 2026-10-09: take an audited Argon2id package, with a format version that migrates existing secrets. → §QS115
-
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 📋) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141

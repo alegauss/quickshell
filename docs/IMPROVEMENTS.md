@@ -107,32 +107,6 @@ rather than by a return value.
 Falsified when a signature obtained through shared memory differs from one obtained
 through the pipe for the same key and the same data.
 
-### §QS115 The derivation that is honest work and not what was asked
-
-QS44's design asks for "Argon2id or an equivalent memory-hard function". What shipped is
-PBKDF2-HMAC-SHA512 at 600,000 iterations, which is above OWASP's current figure for that
-construction and is not memory-hard.
-
-.NET 10 ships no memory-hard derivation — no Argon2, no scrypt, no balloon hashing. So
-the choice was between taking a third-party cryptographic package into the one code path
-where a mistake cannot be noticed by testing, and using the strongest primitive the
-framework does have while saying plainly that it is not the one the design named.
-
-The cost is real and worth stating in the same sentence as the reassurance: PBKDF2 is
-compute-hard and not memory-hard, so an attacker with a graphics card gets far more
-guesses per second against it than against Argon2id at comparable settings — roughly two
-orders of magnitude on commodity hardware. Against an attacker who has the file and is
-guessing a master password, that is the whole difference.
-
-Closing it is small and mostly a decision rather than work: `MasterKey.Derive` is four
-lines and one call, and the parameters are already isolated there because changing them
-makes every stored secret unreadable. What it needs is somebody to decide that
-`Konscious.Security.Cryptography.Argon2` — or a successor in the framework — is a
-dependency this project accepts, and a format version so existing secrets migrate rather
-than break.
-
-Falsified when the derivation changes without a way to read what the old one wrote.
-
 ## Block C — Emulation that does not lie about the remote
 
 ### §QS92 The three environments this machine is not

@@ -165,7 +165,16 @@ public sealed class SecretStore
 
         try
         {
-            return Open(sealedUp, target);
+            Secret? opened = Open(sealedUp, target, out bool legacy);
+
+            // Sealed before QS115 with PBKDF2: sealed again now with Argon2id, so the old format
+            // is read once per secret and then gone.
+            if (opened is not null && legacy)
+            {
+                Save(target, opened);
+            }
+
+            return opened;
         }
         finally
         {
@@ -215,15 +224,48 @@ public sealed class SecretStore
 
         cipherSuite.Encrypt(nonce, plain, cipher, tag, Encoding.UTF8.GetBytes(target));
 
-        return [.. salt, .. nonce, .. tag, .. cipher];
+        return [.. Argon2Marker, .. salt, .. nonce, .. tag, .. cipher];
     }
 
-    /// <summary>Decrypts, or answers null where the master password is wrong or the bytes are not ours.</summary>
-    private Secret? Open(byte[] sealedUp, string target)
+    /// <summary>
+    /// What an entry sealed with Argon2id starts with (QS115). The format before it had no version,
+    /// so a marker is how the two are told apart; an old entry that happens to begin with these four
+    /// bytes is still read, because authentication fails as Argon2id and it is then tried the old way.
+    /// </summary>
+    private static ReadOnlySpan<byte> Argon2Marker => "qsA2"u8;
+
+    /// <summary>
+    /// Decrypts, or answers null where the master password is wrong or the bytes are not ours.
+    /// <paramref name="legacy"/> says the entry was sealed before QS115, with PBKDF2, so the caller
+    /// can seal it again with Argon2id.
+    /// </summary>
+    private Secret? Open(byte[] sealedUp, string target, out bool legacy)
+    {
+        legacy = false;
+
+        if (_master is null)
+        {
+            return Unseal(sealedUp, target, derive: null);
+        }
+
+        if (sealedUp.AsSpan().StartsWith(Argon2Marker)
+            && Unseal(sealedUp[Argon2Marker.Length..], target, MasterKey.Derive) is { } current)
+        {
+            return current;
+        }
+
+        Secret? old = Unseal(sealedUp, target, MasterKey.DeriveLegacy);
+        legacy = old is not null;
+
+        return old;
+    }
+
+    /// <summary>One attempt at the master-password format with one derivation, or DPAPI where <paramref name="derive"/> is null.</summary>
+    private Secret? Unseal(byte[] sealedUp, string target, Func<Secret, ReadOnlySpan<byte>, Secret>? derive)
     {
         try
         {
-            if (_master is null)
+            if (derive is null)
             {
                 byte[] plain = ProtectedData.Unprotect(sealedUp, Encoding.UTF8.GetBytes(target),
                                                        DataProtectionScope.CurrentUser);
@@ -254,7 +296,7 @@ public sealed class SecretStore
 
             byte[] plainBytes = new byte[cipher.Length];
 
-            using Secret key = MasterKey.Derive(_master, salt);
+            using Secret key = derive(_master!, salt);
             using AesGcm cipherSuite = new(key.Bytes, tagLength);
 
             try

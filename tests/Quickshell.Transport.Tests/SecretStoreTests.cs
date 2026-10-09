@@ -204,6 +204,69 @@ public sealed class SecretStoreTests : IDisposable
         Assert.Equal("a password", Encoding.UTF8.GetString(read.Bytes));
     }
 
+    // ---- Argon2id, and the PBKDF2 entries written before it (QS115) ----
+
+    /// <summary>
+    /// The design's falsifier: <em>falsified when the derivation changes without a way to read what
+    /// the old one wrote</em>. An entry sealed the pre-QS115 way still opens, and is sealed again in
+    /// the new format the first time it does.
+    /// </summary>
+    [Fact]
+    public void AnEntrySealedWithTheOldDerivationOpensAndIsSealedAgain()
+    {
+        using Secret master = Secret.From("open sesame");
+        SecretStore store = SecretStore.In(_directory, master);
+
+        using (Secret placeholder = Secret.From("placeholder"))
+        {
+            store.Save(Somewhere, placeholder);
+        }
+
+        string file = Directory.EnumerateFiles(_directory).Single();
+        File.WriteAllBytes(file, LegacySeal("old password", "open sesame", $"quickshell:{Somewhere}"));
+
+        using (Secret? read = store.Load(Somewhere))
+        {
+            Assert.Equal("old password", Encoding.UTF8.GetString(read!.Bytes));
+        }
+
+        Assert.Equal("qsA2"u8.ToArray(), File.ReadAllBytes(file)[..4]);
+
+        using Secret? again = SecretStore.In(_directory, master).Load(Somewhere);
+
+        Assert.Equal("old password", Encoding.UTF8.GetString(again!.Bytes));
+    }
+
+    [Fact]
+    public void ANewEntryIsSealedWithArgon2id()
+    {
+        using Secret master = Secret.From("open sesame");
+
+        using (Secret secret = Secret.From("a password"))
+        {
+            SecretStore.In(_directory, master).Save(Somewhere, secret);
+        }
+
+        Assert.Equal("qsA2"u8.ToArray(), File.ReadAllBytes(Directory.EnumerateFiles(_directory).Single())[..4]);
+    }
+
+    /// <summary>What the store wrote before QS115: salt, nonce, tag and ciphertext under PBKDF2-HMAC-SHA512.</summary>
+    private static byte[] LegacySeal(string plain, string master, string target)
+    {
+        byte[] salt = System.Security.Cryptography.RandomNumberGenerator.GetBytes(16);
+        byte[] nonce = System.Security.Cryptography.RandomNumberGenerator.GetBytes(12);
+        byte[] text = Encoding.UTF8.GetBytes(plain);
+        byte[] cipher = new byte[text.Length];
+        byte[] tag = new byte[16];
+        byte[] key = System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(
+            Encoding.UTF8.GetBytes(master), salt, 600_000, System.Security.Cryptography.HashAlgorithmName.SHA512, 32);
+
+        using System.Security.Cryptography.AesGcm aes = new(key, 16);
+        aes.Encrypt(nonce, text, cipher, tag, Encoding.UTF8.GetBytes(target));
+
+        return [.. salt, .. nonce, .. tag, .. cipher];
+    }
+
     /// <summary>
     /// The entry's name is bound into the ciphertext, so a saved password cannot be replayed as
     /// another host's by anybody who can write to the store.

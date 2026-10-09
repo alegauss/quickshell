@@ -24,6 +24,7 @@
 - ✅ **QS114 (the window carrier)** **A PuTTY user on Pageant older than 0.78 has an agent this client cannot reach at all** — Pageant's window and a user-owned mapping carry agent requests, and a signature through them equals the pipe's.
 - ✅ **QS218** **A saved session to a host that takes a password or a one-time code cannot be connected from the client** — A saved session signs in by key, prompt or password: the window answers the server's questions, asks a password-only host once, and a kept password is not asked again.
 - 🗑 **QS45** **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — abandoned: Decided against by the owner on 2026-10-09: SSH.NET has no agent forwarding and writing it here is forbidden protocol work, so a jump host is the answer, recorded as a non-goal.
+- ✅ **QS115** **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — The master password is stretched with Argon2id through libsodium, and entries sealed with the old PBKDF2 still open and are sealed again in the new format.
 
 ## Block C — Emulation that does not lie about the remote
 
