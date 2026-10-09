@@ -126,8 +126,14 @@ public sealed class EmulatorTests
         Emulator emulator = Fed("ab\rc");
         Assert.Equal("cb", Row(emulator, 0)[..2]);
 
+        // And a line feed is only a line feed: down one row, same column (QS232). This asserted
+        // the carriage return as well until QS232, which was the bug it is named against.
         emulator = Fed("ab\nc");
         Assert.Equal("ab", Row(emulator, 0)[..2]);
+        Assert.Equal("  c", Row(emulator, 1)[..3]);
+
+        // With LNM set, a line feed returns the carriage too.
+        emulator = Fed("\u001b[20hab\nc");
         Assert.Equal("c", Row(emulator, 1)[..1]);
     }
 
@@ -135,7 +141,7 @@ public sealed class EmulatorTests
     public void PrintingPastTheLastRowScrollsRatherThanOverwriting()
     {
         Emulator emulator = new(6, 3, scrollback: 10);
-        emulator.Feed(Encoding.UTF8.GetBytes("one\ntwo\nthree\nfour"));
+        emulator.Feed(Encoding.UTF8.GetBytes("one\r\ntwo\r\nthree\r\nfour"));
 
         Assert.Equal(1, emulator.Buffer.ScrollbackLines);
         Assert.Equal("one", Text(emulator.Buffer.Line(0))[..3]);
@@ -161,7 +167,7 @@ public sealed class EmulatorTests
     public void EraseDisplayBelowLeavesWhatIsAboveTheCursor()
     {
         Emulator emulator = new(4, 3, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc\u001b[2;3H\u001b[J"));
+        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\r\nbbbb\r\ncccc\u001b[2;3H\u001b[J"));
 
         Assert.Equal("aaaa", Row(emulator, 0));
         Assert.Equal("bb  ", Row(emulator, 1));
@@ -172,7 +178,7 @@ public sealed class EmulatorTests
     public void EraseDisplayAboveLeavesWhatIsBelowTheCursor()
     {
         Emulator emulator = new(4, 3, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc\u001b[2;3H\u001b[1J"));
+        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\r\nbbbb\r\ncccc\u001b[2;3H\u001b[1J"));
 
         Assert.Equal("    ", Row(emulator, 0));
         Assert.Equal("   b", Row(emulator, 1));
@@ -309,7 +315,7 @@ public sealed class EmulatorTests
     public void InsertingAndDeletingLinesMoveTheRowsBelowTheCursor()
     {
         Emulator emulator = new(4, 4, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc\ndddd\u001b[2;1H\u001b[L"));
+        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\r\nbbbb\r\ncccc\r\ndddd\u001b[2;1H\u001b[L"));
 
         Assert.Equal("aaaa", Row(emulator, 0));
         Assert.Equal("    ", Row(emulator, 1));

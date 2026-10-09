@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS232** (deps: —) **A line feed, VT, FF or IND also returns the cursor to column one, as though every one were NEL** — NextLine sets the column to zero for all four, which LNM alone should do; real sessions hide it because the pty sends CR LF. → §QS232
 - 📋 **QS233** (deps: —) **No left or right margin can be set, so everything esctest checks inside a column region fails** — DECLRMM (mode 69) and DECSLRM are absent, and they are what 64 failing tests across 25 classes have in common. → §QS233
 - 📋 **QS234** (deps: —) **Asking for a colour with OSC 4, 5 or 10 to 19 gets no answer, and their resets are ignored** — The emulator sets these colours but answers no query and handles no reset, which is 47 esctest failures, each a timeout. → §QS234
 - 📋 **QS235** (deps: —) **Character protection is not modelled, so selective erase and protected fields erase everything** — DECSCA, SPA and EPA are absent and DECSED, DECSEL and DECSERA erase like their plain forms, which is 36 failures. → §QS235

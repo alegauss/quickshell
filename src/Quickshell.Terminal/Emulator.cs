@@ -219,6 +219,9 @@ public sealed partial class Emulator : IAnsiHandler
                 // is the only record reflow, selection and copy will have.
                 buffer.SetScreenWrapped(buffer.CursorRow, true);
                 NextLine();
+
+                // A wrap continues at the start of the next row, which NextLine no longer implies.
+                buffer.CursorColumn = 0;
             }
         }
 
@@ -230,6 +233,7 @@ public sealed partial class Emulator : IAnsiHandler
             {
                 buffer.SetScreenWrapped(buffer.CursorRow, true);
                 NextLine();
+                buffer.CursorColumn = 0;
             }
             else
             {
@@ -368,6 +372,14 @@ public sealed partial class Emulator : IAnsiHandler
             case 0x0B:
             case 0x0C:
                 NextLine();
+
+                // A line feed moves down and leaves the column, unless LNM asks for the carriage
+                // too (QS232). A shell never showed the difference: its pty sends CR LF.
+                if (LineFeedMode)
+                {
+                    buffer.CursorColumn = 0;
+                }
+
                 break;
 
             case 0x0D:
@@ -387,11 +399,13 @@ public sealed partial class Emulator : IAnsiHandler
         }
     }
 
-    /// <summary>Down one row, scrolling the screen when there is no row below.</summary>
+    /// <summary>
+    /// Down one row, scrolling the screen when there is no row below - and in the same column, which
+    /// is what LF, VT, FF and IND all mean (QS232). NEL and LNM add the carriage return themselves.
+    /// </summary>
     private void NextLine()
     {
         TerminalBuffer buffer = Buffer;
-        buffer.CursorColumn = 0;
         PendingWrap = false;
 
         if (buffer.CursorRow != MarginBottom)
@@ -538,6 +552,7 @@ public sealed partial class Emulator : IAnsiHandler
         ReverseWrap = false;
         OriginMode = false;
         InsertMode = false;
+        LineFeedMode = false;
         ApplicationCursorKeys = false;
         ApplicationKeypad = false;
         BracketedPaste = false;

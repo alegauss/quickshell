@@ -186,7 +186,7 @@ public sealed class WrapAndMarginTests
     public void ScrollingInsideARegionLeavesTheRowsOutsideItAlone()
     {
         Emulator emulator = new(4, 5, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc\ndddd\neeee"));
+        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\r\nbbbb\r\ncccc\r\ndddd\r\neeee"));
 
         // Rows two to four become the region; the cursor homes into it.
         emulator.Feed(Encoding.UTF8.GetBytes("\u001b[2;4r"));
@@ -239,7 +239,7 @@ public sealed class WrapAndMarginTests
     public void AReverseIndexAtTheTopMarginScrollsTheRegionDown()
     {
         Emulator emulator = new(4, 5, scrollback: 0);
-        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\nbbbb\ncccc\ndddd\neeee"));
+        emulator.Feed(Encoding.UTF8.GetBytes("aaaa\r\nbbbb\r\ncccc\r\ndddd\r\neeee"));
         emulator.Feed(Encoding.UTF8.GetBytes("\u001b[2;4r\u001b[2;1H\u001bM"));
 
         Assert.Equal("aaaa", Row(emulator, 0));

@@ -343,27 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS232 LF, IND, VT and FF behave as NEL
-
-`Emulator.NextLine` sets `CursorColumn = 0` before it moves down, and LF, VT, FF and ESC
-D all call it. Only NEL (ESC E) and a line feed under LNM (mode 20) return the carriage.
-A shell never shows it, because the pty's ONLCR turns every LF into CR LF first. esctest
-writes through a raw pty, so it does: LFTests, INDTests, VTTests and FFTests each fail
-Basic, MovesDoesNotScrollOutsideLeftRight and ScrollsInTopBottomRegionStartingAbove (12
-tests), with the cursor at column one where five was expected. The screen checksums of
-other classes that print after a line feed may move with it.
-
-What to build: NextLine moves down and leaves the column; ESC E and LNM add the carriage
-return. Then SMTests.test_SM_LNM, which wants LNM honoured, is the same change's other
-half.
-
-Falsified when a line feed moves the cursor to column one with LNM reset.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS233 Left and right margins
 
 Neither DECLRMM (CSI ? 69 h) nor DECSLRM (CSI Pl ; Pr s) exists, so every test that sets

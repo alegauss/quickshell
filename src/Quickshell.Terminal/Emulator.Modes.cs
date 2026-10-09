@@ -63,20 +63,34 @@ public sealed partial class Emulator
     public bool InsertMode { get; private set; }
 
     /// <summary>
-    /// SM and RM: the modes a host turns on and off without the private marker. Only IRM is one this
-    /// client honours; the rest are counted, as <see cref="PrivateMode"/> counts the private ones.
+    /// LNM, <c>CSI 20 h</c>: with it on, a line feed, VT or FF also returns the carriage, as NEL
+    /// does (QS232). Off by default, which is the whole of QS232: a line feed moves down and nothing
+    /// else, and only a pty's ONLCR or a CR beside it ever made it look otherwise.
+    /// </summary>
+    public bool LineFeedMode { get; private set; }
+
+    /// <summary>
+    /// SM and RM: the modes a host turns on and off without the private marker. IRM and LNM are the
+    /// ones this client honours; the rest are counted, as <see cref="PrivateMode"/> counts the
+    /// private ones.
     /// </summary>
     private void AnsiMode(in CsiParameters parameters, bool set)
     {
         for (int group = 0; group < parameters.Count; group++)
         {
-            if (parameters.Value(group, -1) == 4)
+            switch (parameters.Value(group, -1))
             {
-                InsertMode = set;
-            }
-            else
-            {
-                Unhandled++;
+                case 4:
+                    InsertMode = set;
+                    break;
+
+                case 20:
+                    LineFeedMode = set;
+                    break;
+
+                default:
+                    Unhandled++;
+                    break;
             }
         }
     }
@@ -369,6 +383,7 @@ public sealed partial class Emulator
     private ModeState AnsiModeState(int mode) => mode switch
     {
         4 => On(InsertMode),
+        20 => On(LineFeedMode),
         _ => ModeState.Unrecognised,
     };
 
