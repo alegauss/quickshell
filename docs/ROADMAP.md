@@ -16,7 +16,7 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS245** (deps: —) **A session's scheme, font size, terminal type, scrollback and credential are stored and inherited but never applied** — The dialog shows each with the folder it came from, so a user believes it configured something the client then ignores. → §QS245
+- ⏳ **QS245** (deps: —) **A session's scheme, font size, terminal type, scrollback and credential are stored and inherited but never applied** — Credential still finds a remembered password by endpoint and not by its name, and FontSize has nowhere to go while a window has one font. → §QS245
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -294,6 +294,13 @@
 - **The guest suite runs ten times without this test counting a byte** Ten consecutive
   run-tests-vm passes with tmux-resize at zero, after the sequence the diagnosis names
   is fixed.
+
+## Done when — QS245
+
+- **No session field is shown in the dialog and then ignored** Checked by reading
+  SessionSettings against the open path and docs/SESSIONS.md: each of the five is either
+  applied when a session opens, with a test that opens one, or removed from the model
+  with a non-goal saying why.
 
 ## Non-goals
 

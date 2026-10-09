@@ -400,6 +400,35 @@ public sealed class TerminalLeaf : IAsyncDisposable
                 : "the connection ended";
 
     /// <summary>
+    /// The colour scheme this pane's saved session asks for, which <see cref="Apply"/> prefers to the
+    /// window's, or null to wear the window's (QS245).
+    /// </summary>
+    public ColourScheme? OwnColours { get; private set; }
+
+    /// <summary>The scrollback depth this pane's saved session asks for, or null for the window's (QS245).</summary>
+    public int? OwnScrollback { get; private set; }
+
+    /// <summary>
+    /// Takes on what a saved session says about its own pane - its colour scheme and its scrollback -
+    /// and applies them at once (QS245). A scheme is a file named relative to the sessions file, as a
+    /// settings file's is to the settings; one that does not read leaves the window's scheme.
+    /// </summary>
+    public void Wear(ResolvedSession session, Settings settings, string sessionsFile)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(settings);
+
+        OwnColours = session.Scheme?.Value is { Length: > 0 } named
+            ? SchemeFile.ReadFrom(System.IO.Path.IsPathRooted(named)
+                                      ? named
+                                      : System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(sessionsFile)) ?? ".", named))
+            : null;
+        OwnScrollback = session.Scrollback?.Value is >= 0 and var depth ? depth : null;
+
+        Apply(settings);
+    }
+
+    /// <summary>
     /// Takes settings that have changed, on a pane that is already open and drawing.
     ///
     /// <para><b>The cursor and the blink reach the glass at once</b>, because both are read by the
@@ -419,8 +448,8 @@ public sealed class TerminalLeaf : IAsyncDisposable
 
         // Onto the model's own palette, which the painter resolves every cell against as it builds
         // a frame — so every line already on screen takes the new colours rather than only the ones
-        // written after this.
-        settings.Colours.ApplyTo(Emulator.Palette);
+        // written after this. A session's own scheme wins over the window's (QS245).
+        (OwnColours ?? settings.Colours).ApplyTo(Emulator.Palette);
 
         // The typeface and its size, which are the share's and every pane's: asked of it by each
         // pane, and the same answer each time is applied once, by the loop (QS135). A hand-typed
@@ -434,21 +463,23 @@ public sealed class TerminalLeaf : IAsyncDisposable
         // And the depth of history, through the session where there is one, because the ring is
         // its parser's; without one nothing is writing the model and it is told directly — the
         // same arrangement a resize has.
-        if (settings.Scrollback >= 0)
+        int depth = OwnScrollback ?? settings.Scrollback;
+
+        if (depth >= 0)
         {
             if (_session is { } session)
             {
-                session.KeepScrollback(settings.Scrollback);
+                session.KeepScrollback(depth);
             }
             else if (_adopted)
             {
                 // A shell started ahead of the window is already writing this model (QS191), so the
                 // depth waits for its pipeline rather than reaching into the ring under the parser.
-                _owedScrollback = settings.Scrollback;
+                _owedScrollback = depth;
             }
             else
             {
-                Emulator.KeepScrollback(settings.Scrollback);
+                Emulator.KeepScrollback(depth);
             }
         }
 

@@ -97,6 +97,17 @@ public sealed class RemoteShell : IShellSession
     /// <inheritdoc/>
     public Task<PtyExit> Ended => _inner.Ended;
 
+    /// <summary>
+    /// The terminal type a session's own value claims, or the default (QS245). A name terminfo could
+    /// hold - letters, digits and <c>-+._</c>, at most 64 of them - is sent as given; anything else,
+    /// which a hand edit can put in the file, is not something to send a server, and the default is.
+    /// </summary>
+    public static string Claimed(string? asked) =>
+        asked is { Length: > 0 and <= 64 }
+        && asked.All(each => char.IsAsciiLetterOrDigit(each) || each is '-' or '+' or '.' or '_')
+            ? asked
+            : SshNetTransport.DefaultTerminalType;
+
     /// <summary>Connects a saved session and opens its shell into the model.</summary>
     /// <param name="session">The session as the store resolves it.</param>
     /// <param name="trust">The host-key check every hop passes.</param>
@@ -395,14 +406,15 @@ public sealed class RemoteShell : IShellSession
             // and noticing it is what lets a reconnect begin within seconds (QS220).
             TimeSpan keepAlive = TimeSpan.FromSeconds(15);
             SessionLog? log = Volatile.Read(ref _log);
+            string claimed = Claimed(_session.TerminalType?.Value);
 
             return _session.JumpHost is { } jump
                 ? new SshChain([
                     // The jump host takes the keys alone: its questions would be asked as the target's.
                     new SshHop(Through(jump.Value, Target.User), _keys, _trust.CheckAsync),
                     new SshHop(Target, offered, _trust.CheckAsync),
-                  ]) { KeepAlive = keepAlive, SignIn = _signIn, Log = log }
-                : new SshNetTransport { KeepAlive = keepAlive, SignIn = _signIn, Log = log };
+                  ]) { KeepAlive = keepAlive, SignIn = _signIn, Log = log, TerminalType = claimed }
+                : new SshNetTransport { KeepAlive = keepAlive, SignIn = _signIn, Log = log, TerminalType = claimed };
         }
 
         /// <summary>The file channel and the side over it, or null where the server will not open one.</summary>

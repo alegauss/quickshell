@@ -119,8 +119,9 @@ The session dialog's **Reconnect after a drop** sets it.
 
 ### `Scheme`
 
-The colour scheme the terminal should wear. **Not applied yet**: the pane wears the window's scheme
-whatever this says (QS245 in [ROADMAP.md](ROADMAP.md)).
+The colour scheme this session's pane wears, in place of the window's: a scheme file, named as the
+`scheme` setting names one in [SETTINGS.md](SETTINGS.md), with a relative path read from beside this
+file. A path that does not read leaves the pane in the window's scheme.
 
 ### `Credential`
 
@@ -135,10 +136,12 @@ A point size for this session's text. **Not applied yet**: every pane in a windo
 
 ### `TerminalType`
 
-What the terminal claims to be. **Not applied yet**: the client always claims `xterm-256color`
-(QS245).
+What the terminal claims to be when the shell opens, in place of `xterm-256color` — `vt100` or
+`screen-256color` for a host whose terminfo has no `xterm-256color`. Letters, digits and `-+._` only;
+anything else is not sent, and `xterm-256color` is. The emulator is the same whatever this claims, so
+a type promising less than it does is safe and one promising more is not.
 
 ### `Scrollback`
 
-How many lines of history to keep. **Not applied yet**: the pane keeps the `scrollback` setting of
-[SETTINGS.md](SETTINGS.md) (QS245).
+How many lines of history this session's pane keeps, in place of the `scrollback` setting of
+[SETTINGS.md](SETTINGS.md).

@@ -476,6 +476,9 @@ public static class Entry
         window.Add(tab);
         window.Sessions.Open(session.Host, another: true);
 
+        // What the session says about its own pane, after the window's settings so it wins (QS245).
+        tab.Focused.Wear(session, settings, window.SessionsFile ?? Locations.Current.Sessions);
+
         Quickshell.Transport.SessionLog log = trace ? Traced(session.Host) : Logged.Value;
 
         // The pane owns the recording before the first byte arrives, so the title says so at once.

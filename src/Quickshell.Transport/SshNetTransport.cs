@@ -29,8 +29,14 @@ public sealed class SshNetTransport : ISshTransport
     /// terminal assembly carries, and they must not drift — a terminal that claims one thing at
     /// pty-request time and another when a program asks is a terminal that gets one of the two
     /// answers acted upon.</para>
+    ///
+    /// <para>The default, which a saved session may replace for a host whose terminfo has no entry
+    /// for it (QS245): <see cref="TerminalType"/> is what is actually sent.</para>
     /// </summary>
-    public const string TerminalType = "xterm-256color";
+    public const string DefaultTerminalType = "xterm-256color";
+
+    /// <summary>The terminal type the shell's pty request names: <see cref="DefaultTerminalType"/> unless a session says otherwise (QS245).</summary>
+    public string TerminalType { get; init; } = DefaultTerminalType;
 
     /// <summary>
     /// How much the library buffers between the network and a reader.

@@ -44,6 +44,10 @@ public static class SessionGroup
         window.Add(tab);
         window.Sessions.Open(taken[0].Host, another: true);
 
+        // Each member wears its own scheme and scrollback, after the window's settings (QS245).
+        string sessionsFile = window.SessionsFile ?? Locations.Current.Sessions;
+
+        tab.Focused.Wear(taken[0], settings, sessionsFile);
         _ = tab.Focused.ConnectAsync(opening(taken[0]));
 
         for (int at = 1; at < taken.Length; at++)
@@ -52,7 +56,11 @@ public static class SessionGroup
 
             // Alternating, so a fleet of eight is a grid of panes and not eight slivers side by side.
             window.SplitPane(at % 2 == 1 ? Divide.Beside : Divide.Below, member.Host,
-                             leaf => _ = leaf.ConnectAsync(opening(member)));
+                             leaf =>
+                             {
+                                 leaf.Wear(member, settings, sessionsFile);
+                                 _ = leaf.ConnectAsync(opening(member));
+                             });
             window.Sessions.Open(member.Host, another: true);
         }
 
