@@ -43,6 +43,28 @@ public sealed class EmulatorTests
         Assert.Equal(one, zero);
     }
 
+    /// <summary>The design's falsifier: <em>falsified when CSI a leaves the cursor where it was</em> (QS241).</summary>
+    [Theory]
+    [InlineData("\u001b[a", 4, 10)]
+    [InlineData("\u001b[0a", 4, 10)]
+    [InlineData("\u001b[3a", 4, 12)]
+    [InlineData("\u001b[99a", 4, 19)] // stops at the screen's edge
+    [InlineData("\u001b[e", 5, 9)]
+    [InlineData("\u001b[2e", 6, 9)]
+    [InlineData("\u001b[99e", 9, 9)]
+    public void HprAndVprMoveRightAndDown(string sequence, int row, int column)
+    {
+        Assert.Equal((row, column), After(sequence));
+    }
+
+    /// <summary>HPR and VPR ignore the margins, where CUF and CUD stop at them (QS241).</summary>
+    [Fact]
+    public void HprAndVprIgnoreTheMargins()
+    {
+        Assert.Equal((4, 19), After("\u001b[?69h\u001b[2;12s\u001b[5;10H\u001b[99a"));
+        Assert.Equal((9, 9), After("\u001b[3;6r\u001b[5;10H\u001b[99e"));
+    }
+
     /// <summary>The same claim for the two-parameter forms, in every combination of blank and zero.</summary>
     [Theory]
     [InlineData("H")]

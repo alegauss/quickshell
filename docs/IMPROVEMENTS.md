@@ -343,20 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS241 HPR and VPR
-
-HPR (CSI Pn a) and VPR (CSI Pn e), relative moves that ignore origin mode and stop at
-the screen's edge, are not dispatched. HPRTests and VPRTests fail all four each,
-DefaultParams included. They are one line each in the dispatcher beside CUF and CUD,
-which they differ from only in ignoring margins.
-
-Falsified when CSI a leaves the cursor where it was.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS242 Reverse wraparound
 
 Mode 45 is modelled, but BS and CUB do not move back across a wrapped line the way

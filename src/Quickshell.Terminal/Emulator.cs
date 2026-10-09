@@ -897,6 +897,16 @@ public sealed partial class Emulator : IAnsiHandler
                                                buffer.CursorColumn - count);
                 break;
 
+            // HPR and VPR: CUF and CUD that know nothing of margins and stop only at the screen's
+            // edge (QS241).
+            case (byte)'a':
+                buffer.CursorColumn = Math.Min(buffer.Columns - 1, buffer.CursorColumn + count);
+                break;
+
+            case (byte)'e':
+                buffer.CursorRow = Math.Min(buffer.Rows - 1, buffer.CursorRow + count);
+                break;
+
             case (byte)'E':
                 buffer.CursorRow = Down(buffer, count);
                 CarriageReturn();
