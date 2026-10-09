@@ -343,24 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS242 Reverse wraparound
-
-Mode 45 is modelled, but BS and CUB do not move back across a wrapped line the way
-xterm's tests expect: from column one to the last column of the line above when that
-line wrapped, and not at all when the mode is reset (test_BS_NoWrapByDefault). BSTests 6
-to 8, CUBTests 2, and DECSETTests ReverseWraparoundLastCol_BS and
-ReverseWraparound_Multi. xterm's extended reverse wraparound (1045) is absent.
-
-What to build: xterm's rules for BS and CUB at column one with 45 and 1045, including
-that only a line that actually wrapped is crossed.
-
-Falsified when BS at column one with 45 reset moves the cursor up.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS243 DECRQSS answers and device identity
 
 DECRQSS answers 0 dollar r (invalid) for DECSASD, DECSCL, DECSCUSR, DECSLPP, DECSNLS and
@@ -422,6 +404,30 @@ Falsified when `?5h` leaves the default background the scheme's own.
 
 Evidence: a unit test on DECRQM and the flag, and a UI case or golden scene showing the
 inverted default colours, taken in the guest.
+
+### §QS248 The owed wrap and sequences that do not move
+
+Every CSI sequence that reaches the movement switch in Emulator.cs clears PendingWrap
+before it is dispatched. QS242 exempted the reports (DA, DSR, CSI t), because esctest
+asks for the cursor position between printing in the last column and the backspace it
+judges. SGR, the margins' report-free setters, mode changes and the like still clear it.
+xterm calls ResetWrap only where the cursor moves.
+
+What it costs: a prompt or a status line that fills the last column and then changes
+colour (`...text\e[0m` or `\e[7m` followed by more text) loses the owed wrap. The next
+character overwrites the last column instead of starting the next row, so a coloured
+full-width line prints one character short and the rest lands on top of its last cell.
+Shells with a right-aligned coloured prompt hit exactly this.
+
+What to build: clear PendingWrap only in the finals that move the cursor or change the
+grid under it (CUU, CUD, CUF, CUB, CNL, CPL, CHA, HPA, VPA, CUP, HVP, HPR, VPR, CHT,
+CBT, the erases, inserts and deletes, scrolls, DECSTBM, DECSLRM and the rest xterm's
+charproc names), and leave it set for SGR and every other final. Read xterm's charproc.c
+case by case rather than guessing. The current exemption list is the start of the other
+one.
+
+Falsified when `\e[1;80H` + `ab` + `\e[31m` + `c` on an 80-column screen leaves `c` in
+row 1 instead of at the start of row 2.
 
 ## Block D — The tree a user organises work in
 

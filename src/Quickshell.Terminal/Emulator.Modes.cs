@@ -27,6 +27,13 @@ public sealed partial class Emulator
     public bool ReverseWrap { get; private set; }
 
     /// <summary>
+    /// xterm's extended reverse wraparound, mode 1045: a backspace at the left margin wraps to the
+    /// row above whether or not that row wrapped, and from the top margin to the bottom one. Mode 45
+    /// crosses only a row that really wrapped into the cursor's (QS242).
+    /// </summary>
+    public bool ReverseWrapExtended { get; private set; }
+
+    /// <summary>
     /// A backspace. One column left, and at the left edge, under reverse wrap, to the end of the row
     /// above — never above the top margin, which is where the region the cursor is in begins.
     ///
@@ -35,28 +42,103 @@ public sealed partial class Emulator
     /// to, and a shell that turns the mode on is the one telling the terminal where its lines
     /// continue.</para>
     /// </summary>
-    private void Backspace(TerminalBuffer buffer)
+    /// <summary>
+    /// BS and CUB: <paramref name="count"/> columns left, which is xterm's <c>CursorBack</c> turned
+    /// into C# line for line (QS242), because every rule in it is one esctest checks.
+    ///
+    /// <para><b>Without reverse wraparound</b> the cursor stops at the left margin, or at the
+    /// screen's edge when it starts left of the margin. <b>With mode 45 and autowrap</b> it carries
+    /// on to the right margin of the row above, but only where that row wrapped into this one, so
+    /// a backspace walks back through one long wrapped line and no further. <b>With 1045</b> it
+    /// crosses any row, and from the top margin to the bottom one.</para>
+    ///
+    /// <para>A cursor waiting to wrap at the right edge spends the first step on cancelling the
+    /// wait rather than moving: the character it is past is the one a backspace means.</para>
+    /// </summary>
+    private void CursorBack(TerminalBuffer buffer, int count, bool wasPending)
     {
-        // At the left margin a backspace stops, as it does at the screen's edge (QS233). Reverse
-        // wraparound across a margin is QS242's.
-        if (LeftRightMarginMode && buffer.CursorColumn == MarginLeft && MarginLeft > 0)
+        bool reverse = ReverseWrap && AutoWrap;
+        bool extended = ReverseWrapExtended && AutoWrap;
+        int left = LeftRightMarginMode ? MarginLeft : 0;
+        int right = Right;
+        int top = MarginTop;
+        int bottom = MarginBottom;
+        int row = buffer.CursorRow;
+        int column = buffer.CursorColumn;
+        bool fetched = false;
+
+        // Already left of the left margin: the margin no longer holds it.
+        if (column < left)
         {
-            return;
+            left = 0;
         }
 
-        if (buffer.CursorColumn > 0)
+        if ((reverse || extended) && wasPending)
         {
-            buffer.CursorColumn--;
-            return;
+            count--;
+        }
+        else
+        {
+            column--;
         }
 
-        int top = buffer.CursorRow >= MarginTop ? MarginTop : 0;
-
-        if (ReverseWrap && AutoWrap && buffer.CursorRow > top)
+        while (true)
         {
-            buffer.CursorRow--;
-            buffer.CursorColumn = buffer.Columns - 1;
+            if (column < left)
+            {
+                if (extended)
+                {
+                    column = right;
+
+                    if (row == top)
+                    {
+                        row = bottom + 1;
+                    }
+                }
+                else if (!reverse)
+                {
+                    column = left;
+                    break;
+                }
+
+                fetched = false;
+                row--;
+            }
+
+            if (!fetched)
+            {
+                fetched = true;
+
+                if (row != buffer.CursorRow)
+                {
+                    // The row above the screen is history, which a cursor cannot go into: a wrap
+                    // that would reach it fails like one into a row that did not wrap.
+                    if (row < 0 || (!extended && !buffer.IsScreenWrapped(row)))
+                    {
+                        if (row < bottom)
+                        {
+                            row++;
+                        }
+
+                        column = left;
+                        break;
+                    }
+
+                    column = right;
+                }
+            }
+
+            if (--count <= 0)
+            {
+                break;
+            }
+
+            column--;
         }
+
+        buffer.CursorRow = row;
+        buffer.CursorColumn = column;
+        PendingWrap = false;
     }
 
     /// <summary>DECOM. With it on, row one means the top margin rather than the top of the screen.</summary>
@@ -356,6 +438,10 @@ public sealed partial class Emulator
                 ReverseWrap = set;
                 break;
 
+            case 1045:
+                ReverseWrapExtended = set;
+                break;
+
             case 66:
                 // DECNKM: the keypad mode ESC = and ESC > set, under its mode number (QS237).
                 ApplicationKeypad = set;
@@ -462,6 +548,7 @@ public sealed partial class Emulator
         7 => On(AutoWrap),
         25 => On(CursorVisible),
         45 => On(ReverseWrap),
+        1045 => On(ReverseWrapExtended),
         69 => On(LeftRightMarginMode),
         2004 => On(BracketedPaste),
         47 or 1047 or 1049 => On(Screens.IsAlternate),

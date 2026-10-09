@@ -362,13 +362,15 @@ public sealed partial class Emulator : IAnsiHandler
         TerminalBuffer buffer = Buffer;
 
         // Every control cancels an owed wrap. Only a printable character takes it, which is the
-        // whole of what makes a full-width line not grow a blank one after it.
+        // whole of what makes a full-width line not grow a blank one after it. A backspace needs to
+        // know it was owed, under reverse wraparound (QS242).
+        bool wasPending = PendingWrap;
         PendingWrap = false;
 
         switch (control)
         {
             case 0x08:
-                Backspace(buffer);
+                CursorBack(buffer, 1, wasPending);
                 break;
 
             case 0x09:
@@ -676,6 +678,7 @@ public sealed partial class Emulator : IAnsiHandler
         InsertMode = false;
         OriginMode = false;
         ReverseWrap = false;
+        ReverseWrapExtended = false;
         ApplicationCursorKeys = false;
         ApplicationKeypad = false;
         LeftRightMarginMode = false;
@@ -699,6 +702,7 @@ public sealed partial class Emulator : IAnsiHandler
         _attributeExtent = 0;
         AutoWrap = true;
         ReverseWrap = false;
+        ReverseWrapExtended = false;
         OriginMode = false;
         InsertMode = false;
         LineFeedMode = false;
@@ -868,7 +872,16 @@ public sealed partial class Emulator : IAnsiHandler
         }
 
         TerminalBuffer buffer = Buffer;
-        PendingWrap = false;
+
+        // CUB needs to know the cursor was waiting to wrap, which every other movement forgets. A
+        // report - DA, DSR, a window report - moves nothing, so it leaves an owed wrap owed, as
+        // xterm's do: a host asking where the cursor is must not change what it prints next (QS242).
+        bool wasPending = PendingWrap;
+
+        if (final is not ((byte)'c' or (byte)'n' or (byte)'t'))
+        {
+            PendingWrap = false;
+        }
 
         // A parameter that is absent and a parameter that is zero are the same instruction. This is
         // the one line that makes that true for every movement below, and the falsification this
@@ -893,8 +906,7 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'D':
-                buffer.CursorColumn = Math.Max(buffer.CursorColumn >= MarginLeft ? MarginLeft : 0,
-                                               buffer.CursorColumn - count);
+                CursorBack(buffer, count, wasPending);
                 break;
 
             // HPR and VPR: CUF and CUD that know nothing of margins and stop only at the screen's

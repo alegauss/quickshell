@@ -105,6 +105,7 @@
 - ✅ **QS239** **The saved cursor is one for both screens, and XTSAVE, XTRESTORE and DECSTR leave saved state behind** — Each screen has its own saved cursor, DECRC with nothing saved homes and resets DECOM, DECSTR does xterm's list, and XTSAVE/XTRESTORE work; esctest went from 407 to 425 passed.
 - ✅ **QS240** **Most DSR variants and the checksum report get no answer** — Every private DSR is answered, hardware this client lacks reported as absent, and DECXCPR's shape follows the claimed VT level; esctest went from 425 to 436 passed.
 - ✅ **QS241** **HPR and VPR move the cursor nowhere** — HPR and VPR move the cursor right and down to the screen's edge, ignoring margins and origin mode; esctest went from 436 to 444 passed.
+- ✅ **QS242** **Reverse wraparound does not follow a backspace back across a wrapped line as xterm does** — BS and CUB follow xterm's CursorBack: 45 walks back through a wrapped line, 1045 crosses any row, and an owed wrap is honoured; esctest went from 444 to 454 passed.
 
 ## Block D — The tree a user organises work in
 

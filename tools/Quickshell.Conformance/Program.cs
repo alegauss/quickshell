@@ -28,7 +28,9 @@ string log = "/tmp/quickshell-esctest.log";
 string[] command =
 [
     "bash", "-c",
-    $"cd {suite} && python3 esctest.py --expected-terminal=xterm --logfile={log} --include='{include}' --timeout=1",
+    // --xterm-reverse-wrap=383: judged against reverse wraparound as xterm has had it since 2023,
+    // mode 45 within a wrapped line and 1045 across any, which is what this client models (QS242).
+    $"cd {suite} && python3 esctest.py --expected-terminal=xterm --xterm-reverse-wrap=383 --logfile={log} --include='{include}' --timeout=1",
 ];
 
 Console.WriteLine($"esctest: include={include}, suite={suite}, judged through a Linux pty and a socket");
