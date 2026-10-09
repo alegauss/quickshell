@@ -209,6 +209,36 @@ public sealed class KeyTests
         Assert.Equal(Escape + Delete, Sent(Key.Backspace, KeyModifiers.Alt));
     }
 
+    /// <summary>DECBKM turns the pair round, and resetting it turns it back (QS237).</summary>
+    [Fact]
+    public void BackarrowKeyModeSwapsWhatBackspaceSends()
+    {
+        Emulator emulator = new(80, 24);
+        emulator.Feed(Encoding.ASCII.GetBytes(Escape + "[?67h"));
+
+        Assert.Equal("\b", Sent(emulator, Key.Backspace, KeyModifiers.None));
+        Assert.Equal(Delete, Sent(emulator, Key.Backspace, KeyModifiers.Control));
+        Assert.Equal(Escape + "\b", Sent(emulator, Key.Backspace, KeyModifiers.Alt));
+
+        emulator.Feed(Encoding.ASCII.GetBytes(Escape + "[?67l"));
+
+        Assert.Equal(Delete, Sent(emulator, Key.Backspace, KeyModifiers.None));
+    }
+
+    /// <summary>DECNKM is the keypad switch ESC = and ESC > throw, under a mode number (QS237).</summary>
+    [Fact]
+    public void NumericKeypadModeIsTheApplicationKeypad()
+    {
+        Emulator emulator = new(80, 24);
+        emulator.Feed(Encoding.ASCII.GetBytes(Escape + "[?66h"));
+
+        Assert.True(emulator.ApplicationKeypad);
+
+        emulator.Feed(Encoding.ASCII.GetBytes(Escape + "[?66l"));
+
+        Assert.False(emulator.ApplicationKeypad);
+    }
+
     [Fact]
     public void TabIsTabAndShiftTabIsBackTab()
     {

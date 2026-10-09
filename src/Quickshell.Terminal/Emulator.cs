@@ -93,7 +93,8 @@ public sealed partial class Emulator : IAnsiHandler
     /// <param name="destination">At least <see cref="Keys.MaximumLength"/> bytes.</param>
     /// <returns>How many bytes were written.</returns>
     public int Encode(Key key, KeyModifiers modifiers, Span<byte> destination) =>
-        Keys.Encode(key, modifiers, ApplicationCursorKeys, ApplicationKeypad, destination);
+        Keys.Encode(key, modifiers, ApplicationCursorKeys, ApplicationKeypad, destination,
+                    BackarrowSendsBackspace);
 
     /// <summary>The same for a character key, which only the alt setting changes.</summary>
     /// <param name="text">The character the window resolved, already through the keyboard layout.</param>
@@ -672,6 +673,7 @@ public sealed partial class Emulator : IAnsiHandler
         ClearColumnMargins();
         ApplicationCursorKeys = false;
         ApplicationKeypad = false;
+        BackarrowSendsBackspace = false;
         BracketedPaste = false;
         PendingWrap = false;
         CursorVisible = true;

@@ -343,25 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS237 DECRQM answers
-
-A mode this client does not model is answered as 0, not recognised. xterm answers 4,
-permanently reset, for the ANSI modes it knows and ignores (EBM, FEAM, FETM, GATM, HEM,
-MATM, PUM, SATM, SRTM, TSM, TTM, VEM and the like), and the DEC modes the tests ask
-about are answered with their state. 26 DECRQMTests and
-DECSCLTests.test_DECSCL_Level2DoesntSupportDECRQM fail on it.
-
-What to build: the table of modes xterm knows, each answered 4 where this client
-deliberately does not implement it and with its state where it does; every mode another
-line adds (69, 1045) joins the table there.
-
-Falsified when DECRQM for EBM answers anything but 4.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS238 Rectangular area operations
 
 CSI ... $ v (DECCRA), CSI ... $ x (DECFRA), CSI ... $ z (DECERA) and CSI ... * x
@@ -476,8 +457,10 @@ DECALN (ESC # 8) neither homes the cursor nor clears the margins, and fills diff
 DECOM and DECOM_DECRQCRA. DECSET's ALTBUF and OPT_ALTBUF read a wrong cursor after
 switching screens, and MoreFix wants mode 41. DCH fails two margin-free cases. CHT
 ignores the scrolling region by stopping at 33 where 30 was wanted. DECSCL level 4 and 5
-report the wrong support. ED 3 erases the visible lines as well as the scrollback. SM's
-IRM truncation at the right margin belongs with left and right margins.
+report the wrong support, and at level 2 DECRQM is still answered
+(Level2DoesntSupportDECRQM, moved here from QS237): DECSCL keeps no level yet. ED 3
+erases the visible lines as well as the scrollback. SM's IRM truncation at the right
+margin belongs with left and right margins.
 
 What to build: each in its own commit against its class, or a non-goal where a case is
 not worth it. DECSET DECCOLM, Allow80To132 and RIS ResetDECCOLM are already the DECCOLM
@@ -489,6 +472,27 @@ Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bu
 failed), grouped by the traceback's last line. Shipped against `dotnet run --project
 tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
 by an unfiltered run before the commit that cites a figure.
+
+### §QS246 Reverse screen mode (DECSCNM)
+
+DECSCNM (CSI ? 5 h / l) swaps the whole screen's default foreground and background. It
+is not modelled: QS237 answers DECRQM for mode 5 with 4, permanently reset, which is
+honest about today and is the one esctest case (DECRQMTests.test_DECRQM_DEC_DECSCNM) it
+leaves failing. The ordinary user of it is the visual bell: vim with `visualbell` and
+readline with `bell-style visible` send `?5h`, wait about 100 ms, and send `?5l`. Here
+that flash never shows, so a user who turned off the audible bell gets no bell at all.
+
+What to build: a ReverseScreen flag on the emulator, set and reset by mode 5, reported
+by DECRQM as 1 or 2 and reset by RIS and DECSTR. The renderer resolves the default
+colours the other way round while it is set. That is a palette lookup, not a rewrite of
+any cell, so an idle window still issues no draws once the flag is steady. A cell with
+SGR 7 inverse swaps against the swapped defaults, as xterm does. The flip must draw
+within one frame of each edge, or the 100 ms flash is lost to coalescing.
+
+Falsified when `?5h` leaves the default background the scheme's own.
+
+Evidence: a unit test on DECRQM and the flag, and a UI case or golden scene showing the
+inverted default colours, taken in the guest.
 
 ## Block D — The tree a user organises work in
 

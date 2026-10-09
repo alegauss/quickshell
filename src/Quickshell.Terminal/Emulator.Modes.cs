@@ -128,6 +128,12 @@ public sealed partial class Emulator
     /// </summary>
     public bool ApplicationKeypad { get; private set; }
 
+    /// <summary>
+    /// DECBKM, mode 67: Backspace sends BS (0x08) and control-Backspace DEL, the other way round
+    /// from the default (QS237). Off unless a host asks, because DEL is what <c>$TERM</c> promises.
+    /// </summary>
+    public bool BackarrowSendsBackspace { get; private set; }
+
     /// <summary>The top row of the scrolling region, zero-based and inclusive.</summary>
     public int MarginTop { get; private set; }
 
@@ -345,6 +351,15 @@ public sealed partial class Emulator
                     ReverseWrap = set;
                     break;
 
+                case 66:
+                    // DECNKM: the keypad mode ESC = and ESC > set, under its mode number (QS237).
+                    ApplicationKeypad = set;
+                    break;
+
+                case 67:
+                    BackarrowSendsBackspace = set;
+                    break;
+
                 case 69:
                     // Turning it off takes the margins with it, as xterm does: a region nobody can
                     // see being set any more is not one a host should go on being clamped by.
@@ -451,10 +466,19 @@ public sealed partial class Emulator
         1002 => On(_tracking == MouseTracking.ButtonMotion),
         1003 => On(_tracking == MouseTracking.AnyMotion),
         1006 => On(_encoding == MouseEncoding.Sgr),
+        66 => On(ApplicationKeypad),
+        67 => On(BackarrowSendsBackspace),
 
         // Refused on purpose, so permanently off: the UTF-8 mouse encoding, which SGR replaces
         // unambiguously, sixel display mode, which is a non-goal, and 132 columns, which is too.
         1005 or 80 or 3 => ModeState.PermanentlyReset,
+
+        // Modes xterm knows that this client deliberately does not have (QS237): smooth scroll (4)
+        // and reverse video (5) are drawing it does not do, autorepeat (8) belongs to the local
+        // keyboard, the printer's form feed and extent (18, 19) have no printer, the Hebrew and
+        // national replacement sets (35, 42) are not carried, and horizontal cursor coupling (60)
+        // has no horizontal scroll to couple to. Answered so a host learns it rather than guessing.
+        4 or 5 or 8 or 18 or 19 or 35 or 42 or 60 => ModeState.PermanentlyReset,
 
         _ => ModeState.Unrecognised,
     };
@@ -463,6 +487,18 @@ public sealed partial class Emulator
     {
         4 => On(InsertMode),
         20 => On(LineFeedMode),
+
+        // KAM: a host does not get to lock the local keyboard, so it is never on (QS237).
+        2 => ModeState.PermanentlyReset,
+
+        // SRM: send/receive, whose reset is local echo. An SSH session's echo is the far end's,
+        // so this client never echoes locally and the mode is permanently set.
+        12 => ModeState.PermanentlySet,
+
+        // The ISO 6429 modes xterm knows and ignores, answered as xterm answers them: GATM, SRTM,
+        // VEM, HEM, PUM, FEAM, FETM, MATM, TTM, SATM, TSM and EBM.
+        1 or 5 or 7 or 10 or 11 or 13 or 14 or 15 or 16 or 17 or 18 or 19 => ModeState.PermanentlyReset,
+
         _ => ModeState.Unrecognised,
     };
 

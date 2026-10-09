@@ -234,6 +234,16 @@ public sealed class ReplyTests
     [InlineData("", "[4$p", "[4;2$y")]              // insert mode, an ANSI mode, off by default
     [InlineData("[4h", "[4$p", "[4;1$y")]           // and on (QS207)
     [InlineData("", "[12345$p", "[12345;0$y")]      // an ANSI mode never heard of
+    [InlineData("", "[19$p", "[19;4$y")]            // EBM, which xterm knows and ignores (QS237)
+    [InlineData("", "[1$p", "[1;4$y")]              // GATM
+    [InlineData("[2h", "[2$p", "[2;4$y")]           // KAM: the local keyboard is never locked
+    [InlineData("", "[12$p", "[12;3$y")]            // SRM: never a local echo
+    [InlineData("", "[?66$p", "[?66;2$y")]          // DECNKM, the keypad mode
+    [InlineData("[?66h", "[?66$p", "[?66;1$y")]
+    [InlineData("=", "[?66$p", "[?66;1$y")]         // the same switch ESC = throws
+    [InlineData("[?67h", "[?67$p", "[?67;1$y")]     // DECBKM
+    [InlineData("", "[?60$p", "[?60;4$y")]          // DECHCCM, nothing to couple to
+    [InlineData("[?5h", "[?5$p", "[?5;4$y")]        // reverse video, not drawn
     public void AModeIsReportedWithOneOfItsFiveAnswers(string before, string asked, string answer)
     {
         string setup = before.Length == 0 ? string.Empty : E + before;

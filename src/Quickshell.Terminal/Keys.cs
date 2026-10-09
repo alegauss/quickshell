@@ -211,13 +211,15 @@ public static class Keys
     /// <param name="cursorKeys">Whether the host has asked for application cursor keys, DECCKM.</param>
     /// <param name="keypad">Whether the host has asked for the application keypad.</param>
     /// <param name="destination">At least <see cref="MaximumLength"/> bytes.</param>
+    /// <param name="backarrowSendsBackspace">Whether the host has asked for DECBKM, BS from Backspace.</param>
     /// <returns>How many bytes were written, or zero where the key sends nothing.</returns>
     public static int Encode(
         Key key,
         KeyModifiers modifiers,
         bool cursorKeys,
         bool keypad,
-        Span<byte> destination)
+        Span<byte> destination,
+        bool backarrowSendsBackspace = false)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(destination.Length, MaximumLength);
 
@@ -239,7 +241,7 @@ public static class Keys
 
             >= Key.F5 and <= Key.F20 => Tilde(Number(key), parameter, destination),
 
-            Key.Backspace => Backspace(modifiers, destination),
+            Key.Backspace => Backspace(modifiers, destination, backarrowSendsBackspace),
             Key.Tab => Tab(modifiers, destination),
             Key.Enter => Simple(0x0D, modifiers, destination),
             Key.Escape => Simple(Escape, modifiers, destination),
@@ -406,9 +408,10 @@ public static class Keys
     };
 
     /// <summary>
-    /// Delete for backspace, backspace for control-backspace, and an escape in front for alt.
+    /// Delete for backspace, backspace for control-backspace, and an escape in front for alt - or
+    /// the two the other way round under DECBKM (QS237).
     /// </summary>
-    private static int Backspace(KeyModifiers modifiers, Span<byte> destination)
+    private static int Backspace(KeyModifiers modifiers, Span<byte> destination, bool sendsBackspace)
     {
         int written = 0;
 
@@ -417,7 +420,8 @@ public static class Keys
             destination[written++] = Escape;
         }
 
-        destination[written++] = (modifiers & KeyModifiers.Control) != 0 ? (byte)0x08 : (byte)0x7F;
+        bool backspace = ((modifiers & KeyModifiers.Control) != 0) != sendsBackspace;
+        destination[written++] = backspace ? (byte)0x08 : (byte)0x7F;
 
         return written;
     }

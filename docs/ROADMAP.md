@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS237** (deps: —) **DECRQM answers not recognised for modes xterm reports as permanently reset or as set** — Twenty-six DECRQM tests and one DECSCL test fail because the answer is 0 where xterm answers 4, 1 or 2. → §QS237
 - 📋 **QS238** (deps: —) **The rectangular area operations DECCRA, DECFRA and DECERA do nothing** — Copy, fill and erase of a rectangle are absent, and so is DECSACE that shapes them, which is 19 esctest failures. → §QS238
 - 📋 **QS239** (deps: —) **The saved cursor is one for both screens, and XTSAVE, XTRESTORE and DECSTR leave saved state behind** — Sixteen failures across SCORC, DECRC, the tite-inhibit tests, XtermSave and DECSTR come from how saved state is kept. → §QS239
 - 📋 **QS240** (deps: —) **Most DSR variants and the checksum report get no answer** — Ten of eleven DECDSR tests time out, because only the cursor position report is answered. → §QS240
@@ -19,6 +18,7 @@
 - 📋 **QS242** (deps: —) **Reverse wraparound does not follow a backspace back across a wrapped line as xterm does** — BS and CUB fail seven tests and DECSET two on reverse wraparound, the mode 45 cases and xterm 1045. → §QS242
 - 📋 **QS243** (deps: —) **DECRQSS answers invalid for settings the client holds, and DA, DA2 and DECID answer another identity** — Six DECRQSS tests and five identity tests fail on replies that are well formed but not the ones xterm gives. → §QS243
 - 📋 **QS244** (deps: —) **Seventeen esctest failures in eleven classes have no family of their own** — Each is one or two tests and one cause, and together they are the rest of what Block C needs named. → §QS244
+- 📋 **QS246** (deps: —) **Reverse screen mode DECSCNM is not drawn, so a visual bell never flashes** — vim and readline flash the screen with mode 5 when the audible bell is off, and here nothing shows, so that user hears and sees no bell. → §QS246
 
 ## Block D — The tree a user organises work in
 
