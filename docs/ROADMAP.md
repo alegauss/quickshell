@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS239** (deps: —) **The saved cursor is one for both screens, and XTSAVE, XTRESTORE and DECSTR leave saved state behind** — Sixteen failures across SCORC, DECRC, the tite-inhibit tests, XtermSave and DECSTR come from how saved state is kept. → §QS239
 - 📋 **QS240** (deps: —) **Most DSR variants and the checksum report get no answer** — Ten of eleven DECDSR tests time out, because only the cursor position report is answered. → §QS240
 - 📋 **QS241** (deps: —) **HPR and VPR move the cursor nowhere** — CSI a and CSI e are not handled, so all eight HPR and VPR tests fail, the default parameter included. → §QS241
 - 📋 **QS242** (deps: —) **Reverse wraparound does not follow a backspace back across a wrapped line as xterm does** — BS and CUB fail seven tests and DECSET two on reverse wraparound, the mode 45 cases and xterm 1045. → §QS242
@@ -35,6 +34,7 @@
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS78** (deps: QS139 ⏸) **Nothing has run for longer than a working session, so a slow leak would reach users first** — The seventy-two-hour run itself is still owed, with atlas and GPU memory watched, which needs a pane attached to a session. → §QS78
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
+- 📋 **QS247** (deps: —) **A copy started a moment before an install is not found running, so the install is not refused** — MainModule throws on a process whose loader has not finished, and that is read as another user's process, so the guest suite's installer test went red once. → §QS247
 
 ## Block I — An error a user can act on
 

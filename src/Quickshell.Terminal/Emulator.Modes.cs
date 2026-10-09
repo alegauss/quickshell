@@ -303,116 +303,120 @@ public sealed partial class Emulator
     {
         for (int group = 0; group < parameters.Count; group++)
         {
-            int mode = parameters.Value(group, -1);
+            SetPrivateMode(parameters.Value(group, -1), set);
+        }
+    }
 
-            // The mouse modes are asked first because they are a set rather than a switch, and the
-            // one that decides which of them is live has to see all five.
-            if (MouseMode(mode, set))
-            {
-                continue;
-            }
+    /// <summary>One private mode, which XTRESTORE also comes through (QS239).</summary>
+    private void SetPrivateMode(int mode, bool set)
+    {
+        // The mouse modes are asked first because they are a set rather than a switch, and the
+        // one that decides which of them is live has to see all five.
+        if (MouseMode(mode, set))
+        {
+            return;
+        }
 
-            switch (mode)
-            {
-                case 1:
-                    ApplicationCursorKeys = set;
-                    break;
+        switch (mode)
+        {
+            case 1:
+                ApplicationCursorKeys = set;
+                break;
 
-                case 3:
-                    // DECCOLM. The width is refused, as xterm refuses it without allowC132: a pane
-                    // in a split tab has no single size a host could ask it to become. What every
-                    // DECCOLM also does is kept, because a program asking for it assumes a clean
-                    // screen with no region, and drew its next frame on that assumption (QS208).
-                    EraseDisplay(2);
-                    MarginTop = 0;
-                    MarginBottom = Buffer.Rows - 1;
+            case 3:
+                // DECCOLM. The width is refused, as xterm refuses it without allowC132: a pane
+                // in a split tab has no single size a host could ask it to become. What every
+                // DECCOLM also does is kept, because a program asking for it assumes a clean
+                // screen with no region, and drew its next frame on that assumption (QS208).
+                EraseDisplay(2);
+                MarginTop = 0;
+                MarginBottom = Buffer.Rows - 1;
+                ClearColumnMargins();
+                Home();
+                break;
+
+            case 6:
+                OriginMode = set;
+
+                // Changing it homes the cursor, because the coordinate space it lives in has
+                // just changed underneath it.
+                Home();
+                break;
+
+            case 7:
+                AutoWrap = set;
+                PendingWrap = false;
+                break;
+
+            case 25:
+                CursorVisible = set;
+                break;
+
+            case 45:
+                ReverseWrap = set;
+                break;
+
+            case 66:
+                // DECNKM: the keypad mode ESC = and ESC > set, under its mode number (QS237).
+                ApplicationKeypad = set;
+                break;
+
+            case 67:
+                BackarrowSendsBackspace = set;
+                break;
+
+            case 69:
+                // Turning it off takes the margins with it, as xterm does: a region nobody can
+                // see being set any more is not one a host should go on being clamped by.
+                LeftRightMarginMode = set;
+
+                if (!set)
+                {
                     ClearColumnMargins();
-                    Home();
-                    break;
+                }
 
-                case 6:
-                    OriginMode = set;
+                break;
 
-                    // Changing it homes the cursor, because the coordinate space it lives in has
-                    // just changed underneath it.
-                    Home();
-                    break;
+            case 2004:
+                BracketedPaste = set;
+                break;
 
-                case 7:
-                    AutoWrap = set;
-                    PendingWrap = false;
-                    break;
+            case 47:
+            case 1047:
+                SwitchScreen(set);
+                break;
 
-                case 25:
-                    CursorVisible = set;
-                    break;
+            case 1048:
+                if (set)
+                {
+                    SaveCursor();
+                }
+                else
+                {
+                    RestoreCursor();
+                }
 
-                case 45:
-                    ReverseWrap = set;
-                    break;
+                break;
 
-                case 66:
-                    // DECNKM: the keypad mode ESC = and ESC > set, under its mode number (QS237).
-                    ApplicationKeypad = set;
-                    break;
+            case 1049:
+                // The one every full-screen program actually sends: save the cursor and switch,
+                // then switch back and restore. The two halves are one instruction.
+                if (set)
+                {
+                    SaveCursor();
+                    SwitchScreen(true);
+                }
+                else
+                {
+                    SwitchScreen(false);
+                    RestoreCursor();
+                }
 
-                case 67:
-                    BackarrowSendsBackspace = set;
-                    break;
+                break;
 
-                case 69:
-                    // Turning it off takes the margins with it, as xterm does: a region nobody can
-                    // see being set any more is not one a host should go on being clamped by.
-                    LeftRightMarginMode = set;
-
-                    if (!set)
-                    {
-                        ClearColumnMargins();
-                    }
-
-                    break;
-
-                case 2004:
-                    BracketedPaste = set;
-                    break;
-
-                case 47:
-                case 1047:
-                    SwitchScreen(set);
-                    break;
-
-                case 1048:
-                    if (set)
-                    {
-                        SaveCursor();
-                    }
-                    else
-                    {
-                        RestoreCursor();
-                    }
-
-                    break;
-
-                case 1049:
-                    // The one every full-screen program actually sends: save the cursor and switch,
-                    // then switch back and restore. The two halves are one instruction.
-                    if (set)
-                    {
-                        SaveCursor();
-                        SwitchScreen(true);
-                    }
-                    else
-                    {
-                        SwitchScreen(false);
-                        RestoreCursor();
-                    }
-
-                    break;
-
-                default:
-                    Unhandled++;
-                    break;
-            }
+            default:
+                Unhandled++;
+                break;
         }
     }
 

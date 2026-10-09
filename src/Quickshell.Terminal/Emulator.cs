@@ -24,14 +24,13 @@ public sealed partial class Emulator : IAnsiHandler
     private readonly GraphemeSegmenter _segmenter = new();
 
     private Pen _pen = Pen.Default;
-    private Pen _savedPen = Pen.Default;
-    private int _savedRow;
-    private int _savedColumn;
     private int _lastPrinted = ' ';
     private readonly CharacterSet[] _designated = [CharacterSet.Ascii, CharacterSet.Ascii];
     private int _activeSet;
-    private readonly CharacterSet[] _savedDesignated = [CharacterSet.Ascii, CharacterSet.Ascii];
-    private int _savedActiveSet;
+
+    // DECSC's saved state, one per screen as xterm keeps it (QS239): a full-screen program saving
+    // on the alternate screen does not overwrite what the shell saved on the main one.
+    private readonly SavedCursor[] _saved = [SavedCursor.Home, SavedCursor.Home];
 
     /// <summary>Opens a terminal of a given size, with scrollback behind the primary screen.</summary>
     public Emulator(int columns, int rows, int scrollback = 1000)
@@ -148,8 +147,6 @@ public sealed partial class Emulator : IAnsiHandler
     public void Resize(int columns, int rows)
     {
         Screens.Resize(columns, rows);
-        _savedRow = Math.Clamp(_savedRow, 0, rows - 1);
-        _savedColumn = Math.Clamp(_savedColumn, 0, columns - 1);
 
         // The region and the stops are both stated in the old geometry, and neither survives a
         // resize meaningfully. A host that had set either is told the new size and sets them again.
@@ -635,29 +632,64 @@ public sealed partial class Emulator : IAnsiHandler
         }
     }
 
+    /// <summary>The saved state of the screen in use.</summary>
+    private ref SavedCursor Saved => ref _saved[Screens.IsAlternate ? 1 : 0];
+
     private void SaveCursor()
     {
         // The whole state and not the position: a program that restores expects its colours back
         // too, and one that gets only the position paints the rest of its screen in whatever the
-        // last thing to run happened to leave set.
-        _savedRow = Buffer.CursorRow;
-        _savedColumn = Buffer.CursorColumn;
-        _savedPen = _pen;
-
-        // And the character sets, as DEC's DECSC does and xterm restores (QS206): a program that
-        // drew a box in line drawing, saved, and switched back to ASCII expects ESC 8 to hand it the
-        // line-drawing set again, or the rest of its box prints as letters.
-        _designated.CopyTo(_savedDesignated, 0);
-        _savedActiveSet = _activeSet;
+        // last thing to run happened to leave set. And the character sets, as DEC's DECSC does and
+        // xterm restores (QS206): a program that drew a box in line drawing, saved, and switched
+        // back to ASCII expects ESC 8 to hand it the line-drawing set again. And origin mode, which
+        // xterm saves with them (QS239).
+        Saved = new SavedCursor(Buffer.CursorRow, Buffer.CursorColumn, _pen,
+                                _designated[0], _designated[1], _activeSet, OriginMode);
     }
 
+    /// <summary>
+    /// DECRC. With nothing saved, what is restored is <see cref="SavedCursor.Home"/>: the top left,
+    /// the default pen and origin mode off, as xterm restores it (QS239).
+    /// </summary>
     private void RestoreCursor()
     {
-        Buffer.CursorRow = Math.Clamp(_savedRow, 0, Buffer.Rows - 1);
-        Buffer.CursorColumn = Math.Clamp(_savedColumn, 0, Buffer.Columns - 1);
-        _pen = _savedPen;
-        _savedDesignated.CopyTo(_designated, 0);
-        _activeSet = _savedActiveSet;
+        SavedCursor saved = Saved;
+
+        OriginMode = saved.OriginMode;
+        Buffer.CursorRow = Math.Clamp(saved.Row, 0, Buffer.Rows - 1);
+        Buffer.CursorColumn = Math.Clamp(saved.Column, 0, Buffer.Columns - 1);
+        _pen = saved.Pen;
+        _designated[0] = saved.G0;
+        _designated[1] = saved.G1;
+        _activeSet = saved.ActiveSet;
+        PendingWrap = false;
+    }
+
+    /// <summary>
+    /// DECSTR, <c>CSI ! p</c>: the soft reset, xterm's list of it. The screen, the cursor's place,
+    /// autowrap (which xterm leaves on) and the mouse are left alone; everything a program sets for
+    /// itself goes back to its default, so the next program does not inherit it (QS239).
+    /// </summary>
+    private void SoftReset()
+    {
+        CursorVisible = true;
+        InsertMode = false;
+        OriginMode = false;
+        ReverseWrap = false;
+        ApplicationCursorKeys = false;
+        ApplicationKeypad = false;
+        LeftRightMarginMode = false;
+        ClearColumnMargins();
+        MarginTop = 0;
+        MarginBottom = Buffer.Rows - 1;
+        PendingWrap = false;
+        _pen = Pen.Default;
+        _designated[0] = CharacterSet.Ascii;
+        _designated[1] = CharacterSet.Ascii;
+        _activeSet = 0;
+        ResetProtection();
+        _saved[0] = SavedCursor.Home;
+        _saved[1] = SavedCursor.Home;
     }
 
     private void Reset()
@@ -686,12 +718,9 @@ public sealed partial class Emulator : IAnsiHandler
         _designated[1] = CharacterSet.Ascii;
         _activeSet = 0;
         ResetTitles();
-        _savedPen = Pen.Default;
-        _savedRow = 0;
-        _savedColumn = 0;
-        _savedDesignated[0] = CharacterSet.Ascii;
-        _savedDesignated[1] = CharacterSet.Ascii;
-        _savedActiveSet = 0;
+        _saved[0] = SavedCursor.Home;
+        _saved[1] = SavedCursor.Home;
+        _savedModes?.Clear();
 
         if (Screens.IsAlternate)
         {
@@ -730,6 +759,15 @@ public sealed partial class Emulator : IAnsiHandler
 
                 case (byte)'n':
                     DeviceStatus(parameters.Value(0, 0), priv: true);
+                    break;
+
+                // XTSAVE and XTRESTORE, private modes saved and restored by number (QS239).
+                case (byte)'s':
+                    SaveModes(parameters);
+                    break;
+
+                case (byte)'r':
+                    RestoreModes(parameters);
                     break;
 
                 // DECSED and DECSEL, the selective erases: ED and EL that leave protected cells
@@ -774,11 +812,10 @@ public sealed partial class Emulator : IAnsiHandler
             return;
         }
 
-        // DECSTR, the soft reset. What it resets so far is protection (QS235); the rest of its list
-        // is QS239's.
+        // DECSTR, the soft reset (QS235, QS239).
         if (intermediates.Length == 1 && intermediates[0] == (byte)'!' && final == (byte)'p')
         {
-            ResetProtection();
+            SoftReset();
             return;
         }
 

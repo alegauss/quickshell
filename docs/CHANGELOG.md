@@ -102,6 +102,7 @@
 - ✅ **QS236** **Window operations through CSI t neither report the window nor say they are refused** — Every CSI t report is answered from the pane, titles read back empty, the title stack works, and moves and resizes are refused by a non-goal; esctest rose from 359 to 373 passed.
 - ✅ **QS237** **DECRQM answers not recognised for modes xterm reports as permanently reset or as set** — DECRQM answers xterm's ignored modes as permanently reset, KAM and SRM by decision, and DECNKM and DECBKM as real modes; esctest went from 373 to 388 passed.
 - ✅ **QS238** **The rectangular area operations DECCRA, DECFRA and DECERA do nothing** — DECFRA fills, DECERA erases and DECCRA copies a rectangle, clipped and origin-relative as xterm's, and DECSACE is held and reported; esctest went from 388 to 407 passed.
+- ✅ **QS239** **The saved cursor is one for both screens, and XTSAVE, XTRESTORE and DECSTR leave saved state behind** — Each screen has its own saved cursor, DECRC with nothing saved homes and resets DECOM, DECSTR does xterm's list, and XTSAVE/XTRESTORE work; esctest went from 407 to 425 passed.
 
 ## Block D — The tree a user organises work in
 

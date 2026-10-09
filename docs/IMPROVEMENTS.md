@@ -343,27 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS239 Saved cursor and saved modes
-
-xterm keeps a saved cursor per screen, so DECSC on the main screen and DECRC on the
-alternate do not meet; here they do (test_SaveRestoreCursor_AltVsMain, in SCORC, DECRC
-and DECSETTiteInhibit). DECRC with nothing saved should home the cursor and reset origin
-mode (Reset, ResetsOriginMode). XTSAVE and XTRESTORE (CSI ? Pm s / r) are not handled
-(XtermSaveTests 2). DECSTR (CSI ! p, dispatched since QS235, which resets protection and
-nothing else yet) leaves the saved cursor and DECOM as they were (DECSTRTests 5).
-esctest's own reset is a DECSTR, so every gap here also leaks state from one case into
-the next.
-
-What to build: a saved cursor per screen, xterm's DECRC defaults, XTSAVE/XTRESTORE for
-the modes this client has, and DECSTR's full list of resets.
-
-Falsified when DECRC on the alternate screen restores what DECSC saved on the main one.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS240 DSR variants
 
 CSI ? Ps n answers 6 (DECXCPR) and nothing else, and DECXCPR adds a page number esctest
@@ -762,6 +741,33 @@ The run covers the operator's whole screen for a minute and a half, on the host 
 the guest, whose virtual GPU says nothing about the panel. So it is taken only when the
 user has cleared the desk for it, never unattended. Falsified when a monitor-covering
 chain on the reference desk reports independent flip and the line was still deferred.
+
+### §QS247 A just-started copy and the running check
+
+Installation.Running asks each process named quickshell for Process.MainModule.FileName.
+MainModule enumerates the target's loaded modules through ReadProcessMemory, and for a
+process that started a moment ago the loader's list is not there yet: it throws
+Win32Exception (ERROR_PARTIAL_COPY). The catch beside it reads every Win32Exception as
+"another user's process" and counts nothing, so a copy launched just before an install
+or an uninstall is not refused, and the install goes on to meet files in use halfway.
+
+Seen as a red guest run on 2026-10-09 during QS239:
+InstallationTests.ACopyRunningFromTheFolderIsNamedRatherThanHalfReplaced starts a
+renamed ping and installs at once, and Assert.Throws saw no SetupException. It passed in
+the three guest runs before it, which is the timing this describes.
+
+What to build: read the image path with OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)
+and QueryFullProcessImageNameW. That answers from the kernel's own record, from the
+moment the process exists, and works for another user's process at the same integrity
+too. Keep the refusal's text as it is. A process that cannot be opened at all is
+counted, not skipped: its files may be in use, and refusing with a sentence is cheaper
+than half replacing a folder.
+
+Falsified when a process started from the folder in the same instant as Install is not
+refused.
+
+Evidence: the existing test, run repeatedly in the guest. A unit test can hold the
+process and call Install with no delay at all, which is the window the old code lost.
 
 ## Block I — An error a user can act on
 

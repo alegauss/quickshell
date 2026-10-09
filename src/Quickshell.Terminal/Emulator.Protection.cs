@@ -48,15 +48,13 @@ public sealed partial class Emulator
     /// <summary>
     /// What DECSTR and RIS do to protection: nothing printed next is protected, and no erase skips
     /// a cell that already is. Without it a protected area outlives the program that drew it,
-    /// which is how one esctest case's leftovers survived the next one's clear.
+    /// which is how one esctest case's leftovers survived the next one's clear. The saved cursor's
+    /// pen goes with the rest of the saved cursor, which DECSTR resets whole.
     /// </summary>
     private void ResetProtection()
     {
         _protection = Protection.Off;
         _pen = _pen.Clear(CellFlags.Protected);
-
-        // And from the saved cursor, or a DECRC after the reset prints protected again.
-        _savedPen = _savedPen.Clear(CellFlags.Protected);
     }
 
     /// <summary>SPA, <c>ESC V</c>, and EPA, <c>ESC W</c>: the start and end of an ISO protected area.</summary>
