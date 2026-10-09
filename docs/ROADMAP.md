@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS240** (deps: —) **Most DSR variants and the checksum report get no answer** — Ten of eleven DECDSR tests time out, because only the cursor position report is answered. → §QS240
 - 📋 **QS241** (deps: —) **HPR and VPR move the cursor nowhere** — CSI a and CSI e are not handled, so all eight HPR and VPR tests fail, the default parameter included. → §QS241
 - 📋 **QS242** (deps: —) **Reverse wraparound does not follow a backspace back across a wrapped line as xterm does** — BS and CUB fail seven tests and DECSET two on reverse wraparound, the mode 45 cases and xterm 1045. → §QS242
 - 📋 **QS243** (deps: —) **DECRQSS answers invalid for settings the client holds, and DA, DA2 and DECID answer another identity** — Six DECRQSS tests and five identity tests fail on replies that are well formed but not the ones xterm gives. → §QS243

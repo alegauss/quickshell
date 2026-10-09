@@ -758,7 +758,7 @@ public sealed partial class Emulator : IAnsiHandler
                     break;
 
                 case (byte)'n':
-                    DeviceStatus(parameters.Value(0, 0), priv: true);
+                    DeviceStatus(parameters, priv: true);
                     break;
 
                 // XTSAVE and XTRESTORE, private modes saved and restored by number (QS239).
@@ -1042,7 +1042,7 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'n':
-                DeviceStatus(parameters.Value(0, 0), priv: false);
+                DeviceStatus(parameters, priv: false);
                 break;
 
             case (byte)'t':

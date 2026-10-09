@@ -63,6 +63,21 @@ internal enum Answer : byte
     /// with nothing of the host's request echoed (QS234).
     /// </summary>
     CapabilityReport,
+
+    /// <summary>
+    /// A private DSR answered with one status number (QS240): <c>CSI ? Ps n</c>, or with a second
+    /// number too where that is not negative, <c>CSI ? Ps ; Pn n</c>.
+    /// </summary>
+    PrivateStatus,
+
+    /// <summary>
+    /// The keyboard report, <c>CSI ? 27 ; Pn [; Pst [; Ptyp]] n</c>, as long as the VT level DA2
+    /// claims says it is (QS240). The first number is that level.
+    /// </summary>
+    KeyboardStatus,
+
+    /// <summary>DECMSR's answer: no space for macros, <c>CSI 0 * {</c> (QS240).</summary>
+    MacroSpace,
 }
 
 public sealed partial class Emulator
@@ -149,7 +164,9 @@ public sealed partial class Emulator
 
             case Answer.SecondaryDeviceAttributes:
                 Csi();
-                Literal(">1;0;0c");
+                Literal(">");
+                Number(TerminalType);
+                Literal(";0;0c");
                 break;
 
             case Answer.Ok:
@@ -166,12 +183,44 @@ public sealed partial class Emulator
                 break;
 
             case Answer.ExtendedCursorPosition:
+                // The page only from a VT420 on, which is how esctest reads it and how DEC wrote it:
+                // a terminal claiming an older level that sends three numbers is answering a
+                // question its level does not have (QS240).
                 Csi();
                 Literal("?");
                 Number(first);
                 Literal(";");
                 Number(second);
-                Literal(";1R");
+                Literal(VtLevel >= 4 ? ";1R" : "R");
+                break;
+
+            case Answer.PrivateStatus:
+                Csi();
+                Literal("?");
+                Number(first);
+
+                if (second >= 0)
+                {
+                    Literal(";");
+                    Number(second);
+                }
+
+                Literal("n");
+                break;
+
+            case Answer.KeyboardStatus:
+                // Language not known, ready, and the PC keyboard's type, each only at the level
+                // that has it: a keyboard this terminal never sees is not one it can name.
+                Csi();
+                Literal("?27;0");
+                Literal(first >= 3 ? ";0" : string.Empty);
+                Literal(first >= 4 ? ";5" : string.Empty);
+                Literal("n");
+                break;
+
+            case Answer.MacroSpace:
+                Csi();
+                Literal("0*{");
                 break;
 
             case Answer.WindowReport:
@@ -411,9 +460,9 @@ public sealed partial class Emulator
     /// <para>Both answer with a constant or a number, which is what makes them safe to answer at
     /// all. Anything else asked for here is counted.</para>
     /// </summary>
-    private void DeviceStatus(int request, bool priv)
+    private void DeviceStatus(in CsiParameters parameters, bool priv)
     {
-        switch (request)
+        switch (parameters.Value(0, 0))
         {
             case 5 when !priv:
                 Send(Answer.Ok);
@@ -426,6 +475,48 @@ public sealed partial class Emulator
                     OriginMode ? Buffer.CursorColumn - MarginLeft + 1 : Buffer.CursorColumn + 1);
                 break;
 
+            // The private reports (QS240), each answered so nobody waits, and those about hardware
+            // this client does not have answered as absent: no printer (13), user-defined keys
+            // locked because there are none to define (21), no DEC locator (50), its type unknown
+            // (57;0), no link errors to report (70) and no multiple-session support (83).
+            case 15 when priv:
+                Send(Answer.PrivateStatus, 13, -1);
+                break;
+
+            case 25 when priv:
+                Send(Answer.PrivateStatus, 21, -1);
+                break;
+
+            case 26 when priv:
+                Send(Answer.KeyboardStatus, VtLevel);
+                break;
+
+            case 53 or 55 when priv:
+                Send(Answer.PrivateStatus, 50, -1);
+                break;
+
+            case 56 when priv:
+                Send(Answer.PrivateStatus, 57, 0);
+                break;
+
+            case 62 when priv:
+                Send(Answer.MacroSpace);
+                break;
+
+            case 63 when priv:
+                // DECCKSR: the checksum of macro memory, which holds none, so zero, under the
+                // asker's id - a number, written as one, as DECRQCRA's is.
+                Send(Answer.RectangleChecksum, parameters.Value(1, 0), 0);
+                break;
+
+            case 75 when priv:
+                Send(Answer.PrivateStatus, 70, -1);
+                break;
+
+            case 85 when priv:
+                Send(Answer.PrivateStatus, 83, -1);
+                break;
+
             default:
                 Unhandled++;
                 break;
@@ -436,6 +527,18 @@ public sealed partial class Emulator
     /// Which row number the host is told. Under DECOM it is relative to the top margin, because that
     /// is the coordinate system the host asked to be in and it is the one it will send back.
     /// </summary>
+    /// <summary>
+    /// What DA2 says this terminal is. 1 is a VT220, which is what DA1's 62 claims too; the two
+    /// answers are one claim and are kept as one number here (QS240).
+    /// </summary>
+    private const int TerminalType = 1;
+
+    /// <summary>
+    /// The VT level the DA2 answer implies, read the way esctest and DEC read it: below 18 a VT2xx,
+    /// below 24 a VT3xx, a VT4xx from there. The reports whose shape grows with the level follow it.
+    /// </summary>
+    private static int VtLevel => TerminalType < 18 ? 2 : TerminalType < 24 ? 3 : 4;
+
     private int ReportedRow() => OriginMode
         ? Buffer.CursorRow - MarginTop + 1
         : Buffer.CursorRow + 1;

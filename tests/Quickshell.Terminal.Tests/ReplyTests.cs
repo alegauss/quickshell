@@ -15,6 +15,7 @@ public sealed class ReplyTests
     /// <summary>Every question this terminal answers, and the two it refuses to.</summary>
     private const string EveryQuestion =
         E + "[c" + E + "[>c" + E + "[5n" + E + "[6n" + E + "[?6n"
+        + E + "[?15n" + E + "[?26n" + E + "[?56n" + E + "[?62n" + E + "[?63;9n"
         + E + "[11t" + E + "[13t" + E + "[14t" + E + "[15t" + E + "[16t" + E + "[18t" + E + "[19t"
         + E + "[20t" + E + "[21t" + E + "[7;1;1;1;24;80*y" + E + "[?7$p" + E + "[4$p"
         + E + "]4;1;?\a" + E + "]5;0;?" + E + "\\" + E + "]10;?" + E + "\\"
@@ -61,8 +62,8 @@ public sealed class ReplyTests
         // P, ! and ~ frame DECRQCRA's answer, A to F are its hex digits and the backslash ends it.
         // and $ and y close DECRQM's. A colour report is rgb:, lower-case hex and slashes, closed by
         // BEL where it was asked with one; + and = frame XTGETTCAP's (QS234). L and l name the
-        // empty label CSI 20 t and 21 t are answered with (QS236).
-        const string allowed = "\u001b[]?>;0123456789cnRtP!~ABCDEF\\$yrgb:/abcdef\a+=Ll";
+        // empty label CSI 20 t and 21 t are answered with (QS236). * and { close DECMSR's (QS240).
+        const string allowed = "\u001b[]?>;0123456789cnRtP!~ABCDEF\\$yrgb:/abcdef\a+=Ll*{";
 
         foreach (byte sent in emulator.Reply)
         {
@@ -114,10 +115,42 @@ public sealed class ReplyTests
         Assert.Equal(E + "[3;5R", Sent(Fed(E + "[3;5H" + E + "[6n")));
     }
 
+    /// <summary>
+    /// DECXCPR carries a page only from a VT420 on, and DA2 says this is a VT220, so it has none
+    /// (QS240): three numbers would answer a question the claimed level does not have.
+    /// </summary>
     [Fact]
-    public void ThePrivateCursorReportCarriesThePageNumber()
+    public void ThePrivateCursorReportHasTheShapeOfTheClaimedLevel()
     {
-        Assert.Equal(E + "[?3;5;1R", Sent(Fed(E + "[3;5H" + E + "[?6n")));
+        Assert.Equal(E + "[?3;5R", Sent(Fed(E + "[3;5H" + E + "[?6n")));
+    }
+
+    // ---- The private status reports (QS240) ----
+
+    /// <summary>The design's falsifier: <em>falsified when CSI ? 15 n goes unanswered</em>.</summary>
+    [Theory]
+    [InlineData("15", "[?13n")]           // no printer
+    [InlineData("25", "[?21n")]           // no user-defined keys to unlock
+    [InlineData("26", "[?27;0n")]         // keyboard: a VT220 says the language alone
+    [InlineData("53", "[?50n")]           // no DEC locator
+    [InlineData("55", "[?50n")]
+    [InlineData("56", "[?57;0n")]
+    [InlineData("62", "[0*{")]            // no macro space
+    [InlineData("63;123", "P123!~0000" + E + "\\")] // no macro memory to checksum
+    [InlineData("75", "[?70n")]           // no link errors
+    [InlineData("85", "[?83n")]           // no multiple sessions
+    public void EveryPrivateStatusReportIsAnswered(string request, string answer)
+    {
+        Assert.Equal(E + answer, Sent(Fed(E + "[?" + request + "n")));
+    }
+
+    [Fact]
+    public void AStatusNothingHereKnowsIsCounted()
+    {
+        Emulator emulator = Fed(E + "[?99n");
+
+        Assert.Empty(emulator.Reply.ToArray());
+        Assert.True(emulator.Unhandled > 0);
     }
 
     /// <summary>

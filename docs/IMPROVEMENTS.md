@@ -343,24 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS240 DSR variants
-
-CSI ? Ps n answers 6 (DECXCPR) and nothing else, and DECXCPR adds a page number esctest
-does not expect ([6, 5, 1] for [6, 5]). The printer, user-defined keys, keyboard,
-locator, macro space, memory checksum (DECCKSR, which the screen checksums also lean
-on), data integrity and multiple-session reports time out.
-
-What to build: each report in xterm's answer, the ones about hardware this client does
-not have answered as absent rather than left silent, and DECXCPR's form settled against
-what xterm sends.
-
-Falsified when CSI ? 15 n goes unanswered.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS241 HPR and VPR
 
 HPR (CSI Pn a) and VPR (CSI Pn e), relative moves that ignore origin mode and stop at
