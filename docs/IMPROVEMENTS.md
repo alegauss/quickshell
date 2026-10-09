@@ -461,30 +461,6 @@ which is not much, and is worth knowing before it is spent.
 
 Falsified when the idle figure is quoted for a client that has never held a connection.
 
-### §QS190 Where the window's 200 ms go, measured
-
-QS75 measured the window's constructor as the largest step of a start: 230 ms of 647 on
-the reference desk. The first design blamed the collapsed tab strip and find bar. Built
-on demand, they moved nothing. `tools/run-startup-vm.ps1` timed eleven guest starts each
-way, and the step was 206 ms before, 200 and 168 ms after (one "before" run carried the
-change, QS224). Noise; the 40 ms below caps any saving. Not kept.
-
-Marks inside the constructor for one guest run located the time, as warm medians:
-
-- About 100 ms passes before its first line: WPF's own `Window` and the field initialisers.
-- About 95 ms goes to setting `ThemeMode` to Fluent. QS75 measured 18 ms on a Debug build
-  on the reference desk, so take that figure there again.
-- About 40 ms goes to the find bar and the layout.
-- The share, the crash guard and the input bindings cost about nothing.
-
-The theme is next. The first frame shows a title bar and a terminal that D3D draws, and
-no Fluent control. Applied once that frame is up, the theme leaves the critical path.
-The user would see the title bar turn from light to dark, unless DWM is asked for a dark
-title bar first. That visible change is this line's decision.
-
-Falsified when the theme, moved after the first frame, does not make `interactive`
-measurably earlier in the guest across two runs each way.
-
 ### §QS197 A pass too short to time on a hybrid CPU
 
 Found taking QS79's first baseline. Seven replays of `cat-log` through the `parse` arm

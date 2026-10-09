@@ -221,6 +221,7 @@
 - ✅ **QS200** **The release gate times parse and emulate on the replay harness's build, not on the assemblies being archived** — Parse and emulate run on the published client's assemblies and runtimeconfig; a client-only tiering-off publish now fails the gate (design recorded in `docs/PERFORMANCE.md`).
 - ✅ **QS201** **An echo at a prompt reaches the glass two refresh intervals after it arrives, one more than the vblank wait explains** — Every windowed chain, window or composition, popup or WPF host, was composed at two intervals; a non-goal names that floor (design recorded in `benchmarks/results/photon-h.md`).
 - ✅ **QS247** **A copy started a moment before an install is not found running, so the install is not refused** — The running check reads the kernel's image path, so a copy started a moment before an install or uninstall is found and refused instead of being missed.
+- 🗑 **QS190** **The window's constructor takes about 200 ms of a start, half of it the Fluent theme** — abandoned: Measured and dropped: theme after the first frame left the constructor unshortened (300-321 vs 320 ms) and interactive 435-460 vs 473 ms, inside run spread.
 
 ## Block I — An error a user can act on
 
