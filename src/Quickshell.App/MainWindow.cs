@@ -125,6 +125,18 @@ public sealed class MainWindow : Window
 
             Point now = moved.GetPosition(_tabs);
 
+            // Pulled well clear of the strip, down into the terminal, the tab leaves for a window of
+            // its own, as a browser's does (QS160). Below and not above, so a drag along the strip
+            // that wanders a little is still a reorder.
+            if (now.Y - _tabs.ActualHeight > 4 * SystemParameters.MinimumVerticalDragDistance
+                && _tabs.ActualHeight > 0)
+            {
+                _pressedOnStrip = null;
+                Detach(_active);
+
+                return;
+            }
+
             if (Math.Abs(now.X - start.X) < SystemParameters.MinimumHorizontalDragDistance)
             {
                 return;
@@ -241,6 +253,10 @@ public sealed class MainWindow : Window
         // Back to the tab used before this one, from the palette (QS250). Ctrl+Tab stays positional,
         // as KEYS.md documents it; this is the order of use beside it.
         InputBindings.Add(new InputBinding(new GoingBack(this), new PaletteOnly()));
+
+        // Out into a window of its own, from the palette, or by pulling the tab down off the strip
+        // (QS160).
+        InputBindings.Add(new InputBinding(new Detaching(this), new PaletteOnly()));
 
         // By index, on Alt rather than Ctrl: Ctrl with a digit is a control sequence a host has
         // meanings for, and Alt with one is not.
@@ -1228,6 +1244,49 @@ public sealed class MainWindow : Window
         Active = to;
 
         return true;
+    }
+
+    /// <summary>
+    /// Where a tab taken out of this window goes: a new window, which the program builds and wires
+    /// exactly as it wired this one (QS160). Null offers no detach.
+    /// </summary>
+    public Action<TerminalTab>? Detaches { get; set; }
+
+    /// <summary>
+    /// Takes a tab out into a window of its own, its sessions still connected (QS160). Each pane is
+    /// rebuilt for the new window, since a pane cannot leave the window it was made in, and the
+    /// session behind it is the same object throughout.
+    /// </summary>
+    /// <returns>Whether it went: not with one tab, which would leave an empty window behind.</returns>
+    public bool Detach(int at)
+    {
+        if (Detaches is not { } detaches || _open.Count < 2 || Remove(at) is not { } going)
+        {
+            return false;
+        }
+
+        foreach (TerminalLeaf leaf in going.Leaves)
+        {
+            leaf.Repane(Settings);
+        }
+
+        detaches(going);
+
+        return true;
+    }
+
+    /// <summary>A tab detached from another window, held here as one opened here would be (QS160).</summary>
+    public void Adopt(TerminalTab tab)
+    {
+        ArgumentNullException.ThrowIfNull(tab);
+
+        Add(tab);
+        Sessions.Open(tab.Host, another: true);
+
+        foreach (TerminalLeaf leaf in tab.Leaves)
+        {
+            leaf.Apply(Settings);
+        }
     }
 
     /// <summary>
@@ -2383,6 +2442,19 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.NudgeDivider(way);
+    }
+
+    /// <summary>The tab on screen, out into a window of its own, still connected (QS160).</summary>
+    private sealed class Detaching(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Move tab to a new window";
+
+        /// <summary>One tab has nothing to leave behind.</summary>
+        public override bool CanExecute(object? parameter) => Window.Detaches is not null && Window.Held.Count > 1;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.Detach(Window.Active);
     }
 
     /// <summary>The tab that was on screen before this one, by use rather than by place (QS250).</summary>

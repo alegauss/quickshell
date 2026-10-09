@@ -61,11 +61,40 @@ public sealed class TerminalLeaf : IAsyncDisposable
     /// <summary>The model this tab's session is parsed into.</summary>
     public Emulator Emulator { get; }
 
-    /// <summary>The child window its swapchain presents into.</summary>
-    public TerminalPane Pane { get; }
+    /// <summary>The child window its swapchain presents into, which a detach replaces (QS160).</summary>
+    public TerminalPane Pane { get; private set; }
 
-    /// <summary>The device, the loop, the selection and the viewport.</summary>
-    public PaneAttachment Terminal { get; }
+    /// <summary>The device, the loop, the selection and the viewport, replaced with the pane.</summary>
+    public PaneAttachment Terminal { get; private set; }
+
+    /// <summary>
+    /// A new pane for this leaf, in another window, with the same model and the same session behind
+    /// it (QS160).
+    ///
+    /// <para><b>The pane is replaced, never the connection.</b> A pane is an <c>HwndHost</c>, and
+    /// leaving its window destroyed the child window its swapchain presented into, so the old view
+    /// is taken off the loop and a new pane and view are built for wherever the tab goes. What the
+    /// session was told to write to - the model, the typist - is this leaf's and does not change,
+    /// so nothing reconnects. Only the view's own wiring, which belonged to the pane that went, is
+    /// joined to the session again.</para>
+    /// </summary>
+    public void Repane(Settings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        Terminal.Dispose();
+
+        Pane = new TerminalPane { Reading = Emulator.Buffer };
+        Terminal = TerminalView.Attach(Pane, Emulator, _share, settings.FontFamily,
+                                       (float)settings.FontSize, settings.Ligatures);
+
+        if (_session is { } session)
+        {
+            Terminal.Sending = bytes => session.TypeAsync(bytes);
+            Typist.Typed = Terminal.ToBottom;
+            Terminal.Resized = session.Resize;
+        }
+    }
 
     /// <summary>Where this tab's keystrokes go.</summary>
     public Typist Typist { get; }

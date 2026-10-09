@@ -60,7 +60,9 @@ public static class Entry
             StartupTimeline.Mark("main");
         }
 
-        Application application = new() { ShutdownMode = ShutdownMode.OnMainWindowClose };
+        // The last window, not the first, ends the process (QS160): a tab detached into a window of
+        // its own is as much the user's as the one it came from.
+        Application application = new() { ShutdownMode = ShutdownMode.OnLastWindowClose };
 
         StartupTimeline.Mark("application");
 
@@ -123,72 +125,30 @@ public static class Entry
         // not to be warned, and it is needed when the window closes rather than when it opens.
         Settings settings = SettingsFile.ReadFrom(Locations.Current.Settings);
 
-        window.Guard = CloseGuard.ReadFrom(Locations.Current.CloseSilently);
-
         window.Apply(settings);
         window.PlaceAt(WindowPlacements.ReadFrom(Placements()).For(Screens()));
 
-        // And every time the file changes after this. The read happens on a thread pool thread, so
-        // what it found is handed to the window's own — every pane it touches is WPF's.
+        // And every time the file changes after this, in every window there is. The read happens on
+        // a thread pool thread, so what it found is handed to each window's own - every pane it
+        // touches is WPF's.
         using SettingsWatch watching = SettingsWatch.On(
             Locations.Current.Settings,
-            read => window.Dispatcher.BeginInvoke(() => window.Apply(read)));
-
-        window.Reloads = () => watching.Reload();
-
-        // Every surface this window has, pointed at whichever pane has the keyboard rather than at
-        // one that was current when the window was built. Asked afresh each time for exactly that
-        // reason: switching tabs and moving between panes are the two places a client like this goes
-        // wrong quietly, and it goes wrong by answering for the one before.
-        // The window's own copy and not the one read at start-up, so a tab opened after the
-        // settings changed opens at what they are now rather than at what they were.
-        window.Opens = () => Opened(window, window.Settings, share);
-        window.Connects = leaf => _ = leaf.ConnectAsync();
-        window.OpensSession = path => OpenedSession(window, window.Settings, share, path, trace: false);
-
-        // A session recorded from its first byte, local or saved (QS134).
-        window.OpensRecorded = recording => Opened(window, window.Settings, share, recording: recording);
-        window.OpensSessionRecorded = (path, recording) =>
-            OpenedSession(window, window.Settings, share, path, trace: false, recording);
-
-        // The browser's host side: the files of the session in the pane with the keyboard, over its
-        // own connection (QS219). A local pane has none, and the browser says so.
-        window.RemoteFiles = tab => tab.Focused.Files;
-
-        // A trace turned on for an open tab, in the same place --trace puts one (QS129).
-        window.TraceFor = Traced;
-
-        // Only a copy that is not the installed one offers to install itself: the installed copy
-        // installing itself would be a copy of a folder onto the same folder.
-        if (Installation.Of(AppContext.BaseDirectory) is null)
-        {
-            window.Installs = () => _ = Setup.InstallForUserAsync(window);
-        }
-
-        // Not awaited: what is being ended is already out of the window and nothing references it,
-        // and a shell given its two seconds to leave is two seconds this thread would spend not
-        // repainting.
-        window.Ends = tab => _ = tab.DisposeAsync().AsTask();
-        window.EndsPane = leaf => _ = leaf.DisposeAsync().AsTask();
-
-        window.Input.Placing = composing => Placed(window, composing);
-
-        // The composition is drawn by the pane with the keyboard, into its own grid (QS153): handed
-        // to that pane's view while it is active and taken back when it ends, and the frame forgotten
-        // either way, since nothing the host sent has changed.
-        window.Input.Changed += composing =>
-        {
-            if (Pane(window)?.Terminal.View is { } view)
+            read =>
             {
-                view.Composing = composing.IsActive ? composing : null;
-                view.Moved();
-                share.Damage.Set();
-            }
-        };
-        window.Selected = () => Pane(window)?.Terminal.Selected() ?? string.Empty;
-        window.Scrolling = lines => Pane(window)?.Terminal.ScrollBy(lines);
-        window.Finding = (needle, forward, exactly) =>
-            Pane(window)?.Terminal.Find(needle, forward, exactly)?.Cells;
+                MainWindow[] every;
+
+                lock (Windows)
+                {
+                    every = [.. Windows];
+                }
+
+                foreach (MainWindow each in every)
+                {
+                    each.Dispatcher.BeginInvoke(() => each.Apply(read));
+                }
+            });
+
+        Wire(window, share, watching);
 
         // The terminal itself, and it is deliberately the last thing: opening a device, compiling
         // two shaders and rasterising a font are the most expensive things this process does, and
@@ -285,7 +245,7 @@ public static class Entry
         // Every tab, and the loops before the sessions, so nothing is drawing into a handle that is
         // on its way out. Waited for here and only here: the process is leaving, and a pseudo-console
         // still holding a child is a shell that outlives the window that opened it.
-        foreach (TerminalTab tab in window.Held.ToArray())
+        foreach (TerminalTab tab in (_lastClosed ?? window).Held.ToArray())
         {
             Close(tab);
         }
@@ -301,9 +261,132 @@ public static class Entry
             Logged.Value.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
 
-        WindowPlacements.ReadFrom(Placements()).Remember(Screens(), window.Where());
+        WindowPlacements.ReadFrom(Placements()).Remember(Screens(), (_lastClosed ?? window).Where());
 
         return 0;
+    }
+
+    /// <summary>Every window this process has open, the first included (QS160).</summary>
+    private static readonly List<MainWindow> Windows = [];
+
+    /// <summary>The window that closed last, whose place on the desk is the one remembered.</summary>
+    private static MainWindow? _lastClosed;
+
+    /// <summary>
+    /// Every surface a window has, pointed at whichever pane has the keyboard, for the first window
+    /// and for each one a detached tab opens (QS160) alike.
+    ///
+    /// <para>Asked afresh each time for exactly that reason: switching tabs and moving between panes
+    /// are the two places a client like this goes wrong quietly, and it goes wrong by answering for
+    /// the one before. The window's own copy of the settings and not the one read at start-up, so a
+    /// tab opened after the settings changed opens at what they are now.</para>
+    ///
+    /// <para><b>Closing one of several windows ends that window's sessions and no other</b>, as the
+    /// owner decided on 2026-10-09; the process leaves with the last window, whose sessions are
+    /// waited for there.</para>
+    /// </summary>
+    private static void Wire(MainWindow window, TerminalShare share, SettingsWatch watching)
+    {
+        lock (Windows)
+        {
+            Windows.Add(window);
+        }
+
+        window.Guard = CloseGuard.ReadFrom(Locations.Current.CloseSilently);
+        window.Reloads = () => watching.Reload();
+
+        window.Opens = () => Opened(window, window.Settings, share);
+        window.Connects = leaf => _ = leaf.ConnectAsync();
+        window.OpensSession = path => OpenedSession(window, window.Settings, share, path, trace: false);
+
+        // A session recorded from its first byte, local or saved (QS134).
+        window.OpensRecorded = recording => Opened(window, window.Settings, share, recording: recording);
+        window.OpensSessionRecorded = (path, recording) =>
+            OpenedSession(window, window.Settings, share, path, trace: false, recording);
+
+        // The browser's host side: the files of the session in the pane with the keyboard, over its
+        // own connection (QS219). A local pane has none, and the browser says so.
+        window.RemoteFiles = tab => tab.Focused.Files;
+
+        // A trace turned on for an open tab, in the same place --trace puts one (QS129).
+        window.TraceFor = Traced;
+
+        // Only a copy that is not the installed one offers to install itself: the installed copy
+        // installing itself would be a copy of a folder onto the same folder.
+        if (Installation.Of(AppContext.BaseDirectory) is null)
+        {
+            window.Installs = () => _ = Setup.InstallForUserAsync(window);
+        }
+
+        // Not awaited: what is being ended is already out of the window and nothing references it,
+        // and a shell given its two seconds to leave is two seconds this thread would spend not
+        // repainting.
+        window.Ends = tab => _ = tab.DisposeAsync().AsTask();
+        window.EndsPane = leaf => _ = leaf.DisposeAsync().AsTask();
+
+        window.Input.Placing = composing => Placed(window, composing);
+
+        // The composition is drawn by the pane with the keyboard, into its own grid (QS153): handed
+        // to that pane's view while it is active and taken back when it ends, and the frame forgotten
+        // either way, since nothing the host sent has changed.
+        window.Input.Changed += composing =>
+        {
+            if (Pane(window)?.Terminal.View is { } view)
+            {
+                view.Composing = composing.IsActive ? composing : null;
+                view.Moved();
+                share.Damage.Set();
+            }
+        };
+        window.Selected = () => Pane(window)?.Terminal.Selected() ?? string.Empty;
+        window.Scrolling = lines => Pane(window)?.Terminal.ScrollBy(lines);
+        window.Finding = (needle, forward, exactly) =>
+            Pane(window)?.Terminal.Find(needle, forward, exactly)?.Cells;
+
+        // A tab pulled out goes to a window of its own, wired as this one is, a little below and to
+        // the right of it so both are seen (QS160).
+        window.Detaches = tab =>
+        {
+            MainWindow next = new()
+            {
+                Left = window.Left + 32,
+                Top = window.Top + 32,
+                Width = window.ActualWidth,
+                Height = window.ActualHeight,
+                WindowStartupLocation = WindowStartupLocation.Manual,
+            };
+
+            Wire(next, share, watching);
+
+            next.Show();
+            next.Apply(window.Settings);
+            next.Adopt(tab);
+            next.Activate();
+        };
+
+        window.Closed += (_, _) =>
+        {
+            int left;
+
+            lock (Windows)
+            {
+                Windows.Remove(window);
+                left = Windows.Count;
+            }
+
+            _lastClosed = window;
+
+            // The last window's tabs are ended where the process leaves, and waited for there.
+            if (left == 0)
+            {
+                return;
+            }
+
+            foreach (TerminalTab tab in window.Held.ToArray())
+            {
+                _ = tab.DisposeAsync().AsTask();
+            }
+        };
     }
 
     /// <summary>

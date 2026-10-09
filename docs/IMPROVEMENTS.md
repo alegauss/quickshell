@@ -325,32 +325,6 @@ that file there, byte for byte.
 
 ## Block G — The clean interface, defended
 
-### §QS160 Moving a tab, and the connection that must not notice
-
-`TerminalTab` owns a model, a pane, a device, a loop, a keyboard and a shell, and
-`MainWindow.Remove` hands one back alive rather than ending it — which was written that
-way for this. What is missing is the two gestures that use it.
-
-Reordering is the smaller half: a drag on the strip, and three lists moved in step,
-since the tabs, their headers and the panes are held separately.
-
-Detaching is the one with the claim in it, and it is QS47's own falsification:
-*falsified when detaching a tab reconnects its session*. A tab moved to a new window
-keeps its connection, and it can only do that because the connection was never the
-window's. The obstacle is not the session but the pane: it is an `HwndHost`, and taking
-one out of a visual tree destroys the child window a swapchain is presenting into. So a
-detach is either a reparent WPF has no supported spelling for, or a new device on a new
-pane with the same session behind it — and only the first satisfies the falsification
-without qualification.
-
-Most-recently-used order is the third gesture, and the cheapest: a list the active
-setter appends to.
-
-Found reordering: `Hold` hooks a pane's `Mouse` and `Dropped` to its window, `Program`
-wires one window's surfaces, and closing the first window ends the process.
-
-Falsified when detaching a tab reconnects its session.
-
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go

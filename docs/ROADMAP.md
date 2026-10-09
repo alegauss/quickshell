@@ -21,8 +21,6 @@
 
 ## Block G — The clean interface, defended
 
-- 🛠 **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — Owner decided 2026-10-09: closing one of several windows ends only its own sessions, and the process leaves with the last window. → §QS160
-
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS75** (deps: QS2 ✅, QS46 ✅, the incumbent closed on the reference desk) **Nothing has been measured starting, so the cold start figure is an aspiration** — The incumbent has not been started beside it on the same machine, so the comparison the figure exists for is not made. → §QS75
@@ -271,12 +269,6 @@
   typing Japanese through Microsoft IME into a running client: the phrase is underlined
   in the pane with no floating box, the candidate list sits beside it, and the committed
   text reaches the shell once.
-
-## Done when — QS160
-
-- **A tab detached into its own window keeps its connection** Checked by detaching a tab
-  with a live SSH session into a new window and asserting the transport is the same
-  object, no reconnect was logged, and the shell answers a keystroke in the new window.
 
 ## Done when — QS188
 
