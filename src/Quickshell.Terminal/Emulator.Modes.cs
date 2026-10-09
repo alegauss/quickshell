@@ -476,6 +476,12 @@ public sealed partial class Emulator
                 ReverseWrap = set;
                 break;
 
+            case 5:
+                // DECSCNM: the defaults swap in the lookup, and the damage snapshot carries the
+                // flag, so the next frame draws it - which a 100 ms visual bell needs (QS246).
+                Palette.Reversed = set;
+                break;
+
             case 1045:
                 ReverseWrapExtended = set;
                 break;
@@ -592,6 +598,7 @@ public sealed partial class Emulator
         7 => On(AutoWrap),
         25 => On(CursorVisible),
         45 => On(ReverseWrap),
+        5 => On(Palette.Reversed),
         41 => On(MoreFix),
         1045 => On(ReverseWrapExtended),
         69 => On(LeftRightMarginMode),
@@ -610,11 +617,11 @@ public sealed partial class Emulator
         1005 or 80 or 3 => ModeState.PermanentlyReset,
 
         // Modes xterm knows that this client deliberately does not have (QS237): smooth scroll (4)
-        // and reverse video (5) are drawing it does not do, autorepeat (8) belongs to the local
+        // is drawing it does not do, autorepeat (8) belongs to the local
         // keyboard, the printer's form feed and extent (18, 19) have no printer, the Hebrew and
         // national replacement sets (35, 42) are not carried, and horizontal cursor coupling (60)
         // has no horizontal scroll to couple to. Answered so a host learns it rather than guessing.
-        4 or 5 or 8 or 18 or 19 or 35 or 42 or 60 => ModeState.PermanentlyReset,
+        4 or 8 or 18 or 19 or 35 or 42 or 60 => ModeState.PermanentlyReset,
 
         _ => ModeState.Unrecognised,
     };

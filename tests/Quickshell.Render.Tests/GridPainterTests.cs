@@ -24,6 +24,33 @@ public sealed class GridPainterTests
     private static readonly CellMetrics Box = new(8, 16, 12);
 
     /// <summary>
+    /// QS246's falsifier: <em>falsified when ?5h leaves the default background the scheme's own</em>.
+    /// Reverse screen draws default text in the scheme's background on its foreground, and turning
+    /// it off draws the cell as it was, because no cell changed.
+    /// </summary>
+    [Fact]
+    public void ReverseScreenSwapsTheDefaultsAndGivesThemBack()
+    {
+        using Harness harness = new();
+
+        Emulator emulator = new(20, 4);
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[?5hcd"));
+
+        CellInstance[] cells = new CellInstance[20 * 4];
+        GridPainter painter = new(harness.Atlas, emulator.Palette);
+        GlyphPlacement c = harness.Atlas.Cache('c', maximumAdvance: Box.Width);
+
+        painter.Paint(emulator.Buffer, cells, cursorRow: -1, cursorColumn: -1, CursorShape.None, Box);
+
+        Assert.Equal(CellInstance.For(c, emulator.Palette.Background, emulator.Palette.Foreground), cells[0]);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[?5l"));
+        painter.Paint(emulator.Buffer, cells, cursorRow: -1, cursorColumn: -1, CursorShape.None, Box);
+
+        Assert.Equal(CellInstance.For(c, emulator.Palette.Foreground, emulator.Palette.Background), cells[0]);
+    }
+
+    /// <summary>
     /// What the host printed is in the cells, in the colours the palette resolves.
     /// </summary>
     [Fact]

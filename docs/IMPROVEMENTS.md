@@ -343,27 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS246 Reverse screen mode (DECSCNM)
-
-DECSCNM (CSI ? 5 h / l) swaps the whole screen's default foreground and background. It
-is not modelled: QS237 answers DECRQM for mode 5 with 4, permanently reset, which is
-honest about today and is the one esctest case (DECRQMTests.test_DECRQM_DEC_DECSCNM) it
-leaves failing. The ordinary user of it is the visual bell: vim with `visualbell` and
-readline with `bell-style visible` send `?5h`, wait about 100 ms, and send `?5l`. Here
-that flash never shows, so a user who turned off the audible bell gets no bell at all.
-
-What to build: a ReverseScreen flag on the emulator, set and reset by mode 5, reported
-by DECRQM as 1 or 2 and reset by RIS and DECSTR. The renderer resolves the default
-colours the other way round while it is set. That is a palette lookup, not a rewrite of
-any cell, so an idle window still issues no draws once the flag is steady. A cell with
-SGR 7 inverse swaps against the swapped defaults, as xterm does. The flip must draw
-within one frame of each edge, or the 100 ms flash is lost to coalescing.
-
-Falsified when `?5h` leaves the default background the scheme's own.
-
-Evidence: a unit test on DECRQM and the flag, and a UI case or golden scene showing the
-inverted default colours, taken in the guest.
-
 ### §QS248 The owed wrap and sequences that do not move
 
 Every CSI sequence that reaches the movement switch in Emulator.cs clears PendingWrap

@@ -76,7 +76,8 @@ public sealed partial class Emulator : IAnsiHandler
         Buffer.CursorColumn,
         CursorVisible,
         Screens.IsAlternate,
-        CursorStyle);
+        CursorStyle,
+        Palette.Reversed);
 
     /// <summary>How this session sends alt. Escape-prefix, which is what a shell expects.</summary>
     public AltSends AltSends { get; set; } = AltSends.Escape;
@@ -752,6 +753,7 @@ public sealed partial class Emulator : IAnsiHandler
         _activeSet = 0;
         ResetTitles();
         CursorStyle = 0;
+        Palette.Reversed = false;
         _saved[0] = SavedCursor.Home;
         _saved[1] = SavedCursor.Home;
         _savedModes?.Clear();

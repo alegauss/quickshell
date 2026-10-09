@@ -34,6 +34,10 @@ namespace Quickshell.Terminal;
 /// The cursor style the host asked for with DECSCUSR, 0 for none (QS243). It changes the cursor's
 /// shape and nothing else on screen, so it is damage of its own.
 /// </param>
+/// <param name="ReverseScreen">
+/// Whether DECSCNM has the defaults swapped (QS246). It recolours the screen without touching a
+/// cell, so nothing else here would notice it.
+/// </param>
 public readonly record struct Damage(
     long Generation,
     long TopLine,
@@ -43,4 +47,5 @@ public readonly record struct Damage(
     int CursorColumn,
     bool CursorVisible,
     bool Alternate,
-    int CursorStyle = 0);
+    int CursorStyle = 0,
+    bool ReverseScreen = false);

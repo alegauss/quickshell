@@ -76,6 +76,14 @@ public sealed class Palette
 {
     private readonly Rgb[] _entries = new Rgb[256];
 
+    /// <summary>
+    /// DECSCNM, reverse screen (QS246): the two defaults trade places, so a cell that asked for the
+    /// default foreground is drawn in the default background and the other way round. A lookup and
+    /// not a rewrite: no cell changes, and turning it off gives back exactly what was there. The
+    /// visual bell vim and readline send is this, on and off a tenth of a second apart.
+    /// </summary>
+    public bool Reversed { get; set; }
+
     /// <summary>Builds the standard palette: the base sixteen, the 6x6x6 cube, the greyscale ramp.</summary>
     public Palette()
     {
@@ -234,7 +242,7 @@ public sealed class Palette
     {
         ColourKind.Indexed => _entries[colour.Index],
         ColourKind.Direct => colour.Rgb,
-        _ => background ? Background : Foreground,
+        _ => background != Reversed ? Background : Foreground,
     };
 
     private static Rgb Unpack(uint packed) =>

@@ -276,7 +276,8 @@ public sealed class ReplyTests
     [InlineData("=", "[?66$p", "[?66;1$y")]         // the same switch ESC = throws
     [InlineData("[?67h", "[?67$p", "[?67;1$y")]     // DECBKM
     [InlineData("", "[?60$p", "[?60;4$y")]          // DECHCCM, nothing to couple to
-    [InlineData("[?5h", "[?5$p", "[?5;4$y")]        // reverse video, not drawn
+    [InlineData("[?5h", "[?5$p", "[?5;1$y")]        // reverse screen, drawn since QS246
+    [InlineData("", "[?5$p", "[?5;2$y")]
     public void AModeIsReportedWithOneOfItsFiveAnswers(string before, string asked, string answer)
     {
         string setup = before.Length == 0 ? string.Empty : E + before;
