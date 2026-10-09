@@ -343,29 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS244 The remaining esctest failures
-
-DECALN (ESC # 8) neither homes the cursor nor clears the margins, and fills differently
-(DECALNTests 3). CHA, CUP and HVP each fail RespectsOriginMode once and DECSET fails
-DECOM and DECOM_DECRQCRA. DECSET's ALTBUF and OPT_ALTBUF read a wrong cursor after
-switching screens, and MoreFix wants mode 41. DCH fails two margin-free cases. CHT
-ignores the scrolling region by stopping at 33 where 30 was wanted. DECSCL level 4 and 5
-report the wrong support, and at level 2 DECRQM is still answered
-(Level2DoesntSupportDECRQM, moved here from QS237): DECSCL keeps no level yet. ED 3
-erases the visible lines as well as the scrollback. SM's IRM truncation at the right
-margin belongs with left and right margins.
-
-What to build: each in its own commit against its class, or a non-goal where a case is
-not worth it. DECSET DECCOLM, Allow80To132 and RIS ResetDECCOLM are already the DECCOLM
-non-goal.
-
-Falsified when one of these classes fails with no line or non-goal naming it.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS246 Reverse screen mode (DECSCNM)
 
 DECSCNM (CSI ? 5 h / l) swaps the whole screen's default foreground and background. It

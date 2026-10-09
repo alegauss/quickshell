@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 🛠 **QS244** (deps: —) **Seventeen esctest failures in eleven classes have no family of their own** — DECSCL's level cases still fail, since DECSCL gates nothing; the rest of the list passes since QS233 to QS244's own parts. → §QS244
 - 📋 **QS246** (deps: —) **Reverse screen mode DECSCNM is not drawn, so a visual bell never flashes** — vim and readline flash the screen with mode 5 when the audible bell is off, and here nothing shows, so that user hears and sees no bell. → §QS246
 - 📋 **QS248** (deps: —) **An SGR in the last column cancels the owed wrap, so the next character overwrites that column** — Every non-report CSI clears the pending wrap, where xterm clears it only on cursor movement, so a coloured full-width line prints one character short. → §QS248
 
@@ -296,13 +295,6 @@
   run-tests-vm passes with tmux-resize at zero, after the sequence the diagnosis names
   is fixed.
 
-## Done when — QS244
-
-- **DECALN, DECSET and DECSCL fail nothing that no line or non-goal names** Checked by a
-  full esctest run: each failing case left in DECALNTests, DECSETTests and DECSCLTests
-  is either fixed or named by a non-goal (DECCOLM, identity, CSI t), which is the
-  design's own falsifier read class by class.
-
 ## Non-goals
 
 - **No X11 server or X11 forwarding** The bundled X server is the largest single piece
@@ -370,3 +362,7 @@
   132 columns, a printer, national sets, a locator and more that this client refuses,
   and a program that believes it sends what cannot be honoured. It stays a VT220 with
   colour, so 4 DA and DA2 cases and DECRQSS of DECSCL fail by decision (QS243).
+- **No features switched off by the DECSCL conformance level** This client claims VT220,
+  so gating by level would take DECRQM and DECSLRM from every program by default, and
+  raising the claim is the identity non-goal. DECSCL is not obeyed; esctest's level 2
+  and 3 cases fail by decision, and level 5 by DECCOLM's (QS244).

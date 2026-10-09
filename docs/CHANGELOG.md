@@ -107,7 +107,7 @@
 - ✅ **QS241** **HPR and VPR move the cursor nowhere** — HPR and VPR move the cursor right and down to the screen's edge, ignoring margins and origin mode; esctest went from 436 to 444 passed.
 - ✅ **QS242** **Reverse wraparound does not follow a backspace back across a wrapped line as xterm does** — BS and CUB follow xterm's CursorBack: 45 walks back through a wrapped line, 1045 crosses any row, and an owed wrap is honoured; esctest went from 444 to 454 passed.
 - ✅ **QS243** **DECRQSS answers invalid for settings the client holds, and DA, DA2 and DECID answer another identity** — DECSCUSR is drawn and reported, DECRQSS answers every setting held, DECID answers, and the VT220 identity is kept by a non-goal; esctest went from 454 to 458 passed.
-- ✅ **QS244 (ED 3, DECALN and the alternate screens)** **Seventeen esctest failures in eleven classes have no family of their own** — ED 3 keeps the screen, DECALN fills with E and homes, 47 and 1047 share the cursor, and mode 41 lets a tab take an owed wrap; esctest went from 458 to 465 passed.
+- ✅ **QS244** **Seventeen esctest failures in eleven classes have no family of their own** — Every class the line listed now passes or is named by a non-goal, DECSCL's levels by a new one; esctest went from 458 to 465 passed across the parts.
 
 ## Block D — The tree a user organises work in
 
