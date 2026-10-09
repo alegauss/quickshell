@@ -135,6 +135,16 @@ public sealed partial class Emulator
         switch (command)
         {
             case 0:
+                Title = Same(Title, argument) ? Title : new string(argument);
+                IconTitle = Same(IconTitle, argument) ? IconTitle : new string(argument);
+                break;
+
+            case 1:
+                // The icon label: held for the title stack and drawn nowhere, since a tab shows
+                // the window title (QS236).
+                IconTitle = Same(IconTitle, argument) ? IconTitle : new string(argument);
+                break;
+
             case 2:
                 Title = Same(Title, argument) ? Title : new string(argument);
                 break;

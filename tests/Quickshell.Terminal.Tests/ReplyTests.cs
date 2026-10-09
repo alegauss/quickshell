@@ -15,7 +15,8 @@ public sealed class ReplyTests
     /// <summary>Every question this terminal answers, and the two it refuses to.</summary>
     private const string EveryQuestion =
         E + "[c" + E + "[>c" + E + "[5n" + E + "[6n" + E + "[?6n"
-        + E + "[18t" + E + "[20t" + E + "[21t" + E + "[7;1;1;1;24;80*y" + E + "[?7$p" + E + "[4$p"
+        + E + "[11t" + E + "[13t" + E + "[14t" + E + "[15t" + E + "[16t" + E + "[18t" + E + "[19t"
+        + E + "[20t" + E + "[21t" + E + "[7;1;1;1;24;80*y" + E + "[?7$p" + E + "[4$p"
         + E + "]4;1;?\a" + E + "]5;0;?" + E + "\\" + E + "]10;?" + E + "\\"
         + E + "P+q436F" + E + "\\" + E + "P+qMARKERa1b2c3" + E + "\\";
 
@@ -59,8 +60,9 @@ public sealed class ReplyTests
         Emulator emulator = Fed(E + "]2;a title\a" + EveryQuestion);
         // P, ! and ~ frame DECRQCRA's answer, A to F are its hex digits and the backslash ends it.
         // and $ and y close DECRQM's. A colour report is rgb:, lower-case hex and slashes, closed by
-        // BEL where it was asked with one; + and = frame XTGETTCAP's (QS234).
-        const string allowed = "\u001b[]?>;0123456789cnRtP!~ABCDEF\\$yrgb:/abcdef\a+=";
+        // BEL where it was asked with one; + and = frame XTGETTCAP's (QS234). L and l name the
+        // empty label CSI 20 t and 21 t are answered with (QS236).
+        const string allowed = "\u001b[]?>;0123456789cnRtP!~ABCDEF\\$yrgb:/abcdef\a+=Ll";
 
         foreach (byte sent in emulator.Reply)
         {
@@ -70,16 +72,19 @@ public sealed class ReplyTests
 
     // ---- The title, which is set and never reported ----
 
+    /// <summary>
+    /// CSI 20 t and 21 t are answered, so the asker is not left waiting, and the answer is an empty
+    /// label: the title the host planted never comes back (QS19, QS236).
+    /// </summary>
     [Theory]
-    [InlineData(20)]
-    [InlineData(21)]
-    public void TheTitleAndIconReportsAreRefusedRatherThanAnswered(int operation)
+    [InlineData(20, "L")]
+    [InlineData(21, "l")]
+    public void TheTitleAndIconReportsAnswerAnEmptyLabel(int operation, string kind)
     {
-        Emulator emulator = Fed(E + "]2;planted\a" + E + "[" + operation + "t");
+        Emulator emulator = Fed(E + "]0;planted\a" + E + "[" + operation + "t");
 
         Assert.Equal("planted", emulator.Title);
-        Assert.Empty(emulator.Reply.ToArray());
-        Assert.True(emulator.Unhandled > 0);
+        Assert.Equal(E + "]" + kind + E + "\\", Sent(emulator));
     }
 
     // ---- What is answered, and with what ----

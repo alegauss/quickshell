@@ -682,7 +682,7 @@ public sealed partial class Emulator : IAnsiHandler
         _designated[0] = CharacterSet.Ascii;
         _designated[1] = CharacterSet.Ascii;
         _activeSet = 0;
-        Title = string.Empty;
+        ResetTitles();
         _savedPen = Pen.Default;
         _savedRow = 0;
         _savedColumn = 0;
@@ -979,7 +979,7 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'t':
-                WindowOperation(parameters.Value(0, 0));
+                WindowOperation(parameters);
                 break;
 
             default:

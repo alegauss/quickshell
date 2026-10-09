@@ -343,26 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS236 Window operations (CSI t)
-
-CSI t is not handled. Its reports (8t ... 21t: the window's size in cells and pixels,
-the screen's size, the title) are never answered, so 26 tests time out, and its
-manipulations (iconify, move, resize, maximise, fullscreen, DECSLPP) do nothing.
-RISTests.test_RIS_ResetTitleMode times out on the title-mode report for the same reason.
-
-What to build: the reports that describe the pane honestly (sizes in cells and pixels,
-the title stack 22t/23t), and a decision about the manipulations. A host resizing or
-moving the client's window is a remote program reaching into local chrome, and refusing
-it is defensible as a non-goal, as long as the refusal is a decision with a line and not
-an omission.
-
-Falsified when CSI 18 t goes unanswered.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS237 DECRQM answers
 
 A mode this client does not model is answered as 0, not recognised. xterm answers 4,

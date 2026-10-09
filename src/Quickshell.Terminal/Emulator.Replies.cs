@@ -20,8 +20,17 @@ internal enum Answer : byte
     /// <summary>DECXCPR: the same, with the page number a single-page terminal always answers 1 to.</summary>
     ExtendedCursorPosition,
 
-    /// <summary>The window's size, in rows and columns of text.</summary>
-    ScreenSize,
+    /// <summary>
+    /// A CSI t report (QS236): which one as the first number, then two of its own where it has
+    /// them - the size in cells or pixels, or the position. The state report, 1, has none.
+    /// </summary>
+    WindowReport,
+
+    /// <summary>
+    /// The icon label (<c>OSC L</c>) or the window title (<c>OSC l</c>), always empty: the answer
+    /// that ends the asker's wait without a byte of the title it set coming back (QS19, QS236).
+    /// </summary>
+    EmptyLabel,
 
     /// <summary>
     /// DECRQSS: one setting, reported in its own syntax so the asker can send it straight back, or
@@ -165,13 +174,27 @@ public sealed partial class Emulator
                 Literal(";1R");
                 break;
 
-            case Answer.ScreenSize:
+            case Answer.WindowReport:
                 Csi();
-                Literal("8;");
                 Number(first);
-                Literal(";");
-                Number(second);
+
+                if (first != 1)
+                {
+                    Literal(";");
+                    Number(second);
+                    Literal(";");
+                    Number(third);
+                }
+
                 Literal("t");
+                break;
+
+            case Answer.EmptyLabel:
+                _reply.Add(Escape);
+                _reply.Add((byte)']');
+                Literal(first == 1 ? "L" : "l");
+                _reply.Add(Escape);
+                _reply.Add(Backslash);
                 break;
 
             case Answer.SettingReport:
@@ -416,33 +439,6 @@ public sealed partial class Emulator
     private int ReportedRow() => OriginMode
         ? Buffer.CursorRow - MarginTop + 1
         : Buffer.CursorRow + 1;
-
-    /// <summary>
-    /// The window manipulations. Only the one that answers with the geometry is answered.
-    ///
-    /// <para><b>Reports 20 and 21 are the attack QS19 was about</b> and are refused here rather than
-    /// left to a default. They ask for the icon label and the window title, and a host that has just
-    /// set the title with OSC 2 can use them to have the terminal type its own text at the shell.
-    /// This client sets titles and never reports them.</para>
-    /// </summary>
-    private void WindowOperation(int operation)
-    {
-        switch (operation)
-        {
-            case 18:
-                Send(Answer.ScreenSize, Buffer.Rows, Buffer.Columns);
-                break;
-
-            case 20:
-            case 21:
-                Unhandled++;
-                break;
-
-            default:
-                Unhandled++;
-                break;
-        }
-    }
 
     /// <summary>
     /// OSC 52: the clipboard, off unless this session turned it on, and write-only when it is.

@@ -11,7 +11,6 @@
 ## Block C — Emulation that does not lie about the remote
 
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
-- 📋 **QS236** (deps: —) **Window operations through CSI t neither report the window nor say they are refused** — XtermWinopsTests fails 28 of its tests, 26 by timing out, because no CSI t report is answered and no resize is acted on. → §QS236
 - 📋 **QS237** (deps: —) **DECRQM answers not recognised for modes xterm reports as permanently reset or as set** — Twenty-six DECRQM tests and one DECSCL test fail because the answer is 0 where xterm answers 4, 1 or 2. → §QS237
 - 📋 **QS238** (deps: —) **The rectangular area operations DECCRA, DECFRA and DECERA do nothing** — Copy, fill and erase of a rectangle are absent, and so is DECSACE that shapes them, which is 19 esctest failures. → §QS238
 - 📋 **QS239** (deps: —) **The saved cursor is one for both screens, and XTSAVE, XTRESTORE and DECSTR leave saved state behind** — Sixteen failures across SCORC, DECRC, the tite-inhibit tests, XtermSave and DECSTR come from how saved state is kept. → §QS239
@@ -360,3 +359,8 @@
   converts them through the X display's characterisation, so the answer is a property of
   a server this client does not have; rgb: and the # forms are what hosts send.
   esctest's 21 tests of them stay failed and named here.
+- **No host control of the window through CSI t, and no title read back** A remote
+  program moving or iconifying a local window reaches into chrome the user owns, and a
+  title read back types host text at the shell (QS19). Reports describe the pane and
+  titles come back empty, so 15 esctest cases (move, iconify, DECSLPP, title readback)
+  fail by decision (QS236).

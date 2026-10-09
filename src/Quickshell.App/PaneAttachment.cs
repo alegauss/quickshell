@@ -637,12 +637,18 @@ public sealed class PaneAttachment : IDisposable
         // far end is told. Here it is the first size rather than a resize, which is why nothing is
         // debounced and nobody is told: there is no previous size to have been wrong.
         _emulator.Resize(View.Columns, View.Rows);
+        TellCellPixels();
 
         // A mark asked for before there was anything to draw it on.
         View.Outlined = _outlined;
 
         // Every size after this one, from the render thread once the swapchain has taken it.
-        View.GridChanged += (columns, rows) => Resized?.Invoke(columns, rows);
+        View.GridChanged += (columns, rows) =>
+        {
+            // A new grid is most often a new font size, so the cell a CSI 16 t reports is read again.
+            TellCellPixels();
+            Resized?.Invoke(columns, rows);
+        };
 
         // A screen reader reads this buffer, and the texture is unreadable to assistive technology
         // by construction — this is the only path. Set here only for a caller that did not: WPF
@@ -654,5 +660,15 @@ public sealed class PaneAttachment : IDisposable
         // context correct and why a thread per pane would not be: the immediate context is not
         // free-threaded, so two panes drawing at once is a race rather than a speed-up.
         _share.Draw(View, _emulator);
+    }
+
+    /// <summary>The cell's size in pixels, for the CSI t reports that answer in pixels (QS236).</summary>
+    private void TellCellPixels()
+    {
+        if (View is { } view)
+        {
+            CellMetrics box = view.Renderer.Metrics;
+            _emulator.UseCellPixels(box.Width, box.Height);
+        }
     }
 }
