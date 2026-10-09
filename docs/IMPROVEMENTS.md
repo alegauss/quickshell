@@ -343,25 +343,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS233 Left and right margins
-
-Neither DECLRMM (CSI ? 69 h) nor DECSLRM (CSI Pl ; Pr s) exists, so every test that sets
-a column region measures a terminal without one. 64 tests share it: DECBI 4, DECFI 4,
-DECIC 6, DECDC 6, SD 4, SU 4, DL 4, IL 2, DCH 3, ICH 2, CR 2, CUB 1, CUF 1, NEL 1, RI 1,
-REP 1, CNL 2, CPL 2, the LeftRight halves of LF, IND, VT and FF, and the origin-mode
-cases that read the left margin.
-
-What to build: the two sequences, the region they define, and every cursor, insert,
-delete and scroll operation clamped to it as xterm does; CSI s keeps meaning SCOSC while
-DECLRMM is reset. DECRQM 69 and DECRQSS for DECSLRM answer it.
-
-Falsified when a column region set by DECSLRM is ignored by an operation inside it.
-
-Filed by QS227 from the esctest log of 2026-10-08 (216 passed, 43 xterm known bugs, 309
-failed), grouped by the traceback's last line. Shipped against `dotnet run --project
-tools/Quickshell.Conformance -c Release -- <Class>`, and the measurement rewritten whole
-by an unfiltered run before the commit that cites a figure.
-
 ### §QS234 Colour queries and resets
 
 OSC 4, 10, 11 and 12 set colours; a `?` in place of a colour, which asks for it, is

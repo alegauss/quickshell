@@ -96,6 +96,7 @@
 - ✅ **QS214 (the failure names where)** **Replaying the tmux resize recording sometimes allocates in steady state in the guest, and the failure says no more** — A steady-state allocation failure now refeeds the stream in 512-byte pieces and names each piece that allocated, with its offset and its bytes spelled out.
 - ✅ **QS227** **esctest fails 309 of 568 tests now that the emulator answers its queries, and no line names which to fix** — Every failing esctest class now has a line, QS232 to QS244, grouped from the log by cause; QS232's line feed is the emulator's own bug.
 - ✅ **QS232** **A line feed, VT, FF or IND also returns the cursor to column one, as though every one were NEL** — A line feed, VT, FF and IND move down and keep the column, LNM returns the carriage, and esctest passes 231 where it passed 216.
+- ✅ **QS233** **No left or right margin can be set, so everything esctest checks inside a column region fails** — DECLRMM and DECSLRM set a column region every cursor, edit, scroll and wrap respects, with DECIC, DECDC, DECBI and DECFI; esctest passes 299 where it passed 231.
 
 ## Block D — The tree a user organises work in
 

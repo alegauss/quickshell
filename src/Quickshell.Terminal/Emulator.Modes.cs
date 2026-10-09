@@ -37,6 +37,13 @@ public sealed partial class Emulator
     /// </summary>
     private void Backspace(TerminalBuffer buffer)
     {
+        // At the left margin a backspace stops, as it does at the screen's edge (QS233). Reverse
+        // wraparound across a margin is QS242's.
+        if (LeftRightMarginMode && buffer.CursorColumn == MarginLeft && MarginLeft > 0)
+        {
+            return;
+        }
+
         if (buffer.CursorColumn > 0)
         {
             buffer.CursorColumn--;
@@ -127,8 +134,63 @@ public sealed partial class Emulator
     /// <summary>The bottom row of the scrolling region, zero-based and inclusive.</summary>
     public int MarginBottom { get; private set; }
 
-    /// <summary>Whether the region is the whole screen, which is what lets scrolling reach scrollback.</summary>
-    public bool RegionIsWholeScreen => MarginTop == 0 && MarginBottom == Buffer.Rows - 1;
+    /// <summary>
+    /// Whether the region is the whole screen, which is what lets scrolling reach scrollback. A
+    /// region narrower than the screen is not, however tall: a line leaving it has not left the screen.
+    /// </summary>
+    public bool RegionIsWholeScreen =>
+        MarginTop == 0 && MarginBottom == Buffer.Rows - 1 && ColumnsAreWholeWidth;
+
+    /// <summary>
+    /// DECLRMM, <c>CSI ? 69 h</c>: whether left and right margins may be set, which is also whether
+    /// <c>CSI s</c> means DECSLRM rather than saving the cursor (QS233).
+    /// </summary>
+    public bool LeftRightMarginMode { get; private set; }
+
+    /// <summary>The leftmost column of the region, zero-based and inclusive; the screen's edge unless DECSLRM set it.</summary>
+    public int MarginLeft { get; private set; }
+
+    /// <summary>The rightmost column of the region; the screen's edge unless DECSLRM set it.</summary>
+    public int MarginRight { get; private set; } = -1;
+
+    /// <summary>The right margin in force, which is the screen's last column until one is set.</summary>
+    private int Right => MarginRight < 0 ? Buffer.Columns - 1 : Math.Min(MarginRight, Buffer.Columns - 1);
+
+    /// <summary>Whether no left or right margin narrows the region, which keeps every old path as it was.</summary>
+    private bool ColumnsAreWholeWidth => MarginLeft == 0 && Right == Buffer.Columns - 1;
+
+    /// <summary>Whether a column is between the left and right margins.</summary>
+    private bool InColumns(int column) => column >= MarginLeft && column <= Right;
+
+    /// <summary>The margins back to the screen's edges, which a resize, a screen switch and a reset all do.</summary>
+    private void ClearColumnMargins()
+    {
+        MarginLeft = 0;
+        MarginRight = -1;
+    }
+
+    /// <summary>
+    /// DECSLRM, <c>CSI Pl ; Pr s</c> while DECLRMM is set (QS233). As DECSTBM: absent parameters mean
+    /// the screen's edges, a region narrower than two columns is refused as the whole width, and
+    /// setting it homes the cursor.
+    /// </summary>
+    private void SetColumnMargins(in CsiParameters parameters)
+    {
+        int left = Math.Max(1, parameters.Value(0, 1)) - 1;
+        int right = Math.Max(1, parameters.Value(1, Buffer.Columns)) - 1;
+
+        if (left >= right || right >= Buffer.Columns)
+        {
+            ClearColumnMargins();
+        }
+        else
+        {
+            MarginLeft = left;
+            MarginRight = right;
+        }
+
+        Home();
+    }
 
     /// <summary>Whether a column carries a tab stop.</summary>
     public bool IsTabStop(int column) => column >= 0 && column < _tabStops.Length && _tabStops[column];
@@ -164,7 +226,10 @@ public sealed partial class Emulator
     /// <summary>Where a tab from this column lands: the next stop, or the last column.</summary>
     private int NextTabStop(int from)
     {
-        for (int column = from + 1; column < Buffer.Columns; column++)
+        // A tab inside the region stops at the right margin and never wraps past it (QS233).
+        int last = from <= Right ? Right : Buffer.Columns - 1;
+
+        for (int column = from + 1; column <= last; column++)
         {
             if (IsTabStop(column))
             {
@@ -172,7 +237,7 @@ public sealed partial class Emulator
             }
         }
 
-        return Buffer.Columns - 1;
+        return last;
     }
 
     private int PreviousTabStop(int from)
@@ -218,7 +283,7 @@ public sealed partial class Emulator
     private void Home()
     {
         Buffer.CursorRow = OriginMode ? MarginTop : 0;
-        Buffer.CursorColumn = 0;
+        Buffer.CursorColumn = OriginMode ? MarginLeft : 0;
         PendingWrap = false;
     }
 
@@ -255,6 +320,7 @@ public sealed partial class Emulator
                     EraseDisplay(2);
                     MarginTop = 0;
                     MarginBottom = Buffer.Rows - 1;
+                    ClearColumnMargins();
                     Home();
                     break;
 
@@ -277,6 +343,18 @@ public sealed partial class Emulator
 
                 case 45:
                     ReverseWrap = set;
+                    break;
+
+                case 69:
+                    // Turning it off takes the margins with it, as xterm does: a region nobody can
+                    // see being set any more is not one a host should go on being clamped by.
+                    LeftRightMarginMode = set;
+
+                    if (!set)
+                    {
+                        ClearColumnMargins();
+                    }
+
                     break;
 
                 case 2004:
@@ -365,6 +443,7 @@ public sealed partial class Emulator
         7 => On(AutoWrap),
         25 => On(CursorVisible),
         45 => On(ReverseWrap),
+        69 => On(LeftRightMarginMode),
         2004 => On(BracketedPaste),
         47 or 1047 or 1049 => On(Screens.IsAlternate),
         9 => On(_tracking == MouseTracking.PressOnly),
@@ -404,6 +483,7 @@ public sealed partial class Emulator
         // a program that set a region leaves the shell scrolling inside it afterwards.
         MarginTop = 0;
         MarginBottom = Buffer.Rows - 1;
+        ClearColumnMargins();
         PendingWrap = false;
         ResetTabStops();
     }

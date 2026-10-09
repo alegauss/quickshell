@@ -364,6 +364,83 @@ public sealed class TerminalBuffer
     }
 
     /// <summary>
+    /// Scrolls a rectangle of the screen up, between two rows and two columns inclusive, which is a
+    /// scrolling region once left and right margins are set (QS233). Only the cells inside move:
+    /// what is either side of the margins is another program's, or the same program's other pane.
+    /// </summary>
+    public void ScrollRectUp(int top, int bottom, int left, int right, int count = 1) =>
+        ScrollRect(top, bottom, left, right, count, up: true);
+
+    /// <summary>The same rectangle scrolled down, which a reverse index or an insert line is.</summary>
+    public void ScrollRectDown(int top, int bottom, int left, int right, int count = 1) =>
+        ScrollRect(top, bottom, left, right, count, up: false);
+
+    private void ScrollRect(int top, int bottom, int left, int right, int count, bool up)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(top);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(bottom, Rows);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(top, bottom);
+        ArgumentOutOfRangeException.ThrowIfNegative(left);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(right, Columns);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(left, right);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+
+        int width = right - left + 1;
+        int shift = Math.Min(count, bottom - top + 1);
+
+        if (up)
+        {
+            for (int row = top; row + shift <= bottom; row++)
+            {
+                MutableScreen(row + shift).Slice(left, width).CopyTo(MutableScreen(row).Slice(left, width));
+            }
+
+            for (int row = bottom - shift + 1; row <= bottom; row++)
+            {
+                MutableScreen(row).Slice(left, width).Fill(Cell.Blank);
+            }
+        }
+        else
+        {
+            for (int row = bottom; row - shift >= top; row--)
+            {
+                MutableScreen(row - shift).Slice(left, width).CopyTo(MutableScreen(row).Slice(left, width));
+            }
+
+            for (int row = top; row < top + shift; row++)
+            {
+                MutableScreen(row).Slice(left, width).Fill(Cell.Blank);
+            }
+        }
+
+        CellsWrittenByScrolling += (long)width * (bottom - top + 1);
+        Bump();
+        Region(top, bottom);
+    }
+
+    /// <summary>
+    /// Inserts blank columns at <paramref name="column"/> in every row from top to bottom, pushing
+    /// what is there right and losing what passes <paramref name="right"/>: DECIC, and DECBI at the
+    /// left margin (QS233).
+    /// </summary>
+    public void InsertColumns(int top, int bottom, int column, int right, int count)
+    {
+        for (int row = top; row <= bottom; row++)
+        {
+            InsertCells(row, column, count, right + 1);
+        }
+    }
+
+    /// <summary>Deletes columns the same way, pulling what is right of them left: DECDC, and DECFI.</summary>
+    public void DeleteColumns(int top, int bottom, int column, int right, int count)
+    {
+        for (int row = top; row <= bottom; row++)
+        {
+            DeleteCells(row, column, count, right + 1);
+        }
+    }
+
+    /// <summary>
     /// Throws away everything above the visible screen, which is what <c>CSI 3 J</c> asks for. The
     /// screen itself is untouched: a host clearing its scrollback has not asked to lose what is in
     /// front of the user.
@@ -471,12 +548,20 @@ public sealed class TerminalBuffer
     /// <para>Here rather than in the emulator because a mutation the buffer did not perform is a
     /// mutation <see cref="Generation"/> did not see.</para>
     /// </summary>
-    public void InsertCells(int row, int from, int count)
+    /// <param name="row">The row.</param>
+    /// <param name="from">Where the blanks go.</param>
+    /// <param name="count">How many.</param>
+    /// <param name="end">
+    /// One past the last column that takes part, which is the right margin's when one is set (QS233):
+    /// what is pushed past it is lost, and what is beyond it does not move. The row's end otherwise.
+    /// </param>
+    public void InsertCells(int row, int from, int count, int end = -1)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(from);
         ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         Span<Cell> line = MutableScreen(row);
+        line = line[..(end < 0 ? line.Length : Math.Min(end, line.Length))];
 
         if (from >= line.Length || count == 0)
         {
@@ -490,13 +575,17 @@ public sealed class TerminalBuffer
         TouchScreen(row);
     }
 
-    /// <summary>Shifts a row's cells left and blanks the tail, which is what <c>CSI P</c> is.</summary>
-    public void DeleteCells(int row, int from, int count)
+    /// <summary>
+    /// Shifts a row's cells left and blanks the tail, which is what <c>CSI P</c> is - the tail being
+    /// the right margin's when <paramref name="end"/> names one (QS233).
+    /// </summary>
+    public void DeleteCells(int row, int from, int count, int end = -1)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(from);
         ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         Span<Cell> line = MutableScreen(row);
+        line = line[..(end < 0 ? line.Length : Math.Min(end, line.Length))];
 
         if (from >= line.Length || count == 0)
         {

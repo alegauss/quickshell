@@ -228,14 +228,18 @@ public sealed partial class Emulator
         int firstRow = OriginMode ? MarginTop : 0;
         int lastRow = OriginMode ? MarginBottom : buffer.Rows - 1;
 
+        // And the columns the same way, from the left and right margins (QS233).
+        int firstColumn = OriginMode ? MarginLeft : 0;
+        int lastColumn = OriginMode ? Right : buffer.Columns - 1;
+
         int top = Math.Clamp(firstRow + Math.Max(1, parameters.Value(2, 1)) - 1, firstRow, lastRow);
-        int left = Math.Clamp(Math.Max(1, parameters.Value(3, 1)) - 1, 0, buffer.Columns - 1);
+        int left = Math.Clamp(firstColumn + Math.Max(1, parameters.Value(3, 1)) - 1, firstColumn, lastColumn);
         int bottom = parameters.Value(4, 0) > 0
             ? Math.Clamp(firstRow + parameters.Value(4, 0) - 1, firstRow, lastRow)
             : lastRow;
         int right = parameters.Value(5, 0) > 0
-            ? Math.Clamp(parameters.Value(5, 0) - 1, 0, buffer.Columns - 1)
-            : buffer.Columns - 1;
+            ? Math.Clamp(firstColumn + parameters.Value(5, 0) - 1, firstColumn, lastColumn)
+            : lastColumn;
 
         int sum = 0;
 
@@ -322,7 +326,7 @@ public sealed partial class Emulator
                 Send(
                     priv ? Answer.ExtendedCursorPosition : Answer.CursorPosition,
                     ReportedRow(),
-                    Buffer.CursorColumn + 1);
+                    OriginMode ? Buffer.CursorColumn - MarginLeft + 1 : Buffer.CursorColumn + 1);
                 break;
 
             default:

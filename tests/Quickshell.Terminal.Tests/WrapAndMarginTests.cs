@@ -418,6 +418,88 @@ public sealed class WrapAndMarginTests
         Assert.True(emulator.CursorVisible);
     }
 
+    // ---- Left and right margins (QS233) ----
+
+    /// <summary>A screen of five rows of five letters, the shape esctest's margin cases draw.</summary>
+    private static Emulator Letters()
+    {
+        Emulator emulator = new(5, 5, scrollback: 0);
+        emulator.Feed(Encoding.UTF8.GetBytes("abcde\r\nfghij\r\nklmno\r\npqrst\r\nuvwxy"));
+
+        return emulator;
+    }
+
+    /// <summary>Without DECLRMM, CSI s is still SCOSC and sets no margin: the byte means two things by mode.</summary>
+    [Fact]
+    public void WithoutTheModeCsiSSavesTheCursorAndSetsNoMargin()
+    {
+        Emulator emulator = new(10, 4, scrollback: 0);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[2;3H\u001b[2;4s\u001b[1;1H\u001b[u"));
+
+        Assert.Equal(0, emulator.MarginLeft);
+        Assert.Equal((1, 2), (emulator.Buffer.CursorRow, emulator.Buffer.CursorColumn));
+    }
+
+    /// <summary>A scroll up inside a column region moves only the cells between the margins.</summary>
+    [Fact]
+    public void ScrollingUpMovesOnlyTheColumnsBetweenTheMargins()
+    {
+        Emulator emulator = Letters();
+
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[?69h\u001b[2;4s\u001b[2S"));
+
+        Assert.Equal("almne", Row(emulator, 0));
+        Assert.Equal("fqrsj", Row(emulator, 1));
+        Assert.Equal("kvwxo", Row(emulator, 2));
+        Assert.Equal("p   t", Row(emulator, 3));
+        Assert.Equal("u   y", Row(emulator, 4));
+    }
+
+    /// <summary>Inserting and deleting characters shift only up to the right margin, and do nothing outside it.</summary>
+    [Fact]
+    public void InsertAndDeleteStopAtTheRightMargin()
+    {
+        Emulator emulator = new(7, 2, scrollback: 0);
+        emulator.Feed(Encoding.UTF8.GetBytes("abcdefg\u001b[?69h\u001b[2;5s\u001b[1;3H\u001b[@"));
+
+        Assert.Equal("ab cdfg", Row(emulator, 0));
+
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[1;1H\u001b[9P"));
+
+        Assert.Equal("ab cdfg", Row(emulator, 0));
+    }
+
+    /// <summary>Printing wraps at the right margin to the left one, and a tab stops at the right margin.</summary>
+    [Fact]
+    public void PrintingWrapsAtTheRightMarginToTheLeftOne()
+    {
+        Emulator emulator = new(10, 3, scrollback: 0);
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[?69h\u001b[3;6s\u001b[1;3Habcdef"));
+
+        Assert.Equal("  abcd    ", Row(emulator, 0));
+        Assert.Equal("  ef      ", Row(emulator, 1));
+
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[1;3H\t\t"));
+
+        Assert.Equal(5, emulator.Buffer.CursorColumn);
+    }
+
+    /// <summary>Turning the mode off takes the margins with it.</summary>
+    [Fact]
+    public void ResettingTheModeClearsTheMargins()
+    {
+        Emulator emulator = new(10, 3, scrollback: 0);
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[?69h\u001b[3;6s"));
+
+        Assert.Equal(2, emulator.MarginLeft);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("\u001b[?69l"));
+
+        Assert.Equal(0, emulator.MarginLeft);
+        Assert.True(emulator.RegionIsWholeScreen);
+    }
+
     private static string Row(Emulator emulator, int row)
     {
         StringBuilder text = new();

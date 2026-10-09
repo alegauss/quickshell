@@ -14,6 +14,9 @@ internal enum Setting : byte
 
     /// <summary>DECSCL: which conformance level this claims, which is the one DA1 claims.</summary>
     ConformanceLevel,
+
+    /// <summary>DECSLRM: the left and right margins (QS233).</summary>
+    ColumnMargins,
 }
 
 public sealed partial class Emulator
@@ -97,6 +100,7 @@ public sealed partial class Emulator
         {
             [(byte)'m'] => Setting.Graphics,
             [(byte)'r'] => Setting.ScrollRegion,
+            [(byte)'s'] => Setting.ColumnMargins,
             [(byte)'"', (byte)'p'] => Setting.ConformanceLevel,
             _ => Setting.Unknown,
         };
@@ -122,6 +126,14 @@ public sealed partial class Emulator
                 Literal(";");
                 Number(MarginBottom + 1);
                 Literal("r");
+                break;
+
+            case Setting.ColumnMargins:
+                Literal("1$r");
+                Number(MarginLeft + 1);
+                Literal(";");
+                Number(Right + 1);
+                Literal("s");
                 break;
 
             case Setting.ConformanceLevel:

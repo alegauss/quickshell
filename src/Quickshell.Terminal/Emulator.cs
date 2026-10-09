@@ -154,6 +154,7 @@ public sealed partial class Emulator : IAnsiHandler
         // resize meaningfully. A host that had set either is told the new size and sets them again.
         MarginTop = 0;
         MarginBottom = rows - 1;
+        ClearColumnMargins();
         PendingWrap = false;
         ResetTabStops();
     }
@@ -207,6 +208,10 @@ public sealed partial class Emulator : IAnsiHandler
 
         TerminalBuffer buffer = Buffer;
 
+        // Where this line ends: the right margin while the cursor is inside the region, the screen's
+        // edge otherwise (QS233). Without margins the two are the same column.
+        int end = buffer.CursorColumn <= Right ? Right + 1 : buffer.Columns;
+
         // The wrap that was owed from the last character, taken now that a printable one has
         // actually arrived. Everything between then and now had its chance to cancel it.
         if (PendingWrap)
@@ -220,12 +225,14 @@ public sealed partial class Emulator : IAnsiHandler
                 buffer.SetScreenWrapped(buffer.CursorRow, true);
                 NextLine();
 
-                // A wrap continues at the start of the next row, which NextLine no longer implies.
-                buffer.CursorColumn = 0;
+                // A wrap continues at the start of the next row - the left margin's, inside the
+                // region - which NextLine does not imply.
+                buffer.CursorColumn = end == Right + 1 ? MarginLeft : 0;
+                end = buffer.CursorColumn <= Right ? Right + 1 : buffer.Columns;
             }
         }
 
-        if (buffer.CursorColumn + width > buffer.Columns)
+        if (buffer.CursorColumn + width > end)
         {
             // A wide character with one column left. It cannot be split, so either the line wraps
             // or - with wrapping off - it lands at the end and overwrites what is there.
@@ -233,19 +240,21 @@ public sealed partial class Emulator : IAnsiHandler
             {
                 buffer.SetScreenWrapped(buffer.CursorRow, true);
                 NextLine();
-                buffer.CursorColumn = 0;
+                buffer.CursorColumn = end == Right + 1 ? MarginLeft : 0;
+                end = buffer.CursorColumn <= Right ? Right + 1 : buffer.Columns;
             }
             else
             {
-                buffer.CursorColumn = buffer.Columns - width;
+                buffer.CursorColumn = end - width;
             }
         }
 
         // IRM: room for this character first, pushing the rest of the row right and losing what
-        // goes past the edge (QS207). The buffer's own insert, so the damage is recorded.
+        // goes past the edge (QS207) - the right margin's, inside the region (QS233). The buffer's
+        // own insert, so the damage is recorded.
         if (InsertMode)
         {
-            buffer.InsertCells(buffer.CursorRow, buffer.CursorColumn, width);
+            buffer.InsertCells(buffer.CursorRow, buffer.CursorColumn, width, end);
         }
 
         Cell cell = cluster.Length == 1 || (cluster.Length == 2 && char.IsSurrogatePair(cluster[0], cluster[1]))
@@ -264,11 +273,11 @@ public sealed partial class Emulator : IAnsiHandler
 
         _lastPrinted = codepoint;
 
-        if (buffer.CursorColumn + width >= buffer.Columns)
+        if (buffer.CursorColumn + width >= end)
         {
             // Stay on the cell just written and owe a wrap. Moving now is what puts a blank line
             // after every line that happens to be exactly the width of the terminal.
-            buffer.CursorColumn = buffer.Columns - width;
+            buffer.CursorColumn = end - width;
             PendingWrap = true;
         }
         else
@@ -377,13 +386,13 @@ public sealed partial class Emulator : IAnsiHandler
                 // too (QS232). A shell never showed the difference: its pty sends CR LF.
                 if (LineFeedMode)
                 {
-                    buffer.CursorColumn = 0;
+                    CarriageReturn();
                 }
 
                 break;
 
             case 0x0D:
-                buffer.CursorColumn = 0;
+                CarriageReturn();
                 break;
 
             case 0x0E:
@@ -414,6 +423,13 @@ public sealed partial class Emulator : IAnsiHandler
             return;
         }
 
+        // At the bottom margin but outside the left and right ones: the cursor stays, and nothing
+        // scrolls, because the region the line would scroll is not the one the cursor is in (QS233).
+        if (!InColumns(buffer.CursorColumn))
+        {
+            return;
+        }
+
         // At the bottom margin. Only a region that is the whole screen scrolls into the scrollback:
         // a line leaving a region inside the screen has not left the screen, and putting it in the
         // history would interleave a program's own scrolling with the shell's output behind it.
@@ -423,7 +439,51 @@ public sealed partial class Emulator : IAnsiHandler
             return;
         }
 
-        buffer.ScrollRegionUp(MarginTop, MarginBottom);
+        ScrollRegion(MarginTop, up: true, 1);
+    }
+
+    /// <summary>
+    /// The region from <paramref name="top"/> to the bottom margin scrolled by <paramref name="count"/>
+    /// lines, between the left and right margins where they narrow it (QS233) and whole rows where
+    /// they do not, which is the path every region scroll took before margins existed.
+    /// </summary>
+    private void ScrollRegion(int top, bool up, int count)
+    {
+        TerminalBuffer buffer = Buffer;
+
+        if (ColumnsAreWholeWidth)
+        {
+            if (up)
+            {
+                buffer.ScrollRegionUp(top, MarginBottom, count);
+            }
+            else
+            {
+                buffer.ScrollRegionDown(top, MarginBottom, count);
+            }
+
+            return;
+        }
+
+        if (up)
+        {
+            buffer.ScrollRectUp(top, MarginBottom, MarginLeft, Right, count);
+        }
+        else
+        {
+            buffer.ScrollRectDown(top, MarginBottom, MarginLeft, Right, count);
+        }
+    }
+
+    /// <summary>
+    /// CR: to the left margin from at or right of it, to the screen's edge from left of it, and to
+    /// the margin always under DECOM, as xterm does (QS233). Column one, without margins.
+    /// </summary>
+    private void CarriageReturn()
+    {
+        TerminalBuffer buffer = Buffer;
+
+        buffer.CursorColumn = OriginMode || buffer.CursorColumn >= MarginLeft ? MarginLeft : 0;
     }
 
     // ---- Escape sequences ----
@@ -451,8 +511,6 @@ public sealed partial class Emulator : IAnsiHandler
             return;
         }
 
-        TerminalBuffer buffer = Buffer;
-
         switch (final)
         {
             case (byte)'7':
@@ -469,7 +527,15 @@ public sealed partial class Emulator : IAnsiHandler
 
             case (byte)'E':
                 NextLine();
-                buffer.CursorColumn = 0;
+                CarriageReturn();
+                break;
+
+            case (byte)'6':
+                BackIndex();
+                break;
+
+            case (byte)'9':
+                ForwardIndex();
                 break;
 
             case (byte)'H':
@@ -517,7 +583,47 @@ public sealed partial class Emulator : IAnsiHandler
             return;
         }
 
-        buffer.ScrollRegionDown(MarginTop, MarginBottom);
+        // At the top margin and outside the left and right ones: nothing moves (QS233).
+        if (InColumns(buffer.CursorColumn))
+        {
+            ScrollRegion(MarginTop, up: false, 1);
+        }
+    }
+
+    /// <summary>
+    /// DECBI, <c>ESC 6</c>: one column left, or at the left margin inside the region, the region's
+    /// columns pushed right with a blank one opening at the margin (QS233). Outside the region it
+    /// moves and never scrolls, as DEC STD 070 has it.
+    /// </summary>
+    private void BackIndex()
+    {
+        TerminalBuffer buffer = Buffer;
+        PendingWrap = false;
+
+        if (buffer.CursorColumn == MarginLeft && buffer.CursorRow >= MarginTop && buffer.CursorRow <= MarginBottom)
+        {
+            buffer.InsertColumns(MarginTop, MarginBottom, MarginLeft, Right, 1);
+        }
+        else if (buffer.CursorColumn > 0)
+        {
+            buffer.CursorColumn--;
+        }
+    }
+
+    /// <summary>DECFI, <c>ESC 9</c>: the same rightwards, deleting the left margin's column at the right one.</summary>
+    private void ForwardIndex()
+    {
+        TerminalBuffer buffer = Buffer;
+        PendingWrap = false;
+
+        if (buffer.CursorColumn == Right && buffer.CursorRow >= MarginTop && buffer.CursorRow <= MarginBottom)
+        {
+            buffer.DeleteColumns(MarginTop, MarginBottom, MarginLeft, Right, 1);
+        }
+        else if (buffer.CursorColumn < buffer.Columns - 1)
+        {
+            buffer.CursorColumn++;
+        }
     }
 
     private void SaveCursor()
@@ -553,6 +659,8 @@ public sealed partial class Emulator : IAnsiHandler
         OriginMode = false;
         InsertMode = false;
         LineFeedMode = false;
+        LeftRightMarginMode = false;
+        ClearColumnMargins();
         ApplicationCursorKeys = false;
         ApplicationKeypad = false;
         BracketedPaste = false;
@@ -644,6 +752,13 @@ public sealed partial class Emulator : IAnsiHandler
             return;
         }
 
+        // DECIC and DECDC, columns inserted and deleted at the cursor across the region (QS233).
+        if (intermediates.Length == 1 && intermediates[0] == (byte)'\'' && final is (byte)'}' or (byte)'~')
+        {
+            Columns(Math.Max(1, parameters.Value(0, 1)), insert: final == (byte)'}');
+            return;
+        }
+
         TerminalBuffer buffer = Buffer;
         PendingWrap = false;
 
@@ -663,26 +778,30 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'C':
-                buffer.CursorColumn = Math.Min(buffer.Columns - 1, buffer.CursorColumn + count);
+                // Stopping at the right margin from inside the region, at the edge from beyond it
+                // (QS233) - Up and Down's rule turned sideways.
+                buffer.CursorColumn = Math.Min(buffer.CursorColumn <= Right ? Right : buffer.Columns - 1,
+                                               buffer.CursorColumn + count);
                 break;
 
             case (byte)'D':
-                buffer.CursorColumn = Math.Max(0, buffer.CursorColumn - count);
+                buffer.CursorColumn = Math.Max(buffer.CursorColumn >= MarginLeft ? MarginLeft : 0,
+                                               buffer.CursorColumn - count);
                 break;
 
             case (byte)'E':
                 buffer.CursorRow = Down(buffer, count);
-                buffer.CursorColumn = 0;
+                CarriageReturn();
                 break;
 
             case (byte)'F':
                 buffer.CursorRow = Up(buffer, count);
-                buffer.CursorColumn = 0;
+                CarriageReturn();
                 break;
 
             case (byte)'G':
             case (byte)'`':
-                buffer.CursorColumn = Math.Clamp(count - 1, 0, buffer.Columns - 1);
+                buffer.CursorColumn = ColumnFor(count);
                 break;
 
             case (byte)'d':
@@ -692,7 +811,7 @@ public sealed partial class Emulator : IAnsiHandler
             case (byte)'H':
             case (byte)'f':
                 buffer.CursorRow = RowFor(Math.Max(1, parameters.Value(0, 1)));
-                buffer.CursorColumn = Math.Clamp(Math.Max(1, parameters.Value(1, 1)) - 1, 0, buffer.Columns - 1);
+                buffer.CursorColumn = ColumnFor(Math.Max(1, parameters.Value(1, 1)));
                 break;
 
             case (byte)'r':
@@ -734,18 +853,21 @@ public sealed partial class Emulator : IAnsiHandler
 
             case (byte)'L':
                 // Inside the region and nowhere else: a host that inserts a line below the bottom
-                // margin is asking for nothing to happen, not for the margin to be ignored.
-                if (buffer.CursorRow >= MarginTop && buffer.CursorRow <= MarginBottom)
+                // margin is asking for nothing to happen, not for the margin to be ignored - and the
+                // same beside the left and right ones (QS233).
+                if (buffer.CursorRow >= MarginTop && buffer.CursorRow <= MarginBottom
+                    && InColumns(buffer.CursorColumn))
                 {
-                    buffer.ScrollRegionDown(buffer.CursorRow, MarginBottom, count);
+                    ScrollRegion(buffer.CursorRow, up: false, count);
                 }
 
                 break;
 
             case (byte)'M':
-                if (buffer.CursorRow >= MarginTop && buffer.CursorRow <= MarginBottom)
+                if (buffer.CursorRow >= MarginTop && buffer.CursorRow <= MarginBottom
+                    && InColumns(buffer.CursorColumn))
                 {
-                    buffer.ScrollRegionUp(buffer.CursorRow, MarginBottom, count);
+                    ScrollRegion(buffer.CursorRow, up: true, count);
                 }
 
                 break;
@@ -763,11 +885,12 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'S':
-                buffer.ScrollRegionUp(MarginTop, MarginBottom, count);
+                // The region, wherever the cursor is: SU and SD name the region and not the cursor.
+                ScrollRegion(MarginTop, up: true, count);
                 break;
 
             case (byte)'T':
-                buffer.ScrollRegionDown(MarginTop, MarginBottom, count);
+                ScrollRegion(MarginTop, up: false, count);
                 break;
 
             case (byte)'b':
@@ -779,7 +902,17 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case (byte)'s':
-                SaveCursor();
+                // DECSLRM while left and right margins are allowed, SCOSC otherwise - the one byte
+                // both use, told apart by the mode, as xterm tells them apart (QS233).
+                if (LeftRightMarginMode)
+                {
+                    SetColumnMargins(parameters);
+                }
+                else
+                {
+                    SaveCursor();
+                }
+
                 break;
 
             case (byte)'u':
@@ -822,6 +955,34 @@ public sealed partial class Emulator : IAnsiHandler
     private int RowFor(int oneBased) => OriginMode
         ? Math.Clamp(MarginTop + oneBased - 1, MarginTop, MarginBottom)
         : Math.Clamp(oneBased - 1, 0, Buffer.Rows - 1);
+
+    /// <summary>The same for a column: relative to the left margin under DECOM, and clamped inside the region (QS233).</summary>
+    private int ColumnFor(int oneBased) => OriginMode
+        ? Math.Clamp(MarginLeft + oneBased - 1, MarginLeft, Right)
+        : Math.Clamp(oneBased - 1, 0, Buffer.Columns - 1);
+
+    /// <summary>
+    /// DECIC and DECDC: columns inserted or deleted at the cursor, in every row of the region, between
+    /// the cursor and the right margin. Outside the region they do nothing (QS233).
+    /// </summary>
+    private void Columns(int count, bool insert)
+    {
+        TerminalBuffer buffer = Buffer;
+
+        if (buffer.CursorRow < MarginTop || buffer.CursorRow > MarginBottom || !InColumns(buffer.CursorColumn))
+        {
+            return;
+        }
+
+        if (insert)
+        {
+            buffer.InsertColumns(MarginTop, MarginBottom, buffer.CursorColumn, Right, count);
+        }
+        else
+        {
+            buffer.DeleteColumns(MarginTop, MarginBottom, buffer.CursorColumn, Right, count);
+        }
+    }
 
     /// <summary>
     /// Where CUU and CPL leave the cursor: <paramref name="count"/> rows up, stopping at the top
@@ -964,11 +1125,23 @@ public sealed partial class Emulator : IAnsiHandler
 
     // Both are the buffer's own operations, because a mutation performed out here through a span
     // would be one its damage record never saw - QS22.
-    private void InsertCharacters(int count) =>
-        Buffer.InsertCells(Buffer.CursorRow, Buffer.CursorColumn, count);
+    // Inside the left and right margins they shift only up to the right one, and outside them they
+    // do nothing at all, as xterm does (QS233).
+    private void InsertCharacters(int count)
+    {
+        if (InColumns(Buffer.CursorColumn))
+        {
+            Buffer.InsertCells(Buffer.CursorRow, Buffer.CursorColumn, count, Right + 1);
+        }
+    }
 
-    private void DeleteCharacters(int count) =>
-        Buffer.DeleteCells(Buffer.CursorRow, Buffer.CursorColumn, count);
+    private void DeleteCharacters(int count)
+    {
+        if (InColumns(Buffer.CursorColumn))
+        {
+            Buffer.DeleteCells(Buffer.CursorRow, Buffer.CursorColumn, count, Right + 1);
+        }
+    }
 
     // Device control strings are answered in Emulator.Dcs.cs, which is where DECRQSS lives.
 }

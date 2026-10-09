@@ -214,6 +214,8 @@ public sealed class ReplyTests
     [InlineData("", "[?7$p", "[?7;1$y")]            // autowrap, on by default
     [InlineData("[?7l", "[?7$p", "[?7;2$y")]        // and off
     [InlineData("[?2004h", "[?2004$p", "[?2004;1$y")]
+    [InlineData("[?69h", "[?69$p", "[?69;1$y")]          // left and right margins (QS233)
+    [InlineData("", "[20$p", "[20;2$y")]                 // LNM, off by default (QS232)
     [InlineData("[?1049h", "[?1049$p", "[?1049;1$y")]
     [InlineData("[?1002h", "[?1000$p", "[?1000;2$y")] // a different tracking mode is live
     [InlineData("[?1002h", "[?1002$p", "[?1002;1$y")]
