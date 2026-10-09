@@ -157,6 +157,74 @@ public sealed class CommandsTests
     }
 
     /// <summary>
+    /// QS250: a drag puts the tab where the pointer is in one move, past either end being the end,
+    /// and the tab on screen is still the one that was dragged.
+    /// </summary>
+    [Fact]
+    public void ADraggedTabLandsWhereItIsDropped()
+    {
+        (string[] order, bool same, string[] clamped) = Sta.Run<(string[], bool, string[])>(() =>
+        {
+            MainWindow window = new();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "alpha"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "beta"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "gamma"));
+
+            window.Active = 0;
+            TerminalTab alpha = window.Held[0];
+
+            window.MoveTabTo(2);
+            string[] moved = [.. window.Held.Select(tab => tab.Host)];
+            bool still = ReferenceEquals(window.Current, alpha);
+
+            window.MoveTabTo(-5);
+
+            return (moved, still, [.. window.Held.Select(tab => tab.Host)]);
+        });
+
+        Assert.Equal(["beta", "gamma", "alpha"], order);
+        Assert.True(same, "the tab on screen is not the one that was dragged");
+        Assert.Equal(["alpha", "beta", "gamma"], clamped);
+    }
+
+    /// <summary>
+    /// QS250: the last tab used is by use and not by place, going back twice returns, and with one
+    /// tab the palette does not offer it.
+    /// </summary>
+    [Fact]
+    public void GoingBackFollowsUseAndNotPlace()
+    {
+        (string back, string again, bool offeredAlone) = Sta.Run<(string, string, bool)>(() =>
+        {
+            MainWindow window = new();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "alpha"));
+
+            bool alone = window.Actions.Any(entry => entry.Name == "Go to the last tab used");
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "beta"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "gamma"));
+
+            window.Active = 0;   // alpha, after gamma
+            window.MoveTab(1);   // alpha moves along; use order is unchanged
+
+            ICommand going = window.Actions.Single(entry => entry.Name == "Go to the last tab used").Runs;
+
+            going.Execute(null);
+            string first = window.Current!.Host;
+
+            going.Execute(null);
+
+            return (first, window.Current!.Host, alone);
+        });
+
+        Assert.Equal("gamma", back);
+        Assert.Equal("alpha", again);
+        Assert.False(offeredAlone, "going back was offered with nothing to go back to");
+    }
+
+    /// <summary>
     /// QS164: splitting stops at sixteen panes, however long the chord is held, and the palette stops
     /// offering it there.
     /// </summary>

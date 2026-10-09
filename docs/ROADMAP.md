@@ -21,7 +21,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — Owner decided 2026-10-09: closing one of several windows ends only its own sessions, and the process leaves with the last window. → §QS160
+- 🛠 **QS160** (deps: QS47 ✅) **A tab cannot be dragged into a new order or out into its own window, so the workspace is fixed as it was opened** — Owner decided 2026-10-09: closing one of several windows ends only its own sessions, and the process leaves with the last window. → §QS160
 
 ## Block H — The reason to leave the incumbent
 

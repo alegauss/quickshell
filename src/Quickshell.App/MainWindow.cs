@@ -68,6 +68,13 @@ public sealed class MainWindow : Window
     // a user choosing a tab (QS223).
     private bool _rearranging;
     private int _active = -1;
+
+    // The tabs in the order they were last on screen, latest first (QS250). Held by reference, so a
+    // tab moved along the strip keeps its place here.
+    private readonly List<TerminalTab> _recentTabs = [];
+
+    // Where a press on the strip started, for a drag that reorders (QS250); null while none is held.
+    private Point? _pressedOnStrip;
     private DispatcherTimer? _watching;
     private TerminalPane? _showing;
 
@@ -99,6 +106,33 @@ public sealed class MainWindow : Window
                 && _tabs.SelectedIndex >= 0 && _tabs.SelectedIndex != _active)
             {
                 Active = _tabs.SelectedIndex;
+            }
+        };
+
+        // A tab dragged along the strip moves as the pointer crosses its neighbours, as a browser's
+        // does (QS250). The press selects it first, through the handler above, so the tab being
+        // dragged is always the one on screen.
+        _tabs.PreviewMouseLeftButtonDown += (_, pressed) => _pressedOnStrip = pressed.GetPosition(_tabs);
+        _tabs.PreviewMouseLeftButtonUp += (_, _) => _pressedOnStrip = null;
+        _tabs.PreviewMouseMove += (_, moved) =>
+        {
+            if (_pressedOnStrip is not { } start || moved.LeftButton != MouseButtonState.Pressed)
+            {
+                _pressedOnStrip = null;
+
+                return;
+            }
+
+            Point now = moved.GetPosition(_tabs);
+
+            if (Math.Abs(now.X - start.X) < SystemParameters.MinimumHorizontalDragDistance)
+            {
+                return;
+            }
+
+            if (TabAt(now) is { } over && over != _active)
+            {
+                MoveTabTo(over);
             }
         };
         _find.Visibility = Visibility.Collapsed;
@@ -203,6 +237,10 @@ public sealed class MainWindow : Window
 
         InputBindings.Add(new KeyBinding(new Moving(this, by: 1), Key.PageDown,
                                          ModifierKeys.Control | ModifierKeys.Shift));
+
+        // Back to the tab used before this one, from the palette (QS250). Ctrl+Tab stays positional,
+        // as KEYS.md documents it; this is the order of use beside it.
+        InputBindings.Add(new InputBinding(new GoingBack(this), new PaletteOnly()));
 
         // By index, on Alt rather than Ctrl: Ctrl with a digit is a control sequence a host has
         // meanings for, and Alt with one is not.
@@ -337,6 +375,10 @@ public sealed class MainWindow : Window
 
             _active = at;
             _tabs.SelectedIndex = at;
+
+            // Latest first, each tab once (QS250).
+            _recentTabs.Remove(_open[at]);
+            _recentTabs.Insert(0, _open[at]);
 
             for (int tab = 0; tab < _open.Count; tab++)
             {
@@ -1150,7 +1192,14 @@ public sealed class MainWindow : Window
     /// the last place and reappearing first is a tab the user has to go and find.</para>
     /// </summary>
     /// <returns>Whether it moved.</returns>
-    public bool MoveTab(int by)
+    public bool MoveTab(int by) => _active >= 0 && MoveTabTo(_active + by);
+
+    /// <summary>
+    /// Moves the tab on screen to a place on the strip, which a drag does (QS250) and the chords do
+    /// one place at a time. A place past either end is the end.
+    /// </summary>
+    /// <returns>Whether it moved.</returns>
+    public bool MoveTabTo(int place)
     {
         if (_active < 0 || _open.Count < 2)
         {
@@ -1158,7 +1207,7 @@ public sealed class MainWindow : Window
         }
 
         int from = _active;
-        int to = Math.Clamp(from + by, 0, _open.Count - 1);
+        int to = Math.Clamp(place, 0, _open.Count - 1);
 
         if (to == from)
         {
@@ -1182,6 +1231,31 @@ public sealed class MainWindow : Window
     }
 
     /// <summary>
+    /// The tab on screen before this one, by when each was last on screen rather than where it sits
+    /// on the strip (QS250), or -1 where there is none.
+    /// </summary>
+    public int LastUsedTab => _recentTabs.Count > 1 ? _open.IndexOf(_recentTabs[1]) : -1;
+
+    /// <summary>The strip position under a point on the strip, or null where no tab is there.</summary>
+    private int? TabAt(Point on)
+    {
+        for (int tab = 0; tab < _tabs.Items.Count; tab++)
+        {
+            if (_tabs.ItemContainerGenerator.ContainerFromIndex(tab) is TabItem item && item.IsVisible)
+            {
+                Point corner = item.TranslatePoint(new Point(0, 0), _tabs);
+
+                if (on.X >= corner.X && on.X < corner.X + item.ActualWidth)
+                {
+                    return tab;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Takes a tab out of the window and hands it back for the caller to end.
     ///
     /// <para><b>It is not disposed here.</b> Closing a tab and detaching one remove it identically;
@@ -1201,6 +1275,7 @@ public sealed class MainWindow : Window
         // A tab leaving this window leaves the mode behind: wherever it goes next, nobody there
         // turned it on.
         going.StopBroadcasting();
+        _recentTabs.Remove(going);
 
         _open.RemoveAt(at);
 
@@ -2308,6 +2383,25 @@ public sealed class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.NudgeDivider(way);
+    }
+
+    /// <summary>The tab that was on screen before this one, by use rather than by place (QS250).</summary>
+    private sealed class GoingBack(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Go to the last tab used";
+
+        /// <summary>One tab has no other to go back to.</summary>
+        public override bool CanExecute(object? parameter) => Window.LastUsedTab >= 0;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter)
+        {
+            if (Window.LastUsedTab is >= 0 and var back)
+            {
+                Window.Active = back;
+            }
+        }
     }
 
     /// <summary>The tab on screen, one place along the strip.</summary>

@@ -40,6 +40,10 @@ Nothing here is configurable yet. When it becomes configurable this page becomes
 | `Ctrl+Shift+PageDown` | Moves it one place right, and stops at the last. |
 | `Alt+1` `Alt+2` `Alt+3` `Alt+4` `Alt+5` `Alt+6` `Alt+7` `Alt+8` `Alt+9` | The tab in that position. A number past the last tab does nothing, rather than landing you somewhere you did not ask for. |
 
+A tab can also be dragged along the strip with the mouse; it moves as it crosses its neighbours.
+*Go to the last tab used*, in the palette, goes back to the tab that was on screen before this one,
+by when you used it rather than where it sits, so pressing it twice brings you back.
+
 ## Panes
 
 | Chord | What it does |

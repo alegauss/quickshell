@@ -195,6 +195,7 @@
 - ✅ **QS221** **A graphics driver reset leaves every pane frozen, and nothing in the client recovers or says so** — A draw failing on a removed device rebuilds it on the loop's thread and redraws every pane, logged; a closed pane's swapchain leaves the device's list.
 - ✅ **QS223** **Clicking a tab on the strip moves its highlight but leaves the other tab's terminal on screen** — A click on the strip switches tabs as the chords do; a UI case that failed before the fix now reads the clicked tab's session in the window's title.
 - ✅ **QS231** **No screen reader in another process can read the terminal's output: its TextPattern gives a null document range** — TerminalDocument addressed lines by their place in the buffer's life, so every read threw once a line was let go; a reader in another process now reads the text.
+- ✅ **QS250** **A tab cannot be dragged along the strip, and there is no way back to the tab used before this one** — A tab dragged along the strip moves under the pointer, and the palette's Go to the last tab used switches by order of use, which Ctrl+Tab leaves positional.
 
 ## Block H — The reason to leave the incumbent
 
