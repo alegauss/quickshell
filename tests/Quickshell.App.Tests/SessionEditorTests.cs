@@ -302,7 +302,6 @@ public sealed class SessionEditorTests
         SessionEditor editor = SessionEditor.Editing(Fleet(), "prod/web");
 
         editor.Field(nameof(SessionSettings.Scheme)).Override("danger");
-        editor.Field(nameof(SessionSettings.FontSize)).Override("15.5");
         editor.Field(nameof(SessionSettings.Scrollback)).Override("50000");
         editor.Field(nameof(SessionSettings.TerminalType)).Override("xterm-256color");
 
@@ -310,9 +309,31 @@ public sealed class SessionEditorTests
 
         Assert.Equal("danger", web.Scheme!.Value.Value);
         Assert.Equal("prod/web", web.Scheme!.Value.From);
-        Assert.Equal(15.5, web.FontSize!.Value.Value);
         Assert.Equal(50000, web.Scrollback!.Value.Value);
         Assert.Equal("xterm-256color", web.TerminalType!.Value.Value);
+    }
+
+    /// <summary>
+    /// QS245: the font size is not in the dialog, because a window has one font (QS135), and a size a
+    /// hand edit put in the file survives a save through the dialog all the same.
+    /// </summary>
+    [Fact]
+    public void TheFontSizeIsNotOfferedAndAHandEditedOneSurvivesASave()
+    {
+        SessionTree tree = Fleet().With("prod/web", new SessionNode
+        {
+            Name = "web",
+            Host = "web.prod.example",
+            Settings = new SessionSettings { FontSize = 15.5 },
+        });
+
+        SessionEditor editor = SessionEditor.Editing(tree, "prod/web");
+
+        Assert.DoesNotContain(editor.Fields, field => field.Name == nameof(SessionSettings.FontSize));
+
+        editor.Field(nameof(SessionSettings.Scrollback)).Override("100");
+
+        Assert.Equal(15.5, editor.Save().Session("prod/web")!.FontSize!.Value.Value);
     }
 
     // ---- After login ----

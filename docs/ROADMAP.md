@@ -13,10 +13,9 @@
 - ⏳ **QS141** (deps: QS139 ⏸) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
 - 📋 **QS246** (deps: —) **Reverse screen mode DECSCNM is not drawn, so a visual bell never flashes** — vim and readline flash the screen with mode 5 when the audible bell is off, and here nothing shows, so that user hears and sees no bell. → §QS246
 - 📋 **QS248** (deps: —) **An SGR in the last column cancels the owed wrap, so the next character overwrites that column** — Every non-report CSI clears the pending wrap, where xterm clears it only on cursor movement, so a coloured full-width line prints one character short. → §QS248
+- 📋 **QS249** (deps: —) **Keys typed before a new pane's shell has started are dropped, so a fast first command loses its start** — Typist drops a key while no session is attached, which during start-up is a host still on its way, and one guest UI case went red on it. → §QS249
 
 ## Block D — The tree a user organises work in
-
-- ⏳ **QS245** (deps: —) **A session's scheme, font size, terminal type, scrollback and credential are stored and inherited but never applied** — Credential still finds a remembered password by endpoint and not by its name, and FontSize has nowhere to go while a window has one font. → §QS245
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -295,13 +294,6 @@
   run-tests-vm passes with tmux-resize at zero, after the sequence the diagnosis names
   is fixed.
 
-## Done when — QS245
-
-- **No session field is shown in the dialog and then ignored** Checked by reading
-  SessionSettings against the open path and docs/SESSIONS.md: each of the five is either
-  applied when a session opens, with a test that opens one, or removed from the model
-  with a non-goal saying why.
-
 ## Non-goals
 
 - **No X11 server or X11 forwarding** The bundled X server is the largest single piece
@@ -373,3 +365,7 @@
   so gating by level would take DECRQM and DECSLRM from every program by default, and
   raising the claim is the identity non-goal. DECSCL is not obeyed; esctest's level 2
   and 3 cases fail by decision, and level 5 by DECCOLM's (QS244).
+- **No font size of a session's own** Every pane in a window draws from one font and one
+  glyph atlas (QS135), so a per-session size would mean panes of different cell sizes in
+  one window, two atlases and a divider that cannot line up. FontSize stays readable in
+  the file and is offered nowhere (QS245).

@@ -42,6 +42,47 @@ public sealed class SessionFieldsTests : IDisposable
         Assert.Equal(SshNetTransport.DefaultTerminalType, new SshNetTransport().TerminalType);
     }
 
+    // ---- Credential ----
+
+    /// <summary>
+    /// The falsification for the credential: a session that names one is offered the password kept
+    /// under that name, whatever host it is for, and a password it is told to remember is kept there.
+    /// </summary>
+    [Fact]
+    public async Task ANamedCredentialIsOfferedAndRememberedUnderItsName()
+    {
+        SecretStore store = SecretStore.In(Path.Combine(_folder, "secrets"));
+
+        using (Secret shared = Secret.From("shared"))
+        {
+            store.SaveNamed("deploy", shared);
+        }
+
+        SshEndpoint web = SshEndpoint.For("web.example", "deploy");
+
+        (_, IReadOnlyList<SshCredential> offered) = SignIn.For(web, Declined, store, "deploy");
+        (_, IReadOnlyList<SshCredential> unnamed) = SignIn.For(web, Declined, store);
+
+        Assert.Contains(offered, credential => credential is SshCredential.Password);
+        Assert.DoesNotContain(unnamed, credential => credential is SshCredential.Password);
+
+        // Remembered under the name, so the next host that names it finds it.
+        (SignIn signIn, _) = SignIn.For(SshEndpoint.For("db.example", "deploy"),
+                                        (_, _) => ValueTask.FromResult<SignInAnswer?>(new SignInAnswer("typed", Remember: true)),
+                                        store, "fresh");
+
+        Assert.NotNull(await signIn.AskPasswordAsync(CancellationToken.None));
+        signIn.Commit();
+
+        using Secret? kept = store.LoadNamed("fresh");
+
+        Assert.Equal("typed", System.Text.Encoding.UTF8.GetString(kept!.Bytes));
+        Assert.Null(store.Load(SshEndpoint.For("db.example", "deploy")));
+    }
+
+    private static ValueTask<SignInAnswer?> Declined(SignInQuestion question, CancellationToken token) =>
+        ValueTask.FromResult<SignInAnswer?>(null);
+
     // ---- Scheme and scrollback ----
 
     /// <summary>

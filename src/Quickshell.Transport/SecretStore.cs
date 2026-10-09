@@ -106,23 +106,45 @@ public sealed class SecretStore
     }
 
     /// <summary>Saves a secret for one account on one host, replacing whatever was there.</summary>
-    public void Save(SshEndpoint endpoint, Secret secret)
+    public void Save(SshEndpoint endpoint, Secret secret) => Save(Target(endpoint), secret);
+
+    /// <summary>What was saved for this account, or null where nothing was.</summary>
+    public Secret? Load(SshEndpoint endpoint) => Load(Target(endpoint));
+
+    /// <summary>Forgets what was saved for this account.</summary>
+    /// <returns>Whether there was anything to forget.</returns>
+    public bool Forget(SshEndpoint endpoint) => Forget(Target(endpoint));
+
+    /// <summary>
+    /// Saves a secret under a credential's name rather than an account's (QS245): what a session's
+    /// <c>Credential</c> names, so every session that names it shares one remembered password.
+    /// </summary>
+    public void SaveNamed(string credential, Secret secret) => Save(Named(credential), secret);
+
+    /// <summary>What was saved under a credential's name, or null where nothing was (QS245).</summary>
+    public Secret? LoadNamed(string credential) => Load(Named(credential));
+
+    /// <summary>Forgets what was saved under a credential's name (QS245).</summary>
+    /// <returns>Whether there was anything to forget.</returns>
+    public bool ForgetNamed(string credential) => Forget(Named(credential));
+
+    private void Save(string target, Secret secret)
     {
         ArgumentNullException.ThrowIfNull(secret);
 
-        byte[] sealedUp = Seal(secret.Bytes, Target(endpoint));
+        byte[] sealedUp = Seal(secret.Bytes, target);
 
         try
         {
             if (Vault == SecretVault.CredentialManager)
             {
-                CredentialManager.Write(Target(endpoint), sealedUp);
+                CredentialManager.Write(target, sealedUp);
 
                 return;
             }
 
             Directory.CreateDirectory(_directory!);
-            File.WriteAllBytes(FileFor(endpoint), sealedUp);
+            File.WriteAllBytes(FileFor(target), sealedUp);
         }
         finally
         {
@@ -130,12 +152,11 @@ public sealed class SecretStore
         }
     }
 
-    /// <summary>What was saved for this account, or null where nothing was.</summary>
-    public Secret? Load(SshEndpoint endpoint)
+    private Secret? Load(string target)
     {
         byte[]? sealedUp = Vault == SecretVault.CredentialManager
-            ? CredentialManager.Read(Target(endpoint))
-            : File.Exists(FileFor(endpoint)) ? File.ReadAllBytes(FileFor(endpoint)) : null;
+            ? CredentialManager.Read(target)
+            : File.Exists(FileFor(target)) ? File.ReadAllBytes(FileFor(target)) : null;
 
         if (sealedUp is null)
         {
@@ -144,7 +165,7 @@ public sealed class SecretStore
 
         try
         {
-            return Open(sealedUp, Target(endpoint));
+            return Open(sealedUp, target);
         }
         finally
         {
@@ -152,21 +173,19 @@ public sealed class SecretStore
         }
     }
 
-    /// <summary>Forgets what was saved for this account.</summary>
-    /// <returns>Whether there was anything to forget.</returns>
-    public bool Forget(SshEndpoint endpoint)
+    private bool Forget(string target)
     {
         if (Vault == SecretVault.CredentialManager)
         {
-            return CredentialManager.Delete(Target(endpoint));
+            return CredentialManager.Delete(target);
         }
 
-        if (!File.Exists(FileFor(endpoint)))
+        if (!File.Exists(FileFor(target)))
         {
             return false;
         }
 
-        File.Delete(FileFor(endpoint));
+        File.Delete(FileFor(target));
 
         return true;
     }
@@ -260,7 +279,17 @@ public sealed class SecretStore
     /// <summary>How an entry is named, which is also what is bound into the ciphertext.</summary>
     private static string Target(SshEndpoint endpoint) => $"{Prefix}{endpoint}";
 
-    private string FileFor(SshEndpoint endpoint) =>
-        Path.Combine(_directory!,
-                     Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Target(endpoint)))));
+    /// <summary>
+    /// A credential's target: its own space, which an endpoint's can never be mistaken for, since an
+    /// endpoint's always carries an <c>@</c> and this prefix never does before the name (QS245).
+    /// </summary>
+    private static string Named(string credential)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(credential);
+
+        return $"{Prefix}credential/{credential.Trim()}";
+    }
+
+    private string FileFor(string target) =>
+        Path.Combine(_directory!, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(target))));
 }

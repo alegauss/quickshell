@@ -125,14 +125,18 @@ file. A path that does not read leaves the pane in the window's scheme.
 
 ### `Credential`
 
-The **name** of a saved credential in Windows Credential Manager, never the secret itself — which is
-what makes this file safe to commit or share. **Not applied yet**: sign-in finds a remembered password
-by the host it is for, not by this name (QS245).
+The **name** of a saved credential, never the secret itself — which is what makes this file safe to
+commit or share. A session that names one is offered the password remembered under that name, and a
+password remembered while signing in to it is kept under that name, so every session naming it shares
+one: change it once and every host that uses it has the new one. A session that names none remembers
+a password for its own host, as before. Either way the password lives in Windows Credential Manager,
+where it can be seen and removed.
 
 ### `FontSize`
 
-A point size for this session's text. **Not applied yet**: every pane in a window shares one font
-(QS245).
+**Not applied, by design.** Every pane in a window shares one font (the `fontSize` setting in
+[SETTINGS.md](SETTINGS.md)), so a size for one session has nowhere to go. The session dialog does not
+offer it. A value already in the file is kept as it is when the dialog saves, and has no effect.
 
 ### `TerminalType`
 

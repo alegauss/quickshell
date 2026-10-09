@@ -388,36 +388,32 @@ one.
 Falsified when `\e[1;80H` + `ab` + `\e[31m` + `c` on an 80-column screen leaves `c` in
 row 1 instead of at the start of row 2.
 
+### §QS249 Keys typed while a session opens
+
+Typist.Deliver drops a keystroke while Sending is null, with a comment saying there is
+no host to give it to. TerminalLeaf.ConnectAsync sets Sending only once the session's
+open returns, so for the start of every pane there is a host on its way and the keys
+still go nowhere: a user who opens a window or a tab and types at once loses the first
+characters.
+
+Seen on 2026-10-09: the guest's tabs.cases.json case "clicking a tab on the strip puts
+that tab's terminal on screen" typed `title first-tab-marker` and Enter into a fresh
+window. The screen read back held cmd's banner and no echo of the command, so the case
+went red once, after a dozen passing guest runs that day.
+
+What to build: a pane whose session is still opening keeps what is typed, bounded (a few
+KB, counted when it overflows), and hands it to the session in order the moment Sending
+is set, before anything typed after. A pane whose open failed, or that is closed, drops
+what it held. Broadcast typing goes through the same path, so a group's panes that open
+at different speeds all get the same keys.
+
+Falsified when a key typed between a pane's creation and its shell's start does not
+reach the shell.
+
+Evidence: a unit test on Typist (keys before Sending arrive after it, in order, and the
+bound holds), and the tabs case passing repeatedly in the guest.
+
 ## Block D — The tree a user organises work in
-
-### §QS245 Session fields that do nothing
-
-Found writing QS229's reference for the session store. Five of SessionSettings' fields
-are read from the file, inherited through folders, shown in the session dialog with
-where each came from, and then used by nothing. Opening a session
-(`Program.OpenSessionInTab`, `RemoteShell.OpenAsync`, `SessionGroup.Open`) reads none of
-them:
-
-- `Scheme`: the pane wears the window's colour scheme whatever the session says.
-- `FontSize`: one font for every pane since QS135, so a per-session size has nowhere to go
-  without a decision about panes of different sizes in one window.
-- `TerminalType`: the transport always claims `xterm-256color` (`SshNetTransport.TerminalType`).
-- `Scrollback`: the pane keeps the global setting.
-- `Credential`: sign-in looks up remembered passwords by endpoint (QS218's `SignIn.For`), not
-  by the name a session gives.
-
-A field the dialog shows as "inherited from Work" and the client then ignores is worse
-than no field: the user believes they configured something. docs/SESSIONS.md says this
-plainly for each of the five until this lands.
-
-What to build: each one either applied when the session opens, which for Scheme,
-TerminalType, Scrollback and Credential is a few lines at the point the tab and the
-transport are made, or removed from the model with a non-goal that says why (FontSize is
-the likely one, against QS135's one font per window). The dialog and the reference
-change with it.
-
-Falsified when a session's own Scheme, TerminalType, Scrollback or Credential has no
-effect on the session it opens.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

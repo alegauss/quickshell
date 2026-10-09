@@ -311,7 +311,7 @@ public sealed class RemoteShell : IShellSession
             // The keys first, then what a person answers: a key that works never shows them a prompt.
             (SignIn? answering, IReadOnlyList<SshCredential> answered) = _ask is null
                 ? (null, [])
-                : SignIn.For(Target, _ask, _secrets);
+                : SignIn.For(Target, _ask, _secrets, _session.Credential?.Value);
 
             IReadOnlyList<SshCredential> credentials = [.. _keys, .. answered];
             ISshTransport transport = Transport(credentials);

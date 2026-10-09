@@ -35,16 +35,24 @@ public sealed class SignIn
     private readonly Func<SignInQuestion, CancellationToken, ValueTask<SignInAnswer?>> _ask;
     private readonly SecretStore? _store;
     private readonly SshEndpoint _endpoint;
+    private readonly string? _credential;
     private bool _usedSaved;
     private Secret? _keep;
 
     private SignIn(Func<SignInQuestion, CancellationToken, ValueTask<SignInAnswer?>> ask, SecretStore? store,
-                   SshEndpoint endpoint)
+                   SshEndpoint endpoint, string? credential)
     {
         _ask = ask;
         _store = store;
         _endpoint = endpoint;
+        _credential = string.IsNullOrWhiteSpace(credential) ? null : credential;
     }
+
+    /// <summary>
+    /// What is remembered for this sign-in: under the session's credential name where it names one
+    /// (QS245), so every session naming it shares one password, and under the endpoint otherwise.
+    /// </summary>
+    private Secret? Remembered() => _credential is { } named ? _store?.LoadNamed(named) : _store?.Load(_endpoint);
 
     /// <summary>
     /// What a connection to this endpoint offers after its keys and agent: the server's prompts,
@@ -53,16 +61,20 @@ public sealed class SignIn
     /// <param name="endpoint">The account and host being signed in to.</param>
     /// <param name="ask">Puts a question to the person; null back means they declined.</param>
     /// <param name="store">Where remembered passwords are, or null where nothing is remembered.</param>
+    /// <param name="credential">
+    /// The name a saved session's <c>Credential</c> gives, or null: where given, the password is
+    /// looked up and remembered under it rather than under the endpoint (QS245).
+    /// </param>
     public static (SignIn SignIn, IReadOnlyList<SshCredential> Offered) For(
         SshEndpoint endpoint, Func<SignInQuestion, CancellationToken, ValueTask<SignInAnswer?>> ask,
-        SecretStore? store)
+        SecretStore? store, string? credential = null)
     {
         ArgumentNullException.ThrowIfNull(ask);
 
-        SignIn signIn = new(ask, store, endpoint);
+        SignIn signIn = new(ask, store, endpoint, credential);
         List<SshCredential> offered = [new SshCredential.Interactive(signIn.Answer)];
 
-        if (store?.Load(endpoint) is { } saved)
+        if (signIn.Remembered() is { } saved)
         {
             offered.Add(new SshCredential.Password(saved));
         }
@@ -80,7 +92,7 @@ public sealed class SignIn
 
         return refused.Kind == SshFailureKind.NoMethodAccepted
                && refused.ServerAccepts.Contains("password", StringComparer.OrdinalIgnoreCase)
-               && _store?.Load(_endpoint) is null;
+               && Remembered() is null;
     }
 
     /// <summary>
@@ -114,7 +126,14 @@ public sealed class SignIn
     {
         if (_keep is { } keep && _store is { } store)
         {
-            store.Save(_endpoint, keep);
+            if (_credential is { } named)
+            {
+                store.SaveNamed(named, keep);
+            }
+            else
+            {
+                store.Save(_endpoint, keep);
+            }
         }
 
         Forget();
@@ -130,7 +149,7 @@ public sealed class SignIn
     /// <summary>One of the server's prompts, answered from what is remembered or by the person.</summary>
     private async ValueTask<string> Answer(string prompt, bool echoed, CancellationToken cancellationToken)
     {
-        if (!echoed && !_usedSaved && Asks(prompt) && _store?.Load(_endpoint) is { } saved)
+        if (!echoed && !_usedSaved && Asks(prompt) && Remembered() is { } saved)
         {
             _usedSaved = true;
 

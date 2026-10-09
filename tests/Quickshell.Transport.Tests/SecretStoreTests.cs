@@ -126,6 +126,36 @@ public sealed class SecretStoreTests : IDisposable
         Assert.Null(SecretStore.Installed().Load(SshEndpoint.For("never.saved", "nobody")));
     }
 
+    // ---- Named credentials (QS245) ----
+
+    /// <summary>
+    /// A secret saved under a credential's name reads back under it, and is a different entry from
+    /// any endpoint's, so naming a credential never reads or overwrites a host's own password.
+    /// </summary>
+    [Fact]
+    public void ANamedCredentialIsItsOwnEntry()
+    {
+        SecretStore store = SecretStore.In(_directory);
+
+        using (Secret shared = Secret.From("shared"))
+        using (Secret own = Secret.From("own"))
+        {
+            store.SaveNamed("deploy", shared);
+            store.Save(Somewhere, own);
+        }
+
+        using Secret? named = store.LoadNamed("deploy");
+        using Secret? endpoint = store.Load(Somewhere);
+
+        Assert.Equal("shared", Encoding.UTF8.GetString(named!.Bytes));
+        Assert.Equal("own", Encoding.UTF8.GetString(endpoint!.Bytes));
+        Assert.Null(store.LoadNamed("other"));
+
+        Assert.True(store.ForgetNamed("deploy"));
+        Assert.Null(store.LoadNamed("deploy"));
+        Assert.NotNull(store.Load(Somewhere));
+    }
+
     // ---- The file store, and what a master password changes ----
 
     [Fact]

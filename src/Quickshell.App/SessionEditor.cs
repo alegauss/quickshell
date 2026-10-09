@@ -134,7 +134,6 @@ public sealed class SessionEditor
         Add(nameof(SessionSettings.JumpHost), "Jump host", own.JumpHost);
         Add(nameof(SessionSettings.Credential), "Saved credential", own.Credential);
         Add(nameof(SessionSettings.Scheme), "Colour scheme", own.Scheme);
-        Add(nameof(SessionSettings.FontSize), "Font size", Text(own.FontSize));
         Add(nameof(SessionSettings.TerminalType), "Terminal type", own.TerminalType);
         Add(nameof(SessionSettings.Scrollback), "Scrollback", Text(own.Scrollback));
 
@@ -318,7 +317,9 @@ public sealed class SessionEditor
                 JumpHost = Mine(nameof(SessionSettings.JumpHost)),
                 Scheme = Mine(nameof(SessionSettings.Scheme)),
                 Credential = Mine(nameof(SessionSettings.Credential)),
-                FontSize = Size(nameof(SessionSettings.FontSize)),
+                // Not in the dialog: one font per window (QS135, QS245). A size a hand edit put in
+                // the file is kept as it was, so a save through the dialog loses nothing.
+                FontSize = existing.Settings.FontSize,
                 TerminalType = Mine(nameof(SessionSettings.TerminalType)),
                 Scrollback = Number(nameof(SessionSettings.Scrollback)),
                 Reconnect = Toggle(Mine(nameof(SessionSettings.Reconnect))),
@@ -339,13 +340,6 @@ public sealed class SessionEditor
         int? Number(string name) =>
             Mine(name) is { } text
             && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
-                ? value
-                : null;
-
-        double? Size(string name) =>
-            Mine(name) is { } text
-            && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture,
-                               out double value)
                 ? value
                 : null;
     }
