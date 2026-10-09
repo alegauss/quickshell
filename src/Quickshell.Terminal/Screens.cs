@@ -42,8 +42,12 @@ public sealed class Screens
     /// Enters the alternate screen, saving the cursor and clearing what a program is about to draw
     /// over. Entering twice is not an error and does not save the cursor again — a program that
     /// sets the mode it is already in has not moved the cursor it saved.
+    ///
+    /// <para>That is 1049's entry, and the default. DECSET 47 and 1047 are older and plainer
+    /// (QS244): <paramref name="shareCursor"/> keeps the cursor where it is, one cursor for both
+    /// screens, and <paramref name="clear"/> false leaves whatever the alternate screen held.</para>
     /// </summary>
-    public void EnterAlternate()
+    public void EnterAlternate(bool clear = true, bool shareCursor = false)
     {
         if (IsAlternate)
         {
@@ -53,25 +57,46 @@ public sealed class Screens
         _savedRow = _primary.CursorRow;
         _savedColumn = _primary.CursorColumn;
 
-        _alternate.ClearScreen();
-        _alternate.CursorRow = 0;
-        _alternate.CursorColumn = 0;
+        if (clear)
+        {
+            _alternate.ClearScreen();
+        }
+
+        _alternate.CursorRow = shareCursor ? _primary.CursorRow : 0;
+        _alternate.CursorColumn = shareCursor ? _primary.CursorColumn : 0;
 
         IsAlternate = true;
         Entries++;
     }
 
-    /// <summary>Leaves the alternate screen and puts the cursor back where the program found it.</summary>
-    public void LeaveAlternate()
+    /// <summary>Blanks the alternate screen, live or not, as a full reset does (QS244).</summary>
+    public void ClearAlternate()
+    {
+        _alternate.ClearScreen();
+        _alternate.CursorRow = 0;
+        _alternate.CursorColumn = 0;
+    }
+
+    /// <summary>
+    /// Leaves the alternate screen and puts the cursor back where the program found it - or, with
+    /// <paramref name="shareCursor"/>, carries the cursor back as 47 and 1047 do, after clearing
+    /// the alternate screen where <paramref name="clear"/> says, which is 1047's (QS244).
+    /// </summary>
+    public void LeaveAlternate(bool clear = false, bool shareCursor = false)
     {
         if (!IsAlternate)
         {
             return;
         }
 
+        if (clear)
+        {
+            _alternate.ClearScreen();
+        }
+
         IsAlternate = false;
-        _primary.CursorRow = _savedRow;
-        _primary.CursorColumn = _savedColumn;
+        _primary.CursorRow = shareCursor ? _alternate.CursorRow : _savedRow;
+        _primary.CursorColumn = shareCursor ? _alternate.CursorColumn : _savedColumn;
     }
 
     /// <summary>Resizes both screens, so the one that is not live is not wrong when it becomes live.</summary>

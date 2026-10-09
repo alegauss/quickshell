@@ -27,6 +27,13 @@ public sealed partial class Emulator
     public bool ReverseWrap { get; private set; }
 
     /// <summary>
+    /// xterm's mode 41, the fix for more(1) and curses: a tab arriving while a wrap is owed takes
+    /// the wrap first and lands on the next row's first stop. Without it the tab leaves the owed
+    /// wrap where it was, so the next character still starts the next row (QS244).
+    /// </summary>
+    public bool MoreFix { get; private set; }
+
+    /// <summary>
     /// DECSCUSR's style, <c>CSI Ps SP q</c>: 0 for none asked, which leaves the user's own shape;
     /// 1 and 2 a block, 3 and 4 an underline, 5 and 6 a bar, odd blinking and even steady (QS243).
     /// </summary>
@@ -500,7 +507,13 @@ public sealed partial class Emulator
 
             case 47:
             case 1047:
-                SwitchScreen(set);
+                // One cursor for both screens; 47 never clears, and 1047 clears the alternate
+                // screen on the way out, as xterm has them (QS244).
+                SwitchScreen(set, shared: true, clearOnLeave: mode == 1047);
+                break;
+
+            case 41:
+                MoreFix = set;
                 break;
 
             case 1048:
@@ -579,6 +592,7 @@ public sealed partial class Emulator
         7 => On(AutoWrap),
         25 => On(CursorVisible),
         45 => On(ReverseWrap),
+        41 => On(MoreFix),
         1045 => On(ReverseWrapExtended),
         69 => On(LeftRightMarginMode),
         2004 => On(BracketedPaste),
@@ -626,15 +640,15 @@ public sealed partial class Emulator
 
     private static ModeState On(bool set) => set ? ModeState.Set : ModeState.Reset;
 
-    private void SwitchScreen(bool alternate)
+    private void SwitchScreen(bool alternate, bool shared = false, bool clearOnLeave = false)
     {
         if (alternate)
         {
-            Screens.EnterAlternate();
+            Screens.EnterAlternate(clear: !shared, shareCursor: shared);
         }
         else
         {
-            Screens.LeaveAlternate();
+            Screens.LeaveAlternate(clear: clearOnLeave, shareCursor: shared);
         }
 
         // Each screen has its own region and its own stops, and carrying the old ones across is how

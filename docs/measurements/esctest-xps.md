@@ -1,12 +1,12 @@
 # esctest
 
-`esctest` from the terminal working group, run against the headless model on xps, 2026-10-09. No renderer and no pseudo-console: the suite runs on a Linux pty in WSL whose other end is a socket the emulator reads and answers, so every reply it judges is this client's own (QS211). 38 s, 397,532 bytes parsed.
+`esctest` from the terminal working group, run against the headless model on xps, 2026-10-09. No renderer and no pseudo-console: the suite runs on a Linux pty in WSL whose other end is a socket the emulator reads and answers, so every reply it judges is this client's own (QS211). 37 s, 396,391 bytes parsed.
 
 | | tests | of total |
 |---|---:|---:|
-| passed | 462 | 81.3% |
+| passed | 465 | 81.9% |
 | known bugs in xterm itself | 43 | 7.6% |
-| failed | 63 | 11.1% |
+| failed | 60 | 10.6% |
 
 ## Why the failures fail
 
@@ -17,7 +17,7 @@ finding and 'one missing sequence and seventy real gaps' is.
 |---|---:|
 | the screen read back differs from xterm's (a checksum) | 1 |
 | the suite declined the test itself | 0 |
-| a real difference in behaviour | 62 |
+| a real difference in behaviour | 59 |
 
 ## The failing tests
 
@@ -31,11 +31,11 @@ another shows up as a number rather than as a feeling.
 | `ChangeColorTests` | 7 |
 | `ChangeDynamicColorTests` | 7 |
 | `ChangeSpecialColorTests` | 7 |
-| `DECSETTests` | 5 |
 | `DECRQSSTests` | 3 |
 | `DECSCLTests` | 3 |
 | `DA2Tests` | 2 |
 | `DATests` | 2 |
+| `DECSETTests` | 2 |
 | `RISTests` | 2 |
 | `ResetSpecialColorTests` | 2 |
 

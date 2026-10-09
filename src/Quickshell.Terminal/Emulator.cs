@@ -375,6 +375,20 @@ public sealed partial class Emulator : IAnsiHandler
                 break;
 
             case 0x09:
+                // An owed wrap survives a tab, as xterm's does, unless mode 41 asks for the tab to
+                // take it (QS244).
+                if (wasPending && MoreFix && AutoWrap)
+                {
+                    buffer.SetScreenWrapped(buffer.CursorRow, true);
+                    NextLine();
+                    buffer.CursorColumn = LeftRightMarginMode ? MarginLeft : 0;
+                }
+                else if (wasPending)
+                {
+                    PendingWrap = true;
+                    break;
+                }
+
                 buffer.CursorColumn = NextTabStop(buffer.CursorColumn);
                 break;
 
@@ -692,6 +706,7 @@ public sealed partial class Emulator : IAnsiHandler
         OriginMode = false;
         ReverseWrap = false;
         ReverseWrapExtended = false;
+        MoreFix = false;
         ApplicationCursorKeys = false;
         ApplicationKeypad = false;
         LeftRightMarginMode = false;
@@ -716,6 +731,7 @@ public sealed partial class Emulator : IAnsiHandler
         AutoWrap = true;
         ReverseWrap = false;
         ReverseWrapExtended = false;
+        MoreFix = false;
         OriginMode = false;
         InsertMode = false;
         LineFeedMode = false;
@@ -745,6 +761,9 @@ public sealed partial class Emulator : IAnsiHandler
             Screens.LeaveAlternate();
         }
 
+        // The alternate screen too: since 47 keeps what it held (QS244), a reset that cleared only
+        // the main one would hand the next program the last one's screen.
+        Screens.ClearAlternate();
         Buffer.ClearScreen();
         Buffer.CursorRow = 0;
         Buffer.CursorColumn = 0;
