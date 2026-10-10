@@ -284,7 +284,7 @@ public sealed class SshNetTransport : ISshTransport
             // than an absent one.
             // With a window granted back as the pane reads, so a fast host waits instead of being
             // buffered for (QS139).
-            (ShellStream shell, ShellWindow? window) = ShellWindow.Open(
+            (ShellStream shell, ChannelWindow? window) = ChannelWindow.OpenShell(
                 client, TerminalType, (uint)columns, (uint)rows, BufferBytes);
 
             _shell = new SshNetChannel(shell, columns, rows, window);

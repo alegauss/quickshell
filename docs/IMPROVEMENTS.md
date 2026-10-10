@@ -256,30 +256,32 @@ that file there, byte for byte.
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-### §QS252 A forward nobody reads stops the connection it rides on
+### §QS259 A remote forward's channel, answered here
 
-Found while bounding the shell's window (QS139). SSH.NET 2026.0.0 opens a forward's
-`ChannelDirectTcpip` with the same 2 GB window as a shell, and its `OnData` writes each
-packet to the local socket with a blocking `Send`, on the session's one receive thread.
+Found shipping QS252, which bounded local and SOCKS forwards. A remote forward is
+carried by SSH.NET's `ForwardedPortRemote`, whose `ChannelForwardedTcpip.OnData` writes
+each packet to the local target's socket with a blocking `Send` on the session's one
+receive thread, the same shape QS252 removed from the other two. So a local service that
+stops reading what a remote client sends it freezes every channel on the connection, the
+shell included. Not yet reproduced: the reading is of the library's 2026.0.0 source.
 
-So a local tool that stops reading a forwarded port does not cost memory: the kernel's
-socket buffer fills, `Send` blocks, and the receive loop stops. Every channel on that
-connection stops with it, the shell and the file browser included, until the tool reads
-again or the socket is closed. One stuck database client freezes the terminal.
+The difference from QS252 is who opens the channel. A local forward opens its own, so
+`ChannelWindow.Bound` can set the window before the open. A remote forward's channel is
+opened by the server and answered by the library inside `ForwardedPortRemote`, which
+connects the local socket itself and sends the confirmation carrying the library's 2 GB
+window.
 
-What to build: the forward's channel gets the treatment `ShellWindow` gives the shell, a
-small window offered at open and granted back only as bytes leave for the socket, with
-the socket written from a thread of the forward's own instead of the receive loop.
-`LocalForward` already opens its channel by reflection (`CreateChannelDirectTcpip`,
-`Open`, `Bind`), so the window can be set at the same seam. Dynamic (SOCKS) and remote
-forwards are to be checked for the same shape: a remote forward's
-`ChannelForwardedTcpip` is a different class and was not read.
+What to build: `RemoteForward` answers the server's `forwarded-tcpip` opens itself,
+subscribing to the session's channel-open event as `ForwardedPortRemote` does, creating
+the channel through the session, giving it one end of a pair sized as `LocalForward`'s
+is, and setting the window before the confirmation is sent. The pumps and
+`ChannelWindow` are QS252's.
 
-Evidence: a fixture test holds a forward whose local end never reads, makes the remote
-end print without stopping, and asserts the shell on the same connection still echoes
-within a second.
+Evidence: the fixture test QS252 wrote, turned round: a remote forward to a local
+listener that accepts and never reads, `yes` on the server piped into the forwarded
+port, and the shell beside it asked to echo within three seconds.
 
-Falsified when a forward nobody reads leaves the shell beside it answering.
+Falsified when a remote forward nobody reads leaves the shell beside it answering.
 
 ## Block G — The clean interface, defended
 

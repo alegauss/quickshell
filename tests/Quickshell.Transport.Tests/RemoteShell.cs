@@ -121,4 +121,42 @@ internal static class RemoteShell
     private static string Plain(StringBuilder seen) =>
         seen.ToString().Replace("\u001b", "\\e", StringComparison.Ordinal)
                        .Replace("\r", string.Empty, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Types a command into a shell already open and reads until its answer appears, or the time runs
+    /// out. Typed so the answer differs from the command, since the shell echoes what it is sent.
+    /// </summary>
+    public static async Task<bool> AnsweredAsync(IPtyChannel shell, string answer, string command, TimeSpan within,
+                                                 CancellationToken stop)
+    {
+        await shell.WriteAsync(Encoding.ASCII.GetBytes(command + "\n"), stop);
+
+        StringBuilder seen = new();
+        byte[] buffer = new byte[16 * 1024];
+
+        using CancellationTokenSource waiting = CancellationTokenSource.CreateLinkedTokenSource(stop);
+
+        waiting.CancelAfter(within);
+
+        try
+        {
+            while (!seen.ToString().Contains(answer, StringComparison.Ordinal))
+            {
+                int read = await shell.ReadAsync(buffer, waiting.Token);
+
+                if (read == 0)
+                {
+                    return false;
+                }
+
+                seen.Append(Encoding.ASCII.GetString(buffer, 0, read));
+            }
+
+            return true;
+        }
+        catch (OperationCanceledException) when (!stop.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
 }

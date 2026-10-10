@@ -18,7 +18,7 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-- 📋 **QS252** (deps: —) **A forwarded port whose local tool stops reading freezes every channel on the connection, the shell included** — SSH.NET writes forward data to the local socket on its one receive thread, so a full socket buffer stops the whole session. → §QS252
+- 📋 **QS259** (deps: QS252 ✅) **A remote forward whose local service stops reading freezes every channel on the connection** — The library's remote forward writes to the local socket on the receive thread, and opens the channel itself, so QS252's window cannot reach it. → §QS259
 
 ## Block G — The clean interface, defended
 

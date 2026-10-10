@@ -384,7 +384,13 @@ public sealed class DynamicForward : IAsyncDisposable
                 _carrying.Add(channel);
             }
 
-            LocalForward.OpenChannel!.Invoke(channel, [host, (uint)port, _anchor, inner]);
+            // A window granted back only as bytes reach the client, into a pair that holds all of
+            // it, so the channel's write on the session's receive thread never waits on a client
+            // that stopped reading (QS252).
+            object opening = channel;
+
+            ChannelWindow? window = ChannelWindow.Bound(
+                opening, () => LocalForward.OpenChannel!.Invoke(opening, [host, (uint)port, _anchor, inner]));
 
             if (LocalForward.Live?.GetValue(channel) is not true)
             {
@@ -410,7 +416,7 @@ public sealed class DynamicForward : IAsyncDisposable
             Reply(talk, Granted, version);
 
             Task up = Relay(client, outer);
-            Task down = Relay(outer, client);
+            Task down = Relay(outer, client, window);
 
             LocalForward.Pump!.Invoke(channel, null);
 
@@ -449,7 +455,7 @@ public sealed class DynamicForward : IAsyncDisposable
     }
 
     /// <summary>Copies one way until the source ends, then shuts the sending half of the other.</summary>
-    private static Task Relay(Socket from, Socket to) => Task.Run(async () =>
+    private static Task Relay(Socket from, Socket to, ChannelWindow? window = null) => Task.Run(async () =>
     {
         byte[] buffer = new byte[16 * 1024];
 
@@ -458,6 +464,9 @@ public sealed class DynamicForward : IAsyncDisposable
             for (int read; (read = await from.ReceiveAsync(buffer, SocketFlags.None).ConfigureAwait(false)) > 0;)
             {
                 await to.SendAsync(buffer.AsMemory(0, read), SocketFlags.None).ConfigureAwait(false);
+
+                // Owed back once it has gone, and never sooner (QS252).
+                window?.Consumed(read);
             }
 
             to.Shutdown(SocketShutdown.Send);
@@ -478,7 +487,13 @@ public sealed class DynamicForward : IAsyncDisposable
     {
         lock (_pairingGuard)
         {
-            Socket outer = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+            // Sized before connecting so the window it advertises holds a whole channel window
+            // (QS252).
+            Socket outer = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+            {
+                NoDelay = true,
+                ReceiveBufferSize = LocalForward.Buffered,
+            };
 
             outer.Connect((IPEndPoint)_pairing.LocalEndpoint);
 
@@ -489,6 +504,7 @@ public sealed class DynamicForward : IAsyncDisposable
                 if (inner.RemoteEndPoint is IPEndPoint from && from.Equals(outer.LocalEndPoint))
                 {
                     inner.NoDelay = true;
+                    inner.SendBufferSize = LocalForward.Buffered;
 
                     return (inner, outer);
                 }

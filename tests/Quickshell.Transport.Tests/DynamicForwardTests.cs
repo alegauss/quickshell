@@ -173,6 +173,46 @@ public sealed class DynamicForwardTests
         Assert.Empty(LocalForward.ListeningOn(port));
     }
 
+    /// <summary>
+    /// A connection through the proxy whose client never reads stops nothing but itself (QS252):
+    /// the same falsification as <c>LocalForwardTests</c>' for the forward each SOCKS connect
+    /// opens.
+    /// </summary>
+    [Fact]
+    public async Task AConnectNobodyReadsLeavesTheShellBesideItAnswering()
+    {
+        SkipWithoutFixture();
+
+        await using SshNetTransport session = await Connected(Port);
+
+        IPtyChannel shell = await session.OpenShellAsync(80, 24, Stop);
+
+        int port = Random.Shared.Next(30_000, 40_000);
+
+        await shell.WriteAsync(Encoding.ASCII.GetBytes(
+            $"timeout 60 socat TCP-LISTEN:{port},reuseaddr EXEC:yes >/dev/null 2>&1 &\n"), Stop);
+
+        Assert.True(await RemoteShell.AnsweredAsync(shell, "UP1", "echo UP$((0+1))", TimeSpan.FromSeconds(10), Stop),
+                    "the shell never answered before the proxy was opened");
+
+        await Task.Delay(TimeSpan.FromSeconds(1), Stop);
+
+        await using DynamicForward proxy = DynamicForward.Open(session);
+
+        using Socket neverRead = await Dial(proxy.BoundPort);
+
+        byte[] reply = await Request(neverRead, 1, "127.0.0.1", port);
+
+        Assert.True(reply is [5, 0, 0, _, ..], $"the connect was answered {Convert.ToHexString(reply)}");
+
+        await Task.Delay(TimeSpan.FromSeconds(5), Stop);
+
+        Assert.True(await RemoteShell.AnsweredAsync(shell, "AB42CD", "echo AB$((40+2))CD", TimeSpan.FromSeconds(3), Stop),
+                    "the shell did not answer while a connect through the proxy went unread");
+
+        await shell.DisposeAsync();
+    }
+
     // ---- plumbing ----
 
     /// <summary>The greeting, then one request; answers the ten-byte reply.</summary>

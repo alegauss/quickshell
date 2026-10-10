@@ -359,6 +359,9 @@ public sealed class LocalForward : IAsyncDisposable
     private void Carry(Socket accepted)
     {
         IDisposable? channel = null;
+        Socket? channelEnd = null;
+        Socket? ours = null;
+        Task delivered = Task.CompletedTask;
 
         try
         {
@@ -369,7 +372,18 @@ public sealed class LocalForward : IAsyncDisposable
                 _carrying.Add(channel);
             }
 
-            OpenChannel!.Invoke(channel, [TargetHost, (uint)TargetPort, _anchor, accepted]);
+            // The channel writes what arrives to its socket on the session's one receive thread, so
+            // it is never handed the user's socket: a tool that stopped reading would block that
+            // write and every channel on the connection with it (QS252). It gets one end of a pair
+            // that holds a whole window, and the window is granted back only as bytes reach the
+            // user's socket, so that write never waits.
+            (channelEnd, ours) = Pair();
+
+            Socket handed = channelEnd;
+            object opening = channel;
+
+            ChannelWindow? window = ChannelWindow.Bound(
+                opening, () => OpenChannel!.Invoke(opening, [TargetHost, (uint)TargetPort, _anchor, handed]));
 
             Interlocked.Increment(ref _connections);
 
@@ -381,6 +395,13 @@ public sealed class LocalForward : IAsyncDisposable
 
                 return;
             }
+
+            Socket near = ours;
+
+            delivered = Task.Factory.StartNew(() => Down(near, accepted, window), CancellationToken.None,
+                                              TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            _ = Task.Factory.StartNew(() => Up(accepted, near), CancellationToken.None,
+                                      TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
             Pump!.Invoke(channel, null);
 
@@ -415,7 +436,141 @@ public sealed class LocalForward : IAsyncDisposable
                 channel.Dispose();
             }
 
+            // What the far end sent before it closed is still in the pair: it reaches the user's
+            // socket before that socket goes, or a protocol that answers and closes loses the answer.
+            // The channel's end is shut first, so the pair ends after its last byte whatever the
+            // library did with it.
+            try
+            {
+                channelEnd?.Shutdown(SocketShutdown.Send);
+            }
+            catch (Exception gone) when (gone is SocketException or ObjectDisposedException)
+            {
+                // Already shut by the library's own close.
+            }
+
+            delivered.Wait(TimeSpan.FromSeconds(5));
+
+            ours?.Dispose();
+            channelEnd?.Dispose();
             accepted.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// What a pair's kernel buffers hold in each direction: a whole window and as much again, so
+    /// everything the host may send before a grant fits without the channel's write waiting.
+    /// </summary>
+    internal const int Buffered = (int)ChannelWindow.Size * 2;
+
+    /// <summary>Two connected loopback sockets: the channel's end, and the one this forward reads.</summary>
+    private static (Socket Channel, Socket Ours) Pair()
+    {
+        using Socket listener = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+        // Set before listening, so the accepted end inherits it and the window it advertises is
+        // sized from the start.
+        listener.ReceiveBufferSize = Buffered;
+        listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        listener.Listen(1);
+
+        Socket channelEnd = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+        {
+            SendBufferSize = Buffered,
+            NoDelay = true,
+        };
+
+        try
+        {
+            channelEnd.Connect(listener.LocalEndPoint!);
+
+            Socket ours = listener.Accept();
+
+            ours.NoDelay = true;
+
+            return (channelEnd, ours);
+        }
+        catch
+        {
+            channelEnd.Dispose();
+
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// The far end's bytes, from the pair to the user's socket, on a thread of this forward's own: a
+    /// tool that stops reading blocks this and nothing else, and the window is granted back only once
+    /// a write has gone. A user's socket that has gone is drained into nothing, so the channel can
+    /// still finish closing.
+    /// </summary>
+    private static void Down(Socket near, Socket accepted, ChannelWindow? window)
+    {
+        byte[] buffer = new byte[64 * 1024];
+        bool delivering = true;
+
+        try
+        {
+            for (int read; (read = near.Receive(buffer)) > 0;)
+            {
+                if (delivering)
+                {
+                    try
+                    {
+                        for (int sent = 0; sent < read;)
+                        {
+                            sent += accepted.Send(buffer, sent, read - sent, SocketFlags.None);
+                        }
+                    }
+                    catch (Exception gone) when (gone is SocketException or ObjectDisposedException)
+                    {
+                        delivering = false;
+                    }
+                }
+
+                window?.Consumed(read);
+            }
+
+            // The far end said EOF: the user's socket hears it as the end of its input, and its own
+            // sending half stays open (QS124).
+            accepted.Shutdown(SocketShutdown.Send);
+        }
+        catch (Exception gone) when (gone is SocketException or ObjectDisposedException)
+        {
+            // The pair or the user's socket went first, which is an ending and not a failure.
+        }
+    }
+
+    /// <summary>
+    /// The user's bytes, from their socket into the pair, where the channel's own pump reads them; the
+    /// end of their input is passed on as the end of the pair's, which is what ends that pump.
+    /// </summary>
+    private static void Up(Socket accepted, Socket near)
+    {
+        byte[] buffer = new byte[64 * 1024];
+
+        try
+        {
+            for (int read; (read = accepted.Receive(buffer)) > 0;)
+            {
+                for (int sent = 0; sent < read;)
+                {
+                    sent += near.Send(buffer, sent, read - sent, SocketFlags.None);
+                }
+            }
+        }
+        catch (Exception gone) when (gone is SocketException or ObjectDisposedException)
+        {
+            // The user's socket went: the same ending, said below.
+        }
+
+        try
+        {
+            near.Shutdown(SocketShutdown.Send);
+        }
+        catch (Exception gone) when (gone is SocketException or ObjectDisposedException)
+        {
+            // Already gone, which says the same thing.
         }
     }
 

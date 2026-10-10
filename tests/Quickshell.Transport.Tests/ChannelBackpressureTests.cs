@@ -42,7 +42,7 @@ public sealed class ChannelBackpressureTests
     /// enough for a gigabyte to arrive if arriving is all it takes.</para>
     ///
     /// <para>Before QS139 this held <b>3,072 MB</b>, essentially all of it in the large object heap:
-    /// SSH.NET offers a 2 GB window and tops it up as data arrives. <see cref="ShellWindow"/> offers
+    /// SSH.NET offers a 2 GB window and tops it up as data arrives. <see cref="ChannelWindow"/> offers
     /// two megabytes and grants them back only as the reader takes bytes, so the host stops.</para>
     /// </summary>
     [Fact]

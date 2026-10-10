@@ -250,6 +250,49 @@ public sealed class LocalForwardTests
         Assert.Equal("5", answer.ToString().Trim());
     }
 
+    /// <summary>
+    /// A forward whose local end never reads stops nothing but itself (QS252).
+    ///
+    /// <para>SSH.NET writes a forward's data to the local socket on the session's one receive
+    /// thread. A local tool that stops reading fills that socket's buffer, the write blocks, and
+    /// every channel on the connection stops with it: here, the shell beside it. So the host is
+    /// made to print without stopping into a forward nobody reads, and the shell is asked a
+    /// question it must answer.</para>
+    /// </summary>
+    [Fact]
+    public async Task AForwardNobodyReadsLeavesTheShellBesideItAnswering()
+    {
+        SkipWithoutFixture();
+
+        await using SshNetTransport session = await Connected();
+
+        IPtyChannel shell = await session.OpenShellAsync(80, 24, Stop);
+
+        // A source that never stops, and that leaves the container on its own a minute later.
+        int port = Random.Shared.Next(20_000, 30_000);
+
+        await shell.WriteAsync(Encoding.ASCII.GetBytes(
+            $"timeout 60 socat TCP-LISTEN:{port},reuseaddr EXEC:yes >/dev/null 2>&1 &\n"), Stop);
+
+        Assert.True(await RemoteShell.AnsweredAsync(shell, "UP1", "echo UP$((0+1))", TimeSpan.FromSeconds(10), Stop),
+                    "the shell never answered before the forward was opened");
+
+        await Task.Delay(TimeSpan.FromSeconds(1), Stop);
+
+        await using LocalForward forward = LocalForward.Open(session, "127.0.0.1", port);
+
+        using Socket neverRead = await Dial(forward.BoundPort);
+
+        // Long enough for the host's output to fill every buffer between it and this socket.
+        await Task.Delay(TimeSpan.FromSeconds(5), Stop);
+
+        Assert.True(await RemoteShell.AnsweredAsync(shell, "AB42CD", "echo AB$((40+2))CD", TimeSpan.FromSeconds(3), Stop),
+                    "the shell did not answer while a forward on the same connection went unread: "
+                    + "the forward's writes are holding the session's receive thread");
+
+        await shell.DisposeAsync();
+    }
+
     // ---- Three errors, three remedies ----
 
     /// <summary>

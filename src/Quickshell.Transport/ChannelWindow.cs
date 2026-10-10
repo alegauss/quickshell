@@ -7,8 +7,8 @@ using Renci.SshNet.Messages.Connection;
 namespace Quickshell.Transport;
 
 /// <summary>
-/// The shell's receive window, granted back to the host as the pane reads and not as bytes arrive
-/// (QS139).
+/// A channel's receive window, granted back to the host as its reader takes bytes and not as bytes
+/// arrive: the shell's (QS139) and each forwarded connection's (QS252).
 ///
 /// <para><b>Why it exists.</b> SSH.NET opens every channel with a window of 2 GB, and tops it up
 /// the moment data arrives rather than when anybody has read it. So a host printing on a loop is
@@ -27,8 +27,15 @@ namespace Quickshell.Transport;
 /// and the tunnels with it. And writing the channel layer here is what the non-goal forbids. Every
 /// member reached for is checked by <see cref="LibraryShape"/>, and where one is missing the shell
 /// opens the library's way, unbounded but working.</para>
+///
+/// <para><b>A forward has the same window and a worse consequence.</b> Its channel writes what
+/// arrives to a local socket on the session's one receive thread, so a local tool that stops reading
+/// does not cost memory: the write blocks, and every channel on the connection stops with it.
+/// <see cref="LocalForward"/> gives that channel a socket of its own pair, sized to hold a whole
+/// window, and owes bytes back as they leave for the real socket, so the write never has to
+/// wait.</para>
 /// </summary>
-internal sealed class ShellWindow
+internal sealed class ChannelWindow
 {
     /// <summary>
     /// What the host may send ahead of the reader. Two megabytes is several round trips of a fast
@@ -77,22 +84,24 @@ internal sealed class ShellWindow
 
     internal static readonly MethodInfo? ShellRequest = ChannelSessionType?.GetMethod("SendShellRequest", Any, Type.EmptyTypes);
 
-    /// <summary>Whether this build of the library still has every member the bounded open needs.</summary>
+    /// <summary>Whether this build of the library still has every member a bounded window needs.</summary>
+    internal static bool Steerable =>
+        LocalWindow is not null && RemoteNumber is not null && Send is not null && ExtendedData is not null
+        && ExtendedBytes is not null;
+
+    /// <summary>Whether this build of the library still has every member the bounded shell needs.</summary>
     internal static bool Usable =>
-        Unopened is not null && SharedField is not null && LocalWindow is not null && RemoteNumber is not null
-        && Send is not null && ExtendedData is not null && ExtendedBytes is not null && OpenChannel is not null
+        Steerable && Unopened is not null && SharedField is not null && OpenChannel is not null
         && PtyRequest is not null && ShellRequest is not null;
 
     private static FieldInfo? SharedField => SshNetChannel.SessionField;
 
     private readonly object _channel;
-    private readonly uint _remote;
     private long _owed;
 
-    private ShellWindow(object channel)
+    private ChannelWindow(object channel)
     {
         _channel = channel;
-        _remote = (uint)RemoteNumber!.GetValue(channel)!;
 
         // Extended data never reaches the stream, so nobody reads it: it is owed back the moment it
         // arrives, or a host writing to stderr would close the window on itself.
@@ -103,12 +112,40 @@ internal sealed class ShellWindow
     }
 
     /// <summary>
+    /// Opens a channel offering <see cref="Size"/> instead of the library's 2 GB, and takes its window
+    /// over: from here the library never tops it up, and <see cref="Consumed"/> is the only grant.
+    /// </summary>
+    /// <param name="channel">A library channel, not yet open.</param>
+    /// <param name="open">What opens it; the open message carries the window offered.</param>
+    /// <returns>The window to tell what the reader took, or null where this build of the library has
+    /// moved a member and the channel was opened unbounded.</returns>
+    internal static ChannelWindow? Bound(object channel, Action open)
+    {
+        ArgumentNullException.ThrowIfNull(open);
+
+        if (!Steerable)
+        {
+            open();
+
+            return null;
+        }
+
+        // The size the open message offers, and then out of reach: the library tops the window up
+        // when its counter falls under a packet, and after this it never will.
+        LocalWindow!.Invoke(channel, [Size]);
+        open();
+        LocalWindow.Invoke(channel, [uint.MaxValue]);
+
+        return new ChannelWindow(channel);
+    }
+
+    /// <summary>
     /// Opens a shell whose window is <see cref="Size"/>, or the library's way where this build of it
     /// has moved a member.
     /// </summary>
     /// <returns>The stream, and the window to tell what the reader took; no window where the shell
     /// was opened unbounded.</returns>
-    internal static (ShellStream Shell, ShellWindow? Window) Open(SshClient client, string terminal,
+    internal static (ShellStream Shell, ChannelWindow? Window) OpenShell(SshClient client, string terminal,
                                                                  uint columns, uint rows, int bufferSize)
     {
         if (!Usable || SessionProperty!.GetValue(client) is not { } session)
@@ -122,13 +159,7 @@ internal sealed class ShellWindow
         {
             object channel = SharedField!.GetValue(shell)!;
 
-            // The size the open message offers, and then out of reach: the library tops the window
-            // up when its counter falls under a packet, and after this it never will.
-            LocalWindow!.Invoke(channel, [Size]);
-            Called(() => OpenChannel!.Invoke(channel, null));
-            LocalWindow.Invoke(channel, [uint.MaxValue]);
-
-            ShellWindow window = new(channel);
+            ChannelWindow window = Bound(channel, () => Called(() => OpenChannel!.Invoke(channel, null)))!;
 
             // The library's own refusals, word for word, so a failure here reads as one there would.
             if (!(bool)Called(() => PtyRequest!.Invoke(channel, [terminal, columns, rows, 0u, 0u, null]))!)
@@ -176,7 +207,11 @@ internal sealed class ShellWindow
             // The library's counter is put back out of reach first, so a packet arriving during the
             // grant can never bring it near the point where the library would adjust on its own.
             LocalWindow!.Invoke(_channel, [uint.MaxValue]);
-            Called(() => Send!.Invoke(_channel, [new ChannelWindowAdjustMessage(_remote, (uint)granted)]));
+            // The far end's number is read here and not at the open: a channel the server refused
+            // never had one, and asking for it then would turn the refusal into an exception.
+            uint remote = (uint)Called(() => RemoteNumber!.GetValue(_channel))!;
+
+            Called(() => Send!.Invoke(_channel, [new ChannelWindowAdjustMessage(remote, (uint)granted)]));
         }
         catch (Exception gone) when (gone is LibraryException or ObjectDisposedException or InvalidOperationException)
         {

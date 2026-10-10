@@ -115,7 +115,7 @@
 - ✅ **QS248** **An SGR in the last column cancels the owed wrap, so the next character overwrites that column** — Only sequences that move the cursor or change the grid cancel an owed wrap, as xterm's ResetWrap sites do, so a full-width line that changes colour at its end still wraps.
 - ✅ **QS249** **Keys typed before a new pane's shell has started are dropped, so a fast first command loses its start** — Keys typed while a pane's session opens are kept, bounded, and handed over first and in order once it attaches, so a fast first command no longer loses its start.
 - ✅ **QS212** **Dark text on a light theme carries 12 to 17 % less ink than Windows draws, while light-on-dark carries more** — Dark text on a light theme carries Direct2D's ink within 1 % in both antialiasing modes, and light-on-dark is drawn as before (design recorded in `docs/measurements/contrast.md`).
-- ✅ **QS139** **A host sending faster than the parser consumes buffers gigabytes inside the channel** — A fast host now waits for the reader: the shell's 2 MB window is granted back as read, and ten unread seconds hold 1.4 MB, not 3 GB (design recorded in `src/Quickshell.Transport/ShellWindow.cs`).
+- ✅ **QS139** **A host sending faster than the parser consumes buffers gigabytes inside the channel** — A fast host now waits for the reader: the shell's 2 MB window is granted back as read, and ten unread seconds hold 1.4 MB, not 3 GB (design recorded in `src/Quickshell.Transport/ChannelWindow.cs`).
 
 ## Block D — The tree a user organises work in
 
@@ -159,6 +159,7 @@
 - ✅ **QS68** **Reaching many hosts on the remote network needs one forward configured per host** — One SOCKS5 or SOCKS4a proxy reaches the remote network, every name resolved by the server and every refusal given its reply code.
 - ✅ **QS69** **A forward is set up by hand each time and dies silently when its session drops** — A session's forwards start with it, come back after a reconnect each said, go with it, and a busy port names the program holding it.
 - ✅ **QS70** **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — Every running forward is listed with what it carries now, and the window title says how many run while any do, so none is forgotten.
+- ✅ **QS252** **A forwarded port whose local tool stops reading freezes every channel on the connection, the shell included** — A local or SOCKS forward nobody reads no longer freezes the connection: its window is granted as bytes reach the user (design recorded in `src/Quickshell.Transport/ChannelWindow.cs`).
 
 ## Block G — The clean interface, defended
 
