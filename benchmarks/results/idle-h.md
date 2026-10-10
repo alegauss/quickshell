@@ -65,3 +65,34 @@ Specifically unmeasured, and each one filed rather than assumed:
   loop runs in the application, so there is no occupancy figure for one.
 - **A cursor blink's bounded cost.** `RedrawGate` refuses to wake for a hidden cursor and blinks for
   a visible one; what a blink costs per hour has not been put on a clock.
+
+## A live client, measured — 2026-10-10 (QS137)
+
+The same desk and the same tool, which now also reads each GPU engine's busy time for the subject
+from Windows' own `GPU Engine` counters. Ten minutes per subject after a thirty-second settle, the
+Debug build at d972ff7 with QS139 in it, each launched with `QUICKSHELL_DATA` on a scratch folder so
+nothing in the operator's profile was read. The connected session is the docker fixture's sshd,
+opened with `--session` and left at its prompt with the file browser's SFTP channel open beside it.
+
+| subject | core time / 600 s | occupancy of one core | GPU engine | private memory |
+|---|---|---|---|---|
+| one local pane | 3,719 ms | 0.62 % | 0.17 % | 172.5 MB |
+| one local pane, `cursorBlink: false` | 3,438 ms | 0.57 % | 0.20 % | 175.0 MB |
+| four local panes | 10,484 ms | 1.74 % | 0.31 % | 218.3 MB |
+| a connected session, a local tab behind it | 5,797 ms | 0.96 % | 0.33 % | 211.4 MB |
+
+None raised the system timer.
+
+**Figure 4 fails on every live window.** The empty window above measured zero; a window with one
+pane in it does not, and **the cursor blink is not why**: with blinking off the pane costs 0.57 %
+of a core where it cost 0.62 with it on, and still keeps a GPU engine busy. Something other than
+the blink wakes a pane and draws, and it is filed as QS255.
+
+**Several panes do not cost what one costs.** Four cost 2.8 times one. Whatever wakes a pane wakes
+each of them.
+
+**Figure 6 fails before a session is opened.** One local pane holds 172.5 MB against a budget of
+120 MB for a *connected* session, and the connected session 211.4 MB. Filed as QS256.
+
+Keepalive's own share could not be separated here: the connected row also carries a local tab and
+the browser's SFTP channel, so it reads as one pane's cost plus about a third.

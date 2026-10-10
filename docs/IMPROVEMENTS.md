@@ -231,6 +231,31 @@ Falsified when the guest suite runs ten times with no pass reading 0.0 for Direc
 
 ## Block D — The tree a user organises work in
 
+### §QS254 A store that hides the slip a hand edit makes
+
+Found measuring QS137. A hand-written `sessions.json` put `port`, `user` and `key` on
+the session node itself instead of under its `settings` object. `SessionTree` read it
+without a word, and `--session fixture` connected as the Windows user to port 22 and
+reported that the host refused a connection on port 22, which reads as a server fault.
+
+`SessionTree`'s reading options accept comments and trailing commas because the file is
+meant to be edited by hand, and they leave `System.Text.Json`'s default for an unknown
+member, which is to skip it. So the mistake a hand edit is most likely to make (a field
+one level off, or misspelt) is the one the reader hides.
+
+What to build: read with `UnmappedMemberHandling = Disallow` on both `SessionNode` and
+`SessionSettings`, so an unknown member is a `SessionStoreException` naming it and its
+JSON path, shown where an unreadable store already is. Where it is a settings field
+found on a node, the message says to move it under `settings`. `docs/SESSIONS.md` says
+unknown fields are refused.
+
+A store written by an older or newer client with a field this one does not know would
+then refuse to open. That is the cost, and the reason to settle it before shipping:
+either refuse, or read the store and say which members were ignored in the same place
+the refusal would have said it.
+
+Falsified when a misplaced `port` still connects to port 22 without a word.
+
 ## Block E — SCP and SFTP as a thing a person operates
 
 ### §QS188 A drag that starts on the server
@@ -396,31 +421,6 @@ zero, and the suite checks it on every run already.
 Falsified when the gate is disabled to land a change and the disabling is not itself a
 filed line.
 
-### §QS137 The idle figure a connected client owes
-
-QS76 measured what exists and the number is good: 0 ms of core time over 601 seconds, no
-system timer raised, and zero presents through a real device. Against MobaXterm's two
-processes on the same desk — 3,625 ms and 0.6 % of a core — it is the win the project
-claims.
-
-It is also not the figure the budget describes. Figure 4 is a window *connected, with a
-shell at a prompt*, and this client cannot be in that state: nothing above the seam
-constructs a transport and no pane drives a render loop. What was measured is a WPF
-window, the crash guard and a settings read.
-
-Three things are owed once a session can be opened. **A connected session's idle cost**,
-which brings keepalive with it — a genuine trade against battery. **Several idle panes
-costing what one costs**, which is the occlusion and damage work verified instead of
-assumed. **A live loop's GPU occupancy**, since zero draw calls bounds submission and
-not residency.
-
-One row of the comparison wants following up on its own: MobaXterm idles in 62.4 MB
-against quickshell's 79.4 MB, and quickshell's window is empty. Figure 6 allows 120 MB
-for a connected session, so there is 40 MB of headroom for everything a session adds —
-which is not much, and is worth knowing before it is spent.
-
-Falsified when the idle figure is quoted for a client that has never held a connection.
-
 ### §QS225 Timing a monitor-covering chain
 
 QS201 found every windowed chain composed on the reference desk, so an echo there costs
@@ -463,6 +463,52 @@ ratio's spread. Absolute medians are still printed and stop being the yardstick.
 
 Falsified when the gate at an unchanged commit, on a day the desk reads a seventh
 slower, still passes.
+
+### §QS255 What wakes a pane nobody is typing into
+
+Found measuring QS137, recorded in `benchmarks/results/idle-h.md`. A window with one
+local pane, nobody typing, costs 0.62 % of a core and 0.17 % of a GPU engine over ten
+minutes. Figure 4 asks for zero. With `cursorBlink: false` it costs 0.57 % and 0.20 %,
+so the blink, the one wake the design allows, is not what spends it. Four panes cost 2.8
+times one. The window with no pane in it (QS76) measured zero.
+
+So something wakes a live pane and makes it draw, about as often with the blink off as
+on. `PresentSurfaceTests` proves the gate presents nothing for an idle loop it drives
+itself, so the suspect is what drives the real one: what `TerminalView`'s loop waits on,
+whether a damage counter moves while the host is silent (a local shell's console can
+repaint on its own), and the frame-latency wait.
+
+What to build first is the count, not the fix: the pane keeps how many frames it drew
+and why each was claimed (damage, cursor, resize), and the idle tool reads it, so the
+answer is a number per cause. The fix follows the largest cause. A test then holds a
+live pane, host silent and blink off, for a minute and asserts zero frames, beside the
+gate test that already proves the loop's half.
+
+Falsified when one local pane, blink off, reads zero frames and no measurable core
+occupancy over ten idle minutes.
+
+### §QS256 Where the first pane's ninety megabytes go
+
+Found measuring QS137, recorded in `benchmarks/results/idle-h.md`. Figure 6 allows 120
+MB of private memory for one connected session at default scrollback. The window with no
+pane measured 79.4 MB (QS76). One local pane, settled, holds 172.5 MB; a connected
+session with a local tab behind it holds 211.4 MB; four local panes hold 218.3 MB.
+
+So the budget is spent before a session is opened, and the first pane costs about 93 MB
+where three more cost 46 between them. The first pane's cost is therefore mostly what is
+created once per process, not per pane: the graphics device and its swapchain, the
+atlas's first pages, DirectWrite's font collection, and whatever WPF interop brings in.
+
+What to build first is the account: a breakdown of the first pane's 93 MB by owner,
+taken from a heap snapshot (`dotnet-gcdump`) for the managed half and from the process's
+committed regions by module for the native half, written beside the idle figures so each
+later change can be read against it. Then the largest owner is cut, with the figure
+re-measured the same way each time. If the account says the device and the driver hold
+most of it, the budget's 120 MB is argued in a commit that changes
+`docs/PERFORMANCE.md`, since that file's figures move only that way.
+
+Falsified when a connected session at default scrollback settles under 120 MB of private
+memory on the reference machine.
 
 ## Block I — An error a user can act on
 

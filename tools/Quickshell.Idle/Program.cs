@@ -165,6 +165,12 @@ public static class Idle
         }
 
         TimeSpan cpuAtStart = Cpu(subjects);
+
+        // Every engine's busy time for these processes, so a loop that presents nothing and still
+        // keeps the GPU awake is seen (QS137). Null where this desk has no GPU counters.
+        using GpuTime? gpu = GpuTime.TryOpen();
+        int[] pids = [.. subjects.Select(each => each.Id)];
+        TimeSpan gpuAtStart = gpu?.Read(pids) ?? TimeSpan.Zero;
         long peakMemory = Memory(subjects);
         double finest = quiet;
         int samples = 0;
@@ -198,6 +204,7 @@ public static class Idle
         TimeSpan measured = clock.Elapsed;
 
         TimeSpan cpu = Cpu(subjects) - cpuAtStart;
+        TimeSpan gpuBusy = (gpu?.Read(pids) ?? TimeSpan.Zero) - gpuAtStart;
         long memory = Memory(subjects);
         int threads = subjects.Sum(each => each.Threads.Count);
         int handles = subjects.Sum(each => each.HandleCount);
@@ -223,6 +230,11 @@ public static class Idle
                         $"| core time consumed | {cpu.TotalMilliseconds:F0} ms |")
             .AppendLine(CultureInfo.InvariantCulture,
                         $"| occupancy of one core | {occupancy:F4} % |")
+            .AppendLine(gpu is null
+                            ? "| GPU engine time | not readable on this desk |"
+                            : string.Create(CultureInfo.InvariantCulture,
+                                            $"| GPU engine time | {gpuBusy.TotalMilliseconds:F0} ms, "
+                                            + $"{gpuBusy.TotalMilliseconds / measured.TotalMilliseconds * 100.0:F4} % of one engine |"))
             .AppendLine(CultureInfo.InvariantCulture,
                         $"| private memory | {memory / (1024.0 * 1024.0):F1} MB "
                         + $"(peak {peakMemory / (1024.0 * 1024.0):F1} MB) |")
