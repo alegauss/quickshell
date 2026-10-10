@@ -74,6 +74,12 @@ most likely Docker Desktop's resource saver. That is fatal to a three-day run an
 endpoint probe above exists. QS136 covers the same problem making the test suite print "Passed"
 while skipping a hundred tests.
 
-GPU memory and atlas occupancy are **not** watched: this harness holds no graphics device, because
-nothing above the seam attaches a pane to a session yet. The design names atlas memory specifically,
-and it is part of QS78's remainder rather than something quietly dropped.
+GPU memory and atlas occupancy **are** watched since 2026-10-10. The harness opens a graphics device
+with no window and paints every parsing session's screen through `GridPainter` four times a second,
+which is how a pane asks the atlas for glyphs. Three rows join the table: the atlas's pages in MB,
+the glyphs it holds, and the video memory this process holds on the adapter. A two-minute check with
+six sessions read 4.0 MB of pages, 72 glyphs and 7.3 MB of video memory, with private memory at
+121 MB where the run above, before QS139, held 3,676 MB.
+
+The seventy-two-hour run on that build started on 2026-10-10 at 18:36 on the reference machine and
+writes `D:\tmp\qs-soak-qs78\report.md` when it ends. Its result replaces this paragraph.

@@ -103,7 +103,14 @@ public static class Soak
             await Task.Delay(TimeSpan.FromMilliseconds(500)).ConfigureAwait(false);
         }
 
-        string report = await WatchAsync(sessions, hours, warmup).ConfigureAwait(false);
+        // The panes' half: an atlas and a device, painted from the screens above (QS78). A desk
+        // with no device still soaks the rest, and the report says which half it judged.
+        using Graphics? graphics = Graphics.TryOpen(out string noGraphics);
+
+        graphics?.Start(sessions);
+
+        string report = await WatchAsync(sessions, graphics, noGraphics, hours, warmup)
+                            .ConfigureAwait(false);
 
         Console.WriteLine(report);
 
@@ -143,7 +150,8 @@ public static class Soak
             _ => Role.Idle,
         };
 
-    private static async Task<string> WatchAsync(List<Soaked> sessions, double hours, double warmup)
+    private static async Task<string> WatchAsync(List<Soaked> sessions, Graphics? graphics,
+                                                 string noGraphics, double hours, double warmup)
     {
         Process self = Process.GetCurrentProcess();
 
@@ -162,7 +170,16 @@ public static class Soak
 
         Trend scrollback = new("scrollback lines (one model)", "lines", tolerance: 0);
 
-        Trend[] watched = [working, managed, handles, threads, gen2, loh, poh, scrollback];
+        // The graphics counters, where there is a device. The atlas fills to what the screens ask
+        // for and to its page ceiling, then stops; video memory is everything this process holds on
+        // the adapter, so a texture leaked anywhere on the device shows here.
+        Trend atlas = new("atlas pages (MB)", "MB", tolerance: 16);
+        Trend glyphs = new("atlas glyphs", "glyphs", tolerance: 50);
+        Trend video = new("GPU memory (MB)", "MB", tolerance: 32);
+
+        Trend[] watched = graphics is null
+            ? [working, managed, handles, threads, gen2, loh, poh, scrollback]
+            : [working, managed, handles, threads, gen2, loh, poh, scrollback, atlas, glyphs, video];
 
         Stopwatch clock = Stopwatch.StartNew();
         TimeSpan warm = TimeSpan.FromMinutes(warmup);
@@ -206,6 +223,13 @@ public static class Soak
             // so, and a ring that kept growing would be the one failure this row can report.
             scrollback.Took(since, Deepest(sessions));
 
+            if (graphics is not null)
+            {
+                atlas.Took(since, graphics.AtlasMb);
+                glyphs.Took(since, graphics.Glyphs);
+                video.Took(since, graphics.VideoMb);
+            }
+
             await Console.Error.WriteLineAsync(
                 $"{since.TotalMinutes.ToString("F0", CultureInfo.InvariantCulture)} min: "
                 + $"{working.Last.ToString("F1", CultureInfo.InvariantCulture)} MB, "
@@ -225,7 +249,7 @@ public static class Soak
 
         long privateAfter = self.PrivateMemorySize64;
 
-        return Compose(sessions, watched, clock.Elapsed, warm, discarded,
+        return Compose(sessions, graphics, noGraphics, watched, clock.Elapsed, warm, discarded,
                        beforeCollecting / (1024.0 * 1024.0), afterCollecting / (1024.0 * 1024.0),
                        privateAfter / (1024.0 * 1024.0));
     }
@@ -248,7 +272,8 @@ public static class Soak
     private static double Bytes(List<Soaked> sessions) =>
         sessions.Sum(session => session.Bytes) / (1024.0 * 1024.0 * 1024.0);
 
-    private static string Compose(List<Soaked> sessions, Trend[] watched, TimeSpan ran,
+    private static string Compose(List<Soaked> sessions, Graphics? graphics, string noGraphics,
+                                  Trend[] watched, TimeSpan ran,
                                   TimeSpan warm, int discarded, double heapBefore, double heapAfter,
                                   double privateAfter)
     {
@@ -279,6 +304,13 @@ public static class Soak
         {
             report.AppendLine(trend.Row());
         }
+
+        report.AppendLine()
+              .AppendLine(graphics is null
+                              ? $"No graphics device ({noGraphics}), so atlas and GPU memory were not watched."
+                              : string.Create(CultureInfo.InvariantCulture,
+                                              $"{graphics.Frames} frames painted into the atlas; "
+                                              + $"{graphics.Evictions} whole pages evicted."));
 
         report.AppendLine()
               .AppendLine("## Garbage or retention")

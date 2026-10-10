@@ -31,6 +31,7 @@
 - ⏸ **QS137** (deps: QS76 ✅) **The idle figure is measured on a window with no session and no render loop in it** — set aside (Needs the reference desk attended for ten connected minutes.): The client can now hold a session, and the figure is still the empty window's. → §QS137
 - ⏸ **QS197** (deps: —) **The parse figure spreads by a fifth between runs on the reference machine, so the gate lets a regression that big pass** — set aside (Needs the reference desk attended.): The gate's baseline is not retaken with the steadier arm, which starts the client eleven times on the desk. → §QS197
 - ⏸ **QS225** (deps: —) **An echo in a window covering its whole monitor has never been timed, the one case offered independent flip** — set aside (It covers the operator's screen; it waits for the user to clear the desk.): Only a monitor-covering chain can show the echo one interval sooner. → §QS225
+- ⏸ **QS78** (deps: QS139 ✅) **Nothing has run for longer than a working session, so a slow leak would reach users first** — set aside (Run ends 2026-10-13 18:36; read D:\tmp\qs-soak-qs78\report.md.): The 72-hour run, atlas and GPU watched, is under way and its report is still to be read. → §QS78
 
 ## Block I — An error a user can act on
 
