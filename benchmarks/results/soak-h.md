@@ -81,5 +81,6 @@ the glyphs it holds, and the video memory this process holds on the adapter. A t
 six sessions read 4.0 MB of pages, 72 glyphs and 7.3 MB of video memory, with private memory at
 121 MB where the run above, before QS139, held 3,676 MB.
 
-The seventy-two-hour run on that build started on 2026-10-10 at 18:36 on the reference machine and
-writes `D:\tmp\qs-soak-qs78\report.md` when it ends. Its result replaces this paragraph.
+The seventy-two-hour run has still not been done. One was started on 2026-10-10 and stopped after
+minutes, first so it would not load the desk while other figures were being timed, then because the
+machine was busy with other projects and could not be given three days. It runs when it can be.

@@ -28,7 +28,7 @@
 
 ## Block H — The reason to leave the incumbent
 
-- ⏸ **QS78** (deps: QS139 ✅) **Nothing has run for longer than a working session, so a slow leak would reach users first** — set aside (Run ends 2026-10-13 18:36; read D:\tmp\qs-soak-qs78\report.md.): The 72-hour run, atlas and GPU watched, is under way and its report is still to be read. → §QS78
+- ⏸ **QS78** (deps: QS139 ✅) **Nothing has run for longer than a working session, so a slow leak would reach users first** — set aside (The operator frees the machine for three days.): The 72-hour run, atlas and GPU watched, has not been run: it waits for a machine free for three days. → §QS78
 
 ## Block I — An error a user can act on
 
