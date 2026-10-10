@@ -24,6 +24,8 @@
 
 ## Block G — The clean interface, defended
 
+- 📋 **QS257** (deps: QS225 ✅) **There is no full-screen mode, the one window shape whose echoes reach the glass an interval sooner** — A monitor-covering chain flips independently at a 24 ms median against 33 windowed, and no window the client makes has that shape. → §QS257
+
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS75** (deps: QS2 ✅, QS46 ✅, the incumbent closed on the reference desk) **Nothing has been measured starting, so the cold start figure is an aspiration** — The incumbent has not been started beside it on the same machine, so the comparison the figure exists for is not made. → §QS75
@@ -334,7 +336,8 @@
 - **No echo under two refresh intervals for a windowed client** QS201 measured every
   windowed chain composed on the reference desk, made for the window or for composition,
   in a popup or the client's WPF host: the second interval is the compositor's. A
-  monitor-covering window is the open exception.
+  monitor-covering window is the exception: QS225 timed it in independent flip, median
+  24 ms against 33.
 - **No pane resized because a host asks for 132 or 80 columns** A pane in a split tab
   has no single size to become, and xterm too ignores DECCOLM's width unless allowC132
   is set. QS208 keeps its clear, margin reset and home; vttest cuts 010, 012 and 030

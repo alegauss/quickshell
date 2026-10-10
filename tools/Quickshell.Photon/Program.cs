@@ -35,7 +35,9 @@ public static class Photon
                   --passes <n>    how many times each arm runs under each workload (default 3)
                   --out <file>    append the report here as well as printing it
                   --host <kind>   popup (default): a bare topmost popup; wpf: the client's own
-                                  arrangement, a WPF window with a child HWND the chain presents to
+                                  arrangement, a WPF window with a child HWND the chain presents to;
+                                  monitor: a popup covering the primary monitor exactly, the one
+                                  shape offered independent flip (QS225)
                   --chain <kind>  window (default): made for the host window; composition: made for
                                   composition and bound to a DirectComposition visual on it
 
@@ -59,7 +61,8 @@ public static class Photon
         {
             "popup" => (width, height) => new DeskWindow(width, height),
             "wpf" => (width, height) => new WpfHost(width, height),
-            _ => throw new ArgumentException($"--host takes popup or wpf, not {hostName}"),
+            "monitor" => (_, _) => DeskWindow.CoveringMonitor(),
+            _ => throw new ArgumentException($"--host takes popup, wpf or monitor, not {hostName}"),
         };
 
         // How the chain reaches that window: made for it, or made for composition and bound to a

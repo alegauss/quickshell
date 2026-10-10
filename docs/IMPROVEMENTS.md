@@ -310,6 +310,31 @@ Falsified when a forward nobody reads leaves the shell beside it answering.
 
 ## Block G — The clean interface, defended
 
+### §QS257 A full-screen pane that keeps independent flip
+
+QS225 timed echoes in a chain covering the whole monitor on the reference desk
+(`benchmarks/results/photon-h.md`): shown as overlay, independent flip, on nearly every
+echo, with a median of 24 ms typing and 24.5 ms under load against 32.5 and 41.7 for
+every windowed chain. The windowed non-goal names this as its exception. The client has
+no window of that shape, so no user gets the faster echo.
+
+What to build: a full-screen toggle, F11 and a palette entry, beside the existing window
+commands. The window becomes borderless at its monitor's exact bounds, topmost only
+while it has the foreground, and the pane's chain is resized to the monitor's pixel
+size. The tab strip either hides or is drawn inside the chain, since a WPF element over
+the chain makes it composed again; which one is the open choice, and the photon tool's
+monitor host is how it is settled.
+
+The client's own frame order lost the flip on two echoes in three while typing in that
+run (waited after painting, 28.3 ms), where wait-first kept it on every one. So the mode
+ships with the pane waiting on the frame-latency handle before it reads the model,
+measured by photon in the client's own host at full screen before and after.
+
+A UI case toggles it and reads the window's bounds against the monitor's through the
+accessibility tree.
+
+Falsified when a full-screen pane's echoes are composed in photon's report.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS75 Where the first four hundred milliseconds go
@@ -420,24 +445,6 @@ zero, and the suite checks it on every run already.
 
 Falsified when the gate is disabled to land a change and the disabling is not itself a
 filed line.
-
-### §QS225 Timing a monitor-covering chain
-
-QS201 found every windowed chain composed on the reference desk, so an echo there costs
-two refresh intervals and the non-goal says a windowed client keeps them. The one case
-it did not time is the one where Windows offers independent flip: a borderless window
-that covers its whole monitor, the shape a maximised or full-screen terminal takes.
-
-The photon tool already has what this needs. Add a host whose window is the monitor's
-size, borderless, with the chain at that exact size, and run every arm with the `shown
-as` column. If the echoes read independent flip at about one interval, a full-screen
-mode is worth designing for figure 1 and the non-goal gets its exception named; if they
-stay composed, the exception is removed from the non-goal's sentence.
-
-The run covers the operator's whole screen for a minute and a half, on the host and not
-the guest, whose virtual GPU says nothing about the panel. So it is taken only when the
-user has cleared the desk for it, never unattended. Falsified when a monitor-covering
-chain on the reference desk reports independent flip and the line was still deferred.
 
 ### §QS253 A baseline judged by its numbers, on a desk that drifts
 

@@ -225,6 +225,7 @@
 - ✅ **QS247** **A copy started a moment before an install is not found running, so the install is not refused** — The running check reads the kernel's image path, so a copy started a moment before an install or uninstall is found and refused instead of being missed.
 - 🗑 **QS190** **The window's constructor takes about 200 ms of a start, half of it the Fluent theme** — abandoned: Measured and dropped: theme after the first frame left the constructor unshortened (300-321 vs 320 ms) and interactive 435-460 vs 473 ms, inside run spread.
 - ✅ **QS137** **The idle figure is measured on a window with no session and no render loop in it** — A connected client is measured idle: one pane 0.62 % of a core and 172 MB, a session 0.96 % and 211 MB, GPU time read too (design recorded in `benchmarks/results/idle-h.md`).
+- ✅ **QS225** **An echo in a window covering its whole monitor has never been timed, the one case offered independent flip** — A monitor-covering chain flips independently on the reference desk, echoing at a 24 ms median against 33 windowed; the non-goal names it (design recorded in `benchmarks/results/photon-h.md`).
 
 ## Block I — An error a user can act on
 

@@ -158,3 +158,35 @@ an overlay plane, whether made for the window or for composition, in a popup or 
 own host. For a windowed client the second interval is the compositor's and stays, which is now
 a non-goal. Not measured: a window covering the whole monitor, the one case where independent
 flip is on offer, since that run would cover the operator's screen.
+
+## A window covering the monitor (QS225)
+
+The one shape Windows offers independent flip: `--host monitor`, a borderless topmost popup at the
+primary monitor's exact bounds in physical pixels (the tool makes itself per-monitor aware first), with
+the chain at that size. One pass of 20 s per arm, on the reference desk, at d972ff7.
+
+| workload | arm | echoes | unresolved | frames | occluded | shown as | min | p10 | median | p90 | max |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| typing | client (latency 1, waited after painting, 2 buffers) | 132 | 0 | 132 | 0 | composed 87, overlay 45 | 4.7 | 12.1 | 28.3 | 41.9 | 98.6 |
+| typing | wait-first (latency 1, waited before reading, 2 buffers) | 132 | 0 | 132 | 0 | overlay 132 | 7.6 | 15.9 | 24.0 | 33.4 | 54.4 |
+| typing | unbought (latency 3, Present blocks, 2 buffers) | 132 | 0 | 132 | 0 | overlay 132 | 4.4 | 15.3 | 24.5 | 45.7 | 70.2 |
+| typing | unbought-3 (latency 3, Present blocks, 3 buffers) | 132 | 0 | 132 | 0 | overlay 132 | 3.8 | 8.2 | 22.1 | 35.2 | 92.5 |
+| busy | client (latency 1, waited after painting, 2 buffers) | 195 | 0 | 1243 | 0 | overlay 195 | 28.5 | 32.6 | 39.6 | 46.8 | 96.0 |
+| busy | wait-first (latency 1, waited before reading, 2 buffers) | 195 | 0 | 1234 | 0 | overlay 195 | 14.5 | 17.9 | 24.5 | 32.0 | 73.5 |
+| busy | unbought (latency 3, Present blocks, 2 buffers) | 194 | 1 | 1235 | 0 | overlay 188, composed 6 | 26.0 | 31.9 | 39.9 | 52.8 | 98.6 |
+| busy | unbought-3 (latency 3, Present blocks, 3 buffers) | 191 | 4 | 1258 | 0 | overlay 167, composed 24 | 22.1 | 34.0 | 46.4 | 54.0 | 57.3 |
+
+
+**It reaches the glass by independent flip.** Every arm but the client's was shown as overlay on
+nearly every echo, where every windowed chain QS201 timed was composed on every one. The medians
+follow: wait-first reads 24.0 ms typing and 24.5 ms busy, against 32.5 and 41.7 windowed. That is
+half an interval sooner at a prompt and a whole one under load, which is the interval the compositor
+was taking.
+
+**The client's own arm is composed on two echoes in three while typing** (87 of 132), and reads
+28.3 ms: waiting after painting leaves a frame that misses the flip often enough to fall back to
+composition. Wait-first does not.
+
+**Still not one interval.** 24 ms is about one and a half at 60 Hz, and figure 1 asks 8.3 ms, so this
+narrows the gap and does not close it. What it settles is the non-goal's exception, now named there,
+and that a full-screen mode is worth designing: QS257.

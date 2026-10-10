@@ -34,13 +34,41 @@ internal sealed class DeskWindow : IPhotonHost
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern nint GetModuleHandleW(string? name);
 
-    internal DeskWindow(int width, int height)
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int index);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetProcessDpiAwarenessContext(nint context);
+
+    private const int ScreenWidth = 0;
+    private const int ScreenHeight = 1;
+
+    /// <summary>DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2.</summary>
+    private static readonly nint PerMonitorV2 = -4;
+
+    /// <summary>
+    /// A window covering the primary monitor exactly, in physical pixels (QS225).
+    ///
+    /// <para><b>The one shape Windows offers independent flip to</b>: borderless, topmost, at the
+    /// monitor's own bounds, with a flip-model chain the same size. Any other window is composed, and
+    /// QS201 timed every one of those at two intervals. The process is made per-monitor aware first,
+    /// so the size asked for is the panel's and not a scaled one the compositor would stretch, which
+    /// would be composition again.</para>
+    /// </summary>
+    internal static DeskWindow CoveringMonitor()
+    {
+        SetProcessDpiAwarenessContext(PerMonitorV2);
+
+        return new DeskWindow(GetSystemMetrics(ScreenWidth), GetSystemMetrics(ScreenHeight), x: 0, y: 0);
+    }
+
+    internal DeskWindow(int width, int height, int x = 40, int y = 40)
     {
         // A popup and not an overlapped window, so the client area is exactly the swapchain's size
         // and no frame the caption bar adds is something the grid has to be measured around.
         Handle = CreateWindowExW(
             WsExTopmost | WsExNoActivate | WsExToolWindow, "STATIC", "quickshell photon",
-            WsPopup | WsVisible, 40, 40, width, height, nint.Zero, nint.Zero, GetModuleHandleW(null),
+            WsPopup | WsVisible, x, y, width, height, nint.Zero, nint.Zero, GetModuleHandleW(null),
             nint.Zero);
 
         if (Handle == nint.Zero)
