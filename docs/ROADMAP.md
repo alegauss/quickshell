@@ -28,7 +28,6 @@
 
 ## Block H — The reason to leave the incumbent
 
-- ⏳ **QS75** (deps: QS2 ✅, QS46 ✅, the incumbent closed on the reference desk) **Nothing has been measured starting, so the cold start figure is an aspiration** — The incumbent has not been started beside it on the same machine, so the comparison the figure exists for is not made. → §QS75
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
 - 📋 **QS253** (deps: —) **The gate fails unchanged code, because the desk runs a seventh slower some days than when the baseline was taken** — Thresholds come from the noise within one sitting, and day-to-day drift is larger, so a red gate says nothing about the commit. → §QS253
@@ -217,13 +216,6 @@
   half landed, which is the Windows OpenSSH agent and Pageant from 0.78 on. What is left
   is the shared-memory transport older Pageants speak, and a token-backed key is the
   case with no other route at all.
-
-## Done when — QS75
-
-- **The incumbent's start is timed beside this client's on the reference machine**
-  Settled by MobaXterm's process start to its first window, and to a local shell where
-  it can be read, timed on the same desk the same day as tools/Quickshell.Startup's run
-  and recorded in startup-h.md.
 
 ## Done when — QS77
 

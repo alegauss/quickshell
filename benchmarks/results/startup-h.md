@@ -84,3 +84,32 @@ contention for the guest's cores.
   beside it, or ending one, is not something a measurement may do to somebody's work.
 - **Trimming.** The SDK refuses it for WPF (`NETSDK1168`), so there is no trimmed build to measure;
   the design's "measured rather than assumed" is answered by the refusal.
+
+## Beside the incumbent — 2026-10-10 (QS75)
+
+MobaXterm (the installed edition at `C:\Program Files (x86)\Mobatek\MobaXterm`, closed before the
+run) and quickshell were started eleven times each on the reference machine, minutes apart, and
+timed by one external observer for both: process creation, as Windows records it, to the process's
+main window being visible, polled every few milliseconds. The first start is reported apart.
+
+| client | first start | warm median of 10 | warm runs |
+|---|---|---|---|
+| MobaXterm | 1,215 ms | **894 ms** | 772 to 2,004 |
+| quickshell, the release publish the gate times (d972ff7) | 2,751 ms | **612 ms** | 555 to 713 |
+| quickshell, Debug build | 984 ms | 1,180 ms | 713 to 2,086 |
+
+**quickshell's window is up about 280 ms before the incumbent's**, warm, measured the same way.
+
+The observer reads "visible" late against the client's own clock: the same release publish reports
+`shown` at 536 ms and `interactive`, its first frame carrying the shell's prompt, at 657 ms warm in
+its own startup report taken in the same sitting. So the external figure sits near the first frame.
+
+**What could not be measured: the incumbent's prompt.** MobaXterm opens on its home tab with no
+shell in it, and `MobaXterm.exe -newtab "<command>"` ran its command and closed the tab without
+writing any file the command named, under three spellings of the path. So the comparison here is
+window to window, and the incumbent's time to a local shell is still unknown.
+
+**The desk was not quiet.** The operator said other work was running on the machine during these
+runs, and the gate read the same day about a seventh slower than its baseline (QS253). Both clients
+were timed in the same sitting, so the comparison holds better than either absolute figure; the
+absolute figures should be retaken on a cleared desk before they are quoted alone.

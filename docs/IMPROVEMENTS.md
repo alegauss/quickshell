@@ -337,34 +337,6 @@ Falsified when a full-screen pane's echoes are composed in photon's report.
 
 ## Block H — The reason to leave the incumbent
 
-### §QS75 Where the first four hundred milliseconds go
-
-Cold start is a publishing decision more than a coding one, so it is measured and tuned
-here rather than hoped for.
-
-Self-contained, so a user installs one thing and no runtime. ReadyToRun over the startup
-path, which removes the JIT cost from precisely the code that runs before the window
-appears. Trimming reduces size and is measured rather than assumed — it interacts badly
-with reflection, and the interop-heavy parts of this client are where that will bite.
-
-What must not happen before the first frame: parsing the session store, resolving fonts
-beyond the one needed, opening a connection, checking for an update, or reading anything
-at all from the network. The window appears, and *then* the client does its work. That
-ordering is the entire technique.
-
-The graphics device is on the critical path and cannot be deferred, so its creation is
-measured separately: an adapter enumeration that walks a slow external GPU is a real and
-thoroughly unobvious cost.
-
-Measurement is process start to an interactive local shell, on the named reference
-machine, with a cold file cache where that can be arranged and warm where it cannot —
-both reported. A single number that does not say which it was is not a measurement.
-
-The result is compared against the incumbent on the same machine, because that
-comparison is the actual claim being made.
-
-Falsified when a cold start figure is published without the machine and cache state.
-
 ### §QS77 Installing, signing, and updating without a service
 
 An installer that does the least: a per-user install with no administrator prompt by
