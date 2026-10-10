@@ -135,43 +135,6 @@ than absorbed.
 Falsified when this repository claims cross-vendor correctness with no run behind it on
 any vendor's silicon.
 
-### §QS139 Gigabytes waiting in a channel nobody is draining fast enough
-
-A host sending faster than its consumer buffers inside the channel, without bound.
-
-**Settled by asking directly.** A shell opened, the host told to print on a loop,
-nothing reading for ten seconds: **3,072 MB held** after a compacting collection, all
-but a megabyte of it large object heap. About 300 MB/s of pure buffering, so any host a
-user connects to can exhaust this client's memory in seconds. `ChannelBackpressureTests`
-is that reproduction, skipped and naming this line.
-
-**It is not the emulator.** One 200x50 emulator with 2,000 lines of scrollback holds
-under 128 MB absolutely, and feeding it 64 MB adds under 8 MB; both are asserted in
-`ParseRetentionTests`. Measured against the fixture, retention tracks the consumer's
-slowness rather than bytes parsed:
-
-| one printing session, ~3 min | moved | retained |
-|---|---|---|
-| reads only, no parsing | 18,176 MB | 8.9 MB |
-| through `SessionPipeline` | 657 MB | 1,035 MB |
-| reading the channel directly | 143 MB | 2,055 MB |
-
-The pipeline's bounded queue halves it and moves 4.6 times more, and does not fix it.
-
-**The library forces a choice**, and compile probes settle it. `ConnectionInfo` has no
-window-size member. `Shell` — the one API writing received bytes into a `Stream` this
-client owns, which is backpressure out of public parts alone — has no
-`ChangeWindowSize`. So `ShellStream` gives a resizable terminal and unbounded memory;
-`Shell` gives bounded memory and no resize. Writing the channel layer here is what the
-non-goal forbids.
-
-In 2026.0.0 `Channel.OnData` adjusts the window on arrival, then raises `DataReceived`
-on the session's one loop thread into `ShellStream._readBuffer`. The choice: block that
-thread (every channel stalls), steer `LocalWindowSize` by reflection, or change the
-library.
-
-Falsified when an unread session grows without limit.</body>
-
 ### §QS141 The figure and the path it is measured on
 
 Figure 2 of the budget is *sustained parse throughput, at least 400 MB/s*, measured by a
@@ -294,6 +257,31 @@ Falsified when dragging a file from the host's pane onto a local folder does not
 that file there, byte for byte.
 
 ## Block F — A forward is a lifecycle, not a checkbox
+
+### §QS252 A forward nobody reads stops the connection it rides on
+
+Found while bounding the shell's window (QS139). SSH.NET 2026.0.0 opens a forward's
+`ChannelDirectTcpip` with the same 2 GB window as a shell, and its `OnData` writes each
+packet to the local socket with a blocking `Send`, on the session's one receive thread.
+
+So a local tool that stops reading a forwarded port does not cost memory: the kernel's
+socket buffer fills, `Send` blocks, and the receive loop stops. Every channel on that
+connection stops with it, the shell and the file browser included, until the tool reads
+again or the socket is closed. One stuck database client freezes the terminal.
+
+What to build: the forward's channel gets the treatment `ShellWindow` gives the shell, a
+small window offered at open and granted back only as bytes leave for the socket, with
+the socket written from a thread of the forward's own instead of the receive loop.
+`LocalForward` already opens its channel by reflection (`CreateChannelDirectTcpip`,
+`Open`, `Bind`), so the window can be set at the same seam. Dynamic (SOCKS) and remote
+forwards are to be checked for the same shape: a remote forward's
+`ChannelForwardedTcpip` is a different class and was not read.
+
+Evidence: a fixture test holds a forward whose local end never reads, makes the remote
+end print without stopping, and asserts the shell on the same connection still echoes
+within a second.
+
+Falsified when a forward nobody reads leaves the shell beside it answering.
 
 ## Block G — The clean interface, defended
 

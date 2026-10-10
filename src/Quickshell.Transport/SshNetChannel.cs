@@ -27,14 +27,19 @@ internal sealed class SshNetChannel : IPtyChannel
 
     private readonly ShellStream _shell;
 
+    /// <summary>The window granted back as bytes are read; null where the library's shape made the
+    /// shell open unbounded (QS139).</summary>
+    private readonly ShellWindow? _window;
+
     private Task<int>? _reading;
     private int _held;
     private int _offset;
     private bool _disposed;
 
-    internal SshNetChannel(ShellStream shell, int columns, int rows)
+    internal SshNetChannel(ShellStream shell, int columns, int rows, ShellWindow? window = null)
     {
         _shell = shell;
+        _window = window;
         Size = (columns, rows);
 
         // Three endings, and the user is told which. This one is the far end going away while the
@@ -102,6 +107,10 @@ internal sealed class SshNetChannel : IPtyChannel
 
                 _held = got;
                 _offset = 0;
+
+                // Out of the stream's buffer and into this channel's, so the host may send as much
+                // again (QS139).
+                _window?.Consumed(got);
             }
             catch (ObjectDisposedException)
             {

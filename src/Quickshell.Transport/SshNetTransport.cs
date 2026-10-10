@@ -282,10 +282,12 @@ public sealed class SshNetTransport : ISshTransport
             // Width and height in pixels are zero, which is what a client that measures in cells
             // says: a server that needs pixels asks the program, and a wrong number here is worse
             // than an absent one.
-            ShellStream shell = client.CreateShellStream(
-                TerminalType, (uint)columns, (uint)rows, 0, 0, BufferBytes);
+            // With a window granted back as the pane reads, so a fast host waits instead of being
+            // buffered for (QS139).
+            (ShellStream shell, ShellWindow? window) = ShellWindow.Open(
+                client, TerminalType, (uint)columns, (uint)rows, BufferBytes);
 
-            _shell = new SshNetChannel(shell, columns, rows);
+            _shell = new SshNetChannel(shell, columns, rows, window);
 
             Log?.Channel(ChannelKind.Shell, opened: true);
 

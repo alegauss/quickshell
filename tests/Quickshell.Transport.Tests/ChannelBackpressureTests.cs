@@ -41,15 +41,11 @@ public sealed class ChannelBackpressureTests
     /// nothing reads it for ten seconds. At the link speed measured against this fixture that is
     /// enough for a gigabyte to arrive if arriving is all it takes.</para>
     ///
-    /// <para><b>Skipped, and deliberately not silently.</b> It fails today: ten seconds of an unread
-    /// channel held <b>3,072 MB</b>, essentially all of it in the large object heap. That is QS139,
-    /// and no public knob in SSH.NET bounds it — <c>ConnectionInfo</c> has no window-size member, and
-    /// the 64 KB handed to <c>CreateShellStream</c> plainly is not a bound. The reproduction is kept
-    /// here rather than in a commit message so the fix has something to turn green, and the skip
-    /// reason carries the number so every run prints it.</para>
+    /// <para>Before QS139 this held <b>3,072 MB</b>, essentially all of it in the large object heap:
+    /// SSH.NET offers a 2 GB window and tops it up as data arrives. <see cref="ShellWindow"/> offers
+    /// two megabytes and grants them back only as the reader takes bytes, so the host stops.</para>
     /// </summary>
-    [Fact(Skip = "QS139: an unread channel holds 3,072 MB in ten seconds and SSH.NET exposes no "
-                 + "window bound. Kept as the reproduction for the fix, not as a passing claim.")]
+    [Fact]
     public async Task AnUnreadChannelDoesNotBufferWithoutBound()
     {
         SkipWithoutFixture();

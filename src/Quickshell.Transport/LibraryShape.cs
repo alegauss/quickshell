@@ -60,6 +60,17 @@ public static class LibraryShape
         Need(SshNetChannel.SessionField, "ShellStream._channel");
         Need(SshNetChannel.Asking, "IChannelSession.SendEnvironmentVariableRequest(string, string)");
 
+        // The shell's window, granted back as the pane reads (QS139).
+        Need(ShellWindow.Unopened, "ShellStream(ISession, int, bool)");
+        Need(ShellWindow.LocalWindow, "Channel.LocalWindowSize (setter)");
+        Need(ShellWindow.RemoteNumber, "Channel.RemoteChannelNumber");
+        Need(ShellWindow.Send, "Channel.SendMessage(Message)");
+        Need(ShellWindow.ExtendedData, "Channel.ExtendedDataReceived");
+        Need(ShellWindow.ExtendedBytes, "ChannelExtendedDataEventArgs.Data");
+        Need(ShellWindow.OpenChannel, "ChannelSession.Open()");
+        Need(ShellWindow.PtyRequest, "ChannelSession.SendPseudoTerminalRequest");
+        Need(ShellWindow.ShellRequest, "ChannelSession.SendShellRequest()");
+
         // A local forward's own channel, so half of a close stays half (QS124).
         Need(LocalForward.CreateChannel, "ISession.CreateChannelDirectTcpip()");
         Need(LocalForward.OpenChannel, "ChannelDirectTcpip.Open(string, uint, IForwardedPort, Socket)");
