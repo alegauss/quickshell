@@ -27,6 +27,7 @@
 - ⏳ **QS75** (deps: QS2 ✅, QS46 ✅, the incumbent closed on the reference desk) **Nothing has been measured starting, so the cold start figure is an aspiration** — The incumbent has not been started beside it on the same machine, so the comparison the figure exists for is not made. → §QS75
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
+- 📋 **QS253** (deps: —) **The gate fails unchanged code, because the desk runs a seventh slower some days than when the baseline was taken** — Thresholds come from the noise within one sitting, and day-to-day drift is larger, so a red gate says nothing about the commit. → §QS253
 
 ## Block I — An error a user can act on
 
@@ -273,12 +274,6 @@
   gives an SSH tab its remote pane: run-app-vm opens the browser in the guest, a
   winwright case drags a file from the host's pane onto an Explorer folder, and the file
   there is compared with the server's.
-
-## Done when — QS197
-
-- **The gate's baseline derives a parse threshold under ten per cent** run-perf-gate.cmd
-  takes a new baseline on the attended reference desk with the guest suspended, and
-  benchmarks/results/gate-xps.md shows the parse threshold it derived below 10%.
 
 ## Done when — QS214
 

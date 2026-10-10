@@ -18,3 +18,6 @@ was measured with uncommitted changes on top of it, the gate's own files aside.
 | 2026-10-07 20:03 | 40fb448+ | 1041 | 36.6 | 489 | baseline - discarded, never committed: emulate's allowance came out at 33.9 % while hand replays read 54 to 58 |
 | 2026-10-07 20:08 | 40fb448+ | 1155 | 53.6 | 485 | baseline |
 | 2026-10-07 20:08 | 40fb448+ | 1152 | 55.5 | 479 | held |
+| 2026-10-10 18:38 | d972ff7+ | 992 | 46.2 | 558 | worse: parse, start - the VM guest was running |
+| 2026-10-10 18:40 | d972ff7+ | 1005 | 45.3 | 542 | worse: parse, start - guest suspended; another session's pytest held one core |
+| 2026-10-10 18:46 | 40fb448 | 967 | 48.6 | 582 | worse: emulate - the baseline's own commit, checked out in a worktree and judged against the baseline it carried (02fac99's): the same code reads as slow as d972ff7 today, so the 13 % is the desk's and not the code's (QS253) |

@@ -421,29 +421,6 @@ which is not much, and is worth knowing before it is spent.
 
 Falsified when the idle figure is quoted for a client that has never held a connection.
 
-### §QS197 A pass too short to time on a hybrid CPU
-
-Found taking QS79's first baseline. Seven replays of `cat-log` through the `parse` arm
-read 1,032 to 1,191 MB/s, so the threshold derived from them is 20.9 per cent: the gate
-lets a parser regression of a fifth through without a word. The same seven runs put
-`emulate` within 6.4 per cent and the warm start within 5.2, so the noise is this arm's
-and not the machine's.
-
-The arm is short. At 1.1 GB/s the 32 MB stream takes 28 ms a pass, and the harness keeps
-the best of five passes - long enough to be timed, short enough that where the thread
-runs decides the number. The reference machine's i7-14700 has eight performance cores
-and twelve efficient ones, and a pass the scheduler places on an efficient core is a
-pass a fifth slower with nothing about the parser changed.
-
-Two moves, measured one at a time so each earns its place. The replay runs with its
-affinity on one performance core and at high priority, which is how the scheduler is
-kept out of the figure. And the parse arm replays the stream several times per timed
-pass, so a pass lasts long enough that a moment's interruption is a small part of it.
-Then the baseline is taken again, and this line says what the threshold became.
-
-Falsified when a baseline's derived threshold for `parse` is still above ten per cent on
-the reference machine.
-
 ### §QS225 Timing a monitor-covering chain
 
 QS201 found every windowed chain composed on the reference desk, so an echo there costs
@@ -461,6 +438,31 @@ The run covers the operator's whole screen for a minute and a half, on the host 
 the guest, whose virtual GPU says nothing about the panel. So it is taken only when the
 user has cleared the desk for it, never unattended. Falsified when a monitor-covering
 chain on the reference desk reports independent flip and the line was still deferred.
+
+### §QS253 A baseline judged by its numbers, on a desk that drifts
+
+Found shipping QS197. On 2026-10-10 the gate judged d972ff7 against the 2026-10-07
+baseline and failed it: parse 13 % worse against an allowance of 1.5, the warm start
+11.6 % against 3.6. Emulate, 15.5 % worse, held only because its allowance is 17.7.
+
+The baseline's own commit, 40fb448, replayed from a worktree on the same desk minutes
+later, read 967 MB/s for parse and 48.6 MB/s for emulate: as slow as d972ff7. The code
+did not get slower; the desk did, by about a seventh, in three days. Every row is in
+`benchmarks/results/gate-xps.md`.
+
+The thresholds come from seven runs taken minutes apart, the noise within one sitting.
+Day-to-day drift (thermals, Windows' own work, another session's load) is larger, so the
+gate fails unchanged code, and a gate red for nothing teaches people to retake the
+baseline until it is green.
+
+What to build: judge against the baseline's code, not its numbers. The gate already
+publishes the client being judged; it also publishes the baseline commit's client from a
+worktree and replays the two interleaved in the same sitting, so whatever the desk is
+doing lands on both. The verdict is the ratio, against a threshold derived from that
+ratio's spread. Absolute medians are still printed and stop being the yardstick.
+
+Falsified when the gate at an unchanged commit, on a day the desk reads a seventh
+slower, still passes.
 
 ## Block I — An error a user can act on
 
