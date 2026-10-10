@@ -135,31 +135,6 @@ than absorbed.
 Falsified when this repository claims cross-vendor correctness with no run behind it on
 any vendor's silicon.
 
-### §QS141 The figure and the path it is measured on
-
-Figure 2 of the budget is *sustained parse throughput, at least 400 MB/s*, measured by a
-headless harness with no renderer. `benchmarks/results/replay-xps.md` reports 977 MB/s
-for `cat-log` under the `parse` consumer, so the figure looks met.
-
-`Emulator.Feed` does not run at that speed. Measured twice, independently:
-`ParseRetentionTests` feeds one emulator 64 MB of `cat-log` in 64 KB chunks and takes
-about seventeen seconds — near **4 MB/s**. Through `SessionPipeline` against the
-fixture, 657 MB in about three minutes — near **3.5 MB/s**. The two agree with each
-other and disagree with the published figure by two orders of magnitude.
-
-The likely explanation is that they are not the same path. The replay harness's `parse`
-arm is the scanner and the state machine; the same table's `render` arm is 9 MB/s.
-`Feed` also writes cells, and writing cells is what a terminal is for. If so, the figure
-is honest about what it measures and silent about what a session costs — which is the
-number that matters.
-
-Two things to settle, and the order matters. **Which arm figure 2 governs** — if it is
-the scanner alone, the budget needs a figure for the whole path, or nobody can tell
-whether a session is fast. And **why cells cost 250 times a scan**, because that is
-where the answer is, and it is the same reason QS139's buffer fills.
-
-Falsified when a figure is quoted for a path it was not measured on.
-
 ### §QS153 Composition drawn by the terminal rather than over it
 
 QS29 gave the input method a point and let it draw. That is the arrangement Windows
@@ -228,6 +203,29 @@ the reference draw on a blank read and recording whether a second read of the sa
 target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
+
+### §QS258 Printable runs written as spans
+
+QS141 gave the whole path a figure in `docs/PERFORMANCE.md`: `emulate` at least 100 MB/s
+on `cat-log`, the rate one SSH session over loopback delivers with the parser switched
+off. The gate's 2026-10-07 baseline reads 53.6 MB/s, so a `cat` of a large file over a
+fast link is slowed by the terminal by about half.
+
+Where to look is already measured. The replay ladder in
+`benchmarks/results/replay-xps.md` names each stage's cost; QS143 cut clustering by
+taking the below-U+0300 fast path, and QS144 found 87 per cent of cell writing in the
+per-character path at 87 ns a character. That per-character path is the target: a run of
+printable ASCII in one attribute can be written as a span (one bounds check, one
+attribute store, a block copy of the code points) instead of a call per character, the
+way the parser already hands printable runs on. Clustering's fast path makes a run known
+to be one cell per character before it reaches the buffer, so the span is safe for
+exactly the input `cat-log` is made of.
+
+Measured on the ladder before and after, each change its own commit, and the gate's
+baseline retaken once the figure moves, with the `Performance-Moved` trailer naming it.
+
+Falsified when `emulate` reads 100 MB/s or more on `cat-log` at the gate on the
+reference machine.
 
 ## Block D — The tree a user organises work in
 

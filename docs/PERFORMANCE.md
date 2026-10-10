@@ -64,11 +64,17 @@ handler that only counts — and nothing else. It reports 1,200 MB/s on the 32 M
 under 400 on every smaller one, where fixed cost dominates.
 
 *What it does not govern, said plainly:* the call a session actually makes for every byte a
-host sends is `Emulator.Feed`, and that is the **`emulate`** arm, measured at **10–21 MB/s**.
-Until QS141 nothing measured it, so this figure could be met while a session was slow. There
-is deliberately **no budget number for the whole path yet** — inventing one to fill the gap
-would be a target nobody argued for. QS141 carries the argument, and this section is where the
-number lands once there is one.
+host sends is `Emulator.Feed`, and that is the **`emulate`** arm, measured at **10–21 MB/s** when QS141 was filed and 54 MB/s at the gate's 2026-10-07 baseline.
+Until QS141 nothing measured it, so this figure could be met while a session was slow.
+
+*The whole path — `emulate` at least 100 MB/s on `cat-log`.* The number is the transport's, not
+a wish: with the parser switched off, one SSH session over loopback delivered 18,176 MB in about
+three minutes (`benchmarks/results/soak-h.md`), about 100 MB/s, and loopback is the fastest link a
+session will ever have. Below that the terminal is what makes `cat` of a large file slow; above
+it the bytes are not there to be parsed, so a faster `emulate` buys nothing a user can see. On
+2026-10-07 the gate's baseline read 53.6 MB/s, so **this is not met**: the per-stage ladder in
+`benchmarks/results/replay-xps.md` is where the missing half is looked for. The gate holds
+`emulate` against regressions today; it holds it against this number once it is met.
 
 ### 3. Steady-state frame cost — under 2 ms
 

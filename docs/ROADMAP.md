@@ -10,7 +10,7 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- ⏳ **QS141** (deps: QS139 ✅) **Feed runs near 4 MB/s where the budget asks for 400, and the budget measures a different arm** — Clustering costs nine times what reaches it and cell writes five times again, and what is left is a budget figure for the whole path that somebody has to argue for. → §QS141
+- 📋 **QS258** (deps: QS141 ✅) **A session's whole path parses near 54 MB/s where the budget now asks for 100, the rate the transport delivers** — Writing printable text a character at a time is most of what is left, so a large cat over a fast link waits on the terminal. → §QS258
 
 ## Block D — The tree a user organises work in
 
@@ -198,17 +198,6 @@
   specifically, being the one cache with an eviction policy and therefore the one where
   a policy defect is indistinguishable from a leak. Checked by both appearing as rows in
   the report, which needs a graphics device the harness does not yet hold.
-
-## Done when — QS141
-
-- **Where the hundredfold goes is named, per stage** `parse` reports 1,200 MB/s on
-  cat-log and `emulate` 10, and a ratio is not a diagnosis. Checked by a measurement
-  attributing the difference to named work — cell writes, scrolling, grapheme
-  segmentation, decoding — rather than to the emulator as a whole.
-- **The whole path has a budget figure somebody argued for** PERFORMANCE.md now says
-  there is none rather than inventing one. Checked by figure 2 or a figure beside it
-  stating a number for the `emulate` arm, with the reasoning for that number and not
-  merely the measurement it was taken from.
 
 ## Done when — QS43
 
