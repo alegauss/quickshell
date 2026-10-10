@@ -13,6 +13,7 @@
 - ✅ **QS112** **A dead route and a port that is not SSH read as one failure, so the remedy offered covers two things** — A dead route is Unreachable and a port that never speaks SSH is NotResponding, each with its own remedy; abandoning still works (design recorded in `src/Quickshell.Transport/SshDiagnosis.cs`).
 - ✅ **QS228** **A connection that ends before the server presents its key is reported as a refused host key** — A connection that ends before the server presents a key is reported by how it ended, not as a refused host key, so a reconnect tries it again.
 - ✅ **QS220** **An SSH tab whose link drops stays ended, though the session that reconnects was built for it** — An SSH tab set to Reconnect connects again after its link drops, keeping its scrollback and saying each attempt and which forwards came back.
+- 🗑 **QS142** **The library will not bound a channel and will not resize one, and only it can do both** — superseded by QS139: The trade did not survive QS139: the shell is bounded and still resizes, by a window granted on read through reflection LibraryShape checks.
 
 ## Block B — Keys, agents, and the host you think you reached
 

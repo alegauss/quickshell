@@ -4,8 +4,6 @@
 
 ## Block A — A session that stays up, or says why it did not
 
-- 📋 **QS142** (deps: QS139 ✅) **The library will not bound a channel and will not resize one, and only it can do both** — Choosing between a resizable terminal and memory a fast host cannot exhaust is a choice this client should not have to make, and no local change removes it. → §QS142
-
 ## Block B — Keys, agents, and the host you think you reached
 
 ## Block C — Emulation that does not lie about the remote
