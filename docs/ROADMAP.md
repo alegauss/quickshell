@@ -21,8 +21,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS257** (deps: QS225 ✅) **There is no full-screen mode, the one window shape whose echoes reach the glass an interval sooner** — A monitor-covering chain flips independently at a 24 ms median against 33 windowed, and no window the client makes has that shape. → §QS257
-
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
