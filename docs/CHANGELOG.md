@@ -295,3 +295,4 @@
 - ✅ **QS264** **The settings-reference test fails on every CI push and passes in the guest** — The settings-reference test finds the same headings on a CRLF checkout as on an LF one, and a test now checks both.
 - ✅ **QS265** **The UI cases have never run in CI: they launch a Debug client the Release build does not make** — A Release run launches the Release client: the UI cases point winwright at the configuration their own assembly was built in.
 - ✅ **QS266** **The nightly fuzz job fails on its own script before the campaign says anything** — fuzz.ps1 and release.ps1 hash with .NET's SHA256, so they reach their verdict when CI's pwsh starts them under Windows PowerShell.
+- ✅ **QS267** **The tab-strip UI case fails on CI's elevated runner, where cmd puts Administrator before every title** — The tab-strip case accepts cmd's own Administrator prefix before the first tab's title, so it passes on an elevated runner and on an ordinary desk.

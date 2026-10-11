@@ -102,11 +102,13 @@
         },
         {
           // And the window is that tab's: its name is the title of the tab on screen, which is the
-          // tab the keyboard types into.
+          // tab the keyboard types into. An elevated cmd - CI's runner is one - puts its own
+          // "Administrator: " before every title it sets, and that prefix is all that may precede
+          // it (QS267).
           "locator": "TitleBar",
           "act": "read",
           "reads": "name",
-          "matches": "^first-tab-marker",
+          "matches": "^(Administrator: +)?first-tab-marker",
           "named": "and so did the session on screen"
         },
         {
