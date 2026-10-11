@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace Quickshell.Terminal;
@@ -119,8 +120,18 @@ public sealed partial class Emulator : IAnsiHandler
     {
         Emulator self = this;
         _parser.Parse(bytes, ref self);
-        FlushText();
+
+        // Kept rather than overwritten by a read that printed nothing, which is a read holding half
+        // of a mark's bytes: the cell written before it is still the one the mark belongs to.
+        _joinable |= Flush();
     }
+
+    /// <summary>
+    /// Whether the last thing this did was print text that only the end of a read cut off, so the
+    /// next read's first cluster may still belong to the cell it wrote (QS261). Any control or
+    /// sequence in between ends it, as it ends a cluster in one read.
+    /// </summary>
+    private bool _joinable;
 
     /// <summary>
     /// Prints whatever the segmenter is still holding.
@@ -132,10 +143,21 @@ public sealed partial class Emulator : IAnsiHandler
     /// </summary>
     private void FlushText()
     {
+        Flush();
+        _joinable = false;
+    }
+
+    private bool Flush()
+    {
+        bool printed = false;
+
         while (_segmenter.TryFlush(out ReadOnlySpan<char> cluster))
         {
             PrintCluster(cluster);
+            printed = true;
         }
+
+        return printed;
     }
 
     /// <summary>
@@ -282,13 +304,20 @@ public sealed partial class Emulator : IAnsiHandler
             }
         }
 
-        int width = CharacterWidth.OfCluster(cluster);
-
-        if (width == 0)
+        // The first cluster after a read that ended on text may be the rest of the last one: a mark,
+        // a variation selector or a joiner the segmenter would have kept with it had both arrived in
+        // one read. Joined to that cell, the screen is the one the whole stream leaves (QS261).
+        if (_joinable)
         {
-            AttachToPrevious(cluster);
-            return;
+            _joinable = false;
+
+            if (AttachToPrevious(cluster))
+            {
+                return;
+            }
         }
+
+        int width = CharacterWidth.OfCluster(cluster);
 
         TerminalBuffer buffer = Buffer;
 
@@ -378,19 +407,31 @@ public sealed partial class Emulator : IAnsiHandler
 
     /// <summary>
     /// A mark that arrived after its base had already been written, because the read ended between
-    /// them. It belongs to the cell before the cursor, so it is added to that cell's text rather
-    /// than dropped — dropping it is how an accent typed as two codepoints disappears.
+    /// them. It belongs to the cell just written, so it is added to that cell's text rather than
+    /// given a cell of its own — which put a keycap fed a byte at a time across three columns where
+    /// the same bytes in one read take one (QS261). The cell keeps its width, as the cluster read
+    /// whole is given its base's.
+    ///
+    /// <para><b>Joined only where the runtime's rules join it</b>: the cell's text and the arrival
+    /// are asked whether they are one grapheme cluster, the question the segmenter asks within a read.
+    /// Anything else — a second letter, a space — is not this cell's and is printed as it
+    /// arrived.</para>
+    ///
+    /// <para>The cell is the one the cursor left: the one before it, or the cursor's own while a wrap
+    /// is owed, since a character written into the last column leaves the cursor on it.</para>
     ///
     /// <para><b>The joined text is built on the stack and bounded there.</b> A host can send a base
     /// and then marks for ever; the string version grew the cluster by one mark at a time and
     /// interned each intermediate, which is quadratic in what the host chose to send. Past the cap
     /// the mark is counted and dropped, and the cell keeps the text it has.</para>
     /// </summary>
-    private void AttachToPrevious(ReadOnlySpan<char> mark)
+    /// <returns>True where the mark was this cell's, joined or dropped at the cap; false where it is
+    /// a character of its own.</returns>
+    private bool AttachToPrevious(ReadOnlySpan<char> mark)
     {
         TerminalBuffer buffer = Buffer;
         int row = buffer.CursorRow;
-        int column = buffer.CursorColumn - 1;
+        int column = PendingWrap ? buffer.CursorColumn : buffer.CursorColumn - 1;
 
         // Step back over the trailing half of a wide pair, which holds no text of its own.
         while (column >= 0 && buffer.Screen(row)[column].Width == 0)
@@ -400,9 +441,8 @@ public sealed partial class Emulator : IAnsiHandler
 
         if (column < 0)
         {
-            // A mark with nothing before it. The host sent it into an empty row, and there is no
-            // cell for it to modify.
-            return;
+            // Nothing before it on the row, so nothing for it to modify.
+            return false;
         }
 
         Cell before = buffer.Screen(row)[column];
@@ -412,20 +452,29 @@ public sealed partial class Emulator : IAnsiHandler
         if (written < 0 || written + mark.Length > joined.Length)
         {
             Unhandled++;
-            return;
+            return true;
         }
 
         mark.CopyTo(joined[written..]);
 
-        int index = buffer.InternCluster(joined[..(written + mark.Length)]);
+        ReadOnlySpan<char> whole = joined[..(written + mark.Length)];
+
+        if (StringInfo.GetNextTextElementLength(whole) != whole.Length)
+        {
+            return false;
+        }
+
+        int index = buffer.InternCluster(whole);
 
         if (index < 0)
         {
-            return;
+            return true;
         }
 
         buffer.Write(row, column, Cell.ForCluster(
             index, before.Foreground, before.Background, before.Flags, before.Underline, before.Width));
+
+        return true;
     }
 
     private Cell ClusterCell(TerminalBuffer buffer, ReadOnlySpan<char> cluster, int codepoint, int width)

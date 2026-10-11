@@ -54,6 +54,56 @@ public sealed class AsciiRunTests
         }
     }
 
+    /// <summary>
+    /// QS261: where the network splits a stream does not decide what the screen holds. Each stream
+    /// fed whole and fed one byte at a time — every boundary a read can have — leaves the same
+    /// screen, on the path a session takes.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Streams))]
+    public void AStreamSplitAnywhereLeavesTheScreenItLeavesWhole(string name, string stream)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(stream);
+
+        Emulator whole = new(40, 6, scrollback: 50);
+        Emulator split = new(40, 6, scrollback: 50);
+
+        whole.Feed(bytes);
+
+        for (int at = 0; at < bytes.Length; at++)
+        {
+            split.Feed(bytes.AsSpan(at, 1));
+        }
+
+        Compare($"{name}, whole against a byte at a time", whole, split);
+    }
+
+    /// <summary>
+    /// QS261 at the edge: a keycap whose mark arrives after its base filled the last column wraps as
+    /// the same keycap arriving whole does, and a mark joining a base at the edge joins that base and
+    /// not the one before it.
+    /// </summary>
+    [Theory]
+    [InlineData("edge keycap", "#️⃣ after")]
+    [InlineData("edge accent", "é after")]
+    [InlineData("edge keycap, wrapping off", "\x1b[?7l#️⃣")]
+    public void AMarkJoiningTheLastColumnLandsAsTheWholeClusterDoes(string name, string tail)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(new string('a', 39) + tail);
+
+        Emulator whole = new(40, 6, scrollback: 50);
+        Emulator split = new(40, 6, scrollback: 50);
+
+        whole.Feed(bytes);
+
+        for (int at = 0; at < bytes.Length; at++)
+        {
+            split.Feed(bytes.AsSpan(at, 1));
+        }
+
+        Compare($"{name}, whole against a byte at a time", whole, split);
+    }
+
     private static void Compare(string name, Emulator fast, Emulator slow)
     {
         TerminalBuffer a = fast.Buffer;

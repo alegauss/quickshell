@@ -118,6 +118,7 @@
 - ✅ **QS139** **A host sending faster than the parser consumes buffers gigabytes inside the channel** — A fast host now waits for the reader: the shell's 2 MB window is granted back as read, and ten unread seconds hold 1.4 MB, not 3 GB (design recorded in `src/Quickshell.Transport/ChannelWindow.cs`).
 - ✅ **QS258** **A session's whole path parses near 54 MB/s where the budget now asks for 100, the rate the transport delivers** — Printable ASCII is written a row's worth at a time, and emulate on cat-log reads about 190 MB/s where it read 31 to 43 that day (design recorded in `benchmarks/results/replay-xps.md`).
 - ✅ **QS260 (one-cell blink)** **A cursor blink redraws the whole grid, so a blinking cursor alone costs half a per cent of a core while idle** — A blink redraws only the cursor's cell onto a flip-sequential buffer that holds the rest, and presents that one dirty rectangle.
+- ✅ **QS261** **Where a read ends decides how wide a character is, so a keycap split by the network leaves the cursor a column off** — A mark starting a read joins the cell just written where they make one cluster, so a byte-at-a-time stream leaves the screen a whole one does.
 
 ## Block D — The tree a user organises work in
 
