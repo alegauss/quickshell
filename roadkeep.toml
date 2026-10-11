@@ -47,3 +47,6 @@ held = 60
 name = "Quickshell"
 description = "A Windows terminal built to be faster and lighter than MobaXterm."
 icon = "⚡"
+
+[install]
+wired = "0.2.511"
