@@ -174,8 +174,8 @@ public sealed class SessionPipelineTests
     /// <para>What a typed character waits for is the parser reaching the bytes that carry its echo, so
     /// the measurement is the longest a read waited between arriving and being parsed. The failure this
     /// looks for is that number <b>growing with the file</b>: a parser that waits for its renderer
-    /// accumulates a backlog, and the delay grows with every megabyte. So it is read at four megabytes
-    /// into one stream and again at sixteen, and four times the bytes must not mean four times the
+    /// accumulates a backlog, and the delay grows with every megabyte. So it is read at two megabytes
+    /// into one stream and again at eight, and four times the bytes must not mean four times the
     /// wait.</para>
     ///
     /// <para><b>A mean over each interval, not two maxima.</b> A maximum grows with the number of
@@ -208,15 +208,19 @@ public sealed class SessionPipelineTests
 
             await pipeline.TypeAsync(Typed($"type \"{big}\""), TestContext.Current.CancellationToken);
 
-            await Until(() => pipeline.Work.Bytes > 4 * 1024 * 1024);
+            // Two and eight megabytes: four times the bytes, which is what the bound below is built on,
+            // and a stream the guest's ConPTY prints inside the patience on a slow hour (QS263).
+            string Parsed() => $"{pipeline.Work.Bytes / 1024 / 1024} MB parsed after {Patience.TotalSeconds:F0} s";
+
+            await Until(() => pipeline.Work.Bytes > 2 * 1024 * 1024, Parsed);
             PipelineWork early = pipeline.Work;
 
-            await Until(() => pipeline.Work.Bytes > 16 * 1024 * 1024);
+            await Until(() => pipeline.Work.Bytes > 8 * 1024 * 1024, Parsed);
             PipelineWork late = pipeline.Work;
 
             Assert.True(late.Bytes > early.Bytes * 3, "the stream did not actually grow between readings");
 
-            // The mean wait over each interval: the first four megabytes, and then the twelve after
+            // The mean wait over each interval: the first two megabytes, and then the six after
             // them. Both are averages over their own reads, so neither carries the other's tail.
             double first = Mean(early, default);
             double second = Mean(late, early);
@@ -441,8 +445,11 @@ public sealed class SessionPipelineTests
         await pipeline.Completed;
     }
 
-    /// <summary>Waits for something to become true, or fails saying it did not.</summary>
-    private static async Task Until(Func<bool> what)
+    /// <summary>
+    /// Waits for something to become true, or fails saying it did not — and, where the caller says
+    /// how, how far it had got (QS263): a timeout that names no number cannot be told from a hang.
+    /// </summary>
+    private static async Task Until(Func<bool> what, Func<string>? reached = null)
     {
         Stopwatch clock = Stopwatch.StartNew();
 
@@ -456,7 +463,8 @@ public sealed class SessionPipelineTests
             await Task.Delay(5, TestContext.Current.CancellationToken);
         }
 
-        Assert.Fail("the pipeline did not get where this test needed it within the patience allowed");
+        Assert.Fail("the pipeline did not get where this test needed it within the patience allowed"
+                    + (reached is null ? "" : $": {reached()}"));
     }
 
     private static string Screen(Emulator emulator)
