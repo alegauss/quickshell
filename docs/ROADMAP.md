@@ -27,8 +27,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS266** (deps: —) **The nightly fuzz job fails on its own script before the campaign says anything** — fuzz.ps1 calls Get-FileHash, which the runner's shell did not have, so the night ends red with no verdict. → §QS266
-
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a

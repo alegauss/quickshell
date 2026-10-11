@@ -450,21 +450,3 @@ true of the shipped build and not of the plan.
 Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
-
-### §QS266 A nightly that reaches its verdict
-
-Found following CI on 2026-10-11: the nightly `fuzz` workflow (run 38130799752, on
-19ebf5c) failed before the campaign said anything. `tools/fuzz.ps1` stopped with
-`CommandNotFoundException` on `Get-FileHash`, so the job exits 1 with no verdict about
-the target. On this desk the same script runs, because `Get-FileHash` comes from
-`Microsoft.PowerShell.Utility`, which the runner's shell did not load. Either the step
-runs under a host whose module path lacks it, or the script runs in a constrained
-session.
-
-What to build: read the workflow step that calls `fuzz.ps1` and the shell it names, and
-make the hash independent of that shell. A .NET `SHA256` over the file's bytes needs no
-module, or `Import-Module Microsoft.PowerShell.Utility` can come first. Then dispatch
-the workflow once by hand and read its verdict line. A nightly that fails on its own
-plumbing teaches everyone to ignore its red, and then a real crash is ignored too.
-
-Falsified when a manual dispatch of the workflow still fails before the campaign starts.

@@ -177,8 +177,11 @@ if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [IO.Compression.ZipFile]::CreateFromDirectory($publish, $zip, [IO.Compression.CompressionLevel]::Optimal, $true)
 
-# The line `sha256sum -c` reads, with a newline it reads too.
-$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
+# The line `sha256sum -c` reads, with a newline it reads too. From .NET and not Get-FileHash, which
+# does not load in this Windows PowerShell when CI's pwsh step started it (QS266).
+$stream = [IO.File]::OpenRead($zip)
+try { $hash = ([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($stream)) -replace '-', '').ToLowerInvariant() }
+finally { $stream.Dispose() }
 [IO.File]::WriteAllText((Join-Path $Output 'SHA256SUMS.txt'), "$hash  $name`n")
 
 $files = @(Get-ChildItem -LiteralPath $publish -File -Recurse).Count

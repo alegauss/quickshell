@@ -294,3 +294,4 @@
 - ✅ **QS263** **The echo-delay test times out in the guest waiting for sixteen megabytes and never says how far it got** — The echo-delay test reads at two and eight megabytes, keeping its four-to-one ratio, and a timeout now says how many megabytes were parsed.
 - ✅ **QS264** **The settings-reference test fails on every CI push and passes in the guest** — The settings-reference test finds the same headings on a CRLF checkout as on an LF one, and a test now checks both.
 - ✅ **QS265** **The UI cases have never run in CI: they launch a Debug client the Release build does not make** — A Release run launches the Release client: the UI cases point winwright at the configuration their own assembly was built in.
+- ✅ **QS266** **The nightly fuzz job fails on its own script before the campaign says anything** — fuzz.ps1 and release.ps1 hash with .NET's SHA256, so they reach their verdict when CI's pwsh starts them under Windows PowerShell.

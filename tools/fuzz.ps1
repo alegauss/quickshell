@@ -47,6 +47,15 @@ $driverSha256 = '17AF5B3F6FF4D2C57B44B9A35C13051B570EB66F0557D00015DF3832709050B
 
 New-Item -ItemType Directory -Force $work, $corpus, $findings | Out-Null
 
+# The file's SHA-256 in upper-case hex, from .NET and not Get-FileHash (QS266). Started from pwsh, as
+# a GitHub Actions step is, this Windows PowerShell inherits pwsh's PSModulePath, and Get-FileHash -
+# a function in a script module - is then the one command that does not load.
+function Get-Sha256([string] $Path) {
+    $stream = [IO.File]::OpenRead($Path)
+    try { ([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($stream))) -replace '-', '' }
+    finally { $stream.Dispose() }
+}
+
 Write-Host 'fuzz: building tools/Quickshell.Fuzz (Release)'
 & dotnet build (Join-Path $root 'tools\Quickshell.Fuzz\Quickshell.Fuzz.csproj') -c Release --nologo -v quiet
 if ($LASTEXITCODE -ne 0) { throw 'the fuzz target did not build' }
@@ -71,12 +80,12 @@ try {
 }
 finally { Pop-Location }
 
-if (-not (Test-Path $driver) -or (Get-FileHash $driver -Algorithm SHA256).Hash -ne $driverSha256) {
+if (-not (Test-Path $driver) -or (Get-Sha256 $driver) -ne $driverSha256) {
     Write-Host "fuzz: fetching libfuzzer-dotnet $driverRelease"
     & gh release download $driverRelease --repo Metalnem/libfuzzer-dotnet --pattern 'libfuzzer-dotnet-windows.exe' --dir $work --clobber
     if ($LASTEXITCODE -ne 0) { throw 'the driver could not be fetched; gh must be signed in' }
 
-    $actual = (Get-FileHash $driver -Algorithm SHA256).Hash
+    $actual = Get-Sha256 $driver
     if ($actual -ne $driverSha256) {
         Remove-Item $driver
         throw "the driver's SHA-256 is $actual and $driverSha256 was pinned; nothing was run"
