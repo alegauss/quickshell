@@ -44,6 +44,14 @@ public sealed class TerminalBuffer
     private long[] _stamps;
     private bool[] _dirty;
     private int _origin;
+
+    /// <summary>
+    /// Lines the arrays hold today, which the ring wraps at: below <see cref="Capacity"/> until the
+    /// scrollback has filled that far (QS256). A ten-thousand-line ring allocated whole was 29 MB of
+    /// empty cells in a pane that had printed one prompt, a quarter of the memory budget.
+    /// </summary>
+    private int _ring;
+
     private long _generation;
     private long _firstLine;
     private int _dirtyRows;
@@ -64,14 +72,53 @@ public sealed class TerminalBuffer
         Columns = columns;
         Rows = rows;
         Capacity = rows + scrollback;
+        _ring = Starting(rows, Capacity);
 
-        _cells = new Cell[Capacity * columns];
-        _wrapped = new bool[Capacity];
-        _stamps = new long[Capacity];
+        _cells = new Cell[_ring * columns];
+        _wrapped = new bool[_ring];
+        _stamps = new long[_ring];
         _dirty = new bool[rows];
         LineCount = rows;
 
         Array.Fill(_cells, Cell.Blank);
+    }
+
+    /// <summary>
+    /// Scrollback a ring starts with before it has to grow: a few screens' worth, which a session
+    /// that never prints much never outgrows, and which costs a doubling at most a handful of times
+    /// on the way to the full depth.
+    /// </summary>
+    private const int StartingScrollback = 256;
+
+    /// <summary>The lines a ring is allocated with, never above what it may hold.</summary>
+    private static int Starting(int rows, int capacity) => Math.Min(capacity, rows + StartingScrollback);
+
+    /// <summary>
+    /// Doubles the arrays, up to <see cref="Capacity"/>, laying the lines out from the oldest so the
+    /// ring starts at zero again. Every line keeps its number and its content: nothing is dirtied,
+    /// and a reader holding the old arrays reads what they held, as it does across a resize.
+    /// </summary>
+    private void Grow()
+    {
+        int ring = (int)Math.Min(Capacity, (long)_ring * 2);
+        Cell[] cells = new Cell[ring * Columns];
+        bool[] wrapped = new bool[ring];
+        long[] stamps = new long[ring];
+
+        Array.Fill(cells, Cell.Blank);
+
+        for (int line = 0; line < LineCount; line++)
+        {
+            Line(line).CopyTo(cells.AsSpan(line * Columns, Columns));
+            wrapped[line] = IsWrapped(line);
+            stamps[line] = GenerationOf(line);
+        }
+
+        _cells = cells;
+        _wrapped = wrapped;
+        _stamps = stamps;
+        _origin = 0;
+        _ring = ring;
     }
 
     /// <summary>Cells across one row.</summary>
@@ -266,6 +313,11 @@ public sealed class TerminalBuffer
     {
         if (LineCount < Capacity)
         {
+            if (LineCount == _ring)
+            {
+                Grow();
+            }
+
             LineCount++;
         }
         else
@@ -482,9 +534,12 @@ public sealed class TerminalBuffer
             return;
         }
 
-        Cell[] cells = new Cell[capacity * Columns];
-        bool[] wrapped = new bool[capacity];
-        long[] stamps = new long[capacity];
+        // Room for what is kept, and no more than a new ring would start with: the depth is how far
+        // the ring may grow, not what it holds today (QS256).
+        int ring = Math.Max(Math.Min(LineCount, capacity), Starting(Rows, capacity));
+        Cell[] cells = new Cell[ring * Columns];
+        bool[] wrapped = new bool[ring];
+        long[] stamps = new long[ring];
         Array.Fill(cells, Cell.Blank);
 
         ResizeHeight(cells, wrapped, stamps, capacity);
@@ -493,6 +548,7 @@ public sealed class TerminalBuffer
         _wrapped = wrapped;
         _stamps = stamps;
         _origin = 0;
+        _ring = ring;
         Capacity = capacity;
 
         // No row of the screen changed, so nothing is dirtied: what moved is how far back the
@@ -756,9 +812,16 @@ public sealed class TerminalBuffer
 
         int scrollback = Capacity - Rows;
         int capacity = rows + scrollback;
-        Cell[] cells = new Cell[capacity * columns];
-        bool[] wrapped = new bool[capacity];
-        long[] stamps = new long[capacity];
+
+        // Enough for every line this buffer holds once it is re-wrapped - each one becomes at most
+        // as many lines as the old width is wider than the new - and never past the depth. Reflow
+        // keeps only what its array holds, so a smaller one would drop history rather than make room.
+        long reflowed = (long)LineCount * ((Columns + columns - 1) / columns) + rows;
+        int ring = (int)Math.Min(capacity, Math.Max(reflowed, Starting(rows, capacity)));
+
+        Cell[] cells = new Cell[ring * columns];
+        bool[] wrapped = new bool[ring];
+        long[] stamps = new long[ring];
         Array.Fill(cells, Cell.Blank);
 
         if (columns == Columns)
@@ -776,6 +839,7 @@ public sealed class TerminalBuffer
         _dirty = new bool[rows];
         _dirtyRows = 0;
         _origin = 0;
+        _ring = ring;
         Columns = columns;
         Rows = rows;
         Capacity = capacity;
@@ -916,7 +980,7 @@ public sealed class TerminalBuffer
         return Mutable(ScrollbackLines + row);
     }
 
-    private int RingRow(int line) => (_origin + line) % Capacity;
+    private int RingRow(int line) => (_origin + line) % _ring;
 
-    private int Next(int ring) => ring + 1 == Capacity ? 0 : ring + 1;
+    private int Next(int ring) => ring + 1 == _ring ? 0 : ring + 1;
 }

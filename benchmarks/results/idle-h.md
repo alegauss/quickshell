@@ -134,3 +134,32 @@ Ten minutes each, on the same busy desk, one local pane with `cursorBlink: false
 counter had moved cost the idle client 0.25 % of a core; it now writes only when one moves. What
 is left with the loop silent is 0.16 %, on a desk with other projects running. Figure 4's bound is
 0.1 %, so the reading that settles it is ten quiet minutes on the reference desk.
+
+## Where one pane's memory goes — 2026-10-10 (QS256)
+
+The release publish of this tree, one local pane, settled forty seconds: **164.9 MB private**. A full
+dump read with `dotnet-dump analyze` (`eeheap -gc`, `dumpheap -stat`) for the managed half, and a
+probe that opens the render stack alone, step by step, for the native half:
+
+| owner | private MB | read from |
+|---|---|---|
+| runtime and the WPF window, no pane | ~79 | QS76's empty window, above |
+| the D3D11 device, before anything is drawn | **~47** | the probe: 8.3 MB of runtime, then 55.0 with the device open |
+| DirectWrite and the font, the atlas's first page and ASCII, the renderer and its shaders | ~10 | the probe: 55.0 to 65.4 |
+| `Cell[]`, five arrays: both screens and a 10,000-line scrollback allocated whole | **28.8** | `dumpheap -stat`, the largest managed type by two orders of magnitude |
+| the rest of the managed heap | ~10 | `eeheap -gc`: 39.0 MB committed in all |
+| **sum** | **~165** | |
+
+**Two owners are most of it.** The device is the driver's, allocated by opening it and the same in any
+process that opens one on this adapter; nothing in this client draws it down. The cells are this
+client's: the ring is sized for its whole capacity when the pane opens, so a shell that has printed one
+prompt holds ten thousand lines of empty cells.
+
+**Figure 6 is out of reach as stated.** The window and the device alone are about 126 MB, against a
+budget of 120 for a connected session. Allocating scrollback as it fills takes about 29 MB off a new
+pane; the rest of the gap is the figure's to argue.
+
+**After the cut.** The ring now starts at the screen and 256 lines and doubles as it fills, up to the
+configured depth. The same publish, one pane, settled forty seconds, three starts: **139.6 to 140.0 MB**,
+from 164.9: 25 MB off every new pane, the rest of the 29 being the screens themselves. The window and
+the device, 126 MB of it, are what stand between this and figure 6.

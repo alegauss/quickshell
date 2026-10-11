@@ -76,6 +76,54 @@ public sealed class TerminalBufferTests
         Assert.True(buffer.Screen(0).ToArray().All(cell => cell.IsBlank));
     }
 
+    /// <summary>
+    /// QS256: a deep scrollback is room to grow into, not memory taken at the start. Ten thousand
+    /// lines of 200 columns allocated whole is 32 MB of empty cells; a new buffer takes a screen and a
+    /// few hundred lines, and the depth is still what <see cref="TerminalBuffer.Capacity"/> says.
+    /// </summary>
+    [Fact]
+    public void ADeepScrollbackIsNotAllocatedBeforeItIsUsed()
+    {
+        long before = GC.GetAllocatedBytesForCurrentThread();
+
+        TerminalBuffer buffer = new(200, 50, scrollback: 10_000);
+
+        long taken = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(10_050, buffer.Capacity);
+        Assert.InRange(taken, 1, 2 * 1024 * 1024);
+    }
+
+    /// <summary>
+    /// And growing into it keeps every line where it was: written through several doublings and then
+    /// past the depth, the oldest kept line is the one a ring allocated whole would have kept, and
+    /// every line after it is in order.
+    /// </summary>
+    [Fact]
+    public void GrowingIntoTheScrollbackKeepsEveryLineInOrder()
+    {
+        TerminalBuffer buffer = new(8, 4, scrollback: 2_000);   // capacity 2,004, starting at 260
+
+        for (int line = 0; line < 5_000; line++)
+        {
+            buffer.Write(buffer.Rows - 1, 0, Cell.For('A' + (line % 26), White, Black));
+            buffer.ScrollUp();
+        }
+
+        Assert.Equal(buffer.Capacity, buffer.LineCount);
+
+        // The last scroll leaves a blank row at the bottom, so the newest written line is one above
+        // it, and each line before is the letter before.
+        int newest = buffer.LineCount - 2;
+
+        for (int back = 0; back < buffer.LineCount - 1; back++)
+        {
+            char expected = (char)('A' + ((4_999 - back) % 26));
+
+            Assert.Equal(expected, (char)buffer.Line(newest - back)[0].Codepoint);
+        }
+    }
+
     [Fact]
     public void ScrollingMovesTheTopLineIntoTheScrollbackRatherThanLosingIt()
     {
