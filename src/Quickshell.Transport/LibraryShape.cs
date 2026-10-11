@@ -71,6 +71,23 @@ public static class LibraryShape
         Need(ChannelWindow.PtyRequest, "ChannelSession.SendPseudoTerminalRequest");
         Need(ChannelWindow.ShellRequest, "ChannelSession.SendShellRequest()");
 
+        // A remote forward's opens, answered here with a bounded window (QS259).
+        Need(RemoteChannels.Opened, "ISession.ChannelOpenReceived");
+        Need(RemoteChannels.LibraryHandler, "ForwardedPortRemote.Session_ChannelOpening");
+        Need(RemoteChannels.Create, "ISession.CreateChannelForwardedTcpip");
+        Need(RemoteChannels.SessionSend, "ISession.SendMessage(Message)");
+        Need(RemoteChannels.Confirm, "ServerChannel.SendMessage(ChannelOpenConfirmationMessage)");
+        Need(RemoteChannels.Info, "ForwardedTcpipChannelInfo.ConnectedPort");
+        Need(RemoteChannels.MessageOf, "MessageEventArgs<ChannelOpenMessage>.Message");
+        Need(RemoteChannels.DataEvent, "Channel.DataReceived");
+        Need(RemoteChannels.EndEvent, "Channel.EndOfData");
+        Need(RemoteChannels.ClosedEvent, "Channel.Closed");
+        Need(RemoteChannels.DataBytes, "ChannelDataEventArgs.Data");
+        Need(RemoteChannels.LocalNumber, "Channel.LocalChannelNumber");
+        Need(RemoteChannels.PacketSize, "Channel.LocalPacketSize");
+        Need(RemoteChannels.SendData, "Channel.SendData(byte[], int, int)");
+        Need(RemoteChannels.SendEof, "Channel.SendEof()");
+
         // A local forward's own channel, so half of a close stays half (QS124).
         Need(LocalForward.CreateChannel, "ISession.CreateChannelDirectTcpip()");
         Need(LocalForward.OpenChannel, "ChannelDirectTcpip.Open(string, uint, IForwardedPort, Socket)");

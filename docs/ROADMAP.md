@@ -17,8 +17,6 @@
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
-- 📋 **QS259** (deps: QS252 ✅) **A remote forward whose local service stops reading freezes every channel on the connection** — The library's remote forward writes to the local socket on the receive thread, and opens the channel itself, so QS252's window cannot reach it. → §QS259
-
 ## Block G — The clean interface, defended
 
 ## Block H — The reason to leave the incumbent

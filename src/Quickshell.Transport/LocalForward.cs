@@ -464,7 +464,7 @@ public sealed class LocalForward : IAsyncDisposable
     internal const int Buffered = (int)ChannelWindow.Size * 2;
 
     /// <summary>Two connected loopback sockets: the channel's end, and the one this forward reads.</summary>
-    private static (Socket Channel, Socket Ours) Pair()
+    internal static (Socket Channel, Socket Ours) Pair()
     {
         using Socket listener = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -504,7 +504,7 @@ public sealed class LocalForward : IAsyncDisposable
     /// a write has gone. A user's socket that has gone is drained into nothing, so the channel can
     /// still finish closing.
     /// </summary>
-    private static void Down(Socket near, Socket accepted, ChannelWindow? window)
+    internal static void Down(Socket near, Socket accepted, ChannelWindow? window)
     {
         byte[] buffer = new byte[64 * 1024];
         bool delivering = true;

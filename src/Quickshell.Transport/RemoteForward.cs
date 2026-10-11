@@ -29,6 +29,9 @@ public sealed class RemoteForward : IAsyncDisposable
 {
     private readonly ForwardedPortRemote _port;
 
+    /// <summary>The server's opens, answered with a bounded window; null where the library answers them (QS259).</summary>
+    private RemoteChannels? _channels;
+
     private long _connections;
     private bool _disposed;
     private SessionLog? _log;
@@ -123,6 +126,14 @@ public sealed class RemoteForward : IAsyncDisposable
             throw told;
         }
 
+        // The server's opens for this port answered here, so a service that stops reading cannot
+        // stop the session's receive thread (QS259).
+        if (Address(localHost) is { } address)
+        {
+            forward._channels = RemoteChannels.TakeOver(client, port, new System.Net.IPEndPoint(address, localPort),
+                                                        () => Interlocked.Increment(ref forward._connections));
+        }
+
         // By its ports: here, and the one the server holds (QS130).
         forward._log = over.Log;
         forward._log?.Forward(localPort, forward.BoundPort, started: true);
@@ -150,6 +161,27 @@ public sealed class RemoteForward : IAsyncDisposable
             + "the server choose a free one.",
             origin);
 
+    /// <summary>Where the local service is, the way the library resolves it: a literal, or the name's first IPv4.</summary>
+    private static System.Net.IPAddress? Address(string host)
+    {
+        if (System.Net.IPAddress.TryParse(host, out System.Net.IPAddress? literal))
+        {
+            return literal;
+        }
+
+        try
+        {
+            System.Net.IPAddress[] found = System.Net.Dns.GetHostAddresses(host);
+
+            return found.FirstOrDefault(each => each.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                   ?? found.FirstOrDefault();
+        }
+        catch (System.Net.Sockets.SocketException)
+        {
+            return null;
+        }
+    }
+
     private void Accepted(object? sender, PortForwardEventArgs what) =>
         Interlocked.Increment(ref _connections);
 
@@ -164,6 +196,8 @@ public sealed class RemoteForward : IAsyncDisposable
         _disposed = true;
 
         _port.RequestReceived -= Accepted;
+
+        _channels?.Dispose();
 
         _log?.Forward(LocalPort, BoundPort, started: false);
 

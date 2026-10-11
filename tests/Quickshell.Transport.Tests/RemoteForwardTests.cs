@@ -168,6 +168,40 @@ public sealed class RemoteForwardTests : IAsyncDisposable
         Assert.Contains($"{forward.BoundPort}", forward.Caveat, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A remote forward whose local service never reads stops nothing but itself (QS259): the
+    /// local and SOCKS forwards' falsification, turned round. A client on the server sends without
+    /// stopping into the forwarded port, the service here accepts and never reads, and the shell on
+    /// the same connection is asked a question it must answer.
+    /// </summary>
+    [Fact]
+    public async Task AServiceThatNeverReadsLeavesTheShellBesideItAnswering()
+    {
+        SkipWithout(Ordinary);
+
+        await using SshNetTransport session = await Connected(Ordinary);
+
+        int mine = Silent();
+
+        await using RemoteForward forward = RemoteForward.Open(session, 0, Host, mine);
+
+        IPtyChannel shell = await session.OpenShellAsync(80, 24, Stop);
+
+        await shell.WriteAsync(Encoding.ASCII.GetBytes(
+            $"timeout 60 socat -u EXEC:yes TCP:127.0.0.1:{forward.BoundPort} >/dev/null 2>&1 &\n"), Stop);
+
+        Assert.True(await RemoteShell.AnsweredAsync(shell, "UP1", "echo UP$((0+1))", TimeSpan.FromSeconds(10), Stop),
+                    "the shell never answered once the sender had started");
+
+        // Long enough for the sender to fill every buffer between it and the service here.
+        await Task.Delay(TimeSpan.FromSeconds(5), Stop);
+
+        Assert.True(await RemoteShell.AnsweredAsync(shell, "AB42CD", "echo AB$((40+2))CD", TimeSpan.FromSeconds(3), Stop),
+                    "the shell did not answer while a remote forward on the same connection went unread");
+
+        await shell.DisposeAsync();
+    }
+
     // ---- Nothing outlives its owner ----
 
     /// <summary>The server stops listening when the forward goes.</summary>
@@ -218,6 +252,39 @@ public sealed class RemoteForwardTests : IAsyncDisposable
             catch (Exception)
             {
                 // The test finished, which is how this loop is meant to end.
+            }
+        }, CancellationToken.None);
+
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
+
+    /// <summary>A local listener that accepts and never reads, holding every connection open.</summary>
+    private int Silent()
+    {
+        TcpListener listener = new(IPAddress.Loopback, 0);
+
+        listener.Start();
+
+        _listening.Add(listener);
+
+        _ = Task.Run(async () =>
+        {
+            List<TcpClient> held = [];
+
+            try
+            {
+                while (!_serving.IsCancellationRequested)
+                {
+                    held.Add(await listener.AcceptTcpClientAsync(_serving.Token));
+                }
+            }
+            catch (Exception)
+            {
+                // The test finished, which is how this loop is meant to end.
+            }
+            finally
+            {
+                held.ForEach(client => client.Dispose());
             }
         }, CancellationToken.None);
 

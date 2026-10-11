@@ -162,6 +162,7 @@
 - ✅ **QS69** **A forward is set up by hand each time and dies silently when its session drops** — A session's forwards start with it, come back after a reconnect each said, go with it, and a busy port names the program holding it.
 - ✅ **QS70** **Nothing says which forwards are running, so a stale one is discovered through a port conflict** — Every running forward is listed with what it carries now, and the window title says how many run while any do, so none is forgotten.
 - ✅ **QS252** **A forwarded port whose local tool stops reading freezes every channel on the connection, the shell included** — A local or SOCKS forward nobody reads no longer freezes the connection: its window is granted as bytes reach the user (design recorded in `src/Quickshell.Transport/ChannelWindow.cs`).
+- ✅ **QS259** **A remote forward whose local service stops reading freezes every channel on the connection** — Remote forward channels are answered here with a 2 MB window granted as bytes are delivered, so an unread one leaves the shell up (design recorded in `src/Quickshell.Transport/RemoteChannels.cs`).
 
 ## Block G — The clean interface, defended
 
