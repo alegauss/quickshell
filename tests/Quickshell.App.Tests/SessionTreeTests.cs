@@ -99,6 +99,43 @@ public sealed class SessionTreeTests : IDisposable
         Assert.Equal(3, tree.Sessions().Count);
     }
 
+    /// <summary>
+    /// QS254's falsification: a setting written beside the host, not under <c>settings</c>, is
+    /// refused with where it goes, and never read as a session on its defaults. This is the store
+    /// that connected to port 22 as the Windows user while QS137 was being measured.
+    /// </summary>
+    [Fact]
+    public void ASettingBesideTheHostIsRefusedWithWhereItGoes()
+    {
+        string file = Write("misplaced.json", """
+            { "name": "", "children": [
+              { "name": "fixture", "host": "127.0.0.1", "port": 2222, "user": "probe" }
+            ] }
+            """);
+
+        SessionStoreException refused = Assert.Throws<SessionStoreException>(() => SessionTree.ReadFrom(file));
+
+        Assert.Contains("\"port\"", refused.Means, StringComparison.Ordinal);
+        Assert.Contains("settings", refused.Means, StringComparison.Ordinal);
+        Assert.Contains("Move \"port\" into \"settings\"", refused.Remedy, StringComparison.Ordinal);
+    }
+
+    /// <summary>A misspelt field is refused by name too, rather than skipped.</summary>
+    [Fact]
+    public void AFieldTheStoreDoesNotHaveIsNamed()
+    {
+        string file = Write("misspelt.json", """
+            { "name": "", "children": [
+              { "name": "box", "host": "box.example.invalid", "settings": { "prot": 2222 } }
+            ] }
+            """);
+
+        SessionStoreException refused = Assert.Throws<SessionStoreException>(() => SessionTree.ReadFrom(file));
+
+        Assert.Contains("\"prot\"", refused.Means, StringComparison.Ordinal);
+        Assert.Contains("SESSIONS.md", refused.Remedy, StringComparison.Ordinal);
+    }
+
     /// <summary>What this client writes is what it reads, so a round trip through it is lossless.</summary>
     [Fact]
     public void WhatIsWrittenIsReadBack()

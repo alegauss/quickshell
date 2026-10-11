@@ -10,6 +10,11 @@ comments stay beside the session or field they stood before. Field names are rea
 written as this page spells them. **New session**, **Open session** and **Open session, recorded** in
 the palette ([KEYS.md](KEYS.md)) are ways into it; editing it by hand is equally first-class.
 
+**A field this page does not list is refused, not skipped.** A misspelt name, or a setting such as
+`Port` written beside `Host` instead of inside `Settings`, stops the store from opening with a
+message naming the field, its line and where it belongs; nothing in the file is changed. Skipped,
+the same slip would quietly connect on the defaults: as you, to port 22.
+
 **It is a tree.** A node with a `Host` is a session; a node with `Children` is a folder. A folder's
 `Settings` are inherited by everything under it unless something lower down sets the same field, and
 the session dialog says beside every field whether it is set there or inherited, and from which folder.

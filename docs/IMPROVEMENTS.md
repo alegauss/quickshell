@@ -204,31 +204,6 @@ reference machine.
 
 ## Block D — The tree a user organises work in
 
-### §QS254 A store that hides the slip a hand edit makes
-
-Found measuring QS137. A hand-written `sessions.json` put `port`, `user` and `key` on
-the session node itself instead of under its `settings` object. `SessionTree` read it
-without a word, and `--session fixture` connected as the Windows user to port 22 and
-reported that the host refused a connection on port 22, which reads as a server fault.
-
-`SessionTree`'s reading options accept comments and trailing commas because the file is
-meant to be edited by hand, and they leave `System.Text.Json`'s default for an unknown
-member, which is to skip it. So the mistake a hand edit is most likely to make (a field
-one level off, or misspelt) is the one the reader hides.
-
-What to build: read with `UnmappedMemberHandling = Disallow` on both `SessionNode` and
-`SessionSettings`, so an unknown member is a `SessionStoreException` naming it and its
-JSON path, shown where an unreadable store already is. Where it is a settings field
-found on a node, the message says to move it under `settings`. `docs/SESSIONS.md` says
-unknown fields are refused.
-
-A store written by an older or newer client with a field this one does not know would
-then refuse to open. That is the cost, and the reason to settle it before shipping:
-either refuse, or read the store and say which members were ignored in the same place
-the refusal would have said it.
-
-Falsified when a misplaced `port` still connects to port 22 without a word.
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ### §QS188 A drag that starts on the server

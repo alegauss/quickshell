@@ -12,8 +12,6 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS254** (deps: —) **A session field written in the wrong place in the store is silently ignored, so the session connects with defaults** — The store reader skips unknown members, so the likeliest hand-edit mistake turns into a refused connection on port 22. → §QS254
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox

@@ -181,13 +181,25 @@ public sealed class SessionTree
     /// <summary>
     /// Comments and trailing commas accepted, because a hand-written file has both. A parser that
     /// refused them would make "editable by hand" a claim rather than a property.
+    ///
+    /// <para><b>A field this client does not know is refused, not skipped (QS254).</b> The slip a
+    /// hand edit makes most is a field one level off or misspelt, and skipped, it is a session that
+    /// connects on its defaults: <c>port</c> written beside <c>host</c> instead of under
+    /// <c>settings</c> reached port 22 as the Windows user, and the error blamed the server. A store
+    /// written by a later client with a field this one lacks is refused too, which is the cost; it
+    /// names the field, and nothing in the store is changed.</para>
     /// </summary>
     private static readonly JsonSerializerOptions Reading = new()
     {
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
         PropertyNameCaseInsensitive = true,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     };
+
+    /// <summary>The fields a session's <c>settings</c> object takes, so one found beside it can be named for where it goes.</summary>
+    private static readonly HashSet<string> SettingNames =
+        [.. typeof(SessionSettings).GetProperties().Where(each => each.CanWrite).Select(each => each.Name)];
 
     /// <summary>Indented and with nothing omitted that a reader would want to see.</summary>
     private static readonly JsonSerializerOptions Writing = new()
@@ -230,6 +242,20 @@ public sealed class SessionTree
             return new SessionTree(JsonSerializer.Deserialize<SessionNode>(File.ReadAllBytes(file), Reading)
                                    ?? new SessionNode());
         }
+        catch (JsonException broken) when (Unknown(broken) is { } field)
+        {
+            bool setting = SettingNames.Contains(field, StringComparer.OrdinalIgnoreCase);
+
+            throw new SessionStoreException(
+                $"{file} could not be read as a session store.",
+                setting
+                    ? $"Line {broken.LineNumber + 1} has \"{field}\" beside the session's name and host, at {broken.Path}, "
+                      + "where it would be ignored: it is a setting, and settings go inside the session's \"settings\" object."
+                    : $"Line {broken.LineNumber + 1} has \"{field}\" at {broken.Path}, which is not a field a session store has.",
+                setting
+                    ? $"Move \"{field}\" into \"settings\": {{ ... }}. Nothing has been changed."
+                    : "Check its spelling against docs\\SESSIONS.md, or remove it. Nothing has been changed.");
+        }
         catch (JsonException broken)
         {
             // Named rather than swallowed. A store silently replaced with an empty one is a user
@@ -239,6 +265,22 @@ public sealed class SessionTree
                 $"Line {broken.LineNumber + 1} is not what this expected: {broken.Message}",
                 "Fix the file or move it aside; nothing has been changed.");
         }
+    }
+
+    /// <summary>
+    /// The field a refusal is about, where the store held one this client does not know: the last
+    /// name in the path the reader stopped at.
+    /// </summary>
+    private static string? Unknown(JsonException broken)
+    {
+        if (!broken.Message.Contains("could not be mapped", StringComparison.Ordinal) || broken.Path is not { Length: > 0 } path)
+        {
+            return null;
+        }
+
+        int dot = path.LastIndexOf('.');
+
+        return dot >= 0 && dot < path.Length - 1 ? path[(dot + 1)..].Trim('[', ']', '\'', '"') : null;
     }
 
     /// <summary>Writes the tree, indented so a diff of it reads as a change somebody made.</summary>
