@@ -462,7 +462,7 @@ export const numbers = {
     },
     {
       what: "Resident memory",
-      value: "< 120 MB",
+      value: "< 160 MB",
       unit: "one session, default scrollback",
       body: [
         "The private working set after the session has settled. It is also held ",

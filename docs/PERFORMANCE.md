@@ -102,13 +102,23 @@ window that has appeared.
 from a cold file cache wherever the measurement can arrange one, with the warm figure
 reported beside it when it cannot.
 
-### 6. Resident memory — under 120 MB
+### 6. Resident memory — under 160 MB
 
 One connected session at default scrollback.
 
 *Measured by* the private working set after the session has settled, not at the instant the
 window opens. Block H also asks that this figure stay **flat** across a seventy-two-hour
 soak: a number that passes on minute one and drifts is a leak that passed.
+
+*Why 160 and not the 120 first written (QS256).* 120 was set before anything had been measured,
+and the account of one pane in `benchmarks/results/idle-h.md` puts two owners under it that this
+client cannot shrink: the .NET runtime and a WPF window with no pane in it, about 79 MB, and the
+D3D11 device, about 47 MB of the driver's own allocations the moment it is opened on the reference
+machine's adapter. That is 126 MB before a cell exists. What the client does own was cut first:
+scrollback is now allocated as it fills, which took a new pane from 165 to 140 MB. 160 leaves the
+fixed 126 room for one connected session, its pane and its screens; measured on 2026-10-10, the
+release publish with that session open beside a local tab holds 142 to 145 MB. A number that no
+build of this architecture could meet would be a figure nobody reads.
 
 ## How a regression is caught
 

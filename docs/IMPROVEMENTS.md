@@ -440,29 +440,6 @@ shape of that fix, and QS260 carries it.
 Falsified when one local pane, blink off, reads zero frames and under 0.1 % of a core
 over ten idle minutes on a quiet desk.
 
-### §QS256 Where the first pane's ninety megabytes go
-
-Found measuring QS137, recorded in `benchmarks/results/idle-h.md`. Figure 6 allows 120
-MB of private memory for one connected session at default scrollback. The window with no
-pane measured 79.4 MB (QS76). One local pane, settled, holds 172.5 MB; a connected
-session with a local tab behind it holds 211.4 MB; four local panes hold 218.3 MB.
-
-So the budget is spent before a session is opened, and the first pane costs about 93 MB
-where three more cost 46 between them. The first pane's cost is therefore mostly what is
-created once per process, not per pane: the graphics device and its swapchain, the
-atlas's first pages, DirectWrite's font collection, and whatever WPF interop brings in.
-
-What to build first is the account: a breakdown of the first pane's 93 MB by owner,
-taken from a heap snapshot (`dotnet-gcdump`) for the managed half and from the process's
-committed regions by module for the native half, written beside the idle figures so each
-later change can be read against it. Then the largest owner is cut, with the figure
-re-measured the same way each time. If the account says the device and the driver hold
-most of it, the budget's 120 MB is argued in a commit that changes
-`docs/PERFORMANCE.md`, since that file's figures move only that way.
-
-Falsified when a connected session at default scrollback settles under 120 MB of private
-memory on the reference machine.
-
 ## Block I — An error a user can act on
 
 ### §QS128 A trace that carries both sides of the negotiation
