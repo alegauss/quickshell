@@ -15,6 +15,7 @@
 - ⏸ **QS215** (deps: —) **The contrast test's Direct2D reference sometimes draws nothing in the guest, and the failure reads as infinite ink** — set aside (Waits on a guest run with a blank.): No guest run has yet recorded a blank since, so whether it was an unflushed read or a lost draw is still unknown. → §QS215
 - ⏸ **QS153** (deps: QS29 ✅) **The text being composed is a box the input method draws over the grid, not underlined text inside it** — set aside (Needs a person typing through an IME.): Not yet watched with a real input method, which must stop drawing its box and still commit. → §QS153
 - ⏸ **QS214** (deps: —) **Replaying the tmux resize recording sometimes allocates in steady state in the guest, and the failure says no more** — set aside (It waits for the guest to fail again.): Fix the sequence the failure now names when the guest next fails. → §QS214
+- ⏸ **QS260** (deps: —) **A cursor blink redraws the whole grid, so a blinking cursor alone costs half a per cent of a core while idle** — set aside (Needs the reference desk and the operator's leave.): Core, GPU and photon cost per one-cell blink against a whole frame, measured on the reference desk. → §QS260
 
 ## Block D — The tree a user organises work in
 

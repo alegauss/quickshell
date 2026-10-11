@@ -134,6 +134,52 @@ public sealed class GridPainterTests
     }
 
     /// <summary>
+    /// QS260: a blink is one cell, and patching that cell is exactly what painting again would give.
+    /// Lit from dark and dark from lit, on the cell <see cref="GridPainter.CursorCell"/> names — and
+    /// nowhere while the view is scrolled back, where <see cref="Paint"/> draws no cursor either.
+    /// </summary>
+    [Fact]
+    public void ABlinkPatchedIntoOneCellIsTheFramePaintingAgainWouldGive()
+    {
+        using Harness harness = new();
+
+        Emulator emulator = new(20, 4);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("hello"));
+
+        TerminalBuffer buffer = emulator.Buffer;
+        GridPainter painter = new(harness.Atlas, emulator.Palette);
+
+        CellInstance[] dark = new CellInstance[20 * 4];
+        CellInstance[] lit = new CellInstance[20 * 4];
+
+        painter.Paint(buffer, dark, -1, -1, CursorShape.None, Box);
+        painter.Paint(buffer, lit, buffer.CursorRow, buffer.CursorColumn, CursorShape.Bar, Box);
+
+        int at = GridPainter.CursorCell(buffer, buffer.CursorRow, buffer.CursorColumn);
+
+        Assert.Equal((buffer.CursorRow * 20) + buffer.CursorColumn, at);
+
+        CellInstance[] patched = (CellInstance[])dark.Clone();
+        patched[at] = GridPainter.WithCursor(patched[at], CursorShape.Bar);
+        Assert.Equal(lit, patched);
+
+        patched[at] = GridPainter.WithCursor(patched[at], CursorShape.None);
+        Assert.Equal(dark, patched);
+
+        for (int line = 0; line < 10; line++)
+        {
+            emulator.Feed(Encoding.UTF8.GetBytes($"line{line}\r\n"));
+        }
+
+        Viewport viewport = new();
+
+        Assert.True(viewport.ScrollBy(buffer, -4), "there was no history to scroll into");
+        Assert.Equal(-1, GridPainter.CursorCell(buffer, buffer.CursorRow, buffer.CursorColumn, viewport));
+        Assert.Equal(-1, GridPainter.CursorCell(buffer, buffer.CursorRow, 20));
+    }
+
+    /// <summary>
     /// A viewport scrolled back paints the history, and the cursor is not drawn in it.
     ///
     /// <para><b>The cursor is the half that would ship broken.</b> It is a row number on the live

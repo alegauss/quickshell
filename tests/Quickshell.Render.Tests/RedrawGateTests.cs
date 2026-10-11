@@ -95,6 +95,30 @@ public sealed class RedrawGateTests
         Assert.Equal(3, gate.Frames);
     }
 
+    /// <summary>
+    /// QS260: a frame owed only to the blink is said to be the cursor's, so it can be one cell. One
+    /// that the screen or an invalidation owes is whole, including a blink that lands with it.
+    /// </summary>
+    [Fact]
+    public void ABlinkAloneIsOwedTheCursorAndAnythingElseTheWholeFrame()
+    {
+        Emulator emulator = Busy();
+        RedrawGate gate = new();
+
+        Assert.Equal(Redraw.Whole, gate.Decide(emulator.Damage, cursorShowing: true));
+        Assert.Equal(Redraw.Cursor, gate.Decide(emulator.Damage, cursorShowing: false));
+        Assert.Equal(Redraw.None, gate.Decide(emulator.Damage, cursorShowing: false));
+        Assert.Equal(Redraw.Cursor, gate.Decide(emulator.Damage, cursorShowing: true));
+
+        gate.Invalidate();
+        Assert.Equal(Redraw.Whole, gate.Decide(emulator.Damage, cursorShowing: false));
+
+        emulator.Feed(Encoding.UTF8.GetBytes("x"));
+        Assert.Equal(Redraw.Whole, gate.Decide(emulator.Damage, cursorShowing: true));
+
+        Assert.Equal(5, gate.Frames);
+    }
+
     /// <summary>A cursor that moved without a cell being written is still a frame.</summary>
     [Fact]
     public void AMovedCursorEarnsAFrame()

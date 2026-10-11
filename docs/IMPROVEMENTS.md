@@ -181,26 +181,28 @@ Falsified when the guest suite runs ten times with no pass reading 0.0 for Direc
 
 ### §QS260 A blink that costs one cell
 
-Found shipping QS255 (`benchmarks/results/idle-h.md`). With the loop's spin gone, one
-idle local pane with the cursor blinking drew 340 frames in three minutes, the blink's
-own rhythm, and spent 1,672 ms of core time against about 190 ms with the blink off:
-about 4 ms of core a frame, so a blinking cursor alone is roughly half a per cent of a
-core and keeps a GPU engine 0.3 % busy. Figure 4 allows the blink as an idle window's
-one wake, not as a whole frame.
+Found shipping QS255 (`benchmarks/results/idle-h.md`): on the reference desk a blink
+frame cost about 4 ms of core and kept a GPU engine 0.3 % busy, so a blinking cursor
+alone was about half a per cent of a core.
 
-A blink changes one cell. The frame it triggers rebuilds the instance array for every
-cell through `GridPainter.Paint`, uploads it and draws the grid. `RedrawGate.Claim` is
-handed the damage and the cursor phase separately, so it can say when a frame is only
-the cursor; today it answers only yes or no.
+What landed: the chain is `FlipSequential`, `PresentSurface.Retains` says when the back
+buffer holds the current picture, `RedrawGate.Decide` answers `Redraw.Cursor` for a
+blink alone, and `TerminalView.DrawCursor` patches one instance, draws the grid clipped
+to that cell and presents one dirty rectangle. The frame report counts these as
+`cursorFrames`.
 
-What to build: a cursor-only frame repaints just the cursor's cell. The chain is
-`FlipDiscard`, whose back buffer holds nothing of the last frame, so either it becomes
-`FlipSequential` and a cursor frame presents one dirty rectangle with `Present1`, or the
-grid's last frame is kept in a texture and a cursor frame copies it and draws one quad.
-Each is measured with `Quickshell.Idle --frames`, core and GPU time per blink, and
-against photon, since the swap effect is also an echo's path.
+What is left is the measurement, and it needs the reference desk. In the VMware guest
+every blink took the one-cell path (349 of 349) and core time did not separate from a
+whole frame's: a blink costs 0.6 to 0.9 ms of core there either way, inside the
+run-to-run noise, and the guest reports no GPU engine time at all. On the reference
+desk, with the operator's leave, run `tools/Quickshell.Idle --frames` for ten minutes
+each on 84774fa and on this change, blink on and off, and read core and GPU time per
+blink. Then `tools/Quickshell.Photon` at a prompt and under streaming output, against
+`benchmarks/results/photon-h.md`, because the swap effect is also an echo's path.
 
-Falsified when a cursor-only frame still costs what a whole-grid frame costs.
+Falsified when a one-cell blink costs what a whole-grid one did on that desk. Then the
+swap effect goes back to `FlipDiscard` unless photon says sequential costs nothing, and
+the per-frame cost is the wake and the present, which is a different line.
 
 ### §QS261 A cluster split across reads
 
@@ -226,6 +228,27 @@ are the check; today two of them differ.
 
 Falsified when a stream fed one byte at a time still leaves a different screen from the
 same stream fed whole.
+
+### §QS262 A composition that does not blink
+
+Found shipping QS260. `TerminalView.DrawIfNeeded` paints with a cursor row of -1
+whenever the blink has the cursor dark, and `GridPainter.Paint` draws a composition only
+where that row is on screen (`caret >= 0`). So the text an input method is composing is
+drawn on the lit half of each blink and missing on the dark half: it flashes twice a
+second while somebody is typing Japanese. QS153 placed the composition at the cursor;
+nothing says it should share the cursor's blink, and no terminal that draws one in its
+grid does that.
+
+What to build: the painter learns where the cursor is apart from whether it is lit.
+Paint takes the cursor's position whenever the host shows it, and a separate flag or a
+`CursorShape.None` for the dark phase, so the composition is placed by position and the
+caret drawn by phase. Then a blink under a composition changes one cell like any other
+blink, and `TerminalView` can drop the rule that draws such a frame whole.
+
+A test beside `GridPainterTests`' composition cases: the same screen painted in both
+phases carries the same composition cells, and differs only in the caret's.
+
+Falsified when a composition painted with the cursor dark is missing from the instances.
 
 ## Block D — The tree a user organises work in
 

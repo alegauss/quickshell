@@ -501,6 +501,82 @@ public sealed class CellRendererTests
         Assert.Equal(ground, Pixel(frame, 1, (int)Height - 1));
     }
 
+    /// <summary>
+    /// QS260: a draw clipped to a region shades those pixels as the whole draw would and leaves every
+    /// other pixel as the last frame left it — no clear, even when a ground is given.
+    /// </summary>
+    [Fact]
+    public void ADrawClippedToARegionChangesThosePixelsAndNoOthers()
+    {
+        using Harness harness = new();
+
+        Rgb red = new(200, 0, 0);
+        Rgb blue = new(0, 0, 200);
+        int columns = 8;
+        CellInstance[] cells = new CellInstance[columns * 4];
+
+        Array.Fill(cells, CellInstance.For(GlyphPlacement.Empty, Rgb.White, red));
+        harness.Renderer.Draw(harness.Surface, cells, columns, ground: Rgb.Black);
+
+        Array.Fill(cells, CellInstance.For(GlyphPlacement.Empty, Rgb.White, blue));
+
+        CellMetrics metrics = harness.Metrics;
+        Vortice.RawRect region = new(metrics.Width * 2, metrics.Height, metrics.Width * 3, metrics.Height * 2);
+
+        harness.Renderer.Draw(harness.Surface, cells, columns, ground: Rgb.Black, only: region);
+
+        byte[] frame = harness.ReadBack();
+
+        Assert.Equal(blue, Pixel(frame, region.Left, region.Top));
+        Assert.Equal(blue, Pixel(frame, region.Right - 1, region.Bottom - 1));
+        Assert.Equal(red, Pixel(frame, region.Left - 1, region.Top));
+        Assert.Equal(red, Pixel(frame, region.Right, region.Top));
+        Assert.Equal(red, Pixel(frame, region.Left, region.Bottom));
+        Assert.Equal(Rgb.Black, Pixel(frame, (int)Width - 1, (int)Height - 1));
+    }
+
+    /// <summary>
+    /// QS260's premise, on a real chain: a buffer keeps what was drawn into it, so two presents later
+    /// the back buffer holds the first frame. And <see cref="PresentSurface.Retains"/> says so only
+    /// once every buffer has been drawn with the same picture, and forgets it at a new one.
+    /// </summary>
+    [Fact]
+    public void ABufferHoldsItsPictureTwoPresentsLaterAndRetainsCountsEveryBuffer()
+    {
+        using Harness harness = new();
+
+        Rgb red = new(200, 0, 0);
+        Rgb blue = new(0, 0, 200);
+        CellInstance[] reds = [CellInstance.For(GlyphPlacement.Empty, Rgb.White, red)];
+        CellInstance[] blues = [CellInstance.For(GlyphPlacement.Empty, Rgb.White, blue)];
+
+        Assert.False(harness.Surface.Retains);
+
+        harness.Renderer.Draw(harness.Surface, reds, 1, ground: Rgb.Black);
+        harness.Surface.Present();
+        Assert.False(harness.Surface.Retains);
+
+        harness.Renderer.Draw(harness.Surface, blues, 1, ground: Rgb.Black);
+        harness.Surface.Present();
+
+        // Two buffers, so the one drawn next is the one the red frame went out in.
+        Assert.Equal(red, Pixel(harness.ReadBack(), 1, 1));
+
+        harness.Renderer.Draw(harness.Surface, blues, 1, ground: Rgb.Black);
+        harness.Surface.Present(continues: true);
+        Assert.True(harness.Surface.Retains);
+
+        Vortice.RawRect region = new(0, 0, harness.Metrics.Width, harness.Metrics.Height);
+        harness.Renderer.Draw(harness.Surface, reds, 1, only: region);
+        harness.Surface.PresentRegion(region);
+        Assert.True(harness.Surface.Retains);
+
+        harness.Renderer.Draw(harness.Surface, blues, 1, ground: Rgb.Black);
+        harness.Surface.Present();
+        Assert.False(harness.Surface.Retains);
+        Assert.Throws<InvalidOperationException>(() => harness.Surface.PresentRegion(region));
+    }
+
     [Fact]
     public void AnAtlasWithMorePagesThanTheShaderReachesIsRefused()
     {

@@ -42,7 +42,17 @@ public sealed class RedrawGate
     /// <param name="cursorShowing">Whether the blink phase currently has the cursor lit, from
     /// <see cref="CellRenderer.CursorShowing"/>.</param>
     /// <returns>True where a frame is owed.</returns>
-    public bool Claim(Damage damage, bool cursorShowing)
+    public bool Claim(Damage damage, bool cursorShowing) => Decide(damage, cursorShowing) != Redraw.None;
+
+    /// <summary>
+    /// <see cref="Claim"/>, saying also how much of the frame is owed (QS260).
+    ///
+    /// <para><b>A blink is one cell, and this is where that is known.</b> The damage and the
+    /// cursor's phase arrive apart, so a frame whose damage is the one already drawn and whose phase
+    /// is not is a frame about the cursor alone: <see cref="Redraw.Cursor"/>. Anything else that
+    /// moved, and any frame after <see cref="Invalidate"/>, is <see cref="Redraw.Whole"/>.</para>
+    /// </summary>
+    public Redraw Decide(Damage damage, bool cursorShowing)
     {
         // A cursor the host has hidden does not blink, so its phase must not reach the comparison.
         // Otherwise DECTCEM off would leave the window waking twice a second to draw the same
@@ -52,15 +62,17 @@ public sealed class RedrawGate
         if (_seen && damage == _drawn && caret == _caret)
         {
             Skipped++;
-            return false;
+            return Redraw.None;
         }
+
+        Redraw owed = _seen && damage == _drawn ? Redraw.Cursor : Redraw.Whole;
 
         _drawn = damage;
         _caret = caret;
         _seen = true;
         Frames++;
 
-        return true;
+        return owed;
     }
 
     /// <summary>
@@ -72,4 +84,17 @@ public sealed class RedrawGate
     /// on a stale frame until the host next sent a byte.</para>
     /// </summary>
     public void Invalidate() => _seen = false;
+}
+
+/// <summary>How much of a frame <see cref="RedrawGate.Decide"/> says is owed.</summary>
+public enum Redraw
+{
+    /// <summary>Nothing: the picture on the glass is the one the terminal holds.</summary>
+    None,
+
+    /// <summary>Only the cursor's phase changed, so only its cell differs from the last frame.</summary>
+    Cursor,
+
+    /// <summary>Anything else, or a screen the gate has not seen.</summary>
+    Whole,
 }

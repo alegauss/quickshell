@@ -47,6 +47,7 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
     private ID3D11InputLayout? _layout;
     private ID3D11Buffer? _frame;
     private ID3D11RasterizerState? _rasteriser;
+    private ID3D11RasterizerState? _scissored;
     private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
 
     private ID3D11Device? _device;
@@ -227,8 +228,17 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
     /// edge cells' own backgrounds painted outward: a host that coloured its last column would see
     /// the colour smeared into pixels it never addressed.</para>
     /// </param>
+    /// <param name="only">
+    /// Null to draw everything, or the pixels to draw and nothing outside them (QS260).
+    ///
+    /// <para>The same draw, clipped: every cell is still issued and only the pixels inside the
+    /// rectangle are shaded, so what lands there is exactly what a whole frame would put there. That
+    /// is what lets a blink redraw the cursor's cell onto a buffer holding the rest of the picture
+    /// without a second way of drawing a cell to keep in step with the first. No clear goes with it:
+    /// the pixels outside are the last frame's and stay.</para>
+    /// </param>
     public void Draw(PresentSurface surface, ReadOnlySpan<CellInstance> cells, int columns,
-                     bool outlined = false, Rgb? ground = null)
+                     bool outlined = false, Rgb? ground = null, Vortice.RawRect? only = null)
     {
         ArgumentNullException.ThrowIfNull(surface);
         ArgumentOutOfRangeException.ThrowIfLessThan(columns, 1);
@@ -252,7 +262,7 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
         context.OMSetRenderTargets(surface.View);
 
         // On a frame that is being drawn anyway, so an idle window still draws nothing.
-        if (ground is { } clear)
+        if (ground is { } clear && only is null)
         {
             context.ClearRenderTargetView(surface.View,
                                           new Vortice.Mathematics.Color4(clear.Red / 255f, clear.Green / 255f,
@@ -260,7 +270,17 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
         }
 
         context.RSSetViewport(0f, 0f, surface.Width, surface.Height);
-        context.RSSetState(_rasteriser);
+
+        if (only is { } region)
+        {
+            context.RSSetState(_scissored);
+            context.RSSetScissorRect(region.Left, region.Top, region.Right - region.Left,
+                                     region.Bottom - region.Top);
+        }
+        else
+        {
+            context.RSSetState(_rasteriser);
+        }
 
         context.IASetInputLayout(_layout);
         context.IASetPrimitiveTopology(PrimitiveTopology.TriangleStrip);
@@ -315,6 +335,15 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
             DepthClipEnable = true,
         });
 
+        // The same, clipped to a rectangle, for a frame that redraws one region (QS260).
+        _scissored = device.CreateRasterizerState(new RasterizerDescription
+        {
+            FillMode = FillMode.Solid,
+            CullMode = CullMode.None,
+            DepthClipEnable = true,
+            ScissorEnable = true,
+        });
+
         _capacity = 0;
         Grow(InitialCapacity);
     }
@@ -329,6 +358,8 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
 
         _rasteriser?.Dispose();
         _rasteriser = null;
+        _scissored?.Dispose();
+        _scissored = null;
         _frame?.Dispose();
         _frame = null;
         _layout?.Dispose();

@@ -103,6 +103,9 @@ public sealed class TerminalView : IDisposable
     /// </summary>
     public long Draws => _draws;
 
+    /// <summary>Of <see cref="Draws"/>, those that drew the cursor's cell and nothing else (QS260).</summary>
+    public long CursorDraws { get; private set; }
+
     /// <summary>
     /// What the cursor is drawn as when the host has not asked: the user's setting. A shape the
     /// host asks for with DECSCUSR is drawn instead while it stands, and DECSCUSR 0 or a reset gives
@@ -416,13 +419,23 @@ public sealed class TerminalView : IDisposable
         }
 
         Damage damage = emulator.Damage;
+        Redraw owed = _gate.Decide(damage, _renderer.CursorShowing);
 
-        if (!_gate.Claim(damage, _renderer.CursorShowing))
+        if (owed == Redraw.None)
         {
             return false;
         }
 
+        // A composition is drawn only while the cursor is, so a blink under one changes more than a
+        // cell and is drawn whole. So is a blink onto a buffer that does not yet hold the rest of the
+        // picture, which is the first one after anything else changed.
+        bool cell = owed == Redraw.Cursor && Composing is not { IsActive: true };
         TerminalBuffer buffer = emulator.Buffer;
+
+        if (cell && _surface.Retains && _painter.Painted == buffer.Columns * buffer.Rows)
+        {
+            return DrawCursor(buffer, damage);
+        }
         int needed = buffer.Columns * buffer.Rows;
 
         // Only ever on the way up, and a resize is the only thing that moves it. A frame in the
@@ -459,7 +472,9 @@ public sealed class TerminalView : IDisposable
         // under a live pane takes the strip past its last cell with it (QS177).
         _renderer.Draw(_surface, _cells.AsSpan(0, _painter.Painted), buffer.Columns, _outlined,
                        _palette.Resolve(Colour.Default, background: true));
-        _surface.Present();
+        // A blink drawn whole still leaves the picture what it was apart from the cursor's cell, so
+        // the buffers already holding it go on counting towards the next blink drawing one cell.
+        _surface.Present(continues: cell);
 
         _draws++;
 
@@ -478,6 +493,61 @@ public sealed class TerminalView : IDisposable
                 StartupTimeline.Interactive();
             }
         }
+
+        return true;
+    }
+
+    /// <summary>
+    /// A frame about the cursor alone, drawn as one cell (QS260).
+    ///
+    /// <para><b>A blink changes one cell, and this is what it costs.</b> The grid is not painted
+    /// again: the instances are the last frame's, and only the cursor's two bits change on the cell it
+    /// sits on. The draw is the whole grid's, clipped to that cell, onto a buffer
+    /// <see cref="PresentSurface.Retains"/> says already holds everything else, and the present names
+    /// that one rectangle — so neither the GPU nor the compositor touches a pixel the blink did not.
+    /// </para>
+    /// </summary>
+    private bool DrawCursor(TerminalBuffer buffer, Damage damage)
+    {
+        int at = GridPainter.CursorCell(buffer, damage.CursorRow, damage.CursorColumn, Viewport);
+
+        // The cursor is somewhere the view does not show, so nothing on the glass changes.
+        if (at < 0)
+        {
+            return false;
+        }
+
+        bool caret = damage.CursorVisible && _renderer.CursorShowing;
+        _cells[at] = GridPainter.WithCursor(_cells[at], caret ? Shape(damage) : CursorShape.None);
+
+        // A wide character's cursor covers both of its cells, and the rectangle covers what it does.
+        int span = Math.Max(1, (int)(_cells[at].Foreground >> 30));
+        int width = _renderer.Metrics.Width;
+        int height = _renderer.Metrics.Height;
+        int left = at % buffer.Columns * width;
+        int top = at / buffer.Columns * height;
+
+        Vortice.RawRect region = new(left, top,
+                                     Math.Min(left + (span * width), (int)_surface.Width),
+                                     Math.Min(top + height, (int)_surface.Height));
+
+        if (region.Right <= region.Left || region.Bottom <= region.Top)
+        {
+            return false;
+        }
+
+        _surface.WaitForNextFrame();
+
+        long occluded = _surface.Occlusions;
+
+        _renderer.CursorColour = _palette.Cursor;
+        _renderer.Draw(_surface, _cells.AsSpan(0, _painter.Painted), buffer.Columns, _outlined,
+                       only: region);
+        _surface.PresentRegion(region);
+
+        _draws++;
+        CursorDraws++;
+        _covered = _surface.Occlusions != occluded;
 
         return true;
     }

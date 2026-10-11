@@ -117,7 +117,7 @@ public sealed class GridPainter
 
         // The cursor's row within what is on screen, which is its own row only while the viewport is
         // at the bottom. Anywhere else it is off-screen and there is no caret to draw.
-        int caret = cursorRow < 0 ? -1 : (int)(buffer.AbsoluteLine(cursorRow) - top);
+        int caret = RowOnScreen(buffer, cursorRow, top);
 
         for (int row = 0; row < rows; row++)
         {
@@ -169,6 +169,38 @@ public sealed class GridPainter
                     cursor, metrics);
         }
     }
+
+    /// <summary>
+    /// The index of the instance <see cref="Paint"/> puts the cursor on, or -1 where it puts it on
+    /// none: a row scrolled out of the view, or a column past the last (QS260).
+    ///
+    /// <para>Asked where the cursor is whether or not it is lit, which is what a blink needs: the
+    /// frame that turns it off has to find the cell the last one lit, and the frame that turns it on
+    /// the cell no instance carries it on yet. Not where a composition moves it — a frame with one
+    /// is drawn whole.</para>
+    /// </summary>
+    public static int CursorCell(TerminalBuffer buffer, int cursorRow, int cursorColumn,
+                                 Viewport? viewport = null)
+    {
+        ArgumentNullException.ThrowIfNull(buffer);
+
+        int row = RowOnScreen(buffer, cursorRow, viewport?.Top(buffer) ?? buffer.TopLine);
+
+        return row < 0 || row >= buffer.Rows || cursorColumn < 0 || cursorColumn >= buffer.Columns
+            ? -1
+            : (row * buffer.Columns) + cursorColumn;
+    }
+
+    /// <summary>
+    /// <paramref name="cell"/> with its cursor replaced by <paramref name="cursor"/> and nothing else
+    /// changed: the two bits at the top of the background word that <see cref="Paint"/> sets.
+    /// </summary>
+    public static CellInstance WithCursor(CellInstance cell, CursorShape cursor) =>
+        cell with { Background = (cell.Background & ~(3u << 30)) | ((uint)cursor << 30) };
+
+    /// <summary>The row on screen an absolute cursor row lands on, or -1 for no cursor.</summary>
+    private static int RowOnScreen(TerminalBuffer buffer, int cursorRow, long top) =>
+        cursorRow < 0 ? -1 : (int)(buffer.AbsoluteLine(cursorRow) - top);
 
     /// <summary>The down arrow a scrolled-back view shows when output arrived below it.</summary>
     private const int Arrived = 0x2193;
@@ -307,10 +339,7 @@ public sealed class GridPainter
 
         if (caretAt >= 0 && cursor != CursorShape.None)
         {
-            CellInstance under = into[caretAt];
-
-            // The cursor's two bits, at the top of the background word, replaced and nothing else.
-            into[caretAt] = under with { Background = (under.Background & ~(3u << 30)) | ((uint)cursor << 30) };
+            into[caretAt] = WithCursor(into[caretAt], cursor);
         }
     }
 

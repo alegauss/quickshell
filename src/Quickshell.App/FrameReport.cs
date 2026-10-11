@@ -58,6 +58,7 @@ internal static class FrameReport
               "wokenByDamage": {{share.WokenByDamage}},
               "wokenByBlink": {{share.WokenByBlink}},
               "frames": {{share.Frames}},
+              "cursorFrames": {{share.CursorFrames}},
               "hostBytes": {{SessionPipeline.Received}}
             }
             """);

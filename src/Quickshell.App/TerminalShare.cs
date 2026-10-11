@@ -68,6 +68,11 @@ public sealed class TerminalShare : IDisposable
     /// <summary>How many pane frames it has drawn, all panes together.</summary>
     public long Frames => Interlocked.Read(ref _frames);
 
+    /// <summary>Of <see cref="Frames"/>, those that drew one cursor's cell and nothing else (QS260).</summary>
+    public long CursorFrames => Interlocked.Read(ref _cursorFrames);
+
+    private long _cursorFrames;
+
     /// <summary>
     /// Whether the loop runs, which it does everywhere but in a test that counts frames.
     ///
@@ -277,9 +282,12 @@ public sealed class TerminalShare : IDisposable
         {
             try
             {
+                long cells = view.CursorDraws;
+
                 if (view.DrawIfNeeded(model))
                 {
                     drawn++;
+                    Interlocked.Add(ref _cursorFrames, view.CursorDraws - cells);
                 }
             }
             catch (Exception) when (_device is { } device && Removed(device) is { } why)

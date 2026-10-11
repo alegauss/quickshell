@@ -8,8 +8,8 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS260** (deps: —) **A cursor blink redraws the whole grid, so a blinking cursor alone costs half a per cent of a core while idle** — A blink changes one cell and each frame rebuilds and draws every cell, about 4 ms of core twice a second. → §QS260
 - 📋 **QS261** (deps: —) **Where a read ends decides how wide a character is, so a keycap split by the network leaves the cursor a column off** — A mark arriving in a later read joins a cell already written without widening it, where the same bytes in one read make it two columns. → §QS261
+- 📋 **QS262** (deps: —) **The text an input method is composing vanishes every time the blinking cursor goes dark** — The painter draws a composition only where the cursor row is on screen, and the view passes no row while the blink is dark. → §QS262
 
 ## Block D — The tree a user organises work in
 

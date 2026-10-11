@@ -163,3 +163,31 @@ pane; the rest of the gap is the figure's to argue.
 configured depth. The same publish, one pane, settled forty seconds, three starts: **139.6 to 140.0 MB**,
 from 164.9: 25 MB off every new pane, the rest of the 29 being the screens themselves. The window and
 the device, 126 MB of it, are what stand between this and figure 6.
+
+## A blink drawn as one cell — 2026-10-11 (QS260)
+
+A blink now redraws the cursor's cell alone: the chain is flip-sequential, so a buffer keeps its
+picture, and once both buffers hold the current one a blink patches one instance, draws the grid
+clipped to that cell and presents it as one dirty rectangle. The frame report counts these as
+`cursorFrames`.
+
+Measured in the **VMware guest**, not on the reference desk: one local pane, Release publish,
+`QUICKSHELL_DATA` on a scratch folder, three minutes after a fifteen-second settle, by
+`tools/Quickshell.Idle --attach --frames`.
+
+| | core time / 181 s | frames | of them one cell |
+|---|---|---|---|
+| HEAD (84774fa), blink on | 656 ms | 340 | not counted |
+| this change, blink on | 672 ms | 349 | not counted |
+| this change, blink on, again | 562 ms | 349 | **349** |
+| this change, `cursorBlink: false` | 344 ms | 0 | 0 |
+
+**Every blink took the one-cell path**, and the guest cannot tell it apart from a whole frame on core
+time: with the blink-off floor taken away, a blink costs 0.6 to 0.9 ms of core either way, and two
+runs of the same build differ by more than the two builds do. In the guest a frame's core cost is
+the wake and the present, not the grid. The guest reports no GPU engine time at all, so the half
+this change is aimed at most directly, GPU and compositor work per blink, is not visible there.
+
+What the reference desk has to settle, and has not: core and GPU time per blink against the 4 ms
+QS255 measured there, and `tools/Quickshell.Photon`, because flip-sequential is also the path an
+echo takes.

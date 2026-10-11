@@ -6,8 +6,9 @@ namespace Quickshell.Render;
 /// <summary>
 /// One pane's swapchain and the three flags that buy its latency.
 ///
-/// <para><b>Flip-discard</b> is the baseline: the blt model copies through the desktop compositor
-/// and spends a frame for nothing.</para>
+/// <para><b>The flip model</b> is the baseline: the blt model copies through the desktop compositor
+/// and spends a frame for nothing. Flip-sequential rather than flip-discard, so a buffer keeps its
+/// picture and a frame that changes one cell can draw one cell (<see cref="Retains"/>).</para>
 ///
 /// <para><b>The waitable object</b> with a maximum frame latency of one is where the latency is
 /// actually won. The render thread waits on the swapchain's own handle rather than on a timer, so
@@ -30,6 +31,9 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
     private IDXGISwapChain2? _swapChain;
     private ID3D11RenderTargetView? _view;
     private long _presented;
+
+    /// <summary>How many of the buffers hold the picture last presented whole (QS260).</summary>
+    private int _holding;
 
     private PresentSurface(GraphicsDevice graphics, nint window, uint width, uint height, bool tearing)
     {
@@ -252,10 +256,54 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
         _swapChain is not null && _swapChain.Present(0u, PresentFlags.Test).Code == DxgiStatusOccluded;
 
     /// <summary>
+    /// Whether the back buffer about to be drawn already holds the picture last presented whole, so a
+    /// frame that changes one region may draw that region alone and <see cref="PresentRegion"/> it
+    /// (QS260).
+    ///
+    /// <para><b>Every buffer has to have been drawn whole once.</b> The chain is flip-sequential, so a
+    /// buffer keeps what was drawn into it, and the buffers take turns: the one drawn next is the one
+    /// presented longest ago. So the answer is yes only once as many whole frames of the same picture
+    /// as there are buffers have gone out since it last changed, and no after anything that leaves a
+    /// buffer's content unknown — a new chain, a resize, a present that went nowhere.</para>
+    /// </summary>
+    public bool Retains => _holding >= Buffers;
+
+    /// <summary>
     /// Puts the frame on the glass. With <paramref name="vsync"/> off and tearing available the
     /// tearing flag goes with it, which is the whole point of asking for the capability.
     /// </summary>
-    public void Present(bool vsync = true)
+    /// <param name="vsync">Whether to wait for the vblank.</param>
+    /// <param name="continues">
+    /// True where this whole frame is the last one's picture apart from a region a partial frame
+    /// would redraw anyway — the cursor's cell, for a blink. The buffers already holding that picture
+    /// still count towards <see cref="Retains"/>. False, the default, is a new picture.
+    /// </param>
+    public void Present(bool vsync = true, bool continues = false)
+    {
+        if (Issue(vsync, dirty: null))
+        {
+            _holding = continues ? Math.Min(_holding + 1, (int)Buffers) : 1;
+        }
+    }
+
+    /// <summary>
+    /// Presents a frame that drew <paramref name="dirty"/> and nothing else, onto a buffer
+    /// <see cref="Retains"/> said holds the rest, and tells the compositor that rectangle is all that
+    /// changed.
+    /// </summary>
+    /// <param name="dirty">The pixels drawn, clipped to the back buffer.</param>
+    /// <param name="vsync">Whether to wait for the vblank.</param>
+    public void PresentRegion(Vortice.RawRect dirty, bool vsync = true)
+    {
+        if (!Retains)
+        {
+            throw new InvalidOperationException("the back buffer does not hold the last picture");
+        }
+
+        Issue(vsync, dirty);
+    }
+
+    private bool Issue(bool vsync, Vortice.RawRect? dirty)
     {
         if (_swapChain is null)
         {
@@ -263,16 +311,24 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
         }
 
         PresentFlags flags = !vsync && TearingAllowed ? PresentFlags.AllowTearing : PresentFlags.None;
-        SharpGen.Runtime.Result result = _swapChain.Present(vsync ? 1u : 0u, flags);
+        uint interval = vsync ? 1u : 0u;
+
+        SharpGen.Runtime.Result result = dirty is { } region
+            ? _swapChain.Present1(interval, flags, new PresentParameters { DirtyRectangles = [region] })
+            : _swapChain.Present(interval, flags);
 
         if (result.Code == DxgiStatusOccluded)
         {
+            // Whether the buffers turned over is not something DXGI says, so what each holds is no
+            // longer known either.
             Occlusions++;
-            return;
+            _holding = 0;
+            return false;
         }
 
         result.CheckError();
         _presented++;
+        return true;
     }
 
     /// <summary>
@@ -295,6 +351,7 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
         // ResizeBuffers, never a stretch: the swapchain is Scaling.None, so a stretched frame is
         // not something this surface can accidentally show.
         _swapChain.ResizeBuffers(0, width, height, Format.Unknown, Flags(Waitable));
+        _holding = 0;
 
         Width = width;
         Height = height;
@@ -314,7 +371,10 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
             Format = Format.B8G8R8A8_UNorm,
             BufferCount = Buffers,
             BufferUsage = Usage.RenderTargetOutput,
-            SwapEffect = SwapEffect.FlipDiscard,
+            // Sequential and not discard (QS260): a buffer keeps what was drawn into it, which is what
+            // lets a blink redraw one cell and present one dirty rectangle instead of the grid.
+            // Both are the flip model, so the overlay and independent-flip paths are the same.
+            SwapEffect = SwapEffect.FlipSequential,
             SampleDescription = new SampleDescription(1, 0),
             AlphaMode = Vortice.DXGI.AlphaMode.Ignore,
 
@@ -348,6 +408,7 @@ public sealed class PresentSurface : IDeviceResource, IDisposable
 
         _view = CreateView(device, _swapChain);
         _presented = 0;
+        _holding = 0;
         Occlusions = 0;
     }
 

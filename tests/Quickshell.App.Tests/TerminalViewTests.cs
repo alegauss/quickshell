@@ -109,6 +109,47 @@ public sealed class TerminalViewTests
     }
 
     /// <summary>
+    /// QS260: a blink is drawn as the cursor's cell once both buffers hold the picture, every blink
+    /// after that is one cell too, and output puts the next frame back to whole.
+    /// </summary>
+    [Fact]
+    public void ABlinkDrawsOneCellOnceEveryBufferHoldsThePicture()
+    {
+        (long draws, long cells, long afterOutput) = OnPane(pane =>
+        {
+            using TerminalShare share = new();
+
+            TerminalView view = Open(share, pane);
+            TimeSpan half = view.Renderer.Blink.Interval;
+
+            Emulator emulator = new(view.Columns, view.Rows);
+
+            emulator.Feed(Encoding.UTF8.GetBytes("hello"));
+
+            // Lit, dark, lit, dark, lit: the first a new picture, the second a blink onto the buffer
+            // that does not hold it yet, and the three after it one cell each.
+            for (int phase = 0; phase < 5; phase++)
+            {
+                view.Renderer.Elapsed = half * phase;
+                Assert.True(view.DrawIfNeeded(emulator), $"phase {phase} drew nothing");
+            }
+
+            long drawn = view.Draws;
+            long cursor = view.CursorDraws;
+
+            emulator.Feed(Encoding.UTF8.GetBytes(" world"));
+            view.Renderer.Elapsed = half * 6;
+            view.DrawIfNeeded(emulator);
+
+            return (drawn, cursor, view.CursorDraws);
+        });
+
+        Assert.Equal(5, draws);
+        Assert.Equal(3, cells);
+        Assert.Equal(cells, afterOutput);
+    }
+
+    /// <summary>
     /// The loop draws when the signal says something changed, and not otherwise.
     ///
     /// <para>Both halves are the test. A loop that never woke would leave a window stale, and a loop
