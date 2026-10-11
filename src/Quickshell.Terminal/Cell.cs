@@ -134,6 +134,12 @@ public readonly struct Cell : IEquatable<Cell>
                         Attributes(flags, underline, width, link));
     }
 
+    /// <summary>
+    /// The same pen holding another character, which is how a run of printable text is written
+    /// without building each cell's attributes again (QS258).
+    /// </summary>
+    public Cell WithCodepoint(int codepoint) => new(codepoint, _foreground, _background, _attributes);
+
     /// <summary>The same cell in different colours, which is what an attribute change rewrites.</summary>
     public Cell With(Colour foreground, Colour background) =>
         new(_text, foreground.Packed, background.Packed, _attributes);

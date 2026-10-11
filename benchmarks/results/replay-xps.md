@@ -132,3 +132,23 @@ which is the opposite of where one would look first.
 - `emulate` - the parser and the real terminal it writes into - cells, scrollback and reflow, which is the call a session makes for every byte a host sends
 
 - `render` - bytes to a drawn frame - parse, decode, cluster, atlas, instances and one draw call
+
+## Printable runs written as spans — 2026-10-10 (QS258)
+
+`Emulator.Print` now writes a run of printable ASCII straight into the row, a row's worth at a time,
+when nothing remaps or inserts and the decoder holds no partial sequence; the run's last character
+still goes through the segmenter, so a mark that follows can join it. `AsciiRunTests` feeds eleven
+streams whole and in seven-byte reads to an emulator with the path on and one with it off, and the
+screens, scrollback, cursor and owed wrap agree cell for cell.
+
+`Quickshell.Replay --only cat-log:emulate`, the Release build, five runs each, on the reference
+machine while other projects ran on it:
+
+| | MB/s |
+|---|---|
+| before | 31.3, 33.3, 39.8, 40.3, 42.6 |
+| after | 197.0, 190.4, 197.2, 184.1, 144.4 |
+
+**Past the whole-path figure.** `docs/PERFORMANCE.md` asks 100 MB/s of `emulate`, the rate one SSH
+session over loopback delivers; this reads about 190 on a busy desk, against 54 at the gate's quiet
+baseline before. The gate's next baseline will carry the move, with the trailer naming it.

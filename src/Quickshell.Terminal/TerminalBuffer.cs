@@ -566,6 +566,28 @@ public sealed class TerminalBuffer
         TouchScreen(row);
     }
 
+    /// <summary>
+    /// Writes printable ASCII into a visible row from <paramref name="column"/>, one narrow cell per
+    /// byte, all in the pen <paramref name="pen"/> carries (QS258). What <see cref="Write"/> does a
+    /// byte at a time - the bounds, the row's lookup in the ring, the damage stamp - is done once
+    /// for the run.
+    /// </summary>
+    /// <param name="row">The visible row.</param>
+    /// <param name="column">Where the first byte goes; the run must fit in the row from there.</param>
+    /// <param name="text">Bytes between 0x20 and 0x7E, each its own character.</param>
+    /// <param name="pen">A cell in the colours, flags, underline and link every byte is written in.</param>
+    internal void WriteAscii(int row, int column, ReadOnlySpan<byte> text, Cell pen)
+    {
+        Span<Cell> line = MutableScreen(row).Slice(column, text.Length);
+
+        for (int at = 0; at < text.Length; at++)
+        {
+            line[at] = pen.WithCodepoint(text[at]);
+        }
+
+        TouchScreen(row);
+    }
+
     /// <summary>Writes a run of cells into a visible row from <paramref name="column"/>, as DECCRA does (QS238).</summary>
     public void WriteRun(int row, int column, ReadOnlySpan<Cell> cells)
     {

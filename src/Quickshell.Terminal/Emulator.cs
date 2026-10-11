@@ -163,11 +163,95 @@ public sealed partial class Emulator : IAnsiHandler
 
     void IAnsiHandler.Print(ReadOnlySpan<byte> text)
     {
+        // A run of printable ASCII goes straight into the row (QS258). Each such byte is a character
+        // of width one that no rule can join to the one before it, so the segmenter and the width
+        // table have nothing to say about it - except the run's last, which a combining mark or a
+        // variation selector in the bytes that follow could still extend, and which is left for them.
+        if (text.Length > 1 && PlainText)
+        {
+            int run = text.IndexOfAnyExceptInRange((byte)0x20, (byte)0x7E);
+
+            if (run < 0)
+            {
+                run = text.Length;
+            }
+
+            if (run > 1)
+            {
+                // What the segmenter holds is complete: nothing printable in ASCII extends a cluster.
+                FlushText();
+                PrintAscii(text[..(run - 1)]);
+                text = text[(run - 1)..];
+            }
+        }
+
         _segmenter.Append(_decoder.Decode(text));
 
         while (_segmenter.TryNext(out ReadOnlySpan<char> cluster))
         {
             PrintCluster(cluster);
+        }
+    }
+
+    /// <summary>Whether runs of printable ASCII take the fast path; off only where a test compares the two.</summary>
+    internal bool AsciiRuns { get; set; } = true;
+
+    /// <summary>
+    /// Whether printable ASCII may skip the per-character path: nothing remaps it, nothing inserts,
+    /// and the decoder is UTF-8 holding no half of a sequence the next byte would complete or spoil.
+    /// </summary>
+    private bool PlainText =>
+        AsciiRuns
+        && !InsertMode
+        && _designated[_activeSet] == CharacterSet.Ascii
+        && !_decoder.HasPending
+        && _decoder.Encoding.CodePage == 65001;
+
+    /// <summary>
+    /// Writes printable ASCII a row's worth at a time, by <see cref="PrintCluster"/>'s own rules for a
+    /// character of width one: the owed wrap taken when a character arrives, the cursor left on the
+    /// last cell of a full row with a wrap owed, and the right margin standing in for the edge while
+    /// the cursor is inside it (QS258).
+    /// </summary>
+    private void PrintAscii(ReadOnlySpan<byte> text)
+    {
+        TerminalBuffer buffer = Buffer;
+
+        while (!text.IsEmpty)
+        {
+            int end = buffer.CursorColumn <= Right ? Right + 1 : buffer.Columns;
+
+            if (PendingWrap)
+            {
+                PendingWrap = false;
+
+                if (AutoWrap)
+                {
+                    buffer.SetScreenWrapped(buffer.CursorRow, true);
+                    NextLine();
+                    buffer.CursorColumn = end == Right + 1 ? MarginLeft : 0;
+                    end = buffer.CursorColumn <= Right ? Right + 1 : buffer.Columns;
+                }
+            }
+
+            int count = Math.Min(text.Length, end - buffer.CursorColumn);
+
+            buffer.WriteAscii(buffer.CursorRow, buffer.CursorColumn, text[..count],
+                              Cell.For(' ', _pen.Foreground, _pen.Background, _pen.Flags, _pen.Underline, 1, _pen.Link));
+
+            _lastPrinted = text[count - 1];
+
+            if (buffer.CursorColumn + count >= end)
+            {
+                buffer.CursorColumn = end - 1;
+                PendingWrap = true;
+            }
+            else
+            {
+                buffer.CursorColumn += count;
+            }
+
+            text = text[count..];
         }
     }
 

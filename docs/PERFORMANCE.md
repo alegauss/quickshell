@@ -72,9 +72,10 @@ a wish: with the parser switched off, one SSH session over loopback delivered 18
 three minutes (`benchmarks/results/soak-h.md`), about 100 MB/s, and loopback is the fastest link a
 session will ever have. Below that the terminal is what makes `cat` of a large file slow; above
 it the bytes are not there to be parsed, so a faster `emulate` buys nothing a user can see. On
-2026-10-07 the gate's baseline read 53.6 MB/s, so **this is not met**: the per-stage ladder in
-`benchmarks/results/replay-xps.md` is where the missing half is looked for. The gate holds
-`emulate` against regressions today; it holds it against this number once it is met.
+2026-10-07 the gate's baseline read 53.6 MB/s. Since QS258 writes printable runs a row at a
+time, the replay reads about 190 MB/s on a busy desk (`benchmarks/results/replay-xps.md`), so
+**the figure is met**; the gate's baseline still holds the old number until it is retaken on a
+quiet desk, and holds `emulate` against regressions from there.
 
 ### 3. Steady-state frame cost — under 2 ms
 

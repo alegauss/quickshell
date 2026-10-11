@@ -8,8 +8,8 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS258** (deps: QS141 ✅) **A session's whole path parses near 54 MB/s where the budget now asks for 100, the rate the transport delivers** — Writing printable text a character at a time is most of what is left, so a large cat over a fast link waits on the terminal. → §QS258
 - 📋 **QS260** (deps: —) **A cursor blink redraws the whole grid, so a blinking cursor alone costs half a per cent of a core while idle** — A blink changes one cell and each frame rebuilds and draws every cell, about 4 ms of core twice a second. → §QS260
+- 📋 **QS261** (deps: —) **Where a read ends decides how wide a character is, so a keycap split by the network leaves the cursor a column off** — A mark arriving in a later read joins a cell already written without widening it, where the same bytes in one read make it two columns. → §QS261
 
 ## Block D — The tree a user organises work in
 

@@ -116,6 +116,7 @@
 - ✅ **QS249** **Keys typed before a new pane's shell has started are dropped, so a fast first command loses its start** — Keys typed while a pane's session opens are kept, bounded, and handed over first and in order once it attaches, so a fast first command no longer loses its start.
 - ✅ **QS212** **Dark text on a light theme carries 12 to 17 % less ink than Windows draws, while light-on-dark carries more** — Dark text on a light theme carries Direct2D's ink within 1 % in both antialiasing modes, and light-on-dark is drawn as before (design recorded in `docs/measurements/contrast.md`).
 - ✅ **QS139** **A host sending faster than the parser consumes buffers gigabytes inside the channel** — A fast host now waits for the reader: the shell's 2 MB window is granted back as read, and ten unread seconds hold 1.4 MB, not 3 GB (design recorded in `src/Quickshell.Transport/ChannelWindow.cs`).
+- ✅ **QS258** **A session's whole path parses near 54 MB/s where the budget now asks for 100, the rate the transport delivers** — Printable ASCII is written a row's worth at a time, and emulate on cat-log reads about 190 MB/s where it read 31 to 43 that day (design recorded in `benchmarks/results/replay-xps.md`).
 
 ## Block D — The tree a user organises work in
 

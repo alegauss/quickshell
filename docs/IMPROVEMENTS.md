@@ -179,29 +179,6 @@ target has ink.
 
 Falsified when the guest suite runs ten times with no pass reading 0.0 for Direct2D.
 
-### §QS258 Printable runs written as spans
-
-QS141 gave the whole path a figure in `docs/PERFORMANCE.md`: `emulate` at least 100 MB/s
-on `cat-log`, the rate one SSH session over loopback delivers with the parser switched
-off. The gate's 2026-10-07 baseline reads 53.6 MB/s, so a `cat` of a large file over a
-fast link is slowed by the terminal by about half.
-
-Where to look is already measured. The replay ladder in
-`benchmarks/results/replay-xps.md` names each stage's cost; QS143 cut clustering by
-taking the below-U+0300 fast path, and QS144 found 87 per cent of cell writing in the
-per-character path at 87 ns a character. That per-character path is the target: a run of
-printable ASCII in one attribute can be written as a span (one bounds check, one
-attribute store, a block copy of the code points) instead of a call per character, the
-way the parser already hands printable runs on. Clustering's fast path makes a run known
-to be one cell per character before it reaches the buffer, so the span is safe for
-exactly the input `cat-log` is made of.
-
-Measured on the ladder before and after, each change its own commit, and the gate's
-baseline retaken once the figure moves, with the `Performance-Moved` trailer naming it.
-
-Falsified when `emulate` reads 100 MB/s or more on `cat-log` at the gate on the
-reference machine.
-
 ### §QS260 A blink that costs one cell
 
 Found shipping QS255 (`benchmarks/results/idle-h.md`). With the loop's spin gone, one
@@ -224,6 +201,31 @@ Each is measured with `Quickshell.Idle --frames`, core and GPU time per blink, a
 against photon, since the swap effect is also an echo's path.
 
 Falsified when a cursor-only frame still costs what a whole-grid frame costs.
+
+### §QS261 A cluster split across reads
+
+Found shipping QS258. The same bytes fed in one read and fed a byte at a time leave
+different screens, on the per-character path as much as the new one: `press #️⃣ now`
+leaves the cursor at column 21 in one read and 25 in single bytes, and `café more` at
+28 against 29.
+
+The cause is a choice made on purpose, written on `Emulator.Feed`: the segmenter is
+flushed at the end of every read, so the last character a user typed appears at once
+instead of waiting for the next one. A mark arriving in a later read then joins the cell
+already written through `AttachToPrevious`, which keeps that cell's width. In one read
+the segmenter sees the whole cluster, and `CharacterWidth.OfCluster` gives a keycap or
+an emoji presentation sequence two columns. So output split by the network lands
+differently from the same output arriving whole, and the cursor is a column off the
+host's for the rest of the line.
+
+What to build: `AttachToPrevious` recomputes the joined cluster's width, and where it
+grew from one column to two, moves what follows on the row one column right (the insert
+the host's own terminal would have made) and advances the cursor, so the result matches
+the single-read path. `AsciiRunTests`' streams, fed whole against one byte at a time,
+are the check; today two of them differ.
+
+Falsified when a stream fed one byte at a time still leaves a different screen from the
+same stream fed whole.
 
 ## Block D — The tree a user organises work in
 
