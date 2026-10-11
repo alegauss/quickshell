@@ -10,6 +10,10 @@ obj/
 
 # Test and publish artifacts
 [Tt]est[Rr]esults/
+
+# The UI cases' declaration pointed at a configuration other than Debug, written by every such run
+# beside winwright.json because its relative paths are that directory's (QS265).
+/winwright.*.json
 publish/
 artifacts/
 

@@ -451,27 +451,6 @@ Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS265 UI cases against the configuration that was built
-
-Found following CI on 2026-10-11:
-`Quickshell.Cases.CasesRun.EveryUiCaseInThisRepositoryRuns` fails on every push.
-Launching the client throws "The system cannot find the file specified" for
-`src\Quickshell.App\bin\Debug\net10.0-windows\win-x64\quickshell.exe`. `winwright.json`
-names that Debug path, and CI builds and tests Release only (`run-tests.cmd Release`),
-so the UI cases have never run in CI. They pass in the guest, which builds Debug.
-
-The project declaration takes one `executable` and nothing that varies it with the
-configuration. That gap is winwright's and is filed in its roadmap. Until it closes,
-this repository can still make the run honest. The CI job builds the Debug client before
-the suite, or `run-tests.cmd` hands the case runner the configuration it built, by an
-argument or a generated declaration under `TestResults`.
-
-What to build: the second, so a Release run tests the Release client and not a stale
-Debug one left over from another build. If winwright ships a way to vary the executable
-first, use it and drop the workaround.
-
-Falsified when a Release run still launches, or fails to launch, a Debug client.
-
 ### §QS266 A nightly that reaches its verdict
 
 Found following CI on 2026-10-11: the nightly `fuzz` workflow (run 38130799752, on

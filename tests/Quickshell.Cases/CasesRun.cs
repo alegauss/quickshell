@@ -51,7 +51,7 @@ public sealed class CasesRun
 
         string repository = Repository.Root;
 
-        ProjectDeclaration project = ProjectDeclaration.Find(repository);
+        ProjectDeclaration project = ForThisBuild(repository);
         IReadOnlyList<CaseDeclaration> declared =
             ScenarioFile.Across(ScenarioFile.LoadAll(Path.Combine(repository, "cases")));
 
@@ -70,6 +70,45 @@ public sealed class CasesRun
 
         // And nothing this run started is still on the desk.
         Assert.Empty(register.StopAll());
+    }
+
+    /// <summary>
+    /// The project declaration, pointed at the client of the configuration this run built (QS265).
+    ///
+    /// <para><b>winwright.json names the Debug client</b>, and the declaration has one executable and
+    /// nothing a runner can vary (WW521). A Release run, which is what CI makes, launched a Debug path
+    /// that was not there, so the UI cases had never run in CI. This assembly is built in the same
+    /// configuration as the client, so it knows which one is meant. Anything but Debug gets a copy of
+    /// the declaration with that one segment changed, written beside the original, because every
+    /// relative path in it and the directory the client starts in are that file's own directory. The
+    /// copy is ignored by git and rewritten every run.</para>
+    ///
+    /// <para>Drop this once winwright can take the configuration itself.</para>
+    /// </summary>
+    private static ProjectDeclaration ForThisBuild(string repository)
+    {
+        string configuration = typeof(CasesRun).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyConfigurationAttribute), false)
+            .OfType<System.Reflection.AssemblyConfigurationAttribute>()
+            .Select(one => one.Configuration)
+            .FirstOrDefault() ?? "Debug";
+
+        string declared = Path.Combine(repository, "winwright.json");
+
+        if (configuration == "Debug")
+        {
+            return ProjectDeclaration.Load(declared);
+        }
+
+        string text = File.ReadAllText(declared);
+        string pointed = text.Replace("/bin/Debug/", $"/bin/{configuration}/", StringComparison.Ordinal);
+
+        Assert.True(pointed != text, "winwright.json names no /bin/Debug/ path to point at this build");
+
+        string copy = Path.Combine(repository, $"winwright.{configuration}.json");
+        File.WriteAllText(copy, pointed);
+
+        return ProjectDeclaration.Load(copy);
     }
 
     /// <summary>

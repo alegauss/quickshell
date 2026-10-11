@@ -293,3 +293,4 @@
 - ✅ **QS251** **The site's build pulls source-map-js 1.2.1, which Dependabot flags high for an event-loop denial of service** — The site's lockfile resolves source-map-js 1.2.2 for both vite and tailwind, npm audit finds nothing, and the site builds.
 - ✅ **QS263** **The echo-delay test times out in the guest waiting for sixteen megabytes and never says how far it got** — The echo-delay test reads at two and eight megabytes, keeping its four-to-one ratio, and a timeout now says how many megabytes were parsed.
 - ✅ **QS264** **The settings-reference test fails on every CI push and passes in the guest** — The settings-reference test finds the same headings on a CRLF checkout as on an LF one, and a test now checks both.
+- ✅ **QS265** **The UI cases have never run in CI: they launch a Debug client the Release build does not make** — A Release run launches the Release client: the UI cases point winwright at the configuration their own assembly was built in.
