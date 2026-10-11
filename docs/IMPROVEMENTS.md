@@ -204,27 +204,6 @@ Falsified when a one-cell blink costs what a whole-grid one did on that desk. Th
 swap effect goes back to `FlipDiscard` unless photon says sequential costs nothing, and
 the per-frame cost is the wake and the present, which is a different line.
 
-### §QS262 A composition that does not blink
-
-Found shipping QS260. `TerminalView.DrawIfNeeded` paints with a cursor row of -1
-whenever the blink has the cursor dark, and `GridPainter.Paint` draws a composition only
-where that row is on screen (`caret >= 0`). So the text an input method is composing is
-drawn on the lit half of each blink and missing on the dark half: it flashes twice a
-second while somebody is typing Japanese. QS153 placed the composition at the cursor;
-nothing says it should share the cursor's blink, and no terminal that draws one in its
-grid does that.
-
-What to build: the painter learns where the cursor is apart from whether it is lit.
-Paint takes the cursor's position whenever the host shows it, and a separate flag or a
-`CursorShape.None` for the dark phase, so the composition is placed by position and the
-caret drawn by phase. Then a blink under a composition changes one cell like any other
-blink, and `TerminalView` can drop the rule that draws such a frame whole.
-
-A test beside `GridPainterTests`' composition cases: the same screen painted in both
-phases carries the same composition cells, and differs only in the caret's.
-
-Falsified when a composition painted with the cursor dark is missing from the instances.
-
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates

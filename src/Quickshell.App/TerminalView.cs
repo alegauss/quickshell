@@ -426,10 +426,9 @@ public sealed class TerminalView : IDisposable
             return false;
         }
 
-        // A composition is drawn only while the cursor is, so a blink under one changes more than a
-        // cell and is drawn whole. So is a blink onto a buffer that does not yet hold the rest of the
-        // picture, which is the first one after anything else changed.
-        bool cell = owed == Redraw.Cursor && Composing is not { IsActive: true };
+        // A blink onto a buffer that does not yet hold the rest of the picture, which is the first one
+        // after anything else changed, is drawn whole.
+        bool cell = owed == Redraw.Cursor;
         TerminalBuffer buffer = emulator.Buffer;
 
         if (cell && _surface.Retains && _painter.Painted == buffer.Columns * buffer.Rows)
@@ -445,15 +444,16 @@ public sealed class TerminalView : IDisposable
             _cells = new CellInstance[needed];
         }
 
-        // A cursor the host has hidden, or one the blink has dark this instant, is painted as no
-        // cursor at all rather than drawn and then hidden: the instance is the frame.
+        // A cursor the host has hidden is painted nowhere. One the blink has dark this instant is
+        // painted where it is with no shape (QS262): a composition is placed by where the cursor is,
+        // and only the caret is the blink's, so what is being composed does not flash with it.
         bool caret = damage.CursorVisible && _renderer.CursorShowing;
 
         // Told before the frame is built, so a scrollbar can say output arrived. It moves nothing:
         // the viewport is anchored to a line and this only records that the bottom has grown.
         Viewport.Produced();
 
-        _painter.Paint(buffer, _cells, caret ? damage.CursorRow : -1, damage.CursorColumn,
+        _painter.Paint(buffer, _cells, damage.CursorVisible ? damage.CursorRow : -1, damage.CursorColumn,
                        caret ? Shape(damage) : CursorShape.None, _renderer.Metrics, Selection, Viewport,
                        Composing);
 
@@ -509,7 +509,9 @@ public sealed class TerminalView : IDisposable
     /// </summary>
     private bool DrawCursor(TerminalBuffer buffer, Damage damage)
     {
-        int at = GridPainter.CursorCell(buffer, damage.CursorRow, damage.CursorColumn, Viewport);
+        // Where the last whole frame put the cursor, lit or not, and a composition's caret where one
+        // is being typed: nothing that would move it is a blink.
+        int at = _painter.Caret;
 
         // The cursor is somewhere the view does not show, so nothing on the glass changes.
         if (at < 0)

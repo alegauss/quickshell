@@ -135,8 +135,10 @@ public sealed class GridPainterTests
 
     /// <summary>
     /// QS260: a blink is one cell, and patching that cell is exactly what painting again would give.
-    /// Lit from dark and dark from lit, on the cell <see cref="GridPainter.CursorCell"/> names — and
-    /// nowhere while the view is scrolled back, where <see cref="Paint"/> draws no cursor either.
+    /// Painted dark — the position given, no shape — the screen is the one painted with no cursor at
+    /// all, and <see cref="GridPainter.Caret"/> still names the cell; lit from dark and dark from lit
+    /// on that cell is the other phase. Nowhere while the view is scrolled back or the column is past
+    /// the last.
     /// </summary>
     [Fact]
     public void ABlinkPatchedIntoOneCellIsTheFramePaintingAgainWouldGive()
@@ -150,15 +152,20 @@ public sealed class GridPainterTests
         TerminalBuffer buffer = emulator.Buffer;
         GridPainter painter = new(harness.Atlas, emulator.Palette);
 
+        CellInstance[] none = new CellInstance[20 * 4];
         CellInstance[] dark = new CellInstance[20 * 4];
         CellInstance[] lit = new CellInstance[20 * 4];
 
-        painter.Paint(buffer, dark, -1, -1, CursorShape.None, Box);
-        painter.Paint(buffer, lit, buffer.CursorRow, buffer.CursorColumn, CursorShape.Bar, Box);
+        painter.Paint(buffer, none, -1, -1, CursorShape.None, Box);
+        Assert.Equal(-1, painter.Caret);
 
-        int at = GridPainter.CursorCell(buffer, buffer.CursorRow, buffer.CursorColumn);
+        painter.Paint(buffer, lit, buffer.CursorRow, buffer.CursorColumn, CursorShape.Bar, Box);
+        painter.Paint(buffer, dark, buffer.CursorRow, buffer.CursorColumn, CursorShape.None, Box);
+
+        int at = painter.Caret;
 
         Assert.Equal((buffer.CursorRow * 20) + buffer.CursorColumn, at);
+        Assert.Equal(none, dark);
 
         CellInstance[] patched = (CellInstance[])dark.Clone();
         patched[at] = GridPainter.WithCursor(patched[at], CursorShape.Bar);
@@ -166,6 +173,9 @@ public sealed class GridPainterTests
 
         patched[at] = GridPainter.WithCursor(patched[at], CursorShape.None);
         Assert.Equal(dark, patched);
+
+        painter.Paint(buffer, patched, buffer.CursorRow, 20, CursorShape.Bar, Box);
+        Assert.Equal(-1, painter.Caret);
 
         for (int line = 0; line < 10; line++)
         {
@@ -175,8 +185,59 @@ public sealed class GridPainterTests
         Viewport viewport = new();
 
         Assert.True(viewport.ScrollBy(buffer, -4), "there was no history to scroll into");
-        Assert.Equal(-1, GridPainter.CursorCell(buffer, buffer.CursorRow, buffer.CursorColumn, viewport));
-        Assert.Equal(-1, GridPainter.CursorCell(buffer, buffer.CursorRow, 20));
+
+        painter.Paint(buffer, patched, buffer.CursorRow, buffer.CursorColumn, CursorShape.Bar, Box,
+                      viewport: viewport);
+        Assert.Equal(-1, painter.Caret);
+    }
+
+    /// <summary>
+    /// QS262: what an input method is composing does not blink. Painted with the cursor lit and with
+    /// it dark, the composition's cells are the same and the one difference is the caret, on the cell
+    /// <see cref="GridPainter.Caret"/> names in both phases.
+    /// </summary>
+    [Fact]
+    public void ACompositionIsTheSameInBothPhasesOfTheBlinkAndOnlyItsCaretDiffers()
+    {
+        using Harness harness = new();
+
+        Emulator emulator = new(20, 4);
+
+        emulator.Feed(Encoding.UTF8.GetBytes("ab"));
+
+        TerminalBuffer buffer = emulator.Buffer;
+        GridPainter painter = new(harness.Atlas, emulator.Palette);
+        Composition composing = new();
+
+        composing.Start();
+        composing.Update(string.Concat(char.ConvertFromUtf32(0x65E5), char.ConvertFromUtf32(0x672C)), 1);
+
+        CellInstance[] lit = new CellInstance[20 * 4];
+        CellInstance[] dark = new CellInstance[20 * 4];
+
+        painter.Paint(buffer, lit, buffer.CursorRow, buffer.CursorColumn, CursorShape.Block, Box,
+                      composing: composing);
+        int litAt = painter.Caret;
+
+        painter.Paint(buffer, dark, buffer.CursorRow, buffer.CursorColumn, CursorShape.None, Box,
+                      composing: composing);
+
+        Assert.Equal(litAt, painter.Caret);
+        Assert.NotEqual((buffer.CursorRow * 20) + buffer.CursorColumn, litAt);
+
+        int differing = 0;
+
+        for (int cell = 0; cell < lit.Length; cell++)
+        {
+            if (!lit[cell].Equals(dark[cell]))
+            {
+                differing++;
+                Assert.Equal(litAt, cell);
+            }
+        }
+
+        Assert.Equal(1, differing);
+        Assert.Equal(lit[litAt], GridPainter.WithCursor(dark[litAt], CursorShape.Block));
     }
 
     /// <summary>

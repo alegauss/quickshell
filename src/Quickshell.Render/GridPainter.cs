@@ -55,6 +55,16 @@ public sealed class GridPainter
     public int Painted { get; private set; }
 
     /// <summary>
+    /// The index of the instance the last <see cref="Paint"/> put the cursor on — lit or not, so a
+    /// shape of <see cref="CursorShape.None"/> still says where it is — or -1 where it put it on none:
+    /// no cursor row, a row the view does not show, a column past the last (QS260, QS262).
+    ///
+    /// <para>A composition moves it to the composition's own caret, which is what lets a blink under
+    /// one change that cell alone.</para>
+    /// </summary>
+    public int Caret { get; private set; } = -1;
+
+    /// <summary>
     /// Fills <paramref name="into"/> with the visible screen of <paramref name="buffer"/>.
     /// </summary>
     /// <param name="buffer">What to read. Its visible rows, not its scrollback.</param>
@@ -117,7 +127,11 @@ public sealed class GridPainter
 
         // The cursor's row within what is on screen, which is its own row only while the viewport is
         // at the bottom. Anywhere else it is off-screen and there is no caret to draw.
-        int caret = RowOnScreen(buffer, cursorRow, top);
+        int caret = cursorRow < 0 ? -1 : (int)(buffer.AbsoluteLine(cursorRow) - top);
+
+        Caret = caret >= 0 && caret < rows && cursorColumn >= 0 && cursorColumn < columns
+            ? (caret * columns) + cursorColumn
+            : -1;
 
         for (int row = 0; row < rows; row++)
         {
@@ -171,36 +185,11 @@ public sealed class GridPainter
     }
 
     /// <summary>
-    /// The index of the instance <see cref="Paint"/> puts the cursor on, or -1 where it puts it on
-    /// none: a row scrolled out of the view, or a column past the last (QS260).
-    ///
-    /// <para>Asked where the cursor is whether or not it is lit, which is what a blink needs: the
-    /// frame that turns it off has to find the cell the last one lit, and the frame that turns it on
-    /// the cell no instance carries it on yet. Not where a composition moves it — a frame with one
-    /// is drawn whole.</para>
-    /// </summary>
-    public static int CursorCell(TerminalBuffer buffer, int cursorRow, int cursorColumn,
-                                 Viewport? viewport = null)
-    {
-        ArgumentNullException.ThrowIfNull(buffer);
-
-        int row = RowOnScreen(buffer, cursorRow, viewport?.Top(buffer) ?? buffer.TopLine);
-
-        return row < 0 || row >= buffer.Rows || cursorColumn < 0 || cursorColumn >= buffer.Columns
-            ? -1
-            : (row * buffer.Columns) + cursorColumn;
-    }
-
-    /// <summary>
     /// <paramref name="cell"/> with its cursor replaced by <paramref name="cursor"/> and nothing else
     /// changed: the two bits at the top of the background word that <see cref="Paint"/> sets.
     /// </summary>
     public static CellInstance WithCursor(CellInstance cell, CursorShape cursor) =>
         cell with { Background = (cell.Background & ~(3u << 30)) | ((uint)cursor << 30) };
-
-    /// <summary>The row on screen an absolute cursor row lands on, or -1 for no cursor.</summary>
-    private static int RowOnScreen(TerminalBuffer buffer, int cursorRow, long top) =>
-        cursorRow < 0 ? -1 : (int)(buffer.AbsoluteLine(cursorRow) - top);
 
     /// <summary>The down arrow a scrolled-back view shows when output arrived below it.</summary>
     private const int Arrived = 0x2193;
@@ -336,6 +325,9 @@ public sealed class GridPainter
         {
             caretAt = (row * columns) + column;
         }
+
+        // Where the cursor is from here on, whether or not this phase lights it.
+        Caret = caretAt;
 
         if (caretAt >= 0 && cursor != CursorShape.None)
         {

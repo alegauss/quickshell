@@ -150,6 +150,40 @@ public sealed class TerminalViewTests
     }
 
     /// <summary>
+    /// QS262: a blink under a composition is still one cell, because the composition no longer
+    /// changes with the blink — only its caret does.
+    /// </summary>
+    [Fact]
+    public void ABlinkUnderACompositionDrawsOneCell()
+    {
+        long cells = OnPane(pane =>
+        {
+            using TerminalShare share = new();
+
+            TerminalView view = Open(share, pane);
+            TimeSpan half = view.Renderer.Blink.Interval;
+
+            Emulator emulator = new(view.Columns, view.Rows);
+            Composition composing = new();
+
+            emulator.Feed(Encoding.UTF8.GetBytes("ab"));
+            composing.Start();
+            composing.Update(char.ConvertFromUtf32(0x65E5), 1);
+            view.Composing = composing;
+
+            for (int phase = 0; phase < 5; phase++)
+            {
+                view.Renderer.Elapsed = half * phase;
+                Assert.True(view.DrawIfNeeded(emulator), $"phase {phase} drew nothing");
+            }
+
+            return view.CursorDraws;
+        });
+
+        Assert.Equal(3, cells);
+    }
+
+    /// <summary>
     /// The loop draws when the signal says something changed, and not otherwise.
     ///
     /// <para>Both halves are the test. A loop that never woke would leave a window stale, and a loop

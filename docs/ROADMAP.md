@@ -8,8 +8,6 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS262** (deps: —) **The text an input method is composing vanishes every time the blinking cursor goes dark** — The painter draws a composition only where the cursor row is on screen, and the view passes no row while the blink is dark. → §QS262
-
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates
