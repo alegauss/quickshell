@@ -86,6 +86,10 @@ clone has been built and passed this way with an empty NuGet cache, and in a sep
 from the committed tree alone, with no other step (QS90). The SSH tests skip unless their fixture is
 running — `prototypes/SshProbe/fixture/up.sh` says how. `release.cmd` builds what a release ships.
 
+To use what you built, `run.cmd` builds the client alone and starts it: `run.cmd Release` for the
+configuration CI tests, and anything after it goes to `quickshell.exe`, as in
+`run.cmd Release --session prod`. With no configuration named it builds Debug.
+
 ## Exit codes
 
 | Code | Meaning |
