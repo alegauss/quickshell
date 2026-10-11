@@ -135,12 +135,100 @@ public static class Program
                                  Bench.Harness);
         string replay = Bench.Assemble(client, Path.GetDirectoryName(harness)!, Path.Combine(root, "artifacts", "gate", "bench"));
 
-        Dictionary<string, List<double>> samples =
-            Sample(root, client, replay, replays: baseline ? 7 : 3, starts: baseline ? 11 : 7);
+        if (standing is null)
+        {
+            return Baseline(Sample(root, client, replay, replays: 7, starts: 11), baselineFile, history, machine, commit, dirty);
+        }
 
-        return standing is null
-            ? Baseline(samples, baselineFile, history, machine, commit, dirty)
-            : Check(samples, standing, root, history, machine, commit, dirty);
+        // A check measures the baseline's own code beside this tree, in the same sitting, and judges
+        // the difference (QS253): the desk drifts by more between days than within one, and a
+        // baseline's numbers from another day fail unchanged code.
+        (string Client, string Replay) reference = Reference(root, standing.Commit);
+
+        Dictionary<string, Paired> rounds = SideBySide(root, (client, replay), reference, Rounds);
+
+        return Check(rounds, standing, root, history, machine, commit, dirty);
+    }
+
+    /// <summary>How many rounds a check takes: each is one replay and two warm starts of either side.</summary>
+    private const int Rounds = 4;
+
+    /// <summary>
+    /// The baseline commit's client and replay harness, published the way this tree's are, from a
+    /// worktree that is gone again before the measuring starts.
+    /// </summary>
+    private static (string Client, string Replay) Reference(string root, string commit)
+    {
+        string source = Path.Combine(root, "artifacts", "gate", "reference-source");
+
+        // Left by a run that died: removed, so the checkout below is of the commit asked for.
+        if (Directory.Exists(source))
+        {
+            ExitOf(root, "git", "worktree", "remove", "--force", source);
+
+            if (Directory.Exists(source))
+            {
+                Directory.Delete(source, recursive: true);
+            }
+
+            ExitOf(root, "git", "worktree", "prune");
+        }
+
+        Say($"checking out the baseline's commit {commit[..7]} beside this tree");
+        Exec(root, "git", "worktree", "add", "--detach", source, commit);
+
+        try
+        {
+            string client = Publish(root, Path.Combine(source, "src", "Quickshell.App", "Quickshell.App.csproj"),
+                                    Path.Combine("reference", "quickshell"), "quickshell");
+            string harness = Publish(root, Path.Combine(source, "benchmarks", "Quickshell.Replay", "Quickshell.Replay.csproj"),
+                                     Path.Combine("reference", "replay"), Bench.Harness);
+
+            return (client, Bench.Assemble(client, Path.GetDirectoryName(harness)!,
+                                           Path.Combine(root, "artifacts", "gate", "reference", "bench")));
+        }
+        finally
+        {
+            ExitOf(root, "git", "worktree", "remove", "--force", source);
+        }
+    }
+
+    /// <summary>
+    /// Both sides measured round by round, each round's pair taken together: one replay of each and
+    /// a warm start of each, the order swapping every round so a desk that gets busier as the check
+    /// goes on is not charged to one side.
+    /// </summary>
+    private static Dictionary<string, Paired> SideBySide(string root, (string Client, string Replay) tree,
+                                                         (string Client, string Replay) reference, int rounds)
+    {
+        List<double>[] parse = [[], []];
+        List<double>[] emulate = [[], []];
+        List<double>[] start = [[], []];
+
+        for (int round = 1; round <= rounds; round++)
+        {
+            int[] order = round % 2 == 1 ? [0, 1] : [1, 0];
+
+            foreach (int side in order)
+            {
+                (string client, string replay) = side == 0 ? tree : reference;
+
+                Say($"round {round} of {rounds}: {(side == 0 ? "this tree" : "the baseline's code")}");
+
+                (double parsed, double emulated) = Replayed(root, replay);
+
+                parse[side].Add(parsed);
+                emulate[side].Add(emulated);
+                start[side].Add(Gate.Median(WarmStarts(root, client, starts: 3)));
+            }
+        }
+
+        return new(StringComparer.Ordinal)
+        {
+            ["parse"] = new(parse[0], parse[1]),
+            ["emulate"] = new(emulate[0], emulate[1]),
+            ["start"] = new(start[0], start[1]),
+        };
     }
 
     /// <summary>The baseline a check is read against, or a refusal saying why there is none to read.</summary>
@@ -196,24 +284,16 @@ public static class Program
     }
 
     /// <summary>Judges this tree against the baseline, prints why, records the run, and says how it went.</summary>
-    private static int Check(Dictionary<string, List<double>> samples, BaselineFile standing, string root,
+    private static int Check(Dictionary<string, Paired> rounds, BaselineFile standing, string root,
                              string history, string machine, string commit, bool dirty)
     {
-        string[] unjudged = [.. Gate.Figures.Select(figure => figure.Name).Where(name => !standing.Figures.ContainsKey(name))];
-
-        if (unjudged.Length > 0)
-        {
-            throw new GateRefusal($"the baseline for {machine} has no standing for {string.Join(", ", unjudged)}, "
-                                  + "so those would pass unjudged. Take a new baseline.");
-        }
-
-        Dictionary<string, double> now = samples.ToDictionary(pair => pair.Key, pair => Gate.Median(pair.Value), StringComparer.Ordinal);
+        Dictionary<string, double> now = rounds.ToDictionary(pair => pair.Key, pair => Gate.Median(pair.Value.Now), StringComparer.Ordinal);
 
         IReadOnlyList<Move> moves = Gate.Moves(Git(root, "log", "--format=%H%x00%B%x01", $"{standing.Commit}..HEAD"));
-        IReadOnlyList<Judgement> judged = Gate.Judge(standing.Figures, now, moves);
+        IReadOnlyList<Judgement> judged = Gate.JudgeSideBySide(rounds, moves);
 
         Console.WriteLine();
-        Console.WriteLine($"  {"figure",-8} {"baseline",12} {"now",12} {"worse by",9} {"allowed",8}   verdict");
+        Console.WriteLine($"  {"figure",-8} {standing.Commit[..7] + " today",12} {"this tree",12} {"worse by",9} {"allowed",8}   verdict");
 
         foreach (Judgement judgement in judged)
         {
@@ -222,6 +302,7 @@ public static class Program
                 Verdict.Accepted => $"accepted: {judgement.Because!.Commit[..7]} says {judgement.Because.Why}",
                 Verdict.Better => "better - worth a new baseline",
                 Verdict.Worse => "WORSE",
+                Verdict.Noisy => "not judged - too noisy",
                 _ => "held",
             };
 
@@ -231,6 +312,7 @@ public static class Program
 
         Judgement[] worse = [.. judged.Where(judgement => judgement.Verdict == Verdict.Worse)];
         Judgement[] accepted = [.. judged.Where(judgement => judgement.Verdict == Verdict.Accepted)];
+        Judgement[] noisy = [.. judged.Where(judgement => judgement.Verdict == Verdict.Noisy)];
 
         string summary = "held";
 
@@ -238,12 +320,16 @@ public static class Program
         {
             summary = "worse: " + string.Join(", ", worse.Select(judgement => judgement.Figure.Name));
         }
+        else if (noisy.Length > 0)
+        {
+            summary = "not judged, too noisy: " + string.Join(", ", noisy.Select(judgement => judgement.Figure.Name));
+        }
         else if (accepted.Length > 0)
         {
             summary = "accepted: " + string.Join(", ", accepted.Select(judgement => $"{judgement.Figure.Name} ({judgement.Because!.Commit[..7]})"));
         }
 
-        Record(history, machine, commit, dirty, now, summary);
+        Record(history, machine, commit, dirty, now, $"{summary} - beside {standing.Commit[..7]}");
 
         Console.WriteLine();
 
@@ -253,6 +339,15 @@ public static class Program
                               + "trailer: Performance-Moved: <figure> - <what it bought>.");
 
             return Worse;
+        }
+
+        if (noisy.Length > 0)
+        {
+            Console.WriteLine($"gate: {summary}. This sitting's own rounds spread by more than "
+                              + $"{Gate.Steadiest:P0}, so it could not see a regression that size. Run it again on a "
+                              + "quieter desk: nothing was passed.");
+
+            return NotJudged;
         }
 
         if (accepted.Length > 0)
@@ -271,8 +366,6 @@ public static class Program
     /// <summary>Every figure's samples: the replay harness run so many times, and the client started so many.</summary>
     private static Dictionary<string, List<double>> Sample(string root, string client, string replay, int replays, int starts)
     {
-        string startup = Path.Combine(root, "tools", "Quickshell.Startup", "bin", "Release", "net10.0-windows", "Quickshell.Startup.exe");
-
         List<double> parse = [];
         List<double> emulate = [];
 
@@ -280,32 +373,67 @@ public static class Program
         {
             Say($"replaying cat-log, {run} of {replays}");
 
-            using JsonDocument read = Measured(root, replay, "--only", "cat-log:parse,cat-log:emulate");
+            (double parsed, double emulated) = Replayed(root, replay);
 
-            foreach (JsonElement arm in read.RootElement.EnumerateArray())
-            {
-                double rate = arm.GetProperty("megabytesPerSecond").GetDouble();
-
-                (arm.GetProperty("consumer").GetString() == "parse" ? parse : emulate).Add(rate);
-            }
+            parse.Add(parsed);
+            emulate.Add(emulated);
         }
 
         Say($"starting the client {starts} times");
 
+        return new(StringComparer.Ordinal)
+        {
+            ["parse"] = parse,
+            ["emulate"] = emulate,
+            ["start"] = WarmStarts(root, client, starts),
+        };
+    }
+
+    /// <summary>One replay of cat-log through the parse and emulate arms, in MB/s.</summary>
+    private static (double Parse, double Emulate) Replayed(string root, string replay)
+    {
+        using JsonDocument read = Measured(root, replay, "--only", "cat-log:parse,cat-log:emulate");
+
+        double? parse = null;
+        double? emulate = null;
+
+        foreach (JsonElement arm in read.RootElement.EnumerateArray())
+        {
+            double rate = arm.GetProperty("megabytesPerSecond").GetDouble();
+
+            if (arm.GetProperty("consumer").GetString() == "parse")
+            {
+                parse = rate;
+            }
+            else
+            {
+                emulate = rate;
+            }
+        }
+
+        return parse is { } parsed && emulate is { } emulated
+            ? (parsed, emulated)
+            : throw new GateRefusal("a replay came back short, so there is nothing whole to judge");
+    }
+
+    /// <summary>
+    /// The client started so many times, and every start but the first, to its first interactive
+    /// frame: the first is the nearest thing to a cold one this desk offers, and the figure gated is
+    /// the warm one.
+    /// </summary>
+    private static List<double> WarmStarts(string root, string client, int starts)
+    {
+        string startup = Path.Combine(root, "tools", "Quickshell.Startup", "bin", "Release", "net10.0-windows", "Quickshell.Startup.exe");
+
         using JsonDocument timed = Measured(root, startup, "--launch", client,
                                            "--runs", starts.ToString(CultureInfo.InvariantCulture), "--label", "gate");
 
-        // The first start is the nearest thing to a cold one this desk offers, and apart from the rest
-        // for that reason: the figure gated is the warm one.
-        List<double> start = [.. timed.RootElement.GetProperty("starts").EnumerateArray().Skip(1)
-                                      .Select(one => one.GetProperty("interactive").GetDouble())];
+        List<double> warm = [.. timed.RootElement.GetProperty("starts").EnumerateArray().Skip(1)
+                                     .Select(one => one.GetProperty("interactive").GetDouble())];
 
-        if (parse.Count != replays || emulate.Count != replays || start.Count < 2)
-        {
-            throw new GateRefusal("a measurement came back short, so there is nothing whole to judge");
-        }
-
-        return new(StringComparer.Ordinal) { ["parse"] = parse, ["emulate"] = emulate, ["start"] = start };
+        return warm.Count >= 2
+            ? warm
+            : throw new GateRefusal("the starts came back short, so there is nothing whole to judge");
     }
 
     /// <summary>
@@ -377,7 +505,7 @@ public static class Program
         }
 
         Say($"publishing {Path.GetFileNameWithoutExtension(project)} the way a release does");
-        Exec(root, "dotnet", "publish", project, "--configuration", "Release",
+        Exec(root, "dotnet", "publish", Path.GetFullPath(project, root), "--configuration", "Release",
              "--runtime", "win-x64", "--self-contained", "true", "-p:PublishReadyToRun=true", "--output", output,
              "--nologo", "-v", "quiet");
 

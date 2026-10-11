@@ -128,9 +128,19 @@ compilation switched off in the client's publish alone, `emulate` read 14 MB/s a
 one, so `start` has ten samples. Each figure's allowance is the larger of three robust standard
 deviations and the whole spread its samples showed, and that allowance is written into
 `benchmarks/gate/<machine>.json` as the threshold, beside the median and every sample it came from.
-The file is committed. A check replays three times and starts the client seven times (six judged),
-compares medians, and adds a row to `benchmarks/results/gate-<machine>.md` whatever the verdict: a
-threshold catches a step, and only that file shows one per cent a month.
+The file is committed, and a baseline's job since QS253 is to name the commit a check is measured
+beside, not the numbers it is measured against.
+
+**A check runs the baseline's own code beside the tree, in the same sitting.** The desk drifts by
+more between days than within one: on 2026-10-10 the baseline's own commit read a seventh slower
+than on the day it was taken, so its numbers failed unchanged code. So a check publishes the
+baseline commit's client and replay harness from a worktree, then runs four rounds, each one replay
+and two warm starts of either side, swapping which goes first. Each round gives a ratio, this tree
+over the baseline's code; the verdict is the median ratio, against an allowance derived from those
+ratios' spread the same way a baseline's is. **A sitting whose allowance comes out over 10 % judges
+nothing** and exits 3: it could not have seen a regression that size, and a hold there would be one
+nobody could bank. Every check adds a row to `benchmarks/results/gate-<machine>.md` whatever the
+verdict: a threshold catches a step, and only that file shows one per cent a month.
 
 **A regression that was meant is said, not hidden.** The commit that trades a figure for something
 carries a trailer naming it, `Performance-Moved: start - the find bar is built up front`, and the

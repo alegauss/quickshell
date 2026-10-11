@@ -29,6 +29,7 @@
 ## Block H — The reason to leave the incumbent
 
 - ⏸ **QS78** (deps: QS139 ✅) **Nothing has run for longer than a working session, so a slow leak would reach users first** — set aside (The operator frees the machine for three days.): The 72-hour run, atlas and GPU watched, has not been run: it waits for a machine free for three days. → §QS78
+- ⏸ **QS253** (deps: —) **The gate fails unchanged code, because the desk runs a seventh slower some days than when the baseline was taken** — set aside (Needs the reference desk with nothing else running.): A check on a quiet desk at an unchanged commit has not yet been seen to hold within the 10 % bound. → §QS253
 
 ## Block I — An error a user can act on
 

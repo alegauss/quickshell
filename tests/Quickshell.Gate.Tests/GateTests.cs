@@ -141,4 +141,69 @@ public sealed class GateTests
     [Fact]
     public void EveryFigureIsNamedByOneWord() =>
         Assert.All(Gate.Figures, figure => Assert.Matches("^[a-z]+$", figure.Name));
+
+    /// <summary>
+    /// QS253's falsification: a desk that runs a seventh slower on one day than another fails
+    /// nothing, because the baseline's code ran beside the tree and slowed with it. The rounds are
+    /// the 2026-10-10 shape: every figure about 14 per cent worse than the baseline's numbers, and
+    /// the baseline's own commit just as slow.
+    /// </summary>
+    [Fact]
+    public void ADeskThatSlowedEverythingFailsNothing()
+    {
+        Dictionary<string, Paired> rounds = new()
+        {
+            ["parse"] = new([992, 1005, 980, 1010], [967, 1012, 990, 1001]),
+            ["emulate"] = new([46.2, 45.3, 47.0, 45.8], [48.6, 44.9, 46.1, 46.5]),
+            ["start"] = new([558, 542, 550, 561], [552, 549, 560, 555]),
+        };
+
+        IReadOnlyList<Judgement> judged = Gate.JudgeSideBySide(rounds, []);
+
+        Assert.Equal(3, judged.Count);
+        Assert.All(judged, judgement => Assert.Equal(Verdict.Held, judgement.Verdict));
+    }
+
+    /// <summary>
+    /// And a change in the code still shows through a desk that drifts while it is measured: emulate
+    /// a tenth slower in every round, with the desk itself wandering by more than that between rounds.
+    /// </summary>
+    [Fact]
+    public void ACodeRegressionShowsThroughADriftingDesk()
+    {
+        double[] desk = [1.00, 0.86, 0.93, 0.80];
+        double[] reference = [.. desk.Select(speed => 54 * speed)];
+        double[] now = [.. reference.Select(rate => rate * 0.90)];
+
+        Judgement judged = Assert.Single(Gate.JudgeSideBySide(
+            new Dictionary<string, Paired> { ["emulate"] = new(now, reference) }, []));
+
+        Assert.Equal(Verdict.Worse, judged.Verdict);
+        Assert.InRange(judged.Worse, 0.099, 0.101);
+    }
+
+    /// <summary>Rounds pair one to one, and one round says nothing about noise.</summary>
+    [Fact]
+    public void RoundsThatDoNotPairAreRefused()
+    {
+        Assert.Throws<ArgumentException>(() => Gate.JudgeSideBySide(
+            new Dictionary<string, Paired> { ["parse"] = new([1000, 990], [1000]) }, []));
+
+        Assert.Throws<ArgumentException>(() => Gate.JudgeSideBySide(
+            new Dictionary<string, Paired> { ["parse"] = new([1000], [1000]) }, []));
+    }
+
+    /// <summary>
+    /// A sitting too noisy to see a tenth is not a pass. The rounds are 2026-10-10's, taken while
+    /// other projects ran on the desk: the allowance they derive is over forty per cent, so a hold
+    /// there would have let a regression that size through.
+    /// </summary>
+    [Fact]
+    public void ASittingTooNoisyToSeeATenthJudgesNothing()
+    {
+        Judgement judged = Assert.Single(Gate.JudgeSideBySide(
+            new Dictionary<string, Paired> { ["parse"] = new([700, 900, 760, 610], [720, 640, 900, 700]) }, []));
+
+        Assert.Equal(Verdict.Noisy, judged.Verdict);
+    }
 }

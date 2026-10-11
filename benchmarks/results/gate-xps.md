@@ -21,3 +21,5 @@ was measured with uncommitted changes on top of it, the gate's own files aside.
 | 2026-10-10 18:38 | d972ff7+ | 992 | 46.2 | 558 | worse: parse, start - the VM guest was running |
 | 2026-10-10 18:40 | d972ff7+ | 1005 | 45.3 | 542 | worse: parse, start - guest suspended; another session's pytest held one core |
 | 2026-10-10 18:46 | 40fb448 | 967 | 48.6 | 582 | worse: emulate - the baseline's own commit, checked out in a worktree and judged against the baseline it carried (02fac99's): the same code reads as slow as d972ff7 today, so the 13 % is the desk's and not the code's (QS253) |
+| 2026-10-10 20:58 | 2ac10cb+ | 758 | 36.5 | 670 | held - beside 40fb448, the first side-by-side check (QS253); its allowances came out at 42, 62 and 40 % with other projects running, which is why the gate now judges nothing above 10 % |
+| 2026-10-10 21:01 | 2ac10cb+ | 858 | 40.5 | 682 | not judged, too noisy: parse, emulate, start - beside 40fb448 |

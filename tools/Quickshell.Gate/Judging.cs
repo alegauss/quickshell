@@ -46,6 +46,12 @@ public enum Verdict
 
     /// <summary>Worse by more than the threshold, and a commit said so and why.</summary>
     Accepted,
+
+    /// <summary>
+    /// Not judged: the sitting could not tell the two sides apart within <see cref="Gate.Steadiest"/>,
+    /// so a pass would be a pass of a regression that size too (QS253).
+    /// </summary>
+    Noisy,
 }
 
 /// <summary>One figure, judged.</summary>
@@ -58,6 +64,14 @@ public enum Verdict
 /// <param name="Because">The commit that accepted it, where one did.</param>
 public sealed record Judgement(Figure Figure, double Was, double Now, double Worse, double Threshold,
                                Verdict Verdict, Move? Because);
+
+/// <summary>
+/// One figure measured on the tree being judged and on the baseline's own code, in the same sitting
+/// and round by round, so the two lists pair up: the first of each was taken together (QS253).
+/// </summary>
+/// <param name="Now">This tree's measurements, one per round.</param>
+/// <param name="Reference">The baseline commit's, one per round.</param>
+public sealed record Paired(IReadOnlyList<double> Now, IReadOnlyList<double> Reference);
 
 /// <summary>
 /// QS79: a measurement that fails a build instead of reporting to whoever reads it.
@@ -84,6 +98,13 @@ public static partial class Gate
         new("emulate", "MB/s", Better.Higher, "the replay harness's emulate arm on the same stream, what a session costs"),
         new("start", "ms", Better.Lower, "the release publish's warm start to its first interactive frame, figure 5"),
     ];
+
+    /// <summary>
+    /// The widest allowance a side-by-side check will judge with. A sitting whose own rounds spread
+    /// further than this could not see a regression of that size, so it says it judged nothing rather
+    /// than holding; ten per cent is the bound QS197 set the parse arm.
+    /// </summary>
+    public const double Steadiest = 0.10;
 
     /// <summary>The scale that turns a median absolute deviation into a standard deviation.</summary>
     private const double Consistency = 1.4826;
@@ -160,6 +181,66 @@ public static partial class Gate
             Verdict verdict = Weigh(worse, was.Threshold, because);
 
             judged.Add(new Judgement(figure, was.Median, measured, worse, was.Threshold, verdict,
+                                     verdict == Verdict.Accepted ? because : null));
+        }
+
+        return judged;
+    }
+
+    /// <summary>
+    /// Judges each figure against the baseline's own code measured beside it (QS253).
+    ///
+    /// <para><b>The yardstick is the code, not the numbers.</b> A desk that runs a seventh slower
+    /// today than on the day a baseline was taken fails every figure of an unchanged commit when the
+    /// baseline's numbers are the yardstick: measured on 2026-10-10, the baseline's own commit read as
+    /// slow as the tree judged. Run side by side, whatever the desk is doing lands on both, and what
+    /// is left is the code's. So each round gives one ratio, this tree over the baseline's code; the
+    /// verdict is the median ratio, and the allowance is derived from those same ratios' spread, so a
+    /// sitting that could not tell the two apart lets a difference that size through and no
+    /// larger.</para>
+    /// </summary>
+    /// <param name="measured">Each figure's paired rounds, by name.</param>
+    /// <param name="moves">What commits since the baseline said they moved on purpose.</param>
+    public static IReadOnlyList<Judgement> JudgeSideBySide(IReadOnlyDictionary<string, Paired> measured,
+                                                           IReadOnlyList<Move> moves)
+    {
+        ArgumentNullException.ThrowIfNull(measured);
+        ArgumentNullException.ThrowIfNull(moves);
+
+        List<Judgement> judged = [];
+
+        foreach (Figure figure in Figures)
+        {
+            if (!measured.TryGetValue(figure.Name, out Paired? pair))
+            {
+                continue;
+            }
+
+            if (pair.Now.Count != pair.Reference.Count || pair.Now.Count < 2)
+            {
+                throw new ArgumentException($"{figure.Name} needs at least two rounds, each with both measurements",
+                                            nameof(measured));
+            }
+
+            // This tree over the baseline's code, a round at a time: above one is faster for
+            // throughput and slower for time.
+            double[] ratios = [.. pair.Now.Select((now, round) => now / pair.Reference[round])];
+            double ratio = Median(ratios);
+
+            double worse = figure.Better == Better.Higher ? 1 - ratio : ratio - 1;
+            double threshold = Threshold(ratios);
+
+            Move? because = moves.FirstOrDefault(move => string.Equals(move.Figure, figure.Name, StringComparison.OrdinalIgnoreCase));
+            Verdict verdict = Weigh(worse, threshold, because);
+
+            // A worsening past even this sitting's wide allowance is still a worsening; anything
+            // short of it, on a sitting that noisy, is nothing anybody can bank.
+            if (threshold > Steadiest && verdict is not (Verdict.Worse or Verdict.Accepted))
+            {
+                verdict = Verdict.Noisy;
+            }
+
+            judged.Add(new Judgement(figure, Median(pair.Reference), Median(pair.Now), worse, threshold, verdict,
                                      verdict == Verdict.Accepted ? because : null));
         }
 
