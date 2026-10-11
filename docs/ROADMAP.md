@@ -27,6 +27,10 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
+- 📋 **QS264** (deps: —) **The settings-reference test fails on every CI push and passes in the guest** — Its heading pattern ends in a Multiline $ that does not match before CRLF, and the runner checks the page out with CRLF. → §QS264
+- 📋 **QS265** (deps: —) **The UI cases have never run in CI: they launch a Debug client the Release build does not make** — winwright.json names the Debug executable and CI builds and tests Release only. → §QS265
+- 📋 **QS266** (deps: —) **The nightly fuzz job fails on its own script before the campaign says anything** — fuzz.ps1 calls Get-FileHash, which the runner's shell did not have, so the night ends red with no verdict. → §QS266
+
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a
