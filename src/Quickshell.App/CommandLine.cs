@@ -59,6 +59,9 @@ public static class CommandLine
     /// <summary>Opens the palette.</summary>
     public const string Palette = "--palette";
 
+    /// <summary>Writes what the render loop has done to a file, every few seconds (QS255).</summary>
+    public const string FrameReport = "--frame-report";
+
     /// <summary>Every flag, in the order the reference lists them.</summary>
     public static readonly IReadOnlyList<Flag> All =
     [
@@ -71,6 +74,7 @@ public static class CommandLine
         new(Browse, "", "Opens the file browser."),
         new(Palette, "", "Opens the palette."),
         new(StartupReport, "<file>", "Times this start and writes the milestones to the file once the shell is on screen."),
+        new(FrameReport, "<file>", "Writes, every five seconds, how often the render loop woke and why, the frames it drew and the bytes hosts sent, so an idle window's cost comes with its cause."),
         new(Install, "", "Installs this copy for the current user, or for everyone with --all-users, and opens no window."),
         new(Uninstall, "", "Removes an installed copy, and asks whether to keep the settings unless --quiet."),
         new(AllUsers, "", "With --install or --uninstall: for every user of the machine, which needs an administrator."),

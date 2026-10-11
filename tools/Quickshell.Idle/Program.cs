@@ -52,6 +52,8 @@ public static class Idle
                   --settle <seconds> how long to ignore after start-up (default 30)
                   --label <name>     what to call the subject in the report
                   --out <file>        append the report here as well as printing it
+                  --frames <file>    the file a client started with --frame-report writes: its loop's
+                                     wakes, frames and host bytes over the interval are reported too
 
                 One subject per run. The timer resolution is system-wide, so measuring two at
                 once makes attribution impossible.
@@ -114,7 +116,7 @@ public static class Idle
                 }
             }
 
-            Report report = Watch(subjects, label, seconds, settle, quiet);
+            Report report = Watch(subjects, label, seconds, settle, quiet, Argument(arguments, "--frames"));
 
             Console.WriteLine(report.Text);
 
@@ -152,8 +154,9 @@ public static class Idle
     /// counting it would be measuring the cold start twice under the wrong figure's name.
     /// </param>
     /// <param name="quiet">The system timer resolution before the subject existed.</param>
+    /// <param name="frames">The subject's frame report, where it keeps one, read at both ends of the interval.</param>
     private static Report Watch(List<Process> subjects, string label, int seconds, int settle,
-                                double quiet)
+                                double quiet, string? frames = null)
     {
         Console.Error.WriteLine($"settling for {settle.ToString(CultureInfo.InvariantCulture)}s…");
 
@@ -171,6 +174,9 @@ public static class Idle
         using GpuTime? gpu = GpuTime.TryOpen();
         int[] pids = [.. subjects.Select(each => each.Id)];
         TimeSpan gpuAtStart = gpu?.Read(pids) ?? TimeSpan.Zero;
+
+        // The client's own account of its loop, where it was asked to keep one (QS255).
+        Dictionary<string, long>? loopAtStart = frames is { Length: > 0 } ? Loop(frames) : null;
         long peakMemory = Memory(subjects);
         double finest = quiet;
         int samples = 0;
@@ -205,6 +211,7 @@ public static class Idle
 
         TimeSpan cpu = Cpu(subjects) - cpuAtStart;
         TimeSpan gpuBusy = (gpu?.Read(pids) ?? TimeSpan.Zero) - gpuAtStart;
+        Dictionary<string, long>? loopAtEnd = loopAtStart is null ? null : Loop(frames!);
         long memory = Memory(subjects);
         int threads = subjects.Sum(each => each.Threads.Count);
         int handles = subjects.Sum(each => each.HandleCount);
@@ -235,6 +242,7 @@ public static class Idle
                             : string.Create(CultureInfo.InvariantCulture,
                                             $"| GPU engine time | {gpuBusy.TotalMilliseconds:F0} ms, "
                                             + $"{gpuBusy.TotalMilliseconds / measured.TotalMilliseconds * 100.0:F4} % of one engine |"))
+            .AppendLine(Counted(loopAtStart, loopAtEnd))
             .AppendLine(CultureInfo.InvariantCulture,
                         $"| private memory | {memory / (1024.0 * 1024.0):F1} MB "
                         + $"(peak {peakMemory / (1024.0 * 1024.0):F1} MB) |")
@@ -261,6 +269,40 @@ public static class Idle
                         + "apart from a subject that did. Read it on a quiet desk.");
 
         return new Report(text.ToString(), zero);
+    }
+
+    /// <summary>The client's frame report, read as its counters; empty where it could not be read.</summary>
+    private static Dictionary<string, long> Loop(string file)
+    {
+        try
+        {
+            using System.Text.Json.JsonDocument read = System.Text.Json.JsonDocument.Parse(File.ReadAllText(file));
+
+            return read.RootElement.EnumerateObject()
+                       .Where(each => each.Value.ValueKind == System.Text.Json.JsonValueKind.Number)
+                       .ToDictionary(each => each.Name, each => each.Value.GetInt64(), StringComparer.Ordinal);
+        }
+        catch (Exception unread) when (unread is IOException or System.Text.Json.JsonException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>The loop's counters over the interval, as rows; one row saying so where there were none.</summary>
+    private static string Counted(Dictionary<string, long>? before, Dictionary<string, long>? after)
+    {
+        if (before is null || after is null)
+        {
+            return "| render loop | not reported (start the client with --frame-report and pass --frames) |";
+        }
+
+        if (before.Count == 0 || after.Count == 0)
+        {
+            return "| render loop | the frame report could not be read |";
+        }
+
+        return string.Join(Environment.NewLine, after.Select(each => string.Create(CultureInfo.InvariantCulture,
+            $"| {each.Key} over the interval | {each.Value - before.GetValueOrDefault(each.Key)} |")));
     }
 
     /// <summary>The name of the first subject that has gone, or null while all are up.</summary>

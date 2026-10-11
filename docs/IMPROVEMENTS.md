@@ -395,26 +395,27 @@ slower, still passes.
 
 ### §QS255 What wakes a pane nobody is typing into
 
-Found measuring QS137, recorded in `benchmarks/results/idle-h.md`. A window with one
-local pane, nobody typing, costs 0.62 % of a core and 0.17 % of a GPU engine over ten
-minutes. Figure 4 asks for zero. With `cursorBlink: false` it costs 0.57 % and 0.20 %,
-so the blink, the one wake the design allows, is not what spends it. Four panes cost 2.8
-times one. The window with no pane in it (QS76) measured zero.
+The first part is shipped and measured in `benchmarks/results/idle-h.md`: the render
+loop of an idle pane with `cursorBlink: false` now wakes zero times and draws nothing.
+Two defects did it: the blink wait truncated to `Task.Delay(0)` and spun, and the blink
+setting never reached a pane opened at start. The count that found them is
+`--frame-report`, read by `Quickshell.Idle --frames`.
 
-So something wakes a live pane and makes it draw, about as often with the blink off as
-on. `PresentSurfaceTests` proves the gate presents nothing for an idle loop it drives
-itself, so the suspect is what drives the real one: what `TerminalView`'s loop waits on,
-whether a damage counter moves while the host is silent (a local shell's console can
-repaint on its own), and the frame-latency wait.
+What is left, measured on a busy desk: **0.29 % of a core with zero wakes and zero
+frames**, so it is spent outside the render loop. The window with no pane measured zero
+(QS76), so it belongs to what a pane brings with it besides the loop: the pipeline's
+three loops over a silent pseudo-console, the pane's `HwndHost` and its layout. The next
+step is the first one again: count before fixing. `dotnet-counters` and a sampled
+`dotnet-trace` of the idle process name the threads that run, and the frame report gains
+a counter for each loop that wakes.
 
-What to build first is the count, not the fix: the pane keeps how many frames it drew
-and why each was claimed (damage, cursor, resize), and the idle tool reads it, so the
-answer is a number per cause. The fix follows the largest cause. A test then holds a
-live pane, host silent and blink off, for a minute and asserts zero frames, beside the
-gate test that already proves the loop's half.
+And with the blink on, a frame costs about 5 ms of core time, so a blinking cursor alone
+is 0.6 % of a core. A blink changes one cell; the frame rebuilds every instance and
+draws them all. Drawing only the cursor's cell, over the frame already presented, is the
+shape of that fix, and it is worth measuring once the remainder above is known.
 
-Falsified when one local pane, blink off, reads zero frames and no measurable core
-occupancy over ten idle minutes.
+Falsified when one local pane, blink off, reads zero frames and under 0.1 % of a core
+over ten idle minutes on a quiet desk.
 
 ### §QS256 Where the first pane's ninety megabytes go
 

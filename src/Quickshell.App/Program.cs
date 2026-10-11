@@ -73,6 +73,12 @@ public static class Entry
         // has a handle, because which adapter to use is decided by the window the output goes to.
         using TerminalShare share = new();
 
+        // `--frame-report <file>`: the loop's wakes, frames and host bytes, for the idle tool (QS255).
+        if (Given(arguments, CommandLine.FrameReport) is { } frames)
+        {
+            FrameReport.Arm(frames, share);
+        }
+
         // A driver reset the loop came back from, in the client's own log (QS221): a crash report
         // counts recoveries, and this is the line behind each one.
         share.Recovered = (why, adapter, count) => Logged.Value.DeviceRecovered(why, adapter, count);

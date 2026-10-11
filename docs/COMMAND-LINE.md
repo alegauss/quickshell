@@ -28,6 +28,7 @@ help.
 | `--browse` | | Opens the file browser. |
 | `--palette` | | Opens the palette. |
 | `--startup-report` | `<file>` | Times this start and writes the milestones to the file once the shell is on screen. |
+| `--frame-report` | `<file>` | Writes, every five seconds, how often the render loop woke and why, the frames it drew and the bytes hosts sent, so an idle window's cost comes with its cause. |
 
 ## Installing and removing
 

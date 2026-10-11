@@ -56,6 +56,11 @@ public sealed class TerminalLeaf : IAsyncDisposable
 
         Terminal = TerminalView.Attach(pane, emulator, share, settings.FontFamily,
                                        (float)settings.FontSize, settings.Ligatures);
+
+        // A pane opened after the window applied its settings is given them here, or it would blink
+        // whatever cursorBlink said (QS255).
+        Terminal.Cursor = settings.Cursor;
+        Terminal.Blinks = settings.CursorBlink;
     }
 
     /// <summary>The model this tab's session is parsed into.</summary>
@@ -87,6 +92,9 @@ public sealed class TerminalLeaf : IAsyncDisposable
         Pane = new TerminalPane { Reading = Emulator.Buffer };
         Terminal = TerminalView.Attach(Pane, Emulator, _share, settings.FontFamily,
                                        (float)settings.FontSize, settings.Ligatures);
+
+        Terminal.Cursor = settings.Cursor;
+        Terminal.Blinks = settings.CursorBlink;
 
         if (_session is { } session)
         {
@@ -516,15 +524,17 @@ public sealed class TerminalLeaf : IAsyncDisposable
             }
         }
 
+        // Held by the attachment, which gives them to the view whenever there is one: a pane open at
+        // start has no view yet, and these were lost on it (QS255).
+        Terminal.Cursor = settings.Cursor;
+        Terminal.Blinks = settings.CursorBlink;
+
         if (Terminal.View is not { } view)
         {
             _damage.Set();
 
             return;
         }
-
-        view.Cursor = settings.Cursor;
-        view.Renderer.Blink.Enabled = settings.CursorBlink;
 
         // The picture is wrong and the terminal does not know: nothing was printed, so the gate
         // would answer that the frame on the glass is still current.

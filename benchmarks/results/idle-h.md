@@ -96,3 +96,29 @@ each of them.
 
 Keepalive's own share could not be separated here: the connected row also carries a local tab and
 the browser's SFTP channel, so it reads as one pane's cost plus about a third.
+
+## What woke the pane — 2026-10-10 (QS255)
+
+The client now writes its render loop's counters with `--frame-report <file>`, and the idle tool reads
+them over its interval with `--frames <file>`. One local pane, `cursorBlink: false`, three minutes
+after a fifteen-second settle, the Debug build, on the same busy desk:
+
+| | before | spin fixed | and the blink setting honoured |
+|---|---|---|---|
+| loop woken by the blink timer | **196,878** | 384 | **0** |
+| loop woken by damage | 0 | 0 | 0 |
+| frames drawn | 266 | 340 | **0** |
+| bytes from the host | 0 | 0 | 0 |
+| GPU engine time | 302 ms | 559 ms | **0 ms** |
+| occupancy of one core | 0.62 % | 0.93 % | 0.29 % |
+
+**Two defects, and neither was the host.** The loop woke on the blink timer about 1,100 times a
+second: a phase change under a millisecond away became `Task.Delay(0)`, which returns at once, so the
+loop spun until the boundary passed. And the blink was running at all because `cursorBlink: false`
+never reached a pane opened at start: the window applies its settings before a pane's view exists,
+and the shape and the blink were given only to a view. Both are fixed; the blink now waits in whole
+milliseconds, and a pane holds its cursor settings until its view opens.
+
+**What is left is not the loop.** With nothing woken and nothing drawn the pane still spends 0.29 % of
+a core, which figure 4 counts as measurable. And with the blink on, each frame costs about 5 ms of core
+time, so a blinking cursor is 0.6 % of a core by itself.

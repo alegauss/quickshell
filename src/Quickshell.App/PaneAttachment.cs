@@ -66,6 +66,46 @@ public sealed class PaneAttachment : IDisposable
     /// <summary>The view, once there was something to open it on. Null until then.</summary>
     public TerminalView? View { get; private set; }
 
+    private CursorShape _cursor = CursorShape.Block;
+    private bool _blinks = true;
+
+    /// <summary>
+    /// The cursor's shape the settings ask for, held until there is a view to give it to.
+    ///
+    /// <para><b>Settings arrive before the view does (QS255).</b> A window applies its settings as
+    /// soon as it is up, and a pane's view opens on its first layout, after that. Given only to a
+    /// view, the shape and the blink were dropped for every pane open at start, so
+    /// <c>cursorBlink: false</c> did nothing until it was changed while the client ran.</para>
+    /// </summary>
+    public CursorShape Cursor
+    {
+        get => _cursor;
+        set
+        {
+            _cursor = value;
+
+            if (View is { } view)
+            {
+                view.Cursor = value;
+            }
+        }
+    }
+
+    /// <summary>Whether the cursor blinks, held the same way as <see cref="Cursor"/>.</summary>
+    public bool Blinks
+    {
+        get => _blinks;
+        set
+        {
+            _blinks = value;
+
+            if (View is { } view)
+            {
+                view.Renderer.Blink.Enabled = value;
+            }
+        }
+    }
+
     /// <summary>
     /// Where a mouse report or a wheel's arrow keys go: the session's keystroke path, set when there
     /// is a session and null before (QS155). A click is something the user did, so it travels the
@@ -628,6 +668,10 @@ public sealed class PaneAttachment : IDisposable
 
             return;
         }
+
+        // What the settings said before there was a view to say it to.
+        View.Cursor = _cursor;
+        View.Renderer.Blink.Enabled = _blinks;
 
         // The device, the atlas and the swapchain are open: the one part of a start that cannot be
         // deferred past the first frame, and so the one QS75 times on its own.

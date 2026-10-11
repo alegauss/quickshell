@@ -230,6 +230,7 @@
 - ✅ **QS137** **The idle figure is measured on a window with no session and no render loop in it** — A connected client is measured idle: one pane 0.62 % of a core and 172 MB, a session 0.96 % and 211 MB, GPU time read too (design recorded in `benchmarks/results/idle-h.md`).
 - ✅ **QS225** **An echo in a window covering its whole monitor has never been timed, the one case offered independent flip** — A monitor-covering chain flips independently on the reference desk, echoing at a 24 ms median against 33 windowed; the non-goal names it (design recorded in `benchmarks/results/photon-h.md`).
 - ✅ **QS253 (side-by-side check)** **The gate fails unchanged code, because the desk runs a seventh slower some days than when the baseline was taken** — A check runs the baseline's code beside the tree and judges the ratio; a sitting too noisy to see a tenth now says it judged nothing.
+- ✅ **QS255 (the loop silent)** **An idle pane costs 0.6 % of a core and GPU work even with the cursor blink off, and four cost nearly three times one** — An idle pane with blink off now wakes its loop zero times and draws nothing: the blink wait no longer spins, and cursorBlink reaches panes open at start.
 
 ## Block I — An error a user can act on
 

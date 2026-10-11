@@ -73,4 +73,17 @@ public sealed class DamageSignalTests
 
         await signal.WaitAsync(TestContext.Current.CancellationToken);
     }
+
+    /// <summary>
+    /// QS255: the loop's wait for the next blink phase is never shorter than a millisecond and never
+    /// rounded down. Task.Delay truncates, so a phase change three tenths of a millisecond away was a
+    /// delay of nothing, and an idle pane woke 1,100 times a second spinning on it.
+    /// </summary>
+    [Theory]
+    [InlineData(0.0, 1.0)]
+    [InlineData(0.3, 1.0)]
+    [InlineData(1.0, 1.0)]
+    [InlineData(529.2, 530.0)]
+    public void TheBlinkWaitIsWholeMillisecondsAndNeverNothing(double asked, double waited) =>
+        Assert.Equal(TimeSpan.FromMilliseconds(waited), TerminalShare.Whole(TimeSpan.FromMilliseconds(asked)));
 }

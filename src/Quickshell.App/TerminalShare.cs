@@ -55,6 +55,19 @@ public sealed class TerminalShare : IDisposable
     /// </summary>
     public DamageSignal Damage { get; } = new();
 
+    private long _wokenByDamage;
+    private long _wokenByBlink;
+    private long _frames;
+
+    /// <summary>How often the loop woke because something said a picture changed (QS255).</summary>
+    public long WokenByDamage => Interlocked.Read(ref _wokenByDamage);
+
+    /// <summary>How often it woke because a cursor's blink phase was due.</summary>
+    public long WokenByBlink => Interlocked.Read(ref _wokenByBlink);
+
+    /// <summary>How many pane frames it has drawn, all panes together.</summary>
+    public long Frames => Interlocked.Read(ref _frames);
+
     /// <summary>
     /// Whether the loop runs, which it does everywhere but in a test that counts frames.
     ///
@@ -519,6 +532,10 @@ public sealed class TerminalShare : IDisposable
         }
     }
 
+    /// <summary>A wait in whole milliseconds, at least one, never shorter than asked.</summary>
+    public static TimeSpan Whole(TimeSpan wait) =>
+        TimeSpan.FromMilliseconds(Math.Max(1d, Math.Ceiling(wait.TotalMilliseconds)));
+
     /// <summary>
     /// Draws until cancelled, waking only for something that changes a picture.
     ///
@@ -544,9 +561,13 @@ public sealed class TerminalShare : IDisposable
 
                 TimeSpan? wake = _renderer?.NextCursorWake();
 
+                // Rounded up to a whole millisecond and never under one: Task.Delay truncates, so a
+                // phase change a fraction of a millisecond away was a delay of nothing, and the loop
+                // spun on it until the boundary passed - 1,100 wakes a second on an idle pane, which
+                // was most of its idle cost (QS255).
                 Task woken = wake is null
                     ? waiting
-                    : await Task.WhenAny(waiting, Task.Delay(wake.Value, token))
+                    : await Task.WhenAny(waiting, Task.Delay(Whole(wake.Value), token))
                                 .ConfigureAwait(false);
 
                 if (woken == waiting)
@@ -554,6 +575,11 @@ public sealed class TerminalShare : IDisposable
                     await waiting.ConfigureAwait(false);
 
                     waiting = null;
+                    Interlocked.Increment(ref _wokenByDamage);
+                }
+                else
+                {
+                    Interlocked.Increment(ref _wokenByBlink);
                 }
 
                 if (token.IsCancellationRequested)
@@ -561,7 +587,7 @@ public sealed class TerminalShare : IDisposable
                     return;
                 }
 
-                DrawOnce();
+                Interlocked.Add(ref _frames, DrawOnce());
             }
         }
         catch (OperationCanceledException)

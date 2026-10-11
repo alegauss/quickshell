@@ -173,6 +173,15 @@ public sealed class SessionPipeline : IAsyncDisposable
     /// </summary>
     public Task<PtyExit> Closed => _channel.Closed;
 
+    private static long s_received;
+
+    /// <summary>
+    /// Every byte every host has sent this process, across every pipeline it has run: what the frame
+    /// report sets beside the frames drawn, so a pane that wakes while its host is silent can be told
+    /// from one whose host is not (QS255).
+    /// </summary>
+    public static long Received => Interlocked.Read(ref s_received);
+
     /// <summary>What the stages have done so far.</summary>
     public PipelineWork Work => new(
         Interlocked.Read(ref _bytes),
@@ -384,6 +393,7 @@ public sealed class SessionPipeline : IAsyncDisposable
                 // Counted before the write, so a drain that begins the instant after it lands sees
                 // the bytes it is about to take rather than a backlog one read short.
                 Interlocked.Add(ref _queuedBytes, read);
+                Interlocked.Add(ref s_received, read);
 
                 // Where the queue is full this waits, and the wait reaches the far end as flow
                 // control. It is the one place backpressure belongs.
