@@ -9,6 +9,7 @@
 ## Block C — Emulation that does not lie about the remote
 
 - 📋 **QS258** (deps: QS141 ✅) **A session's whole path parses near 54 MB/s where the budget now asks for 100, the rate the transport delivers** — Writing printable text a character at a time is most of what is left, so a large cat over a fast link waits on the terminal. → §QS258
+- 📋 **QS260** (deps: —) **A cursor blink redraws the whole grid, so a blinking cursor alone costs half a per cent of a core while idle** — A blink changes one cell and each frame rebuilds and draws every cell, about 4 ms of core twice a second. → §QS260
 
 ## Block D — The tree a user organises work in
 
@@ -26,7 +27,6 @@
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
-- ⏳ **QS255** (deps: —) **An idle pane costs 0.6 % of a core and GPU work even with the cursor blink off, and four cost nearly three times one** — With zero frames the pane still spends 0.29 % of a core outside the loop, and a blinking cursor costs about 5 ms a frame. → §QS255
 - 📋 **QS256** (deps: —) **One local pane holds 172 MB and a connected session 211 MB, where the budget allows 120 MB for the connected one** — The first pane costs about 93 MB over an empty window, so figure 6 is spent before any session is opened. → §QS256
 
 ## Block I — An error a user can act on

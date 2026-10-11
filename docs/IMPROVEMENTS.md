@@ -202,6 +202,29 @@ baseline retaken once the figure moves, with the `Performance-Moved` trailer nam
 Falsified when `emulate` reads 100 MB/s or more on `cat-log` at the gate on the
 reference machine.
 
+### §QS260 A blink that costs one cell
+
+Found shipping QS255 (`benchmarks/results/idle-h.md`). With the loop's spin gone, one
+idle local pane with the cursor blinking drew 340 frames in three minutes, the blink's
+own rhythm, and spent 1,672 ms of core time against about 190 ms with the blink off:
+about 4 ms of core a frame, so a blinking cursor alone is roughly half a per cent of a
+core and keeps a GPU engine 0.3 % busy. Figure 4 allows the blink as an idle window's
+one wake, not as a whole frame.
+
+A blink changes one cell. The frame it triggers rebuilds the instance array for every
+cell through `GridPainter.Paint`, uploads it and draws the grid. `RedrawGate.Claim` is
+handed the damage and the cursor phase separately, so it can say when a frame is only
+the cursor; today it answers only yes or no.
+
+What to build: a cursor-only frame repaints just the cursor's cell. The chain is
+`FlipDiscard`, whose back buffer holds nothing of the last frame, so either it becomes
+`FlipSequential` and a cursor frame presents one dirty rectangle with `Present1`, or the
+grid's last frame is kept in a texture and a cursor frame copies it and draws one quad.
+Each is measured with `Quickshell.Idle --frames`, core and GPU time per blink, and
+against photon, since the swap effect is also an echo's path.
+
+Falsified when a cursor-only frame still costs what a whole-grid frame costs.
+
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates
@@ -401,7 +424,7 @@ Two defects did it: the blink wait truncated to `Task.Delay(0)` and spun, and th
 setting never reached a pane opened at start. The count that found them is
 `--frame-report`, read by `Quickshell.Idle --frames`.
 
-What is left, measured on a busy desk: **0.29 % of a core with zero wakes and zero
+What is left, ten busy-desk minutes: **0.16 % of a core with zero wakes and zero
 frames**, so it is spent outside the render loop. The window with no pane measured zero
 (QS76), so it belongs to what a pane brings with it besides the loop: the pipeline's
 three loops over a silent pseudo-console, the pane's `HwndHost` and its layout. The next
@@ -412,7 +435,7 @@ a counter for each loop that wakes.
 And with the blink on, a frame costs about 5 ms of core time, so a blinking cursor alone
 is 0.6 % of a core. A blink changes one cell; the frame rebuilds every instance and
 draws them all. Drawing only the cursor's cell, over the frame already presented, is the
-shape of that fix, and it is worth measuring once the remainder above is known.
+shape of that fix, and QS260 carries it.
 
 Falsified when one local pane, blink off, reads zero frames and under 0.1 % of a core
 over ten idle minutes on a quiet desk.

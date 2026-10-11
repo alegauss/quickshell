@@ -122,3 +122,15 @@ milliseconds, and a pane holds its cursor settings until its view opens.
 **What is left is not the loop.** With nothing woken and nothing drawn the pane still spends 0.29 % of
 a core, which figure 4 counts as measurable. And with the blink on, each frame costs about 5 ms of core
 time, so a blinking cursor is 0.6 % of a core by itself.
+
+Ten minutes each, on the same busy desk, one local pane with `cursorBlink: false`:
+
+| | occupancy of one core | frames | GPU engine |
+|---|---|---|---|
+| with `--frame-report`, rewriting its file every 5 s | 0.41 % | 0 | 0 ms |
+| without it | **0.16 %** | not counted | 0 ms |
+
+**The report was most of what it measured.** Writing its file every five seconds whether or not a
+counter had moved cost the idle client 0.25 % of a core; it now writes only when one moves. What
+is left with the loop silent is 0.16 %, on a desk with other projects running. Figure 4's bound is
+0.1 %, so the reading that settles it is ten quiet minutes on the reference desk.

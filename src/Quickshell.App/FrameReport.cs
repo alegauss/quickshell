@@ -12,14 +12,18 @@ namespace Quickshell.App;
 /// a byte meanwhile. <c>tools/Quickshell.Idle --frames</c> reads it at both ends of its interval, so
 /// an idle figure comes with its causes.</para>
 ///
-/// <para><b>Rewritten rather than appended</b>, through a file beside it and a move, so a reader
-/// never sees half a report. The counters are cumulative; a reader takes differences.</para>
+/// <para><b>Rewritten rather than appended, and only when a counter moved</b>, through a file
+/// beside it and a move, so a reader never sees half a report. The counters are cumulative; a
+/// reader takes differences.</para>
 /// </summary>
 internal static class FrameReport
 {
     private static readonly TimeSpan Every = TimeSpan.FromSeconds(5);
 
     private static Timer? _timer;
+
+    /// <summary>The counters last written, so an idle client is not woken to write the same file again.</summary>
+    private static (long, long, long, long, long)? _written;
 
     /// <summary>Starts writing the share's counters to <paramref name="file"/>, until the process ends.</summary>
     public static void Arm(string file, TerminalShare share)
@@ -34,6 +38,18 @@ internal static class FrameReport
 
     private static void Write(string file, TerminalShare share)
     {
+        // Only when something moved. Rewritten every five seconds regardless, the report itself
+        // cost an idle pane 0.25 % of a core over ten minutes - more than what it was measuring.
+        (long, long, long, long, long) now = (share.Damage.Sets, share.WokenByDamage, share.WokenByBlink,
+                                              share.Frames, SessionPipeline.Received);
+
+        if (_written == now)
+        {
+            return;
+        }
+
+        _written = now;
+
         string text = string.Create(CultureInfo.InvariantCulture,
             $$"""
             {
