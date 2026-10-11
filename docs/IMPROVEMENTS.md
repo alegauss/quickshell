@@ -451,25 +451,6 @@ Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS264 A pattern that reads a CRLF checkout
-
-Found following CI on 2026-10-11:
-`SettingsReferenceTests.EverySettingIsDocumentedAndEveryDocumentedSettingExists` fails
-on every push (runs on 19ebf5c, 84774fa and 9bf8d6c) with `Assert.NotEmpty() Failure`
-and passes in the guest. The test reads `docs/SETTINGS.md` and matches each key's
-heading with ``^### `key`$`` under `RegexOptions.Multiline`. In .NET that `$` matches
-before `\n` and not before `\r\n`. The Windows runner's checkout has `core.autocrlf` on,
-so the page arrives with CRLF endings, every heading misses, and the list is empty. The
-tree `run-tests-vm` carries keeps LF, which is why the guest never sees it.
-
-What to build: the pattern accepts an optional `\r` before the end of the line, or the
-page is read with its line endings normalised first. Either way the test agrees with the
-page whatever checkout it is on. Then check the other `Multiline` patterns in the tests
-that read a repository file, since any of them can fail the same way on a CRLF checkout.
-
-Falsified when the test still fails on a checkout of `docs/SETTINGS.md` with CRLF
-endings.
-
 ### §QS265 UI cases against the configuration that was built
 
 Found following CI on 2026-10-11:

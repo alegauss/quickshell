@@ -20,8 +20,11 @@ public sealed partial class SettingsReferenceTests
     /// <summary>Where the reference lives, and it is a file a user reads rather than a comment.</summary>
     private const string Reference = "docs/SETTINGS.md";
 
-    /// <summary>A heading naming one key, which is how the reference addresses them.</summary>
-    [GeneratedRegex(@"^### `([A-Za-z][A-Za-z0-9]*)`$", RegexOptions.Multiline)]
+    /// <summary>
+    /// A heading naming one key, which is how the reference addresses them. The `\r` is optional
+    /// because a Multiline `$` does not match before CRLF, and CI's checkout has CRLF (QS264).
+    /// </summary>
+    [GeneratedRegex(@"^### `([A-Za-z][A-Za-z0-9]*)`\r?$", RegexOptions.Multiline)]
     private static partial Regex Documented { get; }
 
     /// <summary>Every setting this build reads is documented, and everything documented exists.</summary>
@@ -41,6 +44,23 @@ public sealed partial class SettingsReferenceTests
         // And a key the reference describes that this build has never heard of, which is the same
         // document telling a user about a client they are not running.
         Assert.Empty(written.Except(known, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// QS264: the reference reads the same whatever line endings the checkout gave it. CI's has
+    /// CRLF and the guest's LF, and the headings found used to be all of them on one and none on
+    /// the other.
+    /// </summary>
+    [Fact]
+    public void TheReferenceReadsTheSameWithEitherLineEnding()
+    {
+        string page = File.ReadAllText(Page());
+
+        string[] lf = [.. Documented.Matches(page.ReplaceLineEndings("\n")).Select(one => one.Groups[1].Value)];
+        string[] crlf = [.. Documented.Matches(page.ReplaceLineEndings("\r\n")).Select(one => one.Groups[1].Value)];
+
+        Assert.NotEmpty(lf);
+        Assert.Equal(lf, crlf);
     }
 
     /// <summary>
