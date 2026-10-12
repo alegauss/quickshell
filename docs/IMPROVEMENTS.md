@@ -337,28 +337,6 @@ Evidence: tabs.cases.json reads the dot's state through each tab's ItemStatus an
 Home tab's name; a WindowTests check reads the sizes; a run-app-vm.cmd picture for the
 owner.
 
-### §QS282 A shell's path, named as the shell
-
-Seen 2026-10-12: the window is titled "C:\WINDOWS\system32\cmd.exe — quickshell", and a
-local tab would carry the same path, where the design names a local tab by its shell
-("PowerShell" in `Connected.dc.html`). cmd writes its own executable's full path through
-OSC as soon as it starts; QS161 deliberately ranks a host-written title above the tab's
-host, and that ranking stays.
-
-What to build: one narrow rule in `TerminalLeaf.Title`. Where the title a host wrote is
-exactly the full path of an executable (a rooted path ending in `.exe`, nothing after
-it), the leaf shows that program's friendly name instead: cmd.exe "Command Prompt",
-powershell.exe "Windows PowerShell", pwsh.exe "PowerShell", wsl.exe and bash.exe "WSL",
-and otherwise the file's own name without `.exe`. Anything else a host writes, a
-directory or a running command included ("Administrator: C:\…", "vim notes.txt"), is
-shown as written, and a name the user gave still outranks both. The window's title
-follows, as it already does, so the case asserting it contains "quickshell" is
-unchanged.
-
-Tests: the mapping for each executable, a rooted path with arguments after it left
-alone, a user's name outranking it; tabs.cases.json reads a fresh local tab named
-"Command Prompt".
-
 ## Block H — The reason to leave the incumbent
 
 ### §QS77 Installing, signing, and updating without a service

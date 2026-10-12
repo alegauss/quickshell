@@ -217,6 +217,7 @@
 - ✅ **QS278 (the strip drawn to the design)** **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — A 42 row with Home as first tab, each tab a state dot, title and close button, the one on screen underlined in the accent, New tab and Commands.
 - ✅ **QS279** **Home's recent sessions are forgotten on every restart and their cards cannot say when each was last used** — Home's cards are the design's: Recent with Show all sessions, three columns, a server tile, name over address, folder and tag chips, the time and a 28-high Connect.
 - ✅ **QS280** **Home has the design's content in another layout: quick connect in three rows, other start-point copy and shape** — Home is the design's: the 26px heading and its line, quick connect in one row with a Sign in with drop-down that asks for a key file, and three start-point cards.
+- ✅ **QS282** **A local tab and the window are titled C:\WINDOWS\system32\cmd.exe instead of naming the shell** — A local tab whose shell wrote its own executable's path is named as the shell: Command Prompt, Windows PowerShell, PowerShell or WSL; any other title shows as written.
 
 ## Block H — The reason to leave the incumbent
 

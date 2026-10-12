@@ -57,6 +57,16 @@
           "named": "and the second is, because it was opened last"
         },
         {
+          // QS282: cmd writes its own path as its title, and a local tab is named as the shell
+          // instead. An elevated cmd prefixes "Administrator: " (QS267), which is a title of its own
+          // and shown as written, so that one is allowed too.
+          "locator": "TabItem[order=left]",
+          "act": "read",
+          "reads": "name",
+          "matches": "^(Command Prompt|Administrator: .+)$",
+          "named": "a local tab is called by its shell, not by cmd.exe's path"
+        },
+        {
           // QS278: the strip carries New tab after the last tab and Commands at its right, as the
           // design draws it. Each tab's state is its ItemStatus, which no reading reaches yet
           // (winwright WW523); TabStripTests reads it in process until one does.

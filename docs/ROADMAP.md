@@ -19,7 +19,6 @@
 ## Block G — The clean interface, defended
 
 - ⏳ **QS278** (deps: winwright WW523) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — tabs.cases.json reads each tab's state off its ItemStatus once a case can read one (winwright WW523). → §QS278
-- 📋 **QS282** (deps: —) **A local tab and the window are titled C:\WINDOWS\system32\cmd.exe instead of naming the shell** — cmd writes its own executable's path as its title, and the client shows it as written, so a local shell is named by a path. → §QS282
 
 ## Block H — The reason to leave the incumbent
 

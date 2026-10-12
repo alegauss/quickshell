@@ -243,7 +243,8 @@ public sealed class TerminalLeaf : IAsyncDisposable
                 return named;
             }
 
-            return Emulator.Title is { Length: > 0 } written ? written : Host;
+            // A shell that wrote its own executable's path is named as the shell (QS282).
+            return ShellName.Of(Emulator.Title is { Length: > 0 } written ? written : Host);
         }
     }
 
