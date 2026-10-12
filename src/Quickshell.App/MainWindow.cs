@@ -71,6 +71,15 @@ public sealed class MainWindow : Window
     /// <summary>The window's one grid, which the connection's two bars join when a remote tab first shows (QS269).</summary>
     private readonly Grid _layout = new();
 
+    // The strip's row: a slot Home's button goes in once Home is opened, and the tabs (QS272).
+    private readonly DockPanel _strip = new() { LastChildFill = true };
+    private readonly ContentControl _homeSlot = new() { Focusable = false, IsTabStop = false };
+
+    // Null until Home is first opened, so a window that never shows it holds none of it (QS272).
+    private HomePage? _home;
+    private bool _homeOpen;
+    private bool _homeShowing;
+
     // Null until a remote tab is first on screen, so a window of local shells has neither (QS269).
     private SessionBar? _sessionBar;
     private ConnectionStatusBar? _statusBar;
@@ -125,7 +134,17 @@ public sealed class MainWindow : Window
         // A tab dragged along the strip moves as the pointer crosses its neighbours, as a browser's
         // does (QS250). The press selects it first, through the handler above, so the tab being
         // dragged is always the one on screen.
-        _tabs.PreviewMouseLeftButtonDown += (_, pressed) => _pressedOnStrip = pressed.GetPosition(_tabs);
+        _tabs.PreviewMouseLeftButtonDown += (_, pressed) =>
+        {
+            _pressedOnStrip = pressed.GetPosition(_tabs);
+
+            // While Home is on screen the strip still has the last tab selected, so pressing that tab
+            // changes no selection; it is a choice all the same, and brings the tab back (QS272).
+            if (_homeShowing && TabAt(pressed.GetPosition(_tabs)) is { } chosen)
+            {
+                Active = chosen;
+            }
+        };
         _tabs.PreviewMouseLeftButtonUp += (_, _) => _pressedOnStrip = null;
         _tabs.PreviewMouseMove += (_, moved) =>
         {
@@ -183,8 +202,13 @@ public sealed class MainWindow : Window
         layout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        Grid.SetRow(_tabs, 0);
-        Grid.SetColumnSpan(_tabs, 2);
+        // The strip: Home's button first once Home has been opened (QS272), then the tabs.
+        DockPanel.SetDock(_homeSlot, Dock.Left);
+        _strip.Children.Add(_homeSlot);
+        _strip.Children.Add(_tabs);
+
+        Grid.SetRow(_strip, 0);
+        Grid.SetColumnSpan(_strip, 2);
         Grid.SetRow(_sidebar, 1);
         Grid.SetRowSpan(_sidebar, 3);
         Grid.SetRow(_find, 2);
@@ -192,7 +216,7 @@ public sealed class MainWindow : Window
         Grid.SetRow(_terminal, 3);
         Grid.SetColumn(_terminal, 1);
 
-        layout.Children.Add(_tabs);
+        layout.Children.Add(_strip);
         layout.Children.Add(_sidebar);
         layout.Children.Add(_find);
         layout.Children.Add(_terminal);
@@ -367,6 +391,10 @@ public sealed class MainWindow : Window
         // A host nobody has saved, by its address (QS271). No chord, for the reason Open session has none.
         InputBindings.Add(new InputBinding(new ConnectingAddress(this), new PaletteOnly()));
 
+        // Home, and leaving it (QS272): its button on the strip is the other way back.
+        InputBindings.Add(new InputBinding(new GoingHome(this), new PaletteOnly()));
+        InputBindings.Add(new InputBinding(new ClosingHome(this), new PaletteOnly()));
+
         // Every forward this client holds, from the palette (QS70): seen rarely, and needed exactly
         // when a port is mysteriously taken, so no chord.
         InputBindings.Add(new InputBinding(new ShowingForwards(this), new PaletteOnly()));
@@ -433,6 +461,9 @@ public sealed class MainWindow : Window
             // Wrapped rather than clamped, because next-from-the-last is the first: a chord that
             // stopped at the end would be one the user presses twice and then reaches for the mouse.
             int at = ((value % _open.Count) + _open.Count) % _open.Count;
+
+            // A tab chosen is a tab on screen, so Home steps aside (QS272).
+            LeaveHome();
 
             _active = at;
             _tabs.SelectedIndex = at;
@@ -692,7 +723,7 @@ public sealed class MainWindow : Window
         [.. _handles.Where(handle => handle.Visibility == Visibility.Visible)];
 
     /// <summary>The tab on screen, or null while there are none.</summary>
-    public TerminalTab? Current => _active >= 0 && _active < _open.Count ? _open[_active] : null;
+    public TerminalTab? Current => !_homeShowing && _active >= 0 && _active < _open.Count ? _open[_active] : null;
 
     /// <summary>
     /// Whether this window is recording a session's output, shown in the title.
@@ -1447,9 +1478,11 @@ public sealed class MainWindow : Window
         // Recording while any pane is (QS134), or while somebody said so directly.
         bool recording = _recording || RecordingPanes() > 0;
 
+        string? said = _homeShowing ? "Home" : Current?.Title;
+
         string named = Notice is { } notice
-            ? $"{notice} — {Naming(recording, Current?.Title)}"
-            : Naming(recording, Current?.Title);
+            ? $"{notice} — {Naming(recording, said)}"
+            : Naming(recording, said);
 
         // While any forward runs, the title says so first (QS70): a forgotten forward is an open
         // route into somebody's network, and the title is chrome the window already has, which a
@@ -1611,8 +1644,14 @@ public sealed class MainWindow : Window
     }
 
     /// <summary>Shows the strip once there is a choice to make, and hides it again when there is not.</summary>
-    private void Strip() =>
-        _tabs.Visibility = _tabs.Items.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+    /// <para>With Home open (QS272) one tab is already a choice, Home or it, so the strip shows from the first.</para>
+    private void Strip()
+    {
+        _tabs.Visibility = _tabs.Items.Count > 1 || (_homeOpen && _tabs.Items.Count > 0)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        _homeSlot.Visibility = _homeOpen ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     /// <summary>
     /// What happens once a bundle is written. A dialog naming the file, unless a caller says
@@ -2526,13 +2565,205 @@ public sealed class MainWindow : Window
         Remove(_active);
 
         // The last tab going closes the window, because a window with no terminal in it is not
-        // something this client has a name for.
+        // something this client has a name for — unless Home is open, which is that name (QS272).
         if (_open.Count == 0)
         {
-            Close();
+            if (_homeOpen)
+            {
+                ShowHome();
+            }
+            else
+            {
+                Close();
+            }
         }
 
         return true;
+    }
+
+    // ---- Home (QS272) ----
+
+    /// <summary>The Home page, or null where this window has never opened it.</summary>
+    public HomePage? Home => _home;
+
+    /// <summary>Whether Home is on screen, in place of the terminal.</summary>
+    public bool HomeShowing => _homeShowing;
+
+    /// <summary>Whether Home is open: its button is on the strip, whether or not it is on screen.</summary>
+    public bool HomeOpen => _homeOpen;
+
+    /// <summary>
+    /// Opens Home and puts it on screen, building it the first time (QS272).
+    ///
+    /// <para><b>In place of the terminal, which stays where it was.</b> Every pane stays in the
+    /// canvas and is hidden rather than removed — an <c>HwndHost</c> taken out of the tree loses its
+    /// swapchain — and with no tab current the render loop draws none of them. Choosing any tab,
+    /// the one that was showing included, brings it back.</para>
+    /// </summary>
+    public HomePage ShowHome()
+    {
+        if (_home is null)
+        {
+            IReadOnlyList<string> aliases = [];
+
+            try
+            {
+                aliases = SshConfig.ReadFrom(SshConfigFile).Aliases;
+            }
+            catch (System.IO.IOException)
+            {
+                // A config that will not read offers nothing to complete, and the box still takes an address.
+            }
+
+            _home = new HomePage(this, new QuickConnect(this, aliases));
+
+            Grid.SetRow(_home, 1);
+            Grid.SetRowSpan(_home, 3);
+            Grid.SetColumn(_home, 1);
+            _layout.Children.Add(_home);
+
+            Button button = new()
+            {
+                Content = new TextBlock { Text = "  Home", FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI") },
+                Padding = new Thickness(14, 6, 14, 6),
+                Margin = new Thickness(8, 4, 4, 2),
+                VerticalAlignment = VerticalAlignment.Bottom,
+                ToolTip = "Connect to a server, open a recent session, or start another way",
+            };
+
+            System.Windows.Automation.AutomationProperties.SetAutomationId(button, "HomeButton");
+            System.Windows.Automation.AutomationProperties.SetName(button, "Home");
+            button.Click += (_, _) => ShowHome();
+
+            ContextMenu menu = new();
+            MenuItem closing = new() { Header = "Close Home" };
+
+            closing.Click += (_, _) => CloseHome();
+            menu.Items.Add(closing);
+            button.ContextMenu = menu;
+
+            _homeSlot.Content = button;
+        }
+
+        _homeOpen = true;
+        _homeShowing = true;
+        _home.Visibility = Visibility.Visible;
+
+        ShowCards();
+
+        // The strip's selection is left where it was. Cleared, a tab control with items selects one
+        // again by itself, and that arrives as a tab chosen — which took Home off the screen as soon
+        // as it was laid out. A press on a tab while Home shows is handled where the press lands.
+        foreach (TerminalTab tab in _open)
+        {
+            tab.Showing(false);
+        }
+
+        Strip();
+        Arrange();
+        Retitle();
+
+        _home.Quick.FocusAddress();
+
+        return _home;
+    }
+
+    /// <summary>
+    /// Closes Home: its button leaves the strip and the tab that was showing comes back. With no tab
+    /// to come back to, the window closes, as closing its last tab does.
+    /// </summary>
+    public void CloseHome()
+    {
+        if (!_homeOpen)
+        {
+            return;
+        }
+
+        _homeOpen = false;
+
+        if (_open.Count == 0)
+        {
+            LeaveHome();
+            Close();
+
+            return;
+        }
+
+        Active = Math.Max(0, _active);
+        Strip();
+    }
+
+    /// <summary>Takes Home off the screen, leaving it open on the strip, before a tab is shown.</summary>
+    private void LeaveHome()
+    {
+        if (!_homeShowing)
+        {
+            return;
+        }
+
+        _homeShowing = false;
+
+        if (_home is not null)
+        {
+            _home.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>
+    /// Home's cards: the three sessions opened last in this window, or where none has been, the
+    /// store's first three, each said for what it is.
+    /// </summary>
+    private void ShowCards()
+    {
+        if (_home is null)
+        {
+            return;
+        }
+
+        SessionTree store = _store ?? SessionTree.Empty();
+        IReadOnlyList<ResolvedSession> all = store.Sessions();
+
+        List<ResolvedSession> recent = [.. _recentSessions.Select(store.Session).OfType<ResolvedSession>().Take(3)];
+        bool opened = recent.Count > 0;
+
+        if (!opened)
+        {
+            recent = [.. all.Take(3)];
+        }
+
+        _home.Show([.. recent.Select(Card)], opened);
+
+        static SessionCard Card(ResolvedSession session)
+        {
+            int slash = session.Path.LastIndexOf('/');
+
+            return new SessionCard(session.Path, session.Path[(slash + 1)..],
+                                   session.User?.Value is { Length: > 0 } user ? $"{user}@{session.Host}" : session.Host,
+                                   slash > 0 ? session.Path[..slash] : string.Empty, session.Tags);
+        }
+    }
+
+    /// <summary>The palette's Home (QS272).</summary>
+    private sealed class GoingHome(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Home";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.ShowHome();
+    }
+
+    /// <summary>The palette's Close Home, offered only while Home is open.</summary>
+    private sealed class ClosingHome(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Close Home";
+
+        /// <inheritdoc/>
+        public override bool CanExecute(object? parameter) => Window.HomeOpen;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.CloseHome();
     }
 
     /// <summary>The tab-opening binding's command.</summary>

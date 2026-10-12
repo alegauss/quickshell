@@ -1,0 +1,67 @@
+{
+  // QS272. Home: a way to a server on screen, with quick connect on it and the ways to start beside.
+  // Nothing here connects, for the reason quick-connect.cases.json gives.
+  //
+  // Opened by `--home` and not through the palette's chord: a chord is a synthesised keystroke and
+  // needs the foreground, which the guest desk gave to Program Manager instead on the first run of
+  // this case (Degraded, the precondition unmet). Every step here is a pattern read or set, which
+  // needs no foreground. That the palette offers Home is HomeTests'.
+
+  "fixtures": [
+    {
+      // Two tabs and Home over the first. Not lent: Home stays on screen in place of the terminal
+      // another case would read.
+      "name": "a window opened on Home",
+      "arguments": ["--tabs", "2", "--home"]
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "home puts quick connect and the ways to start on screen",
+      "catches": "a Home that opens empty, or one without a way to a server on it",
+      "filed": "QS272",
+      "tags": ["smoke", "sessions"],
+      "fixture": "a window opened on Home",
+
+      "steps": [
+        {
+          "locator": "Button#HomeButton",
+          "act": "read",
+          "reads": "name",
+          "expect": "Home",
+          "named": "Home has a button on the strip to come back to it by"
+        },
+        {
+          "locator": "ComboBox#Address",
+          "act": "set value",
+          "with": "deploy@db1.example.com",
+          "expect": "deploy@db1.example.com",
+          "reads": "value",
+          "named": "the address box is on the first screen and takes an address"
+        },
+        {
+          "locator": "Button#Connect",
+          "act": "read",
+          "reads": "name",
+          "expect": "Connect",
+          "named": "with Connect beside it"
+        },
+        {
+          "locator": "Button#HomeImport",
+          "act": "read",
+          "reads": "name",
+          "expect": "Import from MobaXterm",
+          "named": "and the ways to start below"
+        },
+        {
+          "locator": "Button#HomeLocal",
+          "act": "read",
+          "reads": "name",
+          "expect": "Open a local shell",
+          "named": "a local shell among them, as a way to start rather than the first thing on screen"
+        }
+      ]
+    }
+  ]
+}

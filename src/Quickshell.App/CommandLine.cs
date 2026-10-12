@@ -59,6 +59,9 @@ public static class CommandLine
     /// <summary>Opens the palette.</summary>
     public const string Palette = "--palette";
 
+    /// <summary>Opens Home over the first tab (QS272).</summary>
+    public const string Home = "--home";
+
     /// <summary>Writes what the render loop has done to a file, every few seconds (QS255).</summary>
     public const string FrameReport = "--frame-report";
 
@@ -73,6 +76,7 @@ public static class CommandLine
         new(Import, "[file]", "Previews importing MobaXterm's sessions, from the file named or from where MobaXterm keeps them; nothing is written until you agree. The import is added under a folder of its own, Imported from MobaXterm and the date, and the sessions already in your store stay."),
         new(Browse, "", "Opens the file browser."),
         new(Palette, "", "Opens the palette."),
+        new(Home, "", "Opens Home, with quick connect and your recent sessions, over the first tab."),
         new(StartupReport, "<file>", "Times this start and writes the milestones to the file once the shell is on screen."),
         new(FrameReport, "<file>", "Writes, every five seconds, how often the render loop woke and why, the frames it drew and the bytes hosts sent, so an idle window's cost comes with its cause."),
         new(Install, "", "Installs this copy for the current user, or for everyone with --all-users, and opens no window."),

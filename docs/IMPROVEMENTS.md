@@ -263,21 +263,25 @@ Falsified when a full-screen pane's echoes are composed in photon's report.
 ### §QS272 A Home tab
 
 Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Main.dc.html`,
-`HomeDark.dc.html`). The window opens on a local Command Prompt, and nothing on screen
-says this client connects to servers at all: a new user takes it for a terminal emulator
-and goes back to what they had.
+`HomeDark.dc.html`). The Home page landed first (2026-10-12): `HomePage.cs`, shown by
+`MainWindow.ShowHome` from the palette's Home, `--home` and the strip's Home button,
+with quick connect, recent sessions as cards, and three ways to start. While it shows,
+`Current` is null, so no pane is drawn and nothing typed reaches a shell.
 
-What to build: a **Home** tab, the first tab of a new window, which a user can close and
-reopen from the palette and the tab strip. On it, **Connect to a server**, the
-quick-connect box (QS271), the three sessions opened last as cards with their host,
-folder and tags and a **Connect** button, and three ways to start: import from
-MobaXterm, open a local shell, browse files. With the sidebar (QS268) beside it.
+What is left: Home as the screen a new window opens on. A setting, `startWith`: `home`
+by default, `shell` for a local shell as today, in `Settings`, `SettingsFile`,
+`docs/SETTINGS.md` and the settings window. A window started with `--session`, `--tabs`
+or `--panes` opens on what it asked for. With `home`, `Program.Main` must not start the
+early shell (QS191): read `startWith` inside the pool task that starts it, before the
+pseudo-console, and give the window a Home and no tab.
 
-A setting, `startWith`, keeps what some users want: `home` by default, `shell` for a
-local shell as today. A window started with `--session`, `--tabs` or `--panes` opens on
-what it was asked for and not on Home. The cold-start budget holds: Home is drawn by WPF
-and holds no device until a terminal tab opens, which is measured with
-`run-startup-vm.cmd` before and after.
+Then the measurement. `StartupTimeline` reports at the first shell frame, which a Home
+start never reaches, so the startup tool, the gate and `install-vm.ps1` would wait
+forever. Mark `home` and write the report when Home is first rendered; keep figure 5
+timing the local shell by having the gate pass `--tabs 1`; and time a Home start with
+`run-startup-vm.cmd` before and after, the numbers in the commit. The block criterion "A
+default installation shows no chrome beyond a title bar and a terminal" is untrue once
+Home is the default, and is the owner's to restate.
 
 Falsified when a new window's first screen still gives no way to a server without the
 palette.

@@ -16,7 +16,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS272** (deps: QS268 ✅, QS271 ✅) **The window opens on a local Command Prompt, and nothing on screen says this client connects to servers** — A new user takes it for a terminal emulator: the way to a server is behind a chord they have not learnt. → §QS272
+- ⏳ **QS272** (deps: QS268 ✅, QS271 ✅) **The window opens on a local Command Prompt, and nothing on screen says this client connects to servers** — A new window still opens on a shell: startWith (home default) and the startup tools timing a Home start, measured before and after, are left. → §QS272
 
 ## Block H — The reason to leave the incumbent
 
@@ -272,6 +272,15 @@
 - **An idle pane with blink off spends no measurable core time** Quickshell.Idle
   --frames on one local pane with cursorBlink false, ten minutes on a quiet reference
   desk, reads zero frames and under 0.1 % of a core.
+
+## Done when — QS272
+
+- **A new window with default settings opens on Home and starts no shell** Settled by
+  starting the client in the guest with no settings file and no arguments, reading
+  Home's address box through a UI case, and finding no cmd.exe child of the process.
+- **A Home start is timed, and figure 5 still times the local shell** Settled by
+  run-startup-vm.cmd before and after the switch, both numbers in the commit, and the
+  performance gate passing --tabs 1 so its baseline stays the shell's.
 
 ## Non-goals
 

@@ -246,6 +246,13 @@ public static class Entry
             window.Dispatcher.BeginInvoke(() => window.ShowPalette());
         }
 
+        // `--home` opens Home over the first tab (QS272), once the sidebar's store has been read so
+        // its cards are the store's, and with the same standing as `--palette`.
+        if (arguments.Contains(CommandLine.Home, StringComparer.Ordinal))
+        {
+            window.Dispatcher.BeginInvoke(() => window.ShowHome());
+        }
+
         application.Run(window);
 
         // Every tab, and the loops before the sessions, so nothing is drawing into a handle that is

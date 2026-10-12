@@ -27,6 +27,7 @@ help.
 | `--import` | `[file]` | Previews importing MobaXterm's sessions, from the file named or from where MobaXterm keeps them; nothing is written until you agree. The import is added under a folder of its own, Imported from MobaXterm and the date, and the sessions already in your store stay. |
 | `--browse` | | Opens the file browser. |
 | `--palette` | | Opens the palette. |
+| `--home` | | Opens Home, with quick connect and your recent sessions, over the first tab. |
 | `--startup-report` | `<file>` | Times this start and writes the milestones to the file once the shell is on screen. |
 | `--frame-report` | `<file>` | Writes, every five seconds, how often the render loop woke and why, the frames it drew and the bytes hosts sent, so an idle window's cost comes with its cause. |
 

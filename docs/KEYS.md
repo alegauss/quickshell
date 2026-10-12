@@ -17,6 +17,9 @@ your saved sessions, found by path, host or tag, with the ones you opened last a
 ([SESSIONS.md](SESSIONS.md) is what a session can hold),
 *Connect to an address* takes `user@host`, `user@host:port` or a host from `~/.ssh/config` and
 connects it, saving it as a session unless you untick that,
+*Home* shows the Home page in place of the terminal — quick connect, your recent sessions and the
+ways to start — with a Home button on the tab strip to come back to it, and *Close Home* takes it
+away again,
 *Show forwards* lists every forward the client holds, what each is carrying now, and the ones
 that did not start,
 *Trace this session* connects the saved session in the pane again with a trace of its own under

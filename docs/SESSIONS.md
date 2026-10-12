@@ -27,6 +27,13 @@ default, writes it at the top of the store named after the host (with a number a
 name is taken by another session) and opens it from there; off, the same session is opened and
 nothing is written. An address that does not parse says why under the box.
 
+**Home** — *Home* in the palette — puts quick connect on the screen, with the three sessions you
+opened last in this window as cards (the store's first three before you have opened any), each with
+**Connect**, and three ways to start: import from MobaXterm, a local shell, and the file browser.
+It takes the terminal's place without closing anything; choose a tab to go back, and the **Home**
+button at the start of the tab strip to return. With Home open, closing the last tab goes back to
+Home instead of closing the window.
+
 **A connected session shows where it goes.** While the pane with the keyboard holds a saved session,
 a bar over the terminal names the session, its `user@host:port` and the jump host it goes through,
 and a chip saying **Connected**, **Reconnecting** or **Disconnected**. Each running forward has a chip
