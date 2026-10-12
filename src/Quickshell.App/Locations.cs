@@ -62,6 +62,9 @@ public sealed class Locations
     /// <summary>The saved sessions.</summary>
     public string Sessions => Path.Combine(Root, "sessions.json");
 
+    /// <summary>The sessions connected last, and when (QS279).</summary>
+    public string Recent => Path.Combine(Root, "recent.json");
+
     /// <summary>Where the window was last time, per arrangement of screens.</summary>
     public string Windows => Path.Combine(Root, "windows.json");
 

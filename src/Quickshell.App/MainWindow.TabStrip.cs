@@ -31,7 +31,7 @@ public sealed partial class MainWindow
     private readonly Border _stripFrame = new() { Height = StripHeight, Padding = new Thickness(12, 0, 12, 0), BorderThickness = new Thickness(0, 0, 0, 1) };
 
     /// <summary>What each tab's header is made of, so a redraw changes the parts that changed and nothing else.</summary>
-    private sealed record TabLook(Ellipse Dot, TextBlock Title, Border Line, Button Close);
+    private sealed record TabLook(Ellipse Dot, TextBlock Title, Border Bar, Button Close);
 
     /// <summary>Builds the row: frame, the strip's own template, New tab and Commands. Called once, from the constructor.</summary>
     private void BuildStrip()
@@ -194,7 +194,7 @@ public sealed partial class MainWindow
         // weight (the title stays the title, so a screen reader does not read a marker out).
         FontWeight weight = tab.HasActivity ? FontWeights.Bold : FontWeights.Normal;
 
-        look.Line.Visibility = selected ? Visibility.Visible : Visibility.Hidden;
+        look.Bar.Visibility = selected ? Visibility.Visible : Visibility.Hidden;
         look.Title.FontWeight = selected ? FontWeights.SemiBold : weight;
         look.Title.SetResourceReference(TextBlock.ForegroundProperty, selected || tab.HasActivity ? PlainText : QuietText);
     }
@@ -290,6 +290,15 @@ public sealed partial class MainWindow
             if (_tabs.Items[tab] is TabItem item)
             {
                 Dress(item, _open[tab], selected: !_homeShowing && tab == _active);
+            }
+
+            // A saved session's first live connection in this tab is what puts it in the recent list
+            // (QS279): read here because this is where each tab's state is read, twice a second.
+            if (_open[tab].Saved is { Length: > 0 } saved
+                && ConnectionView.Of(_open[tab].Focused)?.State == ConnectionState.Connected
+                && _wentLive.Add(_open[tab]))
+            {
+                SessionWentLive(saved);
             }
         }
 

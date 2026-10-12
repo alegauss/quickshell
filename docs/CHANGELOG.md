@@ -214,6 +214,7 @@
 - ✅ **QS272 (the Home page)** **The window opens on a local Command Prompt, and nothing on screen says this client connects to servers** — Home shows quick connect, recent sessions and three ways to start in place of the terminal, from the palette, --home and a strip button.
 - ✅ **QS277** **The sidebar is not the approved one: a filled hamburger, Command Prompt icons on SSH rows, an opaque selection** — The sidebar is the design's: a ghost panel fold, 32-high rows indented 8 plus 22 a level, a drawn terminal glyph on sessions, the accent at a tenth when selected, a Files and Tunnels rail.
 - ✅ **QS278 (the strip drawn to the design)** **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — A 42 row with Home as first tab, each tab a state dot, title and close button, the one on screen underlined in the accent, New tab and Commands.
+- ✅ **QS279 (recents kept, with their time)** **Home's recent sessions are forgotten on every restart and their cards cannot say when each was last used** — Recents survive a restart in recent.json, recorded on a live connection, carried by rename and move, dropped by delete; Home's cards say when.
 
 ## Block H — The reason to leave the incumbent
 

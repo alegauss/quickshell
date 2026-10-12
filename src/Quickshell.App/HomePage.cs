@@ -12,7 +12,11 @@ namespace Quickshell.App;
 /// <param name="Address">user@host, or the host alone.</param>
 /// <param name="Folder">The folder it is in; empty at the top.</param>
 /// <param name="Tags">Its tags.</param>
-public sealed record SessionCard(string Path, string Name, string Address, string Folder, IReadOnlyList<string> Tags);
+public sealed record SessionCard(string Path, string Name, string Address, string Folder, IReadOnlyList<string> Tags)
+{
+    /// <summary>When it last connected, in words ("Connected now", "Yesterday"), or empty where it is not a recent one (QS279).</summary>
+    public string When { get; init; } = string.Empty;
+}
 
 /// <summary>
 /// The Home page (QS272): a way to a server on the first screen, so nobody takes this client for a
@@ -102,7 +106,7 @@ public sealed class HomePage : Border
         ArgumentNullException.ThrowIfNull(cards);
 
         _cards.Children.Clear();
-        _cardsHeading.Text = cards.Count == 0 ? string.Empty : recent ? "Opened recently" : "Saved sessions";
+        _cardsHeading.Text = cards.Count == 0 ? string.Empty : recent ? "Recent" : "Saved sessions";
         _cardsHeading.Visibility = cards.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
 
         foreach (SessionCard card in cards)
@@ -136,6 +140,16 @@ public sealed class HomePage : Border
 
         meta.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorTertiaryBrush");
         inside.Children.Add(meta);
+
+        // When it last connected, where it is a recent one (QS279).
+        if (card.When.Length > 0)
+        {
+            TextBlock when = new() { Text = card.When, FontSize = 12, Margin = new Thickness(0, 6, 0, 0) };
+
+            when.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+            AutomationProperties.SetAutomationId(when, "When");
+            inside.Children.Add(when);
+        }
 
         Button connect = new() { Content = "Connect", Margin = new Thickness(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
 

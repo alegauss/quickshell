@@ -475,16 +475,18 @@ public sealed class CommandsTests
         Assert.Equal([opened], asked);
     }
 
-    /// <summary>With nothing typed, the session opened last is first, as a command run last is.</summary>
+    /// <summary>
+    /// With nothing typed, the session connected last is first, from the list Home's cards read (QS279):
+    /// picking one is not enough, since a session that failed to connect is not one to offer first.
+    /// </summary>
     [Fact]
-    public void TheSessionOpenedLastComesFirst()
+    public void TheSessionConnectedLastComesFirst()
     {
         string first = WithStore(window =>
         {
             window.OpensSession = _ => { };
 
-            window.Choosing = (all, recent) => all.Single(one => one.Name == "db");
-            window.ChooseSession();
+            window.SessionWentLive("db");
 
             string top = string.Empty;
 
@@ -545,7 +547,9 @@ public sealed class CommandsTests
     /// <summary>A window over a store holding two sessions, one in a folder with a tag.</summary>
     private static T WithStore<T>(Func<MainWindow, T> work, string root = "")
     {
-        string store = Path.Combine(Path.GetTempPath(), $"quickshell-open-{Guid.NewGuid():N}.json");
+        // A folder of its own, since the recent list is kept beside the store (QS279).
+        string folder = Path.Combine(Path.GetTempPath(), $"quickshell-open-{Guid.NewGuid():N}");
+        string store = Path.Combine(folder, "sessions.json");
 
         SessionTree.Of(new SessionNode
         {
@@ -567,7 +571,7 @@ public sealed class CommandsTests
         }
         finally
         {
-            File.Delete(store);
+            Directory.Delete(folder, recursive: true);
         }
     }
 

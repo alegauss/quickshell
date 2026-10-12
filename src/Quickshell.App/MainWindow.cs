@@ -1419,6 +1419,7 @@ public sealed partial class MainWindow : Window
         // turned it on.
         going.StopBroadcasting();
         _recentTabs.Remove(going);
+        _wentLive.Remove(going);
 
         _open.RemoveAt(at);
 
@@ -2698,8 +2699,9 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Home's cards: the three sessions opened last in this window, or where none has been, the
-    /// store's first three, each said for what it is.
+    /// Home's cards: the three sessions connected last, kept across restarts with when each was
+    /// (QS279), or where none has been, the store's first three, each said for what it is. An entry
+    /// the store no longer holds is passed over.
     /// </summary>
     private void ShowCards()
     {
@@ -2709,27 +2711,42 @@ public sealed partial class MainWindow : Window
         }
 
         SessionTree store = _store ?? SessionTree.Empty();
-        IReadOnlyList<ResolvedSession> all = store.Sessions();
+        DateTimeOffset now = Clock();
 
-        List<ResolvedSession> recent = [.. _recentSessions.Select(store.Session).OfType<ResolvedSession>().Take(3)];
-        bool opened = recent.Count > 0;
+        List<SessionCard> cards =
+        [
+            .. Recents().Sessions
+                        .Select(each => (Session: store.Session(each.Path), each.At))
+                        .Where(each => each.Session is not null)
+                        .Take(3)
+                        .Select(each => Card(each.Session!, RecentSessions.When(each.At, now, Holds(each.Session!.Path)))),
+        ];
 
-        if (!opened)
+        bool connected = cards.Count > 0;
+
+        if (!connected)
         {
-            recent = [.. all.Take(3)];
+            cards = [.. store.Sessions().Take(3).Select(session => Card(session, string.Empty))];
         }
 
-        _home.Show([.. recent.Select(Card)], opened);
+        _home.Show(cards, connected);
 
-        static SessionCard Card(ResolvedSession session)
+        static SessionCard Card(ResolvedSession session, string when)
         {
             int slash = session.Path.LastIndexOf('/');
 
             return new SessionCard(session.Path, session.Path[(slash + 1)..],
                                    session.User?.Value is { Length: > 0 } user ? $"{user}@{session.Host}" : session.Host,
-                                   slash > 0 ? session.Path[..slash] : string.Empty, session.Tags);
+                                   slash > 0 ? session.Path[..slash] : string.Empty, session.Tags)
+            {
+                When = when,
+            };
         }
     }
+
+    /// <summary>Whether a tab in this window holds a saved session.</summary>
+    private bool Holds(string path) =>
+        _open.Any(tab => string.Equals(tab.Saved, path, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>The palette's Home (QS272).</summary>
     private sealed class GoingHome(MainWindow window) : Doing(window)
@@ -3485,7 +3502,6 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        Remember(_recentSessions, path);
         open(path);
         Focus();
     }
@@ -3529,6 +3545,13 @@ public sealed partial class MainWindow : Window
         SessionTree written = store.With(path, made);
 
         written.WriteTo(StoreFile);
+
+        // A rename carries its place in the recent list (QS279).
+        if (!string.Equals(now, path, StringComparison.OrdinalIgnoreCase))
+        {
+            Recents().Moved(path, now);
+        }
+
         RefreshSessions();
 
         return written;
@@ -3610,6 +3633,7 @@ public sealed partial class MainWindow : Window
         }
 
         store.Without(path).With(at, node).WriteTo(StoreFile);
+        Recents().Moved(path, at);
         RefreshSessions();
         _sidebar.Select(at);
 
@@ -3643,6 +3667,7 @@ public sealed partial class MainWindow : Window
         }
 
         store.Without(path).WriteTo(StoreFile);
+        Recents().Dropped(path);
         RefreshSessions();
 
         return true;
@@ -4173,8 +4198,33 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>The sessions opened from the palette, newest first, ranked on as commands are.</summary>
-    private readonly List<string> _recentSessions = [];
+    /// <summary>
+    /// The sessions connected last, newest first, as their file says now (QS279). Read each time it is
+    /// asked rather than kept, so a second window's connection is in it, and never at start-up.
+    /// </summary>
+    public RecentSessions Recents() => RecentSessions.ReadFrom(RecentFile);
+
+    /// <summary>The recent list's file: beside the session store, so a store somewhere else keeps its own.</summary>
+    private string RecentFile => SessionsFile is { } file
+        ? System.IO.Path.Combine(System.IO.Path.GetDirectoryName(file) ?? string.Empty, "recent.json")
+        : Locations.Current.Recent;
+
+    /// <summary>What time it is, which a test fixes.</summary>
+    public Func<DateTimeOffset> Clock { get; set; } = () => DateTimeOffset.Now;
+
+    // The tabs whose connection has been counted as gone live, so each is recorded once (QS279).
+    private readonly HashSet<TerminalTab> _wentLive = [];
+
+    /// <summary>A saved session's connection went live: it goes to the front of the recent list, with the time.</summary>
+    public void SessionWentLive(string path)
+    {
+        Recents().Connected(path, Clock());
+
+        if (_homeShowing)
+        {
+            ShowCards();
+        }
+    }
 
     /// <summary>
     /// Lists the store's sessions in the palette and opens the one picked (QS217).
@@ -4210,12 +4260,11 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if ((Choosing ?? AskedSession)(sessions, _recentSessions) is not { } picked)
+        // Ranked on the sessions connected last, the list Home's cards read (QS279).
+        if ((Choosing ?? AskedSession)(sessions, Recents().Paths) is not { } picked)
         {
             return;
         }
-
-        Remember(_recentSessions, picked.Name);
 
         picked.Run();
     }

@@ -18,6 +18,12 @@ and a folder to make a session in it. The fold at its top narrows it to a rail
 ([SETTINGS.md](SETTINGS.md), `sessionsSidebar`). A hand edit shows the next time you come back to the
 window.
 
+**Recent sessions** are the ones whose connection last went live, newest first, twenty at most, kept
+in `recent.json` beside the store so they survive a restart. Home's cards show the first three with
+when each connected, and **Open session** offers them first. A session that was asked for and never
+connected is not added. Renaming, moving or deleting a session from the client carries its entry or
+drops it; the file is the client's own, and one that will not read is started again empty.
+
 **Quick connect** — *Connect to an address* in the palette — reaches a host nobody has saved. It
 takes `host`, `user@host`, `user@host:port` or `[v6-address]:port`, and offers the hosts in your
 `~/.ssh/config` as you type; a config host connects with the HostName, User, Port, first
