@@ -457,6 +457,56 @@ public sealed class SessionTreeTests : IDisposable
         Assert.Same(tree, tree.Without(string.Empty));
     }
 
+    // ---- A root with a name (QS275) ----
+
+    /// <summary>
+    /// QS275's falsification: a store whose root node has a name, as an early MobaXterm import
+    /// wrote one, opens every session the sidebar lists, and Find, Inherits and Session agree on
+    /// each path. The name stays in the file.
+    /// </summary>
+    [Fact]
+    public void EverySessionTheSidebarListsOpensWhenTheRootHasAName()
+    {
+        string file = Write("sessions.json", ByHand.Replace("\"name\": \"\",", "\"name\": \"imported\",",
+                                                            StringComparison.Ordinal));
+
+        SessionTree store = SessionTree.ReadFrom(file);
+
+        Assert.Equal("imported", store.Root.Name);
+
+        string[] listed =
+        [
+            .. SessionsView.Rows(store, string.Empty, new HashSet<string>(), _ => false)
+                           .Where(row => !row.IsFolder)
+                           .Select(row => row.Path),
+        ];
+
+        Assert.Equal(["prod/web", "prod/db", "laptop"], listed);
+        Assert.Equal(listed, store.Sessions().Select(session => session.Path));
+
+        foreach (string path in listed)
+        {
+            ResolvedSession session = store.Session(path)
+                                      ?? throw new Xunit.Sdk.XunitException($"{path} is listed and does not open");
+
+            Assert.Equal(store.Find(path)!.Host, session.Host);
+
+            // Where the session does not set the user itself, the folder Inherits names is the one
+            // the resolved session names: the two halves address the same node.
+            if (store.Find(path)!.Settings.User is null)
+            {
+                Assert.Equal(store.Inherits(path)[nameof(SessionSettings.User)].From, session.User!.Value.From);
+            }
+        }
+
+        Assert.Equal("prod", store.Session("prod/web")!.JumpHost!.Value.From);
+        Assert.Equal("/", store.Session("prod/web")!.User!.Value.From);
+
+        store.WriteTo(file);
+
+        Assert.Equal("imported", SessionTree.ReadFrom(file).Root.Name);
+    }
+
     private string Write(string name, string content)
     {
         Directory.CreateDirectory(_directory);

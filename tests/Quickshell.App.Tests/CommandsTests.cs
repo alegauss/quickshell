@@ -520,13 +520,36 @@ public sealed class CommandsTests
         Assert.True(with);
     }
 
+    /// <summary>
+    /// QS275: a store whose root has a name opens the path the sidebar lists, without the root's
+    /// name in front of it.
+    /// </summary>
+    [Fact]
+    public void ANamedRootIsNoPartOfThePathThePaletteOpens()
+    {
+        List<string> asked = WithStore(window =>
+        {
+            List<string> seen = [];
+
+            window.OpensSession = path => seen.Add(path);
+            window.Choosing = (all, recent) => Commands.Matching(all, "web-01", recent)[0];
+
+            window.ChooseSession();
+
+            return seen;
+        }, root: "imported");
+
+        Assert.Equal(["prod/web"], asked);
+    }
+
     /// <summary>A window over a store holding two sessions, one in a folder with a tag.</summary>
-    private static T WithStore<T>(Func<MainWindow, T> work)
+    private static T WithStore<T>(Func<MainWindow, T> work, string root = "")
     {
         string store = Path.Combine(Path.GetTempPath(), $"quickshell-open-{Guid.NewGuid():N}.json");
 
         SessionTree.Of(new SessionNode
         {
+            Name = root,
             Children =
             [
                 new SessionNode

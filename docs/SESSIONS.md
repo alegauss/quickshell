@@ -90,7 +90,7 @@ Two things are never inherited, on purpose: what a session types after login, an
 
 What it is called, and how it is addressed: a session's path is its folders' names and its own,
 joined with `/` (`Work/db-primary`), which is what `--session` and **Open session** take. The root
-node's name is empty.
+node's name is empty; where a file gives it one, the name is kept and is never part of a path.
 
 ### `Host`
 

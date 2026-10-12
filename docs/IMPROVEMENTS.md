@@ -226,29 +226,6 @@ the owner.
 
 ## Block D — The tree a user organises work in
 
-### §QS275 The root's name is never part of a path
-
-Found 2026-10-12 on the owner's own store (`%AppData%\quickshell\sessions.json`), whose
-root node is `"Name": "imported"`, written by an early MobaXterm import. Every session
-row in the sidebar, double-clicked, ends in "There is no saved session or folder of
-sessions called Eztec/ezsv72 (root)": not one of the 42 sessions opens.
-
-The two halves of `SessionTree` disagree about the root. `Walk` (behind `Sessions()`,
-`Session(path)`, `Search` and `Group`) starts a path with the root's own name, so the
-session resolves as `imported/Eztec/ezsv72 (root)`. `Find`, `Inherits`, `With` and
-`SessionsView.Rows` start below the root, so the sidebar, the editor and every write say
-`Eztec/ezsv72 (root)`. A probe over a copy of the store resolved all 42 sidebar paths to
-null.
-
-What to build: the root's name is never part of a path. `Walk` is called with the root
-treated as unnamed (start each child at the empty path), whatever the file says; the
-name is kept on write so a hand edit is not rewritten. A test reads a store whose root
-is named and asserts, for every row `SessionsView.Rows` lists, that `Session(row.Path)`
-is not null and that `Find`, `Inherits` and `Session` agree on it; another asserts the
-palette's Open session opens the same path.
-
-Falsified when a session listed in the sidebar of any readable store does not open.
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ### §QS188 A drag that starts on the server
@@ -718,3 +695,27 @@ The automation ids are the ones `SessionBar.cs` and `ConnectionStatusBar.cs` set
 The guest needs the address to answer: either the sshd reached from the guest over the
 host's network, or a container in the guest. Which one is the open choice, and an absent
 server must read as not observed rather than as a pass.
+
+### §QS284 Clipboard sharing stays off for the whole guest run
+
+Found 2026-10-12 running QS275's suite in the guest: no test failed, and the run still
+exited 1 with "Quickshell.App.Tests skipped 3, budget 2". Before the suite, QS226's
+check read the guest clipboard, found text, and left VMware's sharing on ("the guest
+holds text; sharing left as it was"). By the time
+`CopyPasteTests.TheWindowUsesTheSystemClipboardAndLeavesItAsItWasFound` ran, the
+clipboard held `DeviceIndependentBitmap, Bitmap`, so the case measured nothing. With
+sharing on, a picture copied on the host during the run reaches the guest. The host is
+somebody's desk, and copying a screenshot while a run is going is ordinary.
+
+`Use-TextGuestClipboard` in `tools\vm-guest.ps1` decides once, before the run, from what
+the guest holds at that moment. That covers a bitmap left over from an earlier session
+and misses everything that arrives afterwards.
+
+What to build: `run-tests-vm.ps1` turns sharing off for every run, whatever the guest
+holds, then writes text to the guest clipboard and turns sharing back on in the
+`finally` it already has. The host clipboard is never written: sharing is off before the
+guest's clipboard is touched, which is the QS180 rule QS226 already keeps. The log line
+says sharing is off for the run and back on afterwards.
+
+Falsified when a guest run with no failing test goes over the skip budget because the
+clipboard case found something other than text.

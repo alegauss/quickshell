@@ -2,7 +2,6 @@
 
 ## Priority
 
-- QS275
 - QS276
 
 ## Block A — A session that stays up, or says why it did not
@@ -14,8 +13,6 @@
 - 📋 **QS281** (deps: —) **The terminal's text touches the sidebar's divider and the window's top edge, with no inset around the grid** — The approved design pads the terminal 14 by 18 in its own background, and the grid is laid out flush to the cell. → §QS281
 
 ## Block D — The tree a user organises work in
-
-- 📋 **QS275** (deps: —) **A store whose root node has a name opens none of its sessions: every row says there is no such session** — Session(path) puts the root's name in the path and the sidebar, Find and the editor do not, so no row's path ever resolves. → §QS275
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -44,6 +41,7 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS273** (deps: winwright WW522) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — The bars exist only on a live connection, so their evidence is an xunit test on the fixture sshd and not a case. → §QS273
+- 📋 **QS284** (deps: —) **A guest run with no failing test goes red on the skip budget when a bitmap is copied on the host during it** — QS226 checks the guest clipboard once before the run and leaves sharing on when it holds text, so a later host copy still reaches the clipboard case. → §QS284
 
 ## Done when — Block A
 

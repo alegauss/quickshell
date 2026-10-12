@@ -309,7 +309,10 @@ public sealed class SessionTree
     {
         List<ResolvedSession> found = [];
 
-        Walk(Root, string.Empty, new SessionSettings(),
+        // The root's name is never part of a path (QS275): Find, Inherits, With and the sidebar
+        // all start below it, and a store written with one ("imported", by an early MobaXterm
+        // import) otherwise resolved no session the sidebar listed. The name stays in the file.
+        Walk(Root with { Name = string.Empty }, string.Empty, new SessionSettings(),
              new Dictionary<string, string>(StringComparer.Ordinal), [], found);
 
         return found;
