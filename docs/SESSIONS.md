@@ -146,7 +146,9 @@ The SSH port. 22 when nothing sets it.
 
 ### `Key`
 
-A private key file. `~` means your profile. When nothing sets it, the keys OpenSSH looks for by default
+A private key file. `~` means your profile, and so do MobaXterm's `_ProfileDir_`, which an import
+expands; `_MyDocuments_`, `_AppDataDir_` and `_CurrentDrive_` are read too. A key the session names
+that is not there is said in the pane before the connection goes on without it. When nothing sets it, the keys OpenSSH looks for by default
 are offered — `~/.ssh/id_ed25519`, `id_ecdsa`, `id_rsa` — and the Windows OpenSSH agent where it runs;
 then the server's own questions are put to you.
 

@@ -119,6 +119,48 @@ public sealed class MobaXtermImportTests : IDisposable
                         note => note.Contains("not converted", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// QS276: a key under MobaXterm's own profile placeholder imports as the rooted path it means,
+    /// and not as a path beginning with <c>_ProfileDir_</c> that is never found.
+    /// </summary>
+    [Fact]
+    public void AKeyUnderAPlaceholderImportsAsARootedPath()
+    {
+        ImportPreview preview = MobaXtermImport.Preview(
+            File(Line("keyed", 0, "host.example", "22", "alex", (14, "_ProfileDir_\\OneDrive\\Certs\\work.ppk"))));
+
+        string key = Assert.Single(preview.Sessions).Node!.Settings.Key!;
+
+        Assert.True(Path.IsPathRooted(key), key);
+        Assert.Equal(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "OneDrive", "Certs", "work.ppk"),
+                     key);
+    }
+
+    /// <summary>Each placeholder MobaXterm writes expands; an underscore word it does not write is left alone.</summary>
+    [Theory]
+    [InlineData("_ProfileDir_\\k.ppk", Environment.SpecialFolder.UserProfile)]
+    [InlineData("_profiledir_\\k.ppk", Environment.SpecialFolder.UserProfile)]
+    [InlineData("_MyDocuments_\\k.ppk", Environment.SpecialFolder.MyDocuments)]
+    [InlineData("_AppDataDir_\\k.ppk", Environment.SpecialFolder.ApplicationData)]
+    public void EachPlaceholderExpands(string written, Environment.SpecialFolder folder) =>
+        Assert.Equal(Environment.GetFolderPath(folder) + "\\k.ppk", MobaXtermPaths.Expand(written));
+
+    [Fact]
+    public void TheCurrentDriveIsADriveLetter()
+    {
+        string drive = Path.GetPathRoot(Environment.SystemDirectory)![..1];
+
+        Assert.Equal($"{drive}:\\keys\\k.ppk", MobaXtermPaths.Expand("_CurrentDrive_:\\keys\\k.ppk"));
+        Assert.Equal($"{drive}:\\keys\\k.ppk", MobaXtermPaths.Expand("_CurrentDrive_\\keys\\k.ppk"));
+    }
+
+    [Theory]
+    [InlineData("_SomethingElse_\\k.ppk")]
+    [InlineData("C:\\keys\\_ProfileDir_\\k.ppk")]
+    [InlineData("")]
+    public void WhatIsNotAPlaceholderIsLeftAlone(string written) =>
+        Assert.Equal(written, MobaXtermPaths.Expand(written));
+
     // ---- Folders, and writing nothing ----
 
     [Fact]

@@ -262,7 +262,8 @@ public static class MobaXtermImport
     private static string Key(string[] fields, List<string> unmapped)
     {
         // Field 14 in the observed layout, and absent on sessions that authenticate by password.
-        string key = At(fields, 14);
+        // Its own placeholders expanded (QS276), so the store holds a path that exists.
+        string key = MobaXtermPaths.Expand(At(fields, 14));
 
         if (key.Length > 0 && key.EndsWith(".ppk", StringComparison.OrdinalIgnoreCase))
         {

@@ -262,6 +262,7 @@
 
 - ✅ **QS80** **A MobaXterm or PuTTY user has to recreate every session by hand before they can start** — PuTTY's registry reads with the same accounting as MobaXterm's file, and a UI case reads the preview and refuses it — the dialog no capture could reach.
 - ✅ **QS216** **Importing sessions writes over the whole session store, so sessions made since are lost without a word** — An import is added to the store under a dated folder of its own, the preview says the sessions already there stay, and a store that will not read is refused.
+- ✅ **QS276** **An imported key path keeps MobaXterm's _ProfileDir_ placeholder, so the key file is never found or offered** — MobaXterm's _ProfileDir_, _MyDocuments_, _AppDataDir_ and _CurrentDrive_ expand on import and when a key is offered, and a named key that is not there is said in the pane.
 
 ## Block K — The build and the harness — what a green run is evidence of
 

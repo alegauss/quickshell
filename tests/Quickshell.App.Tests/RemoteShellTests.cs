@@ -34,6 +34,38 @@ public sealed class RemoteShellTests : IDisposable
     }
 
     /// <summary>
+    /// QS276: a store imported before placeholders were expanded still names its key as
+    /// <c>_ProfileDir_\…</c>, and the path the connection looks for is the one under the profile.
+    /// Missing, it is named, so the pane can say so instead of falling back without a word.
+    /// </summary>
+    [Fact]
+    public void AKeyUnderAPlaceholderIsLookedForWhereItPoints()
+    {
+        string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string absent = $"quickshell-absent-{Guid.NewGuid():N}.ppk";
+
+        Assert.Equal(Path.Combine(profile, absent), RemoteShell.MissingKey(Keyed($"_ProfileDir_\\{absent}")));
+    }
+
+    /// <summary>A key that is there is not reported missing; a session that names none has nothing to miss.</summary>
+    [Fact]
+    public void AKeyThatIsThereIsNotReportedMissing()
+    {
+        string key = Path.Combine(_here, "present.ppk");
+
+        File.WriteAllText(key, "not a real key");
+
+        Assert.Null(RemoteShell.MissingKey(Keyed(key)));
+        Assert.Null(RemoteShell.MissingKey(Keyed(null)));
+    }
+
+    private static ResolvedSession Keyed(string? key) =>
+        SessionTree.Of(new SessionNode
+        {
+            Children = [new SessionNode { Name = "keyed", Host = "host.example", Settings = new SessionSettings { Key = key } }],
+        }).Session("keyed")!;
+
+    /// <summary>
     /// QS126's own criterion: a saved session connects after a restart. Saved to a file, read back
     /// by a store that knows nothing else, connected, and its shell answers; then again, as the next
     /// run would, and the host key it was asked about the first time is not asked about twice.

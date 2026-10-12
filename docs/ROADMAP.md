@@ -2,8 +2,6 @@
 
 ## Priority
 
-- QS276
-
 ## Block A — A session that stays up, or says why it did not
 
 ## Block B — Keys, agents, and the host you think you reached
@@ -35,8 +33,6 @@
 ## Block I — An error a user can act on
 
 ## Block J — Leaving MobaXterm, proven by the switch
-
-- 📋 **QS276** (deps: —) **An imported key path keeps MobaXterm's _ProfileDir_ placeholder, so the key file is never found or offered** — The importer copies the key field verbatim and nothing expands MobaXterm's path placeholders, so the session silently skips its key. → §QS276
 
 ## Block K — The build and the harness — what a green run is evidence of
 

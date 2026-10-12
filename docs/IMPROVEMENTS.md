@@ -645,34 +645,6 @@ true of the shipped build and not of the plan.
 
 Falsified when a figure in it cannot be reproduced from a documented run.
 
-### §QS276 MobaXterm's path placeholders, expanded
-
-Found 2026-10-12 in the owner's store: imported sessions carry keys such as
-`_ProfileDir_\OneDrive\CustomerCerts\EZTEC\EZTEC.ppk`. `_ProfileDir_` is MobaXterm's own
-placeholder for the user's profile folder, and `MobaXtermImport.Key` copies it verbatim,
-so the file is never found and the session falls back to the default keys and a
-password. `RemoteShell.Expand` knows only a leading `~`.
-
-MobaXterm writes these placeholders in a session's key field: `_ProfileDir_` (the
-profile, `%USERPROFILE%`), `_CurrentDrive_` (the drive MobaXterm runs from, `C:` where
-it is unknown), `_MyDocuments_` (the Documents folder) and `_AppDataDir_` (`%APPDATA%`).
-Confirm the list against the MobaXterm.ini fixtures in `cases\fixtures` and the
-MobaXterm documentation before relying on it.
-
-What to build: a `MobaXtermPaths.Expand` that replaces each placeholder at the start of
-a path, case-insensitively, and is called in two places. On import, so a new store holds
-a real path. And in `RemoteShell.Credentials`, before `File.Exists`, so the stores
-already imported this way work without being imported again. A key that still does not
-exist after expansion is said in the pane ("The key file … named by this session is not
-there") rather than silently skipped, since a session that named a key was asking for
-that key.
-
-Tests: each placeholder expands; an unknown underscore word is left alone; an imported
-fixture line yields a rooted path; a session whose key is missing narrates it.
-
-Falsified when an imported session's key file exists on disk and the connection does not
-offer it.
-
 ## Block K — The build and the harness — what a green run is evidence of
 
 ### §QS273 A case over a connected tab

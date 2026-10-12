@@ -327,6 +327,11 @@ public sealed class RemoteShell : IShellSession
             _secrets = secrets;
             _keys = Credentials(session);
 
+            if (MissingKey(session) is { } missing)
+            {
+                said.Line($"The key file {missing} named by this session is not there.");
+            }
+
             Target = SshEndpoint.For(session.Host, session.User?.Value ?? Environment.UserName,
                                      session.Port?.Value ?? SshEndpoint.DefaultPort);
         }
@@ -599,11 +604,23 @@ public sealed class RemoteShell : IShellSession
         }
     }
 
+    /// <summary>
+    /// A key path as it will be opened: a leading <c>~</c>, and MobaXterm's placeholders, which a
+    /// store imported before QS276 still carries.
+    /// </summary>
     private static string Expand(string path) =>
         path.StartsWith('~')
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                            path[1..].TrimStart('/', '\\'))
-            : path;
+            : MobaXtermPaths.Expand(path);
+
+    /// <summary>
+    /// The key file a session names and that is not there, or null. Said in the pane, because a
+    /// session that named a key was asking for that key, and falling back without a word reads as
+    /// the server refusing it (QS276).
+    /// </summary>
+    public static string? MissingKey(ResolvedSession session) =>
+        session.Key?.Value is { Length: > 0 } named && Expand(named) is var path && !File.Exists(path) ? path : null;
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
