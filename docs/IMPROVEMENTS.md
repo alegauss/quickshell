@@ -206,26 +206,6 @@ the per-frame cost is the wake and the present, which is a different line.
 
 ## Block D — The tree a user organises work in
 
-### §QS271 Quick connect
-
-Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Main.dc.html`). Reaching a host
-nobody has saved means opening the session dialog, filling it and saving it first, where
-every other client takes `user@host` and connects.
-
-What to build: an **Address** box that takes `user@host`, `host`, `user@host:port` and a
-Host alias from `~/.ssh/config`, which it offers as you type. Beside it **Sign in
-with**: key or agent (automatic), password, or a specific key file. **Connect** opens
-the session in a new tab, and **Save as a session**, checked by default, writes it to
-the store with the address's parts in their fields, under no folder, named after the
-host. An address that does not parse says why under the box and connects nothing.
-
-It parses into the same session the store would hold and connects through the same path,
-so the host-key prompt, the sign-in dialog and the trace behave as they do for a saved
-one. It sits on the Home tab and in the palette as **Connect to an address**.
-
-Falsified when an address typed here connects differently from the same session saved
-and opened.
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ### §QS188 A drag that starts on the server
@@ -513,3 +493,27 @@ The automation ids are the ones `SessionBar.cs` and `ConnectionStatusBar.cs` set
 The guest needs the address to answer: either the sshd reached from the guest over the
 host's network, or a container in the guest. Which one is the open choice, and an absent
 server must read as not observed rather than as a pass.
+
+### §QS274 Every guest run's reports, and the cases it ran
+
+Found shipping QS270 (2026-10-12). `tools/run-tests-vm.ps1` copies `results.zip` back
+only when the run is red, and unpacks it into `TestResults\vm\guest`. On a green run
+that folder keeps the reports of the last red one, so a reader checking which UI cases
+ran found a failed run from hours earlier saying "all 12 cases" and took it for the
+current one. The new case was in the run; proving it meant dot-sourcing
+`tools\vm-guest.ps1` and copying the archive back by hand.
+
+The Cases assembly is one xunit test over every case, and a passed test carries no
+message, so even the fresh TRX says only Passed: not how many cases ran or which.
+
+What to build: copy `results.zip` back on every run, green or red, and replace
+`TestResults\vm\guest` with it, so what is there is always this run's. Have
+`CasesRun.EveryUiCaseInThisRepositoryRuns` write the verdict's rendering to the test
+output on a pass as it does on a failure (xunit v3's
+`TestContext.Current.TestOutputHelper`), so the TRX names every case and its check
+count. Then `count-the-run.ps1` can print a line beside the assembly table: how many UI
+cases ran out of how many `cases\*.cases.json` declares, and a count that falls short is
+red.
+
+Falsified when a green guest run leaves a reader unable to say, from the host, which UI
+cases ran.

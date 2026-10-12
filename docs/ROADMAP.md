@@ -10,15 +10,13 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS271** (deps: —) **A host nobody has saved cannot be reached without filling and saving the session dialog first** — There is no box that takes user@host and connects, which is the first thing a new user tries. → §QS271
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS272** (deps: QS268 ✅, QS271) **The window opens on a local Command Prompt, and nothing on screen says this client connects to servers** — A new user takes it for a terminal emulator: the way to a server is behind a chord they have not learnt. → §QS272
+- 📋 **QS272** (deps: QS268 ✅, QS271 ✅) **The window opens on a local Command Prompt, and nothing on screen says this client connects to servers** — A new user takes it for a terminal emulator: the way to a server is behind a chord they have not learnt. → §QS272
 
 ## Block H — The reason to leave the incumbent
 
@@ -32,6 +30,7 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS273** (deps: winwright WW522) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — The bars exist only on a live connection, so their evidence is an xunit test on the fixture sshd and not a case. → §QS273
+- 📋 **QS274** (deps: —) **A green guest run brings no reports back, so which UI cases ran cannot be read on the host** — The archive returns only on a red run, so the guest folder holds the last red run's reports, which read as the current ones. → §QS274
 
 ## Done when — Block A
 

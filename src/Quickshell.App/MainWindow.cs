@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -363,6 +363,9 @@ public sealed class MainWindow : Window
         // Opening one, from the palette (QS217): the store's sessions listed in the palette itself,
         // found by name, host or tag. No chord, for the reason New session has none.
         InputBindings.Add(new InputBinding(new ChoosingSession(this), new PaletteOnly()));
+
+        // A host nobody has saved, by its address (QS271). No chord, for the reason Open session has none.
+        InputBindings.Add(new InputBinding(new ConnectingAddress(this), new PaletteOnly()));
 
         // Every forward this client holds, from the palette (QS70): seen rarely, and needed exactly
         // when a port is mysteriously taken, so no chord.
@@ -3021,6 +3024,118 @@ public sealed class MainWindow : Window
         ConnectSession(at);
 
         return written;
+    }
+
+    /// <summary>
+    /// Opens a session that is not in the store — an address typed into quick connect and not saved
+    /// (QS271) — by the path a saved one takes. Null while nothing can.
+    /// </summary>
+    public Action<ResolvedSession>? OpensUnsaved { get; set; }
+
+    /// <summary>The ssh_config quick connect reads; the user's own unless a caller says, as a test does.</summary>
+    public string? SshConfigFile { get; set; }
+
+    /// <summary>How quick connect's window is put on screen; shown unless a caller says otherwise.</summary>
+    public Action<QuickConnectWindow>? ShowsQuickConnect { get; set; }
+
+    /// <summary>
+    /// Connects an address typed into quick connect (QS271), saving it first where asked.
+    ///
+    /// <para><b>Saved, it goes in the store at the top level</b>, named after the host, and is
+    /// opened from there like any saved session; a name already taken by a different session gets a
+    /// number after it, and the same session already saved is simply opened. <b>Not saved</b>, it is
+    /// resolved inside the store as it would be if it were — so the store's own top-level settings
+    /// apply either way — and opened without writing anything.</para>
+    /// </summary>
+    /// <returns>Why it did not connect, in the words shown under the box; empty where it did.</returns>
+    public string ConnectAddress(string address, SignInMethod signIn, string? keyFile, bool save)
+    {
+        QuickAddress parsed = QuickAddress.Parse(address, SshConfig.ReadFrom(SshConfigFile), signIn, keyFile);
+
+        if (parsed.Session is not { } node)
+        {
+            return parsed.Refused;
+        }
+
+        SessionTree store;
+
+        try
+        {
+            store = SessionTree.ReadFrom(StoreFile);
+        }
+        catch (SessionStoreException unreadable)
+        {
+            return $"{unreadable.Message} {unreadable.Means}";
+        }
+
+        string name = node.Name;
+
+        for (int more = 2; store.Find(name) is { } there && !Same(there, node); more++)
+        {
+            name = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{node.Name} {more}");
+        }
+
+        SessionTree with = store.With(name, node with { Name = name });
+
+        if (save)
+        {
+            if (store.Find(name) is null)
+            {
+                with.WriteTo(StoreFile);
+                RefreshSessions();
+            }
+
+            ConnectSession(name);
+
+            return string.Empty;
+        }
+
+        if (with.Session(name) is { } resolved)
+        {
+            OpensUnsaved?.Invoke(resolved);
+            Focus();
+        }
+
+        return string.Empty;
+
+        static bool Same(SessionNode a, SessionNode b) =>
+            a.IsSession && a.Host == b.Host && a.Settings == b.Settings && a.PostLogin is null && a.Forwards is null;
+    }
+
+    /// <summary>Opens quick connect in a small window of its own, for the palette's entry (QS271).</summary>
+    public QuickConnectWindow ShowQuickConnect()
+    {
+        IReadOnlyList<string> aliases = [];
+
+        try
+        {
+            aliases = SshConfig.ReadFrom(SshConfigFile).Aliases;
+        }
+        catch (System.IO.IOException)
+        {
+            // A config that will not read offers nothing to complete, and the box still takes an address.
+        }
+
+        QuickConnectWindow shown = new(new QuickConnect(this, aliases)) { ThemeMode = ThemeMode };
+
+        if (IsLoaded)
+        {
+            shown.Owner = this;
+        }
+
+        (ShowsQuickConnect ?? (window => window.Show()))(shown);
+
+        return shown;
+    }
+
+    /// <summary>The palette's Connect to an address (QS271).</summary>
+    private sealed class ConnectingAddress(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Connect to an address";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.ShowQuickConnect();
     }
 
     /// <summary>

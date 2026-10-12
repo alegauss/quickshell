@@ -1,0 +1,90 @@
+{
+  // QS271. Quick connect, reached from the palette as a user reaches it, and an address that does not
+  // parse said under the box with nothing connected.
+  //
+  // Nothing here connects: a good address would open an SSH tab to a host no case fixture can name
+  // (QS273, WW522). That a good one connects by the path a saved session takes, saved or not, is
+  // QuickConnectTests'.
+
+  "fixtures": [
+    {
+      // Two tabs, so the chord has a tab on the strip to be pressed at, as the palette case does. Not
+      // lent: a quick-connect window left open by a red would stand over another case's window.
+      "name": "a window to connect from",
+      "arguments": ["--tabs", "2"]
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "connect to an address is in the palette and a bad address says why",
+      "catches": "a quick connect that is not reachable without a saved session, or an address that does not parse and connects to something anyway, or says nothing",
+      "filed": "QS271",
+      "tags": ["smoke", "sessions", "palette"],
+      "fixture": "a window to connect from",
+
+      "steps": [
+        {
+          "locator": "TabItem[order=right]",
+          "act": "press",
+          "with": "Ctrl+Shift+P",
+          "named": "the palette is opened the way a user opens it"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "set value",
+          "with": "connect to an address",
+          "expect": "connect to an address",
+          "reads": "value",
+          "named": "what a new user would type for it"
+        },
+        {
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Connect to an address",
+          "named": "is in the palette"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "press",
+          "with": "Enter",
+          "named": "and taken"
+        },
+        {
+          "locator": "Window#QuickConnectWindow",
+          "act": "read",
+          "reads": "name",
+          "expect": "Connect to an address",
+          "named": "quick connect is up under its own caption"
+        },
+        {
+          "locator": "Window#QuickConnectWindow > ComboBox#Address",
+          "act": "set value",
+          "with": "deploy@",
+          "expect": "deploy@",
+          "reads": "value",
+          "named": "an address with an account and no host"
+        },
+        {
+          "locator": "Window#QuickConnectWindow > Button#Connect",
+          "act": "invoke",
+          "named": "Connect is pressed"
+        },
+        {
+          "locator": "Window#QuickConnectWindow > Text#AddressRefused",
+          "act": "read",
+          "reads": "name",
+          "expect": "There is no host in that: type the machine's name or address after the @.",
+          "named": "the box says why, and the window is still there because nothing connected"
+        },
+        {
+          "locator": "Window#QuickConnectWindow > ComboBox#Address",
+          "act": "press",
+          "with": "Escape",
+          "named": "and Escape leaves it"
+        }
+      ]
+    }
+  ]
+}

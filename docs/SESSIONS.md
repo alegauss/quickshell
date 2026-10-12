@@ -18,6 +18,15 @@ and a folder to make a session in it. The fold at its top narrows it to a rail
 ([SETTINGS.md](SETTINGS.md), `sessionsSidebar`). A hand edit shows the next time you come back to the
 window.
 
+**Quick connect** — *Connect to an address* in the palette — reaches a host nobody has saved. It
+takes `host`, `user@host`, `user@host:port` or `[v6-address]:port`, and offers the hosts in your
+`~/.ssh/config` as you type; a config host connects with the HostName, User, Port, first
+IdentityFile and ProxyJump the config gives it, and what you typed wins over the config, as on
+`ssh`'s command line. **Sign in with** is the session dialog's choice. **Save as a session**, on by
+default, writes it at the top of the store named after the host (with a number after it if that
+name is taken by another session) and opens it from there; off, the same session is opened and
+nothing is written. An address that does not parse says why under the box.
+
 **A connected session shows where it goes.** While the pane with the keyboard holds a saved session,
 a bar over the terminal names the session, its `user@host:port` and the jump host it goes through,
 and a chip saying **Connected**, **Reconnecting** or **Disconnected**. Each running forward has a chip

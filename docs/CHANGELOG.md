@@ -137,6 +137,7 @@
 - ✅ **QS254** **A session field written in the wrong place in the store is silently ignored, so the session connects with defaults** — A field the store does not have is refused by name and line, and a setting beside the host is told to move under settings, so nothing connects on defaults.
 - ✅ **QS268** **Saved sessions are reached only by typing in the palette, so nobody sees what is saved or what is connected** — A sidebar lists saved sessions as a tree, searches them, marks the ones a tab holds Connected, and folds to a remembered rail (design recorded in `docs/design/friendly-shell/README.md`).
 - ✅ **QS270** **The session dialog decides how to sign in by which text box was filled, and cannot test a session** — The session dialog offers Sign in with as three segments over Key and Credential, folds the rest into summarised groups, and Test connection signs in and says why not, unsaved.
+- ✅ **QS271** **A host nobody has saved cannot be reached without filling and saving the session dialog first** — Connect to an address takes user@host[:port] or an ssh_config host, saves it as a session unless unticked, and opens it by the path a saved session takes.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

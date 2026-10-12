@@ -305,6 +305,9 @@ public static class Entry
         window.Connects = leaf => _ = leaf.ConnectAsync();
         window.OpensSession = path => OpenedSession(window, window.Settings, share, path, trace: false);
 
+        // An address typed into quick connect and not saved (QS271): the same path a saved one takes.
+        window.OpensUnsaved = session => OpenResolved(window, window.Settings, share, session, saved: false);
+
         // The session dialog's Test connection (QS270): the host-key check and the sign-in questions
         // a tab would put, on a connection that closes again.
         window.TestsConnection = (session, token) =>
@@ -570,9 +573,27 @@ public static class Entry
             return false;
         }
 
+        OpenResolved(window, settings, share, session, saved: true, trace, recording, trusting, secrets);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Opens one resolved session in a tab of its own and connects it: a saved one, or an address
+    /// typed into quick connect and not saved (QS271), which is the same session by the same path.
+    /// </summary>
+    private static void OpenResolved(MainWindow window, Settings settings, TerminalShare share, ResolvedSession session,
+                                     bool saved, bool trace = false, SessionRecording? recording = null,
+                                     Quickshell.Transport.TrustOnFirstUse? trusting = null,
+                                     Quickshell.Transport.SecretStore? secrets = null)
+    {
+        trusting ??= new(Quickshell.Transport.KnownHosts.ReadFrom(), window.AskHostKey);
+        secrets ??= Locations.Current.Portable ? null : Quickshell.Transport.SecretStore.Installed();
+
         TerminalTab tab = TerminalTab.Open(settings, share, session.Host);
 
-        tab.Saved = session.Path;
+        // An unsaved address has no row in the sidebar to mark, and nothing to edit.
+        tab.Saved = saved ? session.Path : null;
 
         window.Apply(settings);
         window.Add(tab);
@@ -591,8 +612,6 @@ public static class Entry
             await RemoteShell.OpenAsync(session, trusting, emulator, damage, columns, rows, token, log,
                                         window.AskSignIn, secrets, recording)
                              .ConfigureAwait(false));
-
-        return true;
     }
 
     /// <summary>

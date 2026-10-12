@@ -15,6 +15,8 @@ you are running — it is offered only by a copy that is not already the install
 [INSTALL.md](INSTALL.md) says what it writes — *Open session* turns the palette into a list of
 your saved sessions, found by path, host or tag, with the ones you opened last at the top
 ([SESSIONS.md](SESSIONS.md) is what a session can hold),
+*Connect to an address* takes `user@host`, `user@host:port` or a host from `~/.ssh/config` and
+connects it, saving it as a session unless you untick that,
 *Show forwards* lists every forward the client holds, what each is carrying now, and the ones
 that did not start,
 *Trace this session* connects the saved session in the pane again with a trace of its own under
