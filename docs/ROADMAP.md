@@ -8,8 +8,6 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS287** (deps: QS215 ✅) **The contrast test's Direct2D reference still draws blank in the guest after every redraw, and the run goes red** — QS215 redraws a blank reference, but on 2026-10-12 all three redraws were blank too, so a green tree failed on a draw that never reached its target. → §QS287
-
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates

@@ -204,31 +204,6 @@ Falsified when a one-cell blink costs what a whole-grid one did on that desk. Th
 swap effect goes back to `FlipDiscard` unless photon says sequential costs nothing, and
 the per-frame cost is the wake and the present, which is a different line.
 
-### §QS287 A reference that stays blank after its redraws
-
-Found 2026-10-12 on QS278's guest run (tree otherwise green: 0 failed in every other
-assembly, 15 of 15 UI cases). `ContrastTests.ThisRenderersInkIsMeasuredAgainstDirect2Ds`
-failed with: "Direct2D's reference was blank on three draws (dark on light, cleartype)
-... draw 1 read blank twice: the draw never reached the target; draw 2 read blank twice;
-draw 3 read blank twice". The same tree passed it on five guest runs earlier that day,
-and the next run passed.
-
-QS215 shipped the half that reports a blank reference and redraws it. Here every redraw
-was blank too, and the message names the shape: "the draw never reached the target", not
-a read that came too early. Three blank draws in a row point at the device, not timing:
-a Direct2D device on the guest's software adapter that accepts a draw and lands it
-nowhere.
-
-What to build: on a blank after the redraws, rebuild the Direct2D factory, device and
-target from scratch and draw once more, recording in the message whether the rebuilt
-device drew. If it did, keep the rebuild as the remedy; if not, the guest cannot give a
-reference for that pass, and the test should say so as a skip with that reason and count
-against the skip budget rather than a failure, since nothing about this renderer was
-measured.
-
-Falsified when the guest suite runs ten times with no blank reference left after a
-rebuild.
-
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates

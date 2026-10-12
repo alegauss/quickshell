@@ -121,6 +121,7 @@
 - ✅ **QS261** **Where a read ends decides how wide a character is, so a keycap split by the network leaves the cursor a column off** — A mark starting a read joins the cell just written where they make one cluster, so a byte-at-a-time stream leaves the screen a whole one does.
 - ✅ **QS262** **The text an input method is composing vanishes every time the blinking cursor goes dark** — A composition is placed by where the cursor is and only its caret blinks, so the text being typed stays on screen and its blink is one cell.
 - ✅ **QS281** **The terminal's text touches the sidebar's divider and the window's top edge, with no inset around the grid** — The terminal sits 18 in from the sides and 14 from top and bottom, in the focused pane's own background, repainted with a new scheme or OSC 11, and the grid shrinks to fit inside.
+- ✅ **QS287** **The contrast test's Direct2D reference still draws blank in the guest after every redraw, and the run goes red** — A Direct2D reference still blank after its redraws is drawn on a device built from scratch, and where that is blank too the pass is a skip with its reason, not a failure.
 
 ## Block D — The tree a user organises work in
 
