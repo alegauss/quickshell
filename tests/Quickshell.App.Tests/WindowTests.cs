@@ -79,6 +79,71 @@ public sealed class WindowTests : IDisposable
         Assert.True(Sta.Run(() => new MainWindow().SidebarShowing));
     }
 
+    // ---- The terminal's inset (QS281) ----
+
+    /// <summary>
+    /// The terminal sits 18 in from the sides and 14 from the top and bottom, in the scheme's own
+    /// background, and a new scheme repaints the inset with the terminal.
+    /// </summary>
+    [Fact]
+    public void TheTerminalSitsInAnInsetOfItsOwnBackground()
+    {
+        (Thickness padding, Color first, Color changed) = Sta.Run(() =>
+        {
+            MainWindow window = new();
+            Border inset = Inset(window);
+            Color before = window.InsetColour;
+
+            window.Apply(Settings.Default with { Colours = ColourScheme.Default with { Background = Brand.Ink } });
+
+            return (inset.Padding, before, window.InsetColour);
+        });
+
+        Assert.Equal(new Thickness(18, 14, 18, 14), padding);
+        Assert.Equal((Brand.Ground.Red, Brand.Ground.Green, Brand.Ground.Blue), (first.R, first.G, first.B));
+        Assert.Equal((Brand.Ink.Red, Brand.Ink.Green, Brand.Ink.Blue), (changed.R, changed.G, changed.B));
+    }
+
+    /// <summary>The grid is laid out inside the inset, so what the host is told shrinks by exactly what the inset takes.</summary>
+    [Fact]
+    public void TheGridIsLaidOutInsideTheInset()
+    {
+        (double inset, double canvas, double insetHigh, double canvasHigh) = Sta.Run(() =>
+        {
+            MainWindow window = new();
+            FrameworkElement content = (FrameworkElement)window.Content;
+
+            content.Measure(new Size(1000, 600));
+            content.Arrange(new Rect(0, 0, 1000, 600));
+
+            Border border = Inset(window);
+            FrameworkElement terminal = (FrameworkElement)border.Child;
+
+            return (border.ActualWidth, terminal.ActualWidth, border.ActualHeight, terminal.ActualHeight);
+        });
+
+        Assert.True(inset > 0, "the terminal was given no room at all");
+        Assert.Equal(inset - (2 * MainWindow.InsetSides), canvas, 3);
+        Assert.Equal(insetHigh - (2 * MainWindow.InsetEnds), canvasHigh, 3);
+    }
+
+    private static Border Inset(MainWindow window) =>
+        Descendants(window).OfType<Border>().Single(each =>
+            System.Windows.Automation.AutomationProperties.GetAutomationId(each) == "TerminalInset");
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        yield return root;
+
+        foreach (DependencyObject child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            foreach (DependencyObject below in Descendants(child))
+            {
+                yield return below;
+            }
+        }
+    }
+
     /// <summary>The strip appears when there is a choice to make, and goes again when there is not.</summary>
     [Fact]
     public void TheTabStripAppearsWithTheSecondTabAndLeavesWithIt()

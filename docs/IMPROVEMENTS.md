@@ -204,26 +204,6 @@ Falsified when a one-cell blink costs what a whole-grid one did on that desk. Th
 swap effect goes back to `FlipDiscard` unless photon says sequential costs nothing, and
 the per-frame cost is the wake and the present, which is a different line.
 
-### §QS281 An inset around the terminal, in its own colour
-
-Seen 2026-10-12 in the owner's screenshot: the first column of the grid sits about 2px
-from the sidebar's divider and the first row against the window's top, where
-`Connected.dc.html` gives the terminal `padding: 14px 18px`.
-
-What to build: the terminal area keeps an inset of 14 above and below and 18 left and
-right, in the colour scheme's own background so the inset reads as part of the terminal
-and not as a frame: a Border around `_terminal` whose Background follows the scheme the
-focused pane wears (QS245's own scheme where a session sets one), changed with it. The
-grid is laid out inside the inset, so the column and row counts the host is told shrink
-by exactly what the inset takes; split panes keep their 4px dividers inside it, and zoom
-fills it. The pointer, selection and drop coordinates stay in the pane's own space,
-which the inset does not move.
-
-Tests: WindowTests read the canvas's offset from the cell (18, 14) and that its
-background equals the scheme's background after a scheme change; the grid size at a
-known window size drops by the expected columns and rows. A run-app-vm.cmd picture for
-the owner.
-
 ### §QS287 A reference that stays blank after its redraws
 
 Found 2026-10-12 on QS278's guest run (tree otherwise green: 0 failed in every other

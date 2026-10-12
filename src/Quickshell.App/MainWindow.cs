@@ -55,6 +55,16 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private readonly Canvas _terminal = new() { ClipToBounds = true };
 
+    /// <summary>
+    /// The terminal's inset (QS281): 14 above and below and 18 at the sides, as the approved design pads
+    /// it, in the focused pane's own background so it reads as the terminal and not as a frame. The
+    /// canvas is laid out inside it, so the grid a host is told about shrinks by what it takes.
+    /// </summary>
+    private readonly Border _terminalInset = new() { Padding = new Thickness(InsetSides, InsetEnds, InsetSides, InsetEnds) };
+
+    /// <summary>The inset at the terminal's sides, and above and below it.</summary>
+    public const double InsetSides = 18, InsetEnds = 14;
+
     private readonly List<TerminalTab> _open = [];
     private readonly TabControl _tabs = new();
     private readonly DockPanel _find = new() { Margin = new Thickness(8, 6, 8, 6) };
@@ -217,13 +227,17 @@ public sealed partial class MainWindow : Window
         Grid.SetRowSpan(_sidebar, 3);
         Grid.SetRow(_find, 2);
         Grid.SetColumn(_find, 1);
-        Grid.SetRow(_terminal, 3);
-        Grid.SetColumn(_terminal, 1);
+        _terminalInset.Child = _terminal;
+        System.Windows.Automation.AutomationProperties.SetAutomationId(_terminalInset, "TerminalInset");
+        PaintInset();
+
+        Grid.SetRow(_terminalInset, 3);
+        Grid.SetColumn(_terminalInset, 1);
 
         layout.Children.Add(_stripFrame);
         layout.Children.Add(_sidebar);
         layout.Children.Add(_find);
-        layout.Children.Add(_terminal);
+        layout.Children.Add(_terminalInset);
 
         Content = layout;
 
@@ -1464,6 +1478,7 @@ public sealed partial class MainWindow : Window
         // Each tab's dot, title and underline, and Home's (QS278). The name stays the title and only
         // the title: a marker in it would be read out by a screen reader and by every case.
         DressTabs();
+        PaintInset();
 
         // Recording while any pane is (QS134), or while somebody said so directly.
         bool recording = _recording || RecordingPanes() > 0;
@@ -1733,6 +1748,9 @@ public sealed partial class MainWindow : Window
                 leaf.Apply(settings);
             }
         }
+
+        // A new scheme is a new background, around the terminal as well as in it (QS281).
+        PaintInset();
     }
 
     /// <summary>
@@ -2757,6 +2775,31 @@ public sealed partial class MainWindow : Window
 
         _sidebar.FocusSearch();
     }
+
+    /// <summary>
+    /// Paints the inset in the background of the pane with the keyboard, which a scheme, a session's
+    /// own scheme (QS245) or the host through OSC 11 may have changed; the settings' scheme where no
+    /// tab is current. Read on the window's wake-up with the titles, and touched only when it changed.
+    /// </summary>
+    private void PaintInset()
+    {
+        Quickshell.Terminal.Rgb ground = Current?.Focused.Emulator.Palette.Background ?? Settings.Colours.Background;
+
+        if (_terminalInset.Background is System.Windows.Media.SolidColorBrush { Color: var now }
+            && now.R == ground.Red && now.G == ground.Green && now.B == ground.Blue)
+        {
+            return;
+        }
+
+        System.Windows.Media.SolidColorBrush brush = new(System.Windows.Media.Color.FromRgb(ground.Red, ground.Green, ground.Blue));
+
+        brush.Freeze();
+        _terminalInset.Background = brush;
+    }
+
+    /// <summary>The inset's colour now, which is what a test reads.</summary>
+    public System.Windows.Media.Color InsetColour =>
+        _terminalInset.Background is System.Windows.Media.SolidColorBrush brush ? brush.Color : System.Windows.Media.Colors.Transparent;
 
     /// <summary>Whether a tab in this window holds a saved session.</summary>
     private bool Holds(string path) =>
