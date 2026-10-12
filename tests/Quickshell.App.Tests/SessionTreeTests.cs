@@ -426,6 +426,37 @@ public sealed class SessionTreeTests : IDisposable
         Assert.Equal(["prod/web"], open.Closing());
     }
 
+    /// <summary>
+    /// Removing a node takes it and what is under it, leaves its siblings in their order, and a path
+    /// naming nothing — or the root — changes nothing (QS268, the sidebar's move and delete).
+    /// </summary>
+    [Fact]
+    public void WithoutRemovesOneNodeAndLeavesTheRestAsTheyWere()
+    {
+        SessionTree tree = SessionTree.Of(new SessionNode
+        {
+            Children =
+            [
+                new SessionNode
+                {
+                    Name = "Work",
+                    Children =
+                    [
+                        new SessionNode { Name = "a", Host = "a.example" },
+                        new SessionNode { Name = "b", Host = "b.example" },
+                        new SessionNode { Name = "c", Host = "c.example" },
+                    ],
+                },
+                new SessionNode { Name = "Home", Children = [new SessionNode { Name = "nas", Host = "nas.example" }] },
+            ],
+        });
+
+        Assert.Equal(["Work/a", "Work/c", "Home/nas"], tree.Without("work/B").Sessions().Select(each => each.Path));
+        Assert.Equal(["Work/a", "Work/b", "Work/c"], tree.Without("Home").Sessions().Select(each => each.Path));
+        Assert.Same(tree, tree.Without("Work/nothing"));
+        Assert.Same(tree, tree.Without(string.Empty));
+    }
+
     private string Write(string name, string content)
     {
         Directory.CreateDirectory(_directory);

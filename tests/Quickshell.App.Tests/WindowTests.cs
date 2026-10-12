@@ -39,9 +39,9 @@ public sealed class WindowTests : IDisposable
     // ---- The falsification: what a default installation shows ----
 
     /// <summary>
-    /// A default installation shows a title bar and a terminal, and the tab strip that is there is
-    /// not on screen. No toolbar, no status bar, no sidebar — and not hidden ones either, because
-    /// the tree does not contain them at all.
+    /// A default installation shows a title bar, the sessions sidebar and a terminal, and the tab strip
+    /// that is there is not on screen. No toolbar, no status bar, no menu — and not hidden ones either,
+    /// because the tree does not contain them at all.
     /// </summary>
     [Fact]
     public void ADefaultWindowShowsATitleBarAndATerminalAndNothingElse()
@@ -66,14 +66,17 @@ public sealed class WindowTests : IDisposable
     [Fact]
     public void TheChromeModelAgreesWithTheWindow()
     {
-        Assert.Equal([ChromeElement.TitleBar, ChromeElement.Terminal], Chrome.Default.Showing(1));
+        Assert.Equal([ChromeElement.TitleBar, ChromeElement.Sidebar, ChromeElement.Terminal], Chrome.Default.Showing(1));
 
-        Assert.Equal([ChromeElement.TitleBar, ChromeElement.TabStrip, ChromeElement.Terminal],
+        Assert.Equal([ChromeElement.TitleBar, ChromeElement.TabStrip, ChromeElement.Sidebar, ChromeElement.Terminal],
                      Chrome.Default.Showing(2));
 
         Assert.False(Chrome.Default.Toolbar);
         Assert.False(Chrome.Default.StatusBar);
-        Assert.False(Chrome.Default.Sidebar);
+
+        // The one element added on purpose, with the owner's approval (QS268), and the window agrees.
+        Assert.True(Chrome.Default.Sidebar);
+        Assert.True(Sta.Run(() => new MainWindow().SidebarShowing));
     }
 
     /// <summary>The strip appears when there is a choice to make, and goes again when there is not.</summary>

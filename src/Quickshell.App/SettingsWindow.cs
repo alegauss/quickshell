@@ -39,6 +39,7 @@ public sealed class SettingsWindow : Window
         ("cursorBlink", "Cursor blinks", "Whether the cursor blinks."),
         ("warnOnPaste", "Warn on paste", "Whether a paste carrying a newline is shown before any of it is sent."),
         ("colourScheme", "Colour scheme", "A path to a scheme file. Empty — the default — is the built-in scheme."),
+        ("sessionsSidebar", "Sessions sidebar", "Whether the saved sessions are listed down the left of the window, or folded to a narrow rail."),
     ];
 
     private readonly string _path;
@@ -125,6 +126,7 @@ public sealed class SettingsWindow : Window
             ((CheckBox)_controls["cursorBlink"]).IsChecked = now.CursorBlink;
             ((CheckBox)_controls["warnOnPaste"]).IsChecked = now.WarnOnPaste;
             ((TextBox)_controls["colourScheme"]).Text = now.Scheme;
+            ((CheckBox)_controls["sessionsSidebar"]).IsChecked = now.SessionsSidebar;
         }
         finally
         {
@@ -190,6 +192,7 @@ public sealed class SettingsWindow : Window
         "ligatures" => Toggle(on => Change(now => now with { Ligatures = on })),
         "cursorBlink" => Toggle(on => Change(now => now with { CursorBlink = on })),
         "warnOnPaste" => Toggle(on => Change(now => now with { WarnOnPaste = on })),
+        "sessionsSidebar" => Toggle(on => Change(now => now with { SessionsSidebar = on })),
         "fontFamily" => Field(text => text.Trim().Length > 0 && Change(now => now with { FontFamily = text.Trim() })),
         "fontSize" => Field(text => double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double size)
                                     && size > 0 && Change(now => now with { FontSize = size })),

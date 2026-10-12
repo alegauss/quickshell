@@ -305,6 +305,9 @@ public static class Entry
         window.Connects = leaf => _ = leaf.ConnectAsync();
         window.OpensSession = path => OpenedSession(window, window.Settings, share, path, trace: false);
 
+        // The sidebar's sessions, read now that the window is on the desk and not before (QS268).
+        window.RefreshSessions();
+
         // A session recorded from its first byte, local or saved (QS134).
         window.OpensRecorded = recording => Opened(window, window.Settings, share, recording: recording);
         window.OpensSessionRecorded = (path, recording) =>
@@ -560,6 +563,8 @@ public static class Entry
         }
 
         TerminalTab tab = TerminalTab.Open(settings, share, session.Host);
+
+        tab.Saved = session.Path;
 
         window.Apply(settings);
         window.Add(tab);

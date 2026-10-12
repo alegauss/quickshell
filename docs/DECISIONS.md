@@ -52,6 +52,7 @@
 - ✅ **QS57** **A host reachable only through a bastion cannot be reached at all** — A jump is a nested session and never a tunnel: each hop's own host key is checked with that hop's own delegate, and no hop's credentials are offered to another.
 - ✅ **QS58** **A session cannot be created or edited, so the store can only be built by editing its file** — A dialog never requires what the store could inherit, and never writes an inherited value back: an override is an act, so a folder's one default stays one value.
 - ✅ **QS254** **A session field written in the wrong place in the store is silently ignored, so the session connects with defaults** — An unknown field refuses the whole session store rather than being skipped, accepting that a store from a later client will not open here.
+- ✅ **QS268** **Saved sessions are reached only by typing in the palette, so nobody sees what is saved or what is connected** — A default window shows the sessions sidebar beside the terminal; a terminal-only first screen was rejected, since sessions behind a chord went unseen.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

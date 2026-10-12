@@ -55,7 +55,7 @@
           // The palette's own box. `set value` and not synthesised keystrokes: the pattern is the
           // act, and a keystroke would need the foreground this whole exercise exists to stop
           // needing.
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "set value",
           "with": "sac",
           "expect": "sac",
@@ -68,14 +68,14 @@
           //
           // That the palette lists itself is the deliberate half. A list with a hole in it is a
           // list somebody has to remember the shape of.
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "Show all commands",
           "named": "the palette is up and lists itself"
         },
         {
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "set value",
           "with": "spr",
           "expect": "spr",
@@ -83,14 +83,14 @@
           "named": "and again, for a command with no other route but a chord"
         },
         {
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "Split pane right",
           "named": "initials find the phrase, which is why this is worth opening"
         },
         {
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "set value",
           "with": "eqp",
           "expect": "eqp",
@@ -101,14 +101,14 @@
           // Equalising panes is reachable by Ctrl+Shift+E and by nothing else in the window. If the
           // list were maintained beside the bindings rather than derived from them, this is the
           // entry somebody would have forgotten.
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "Equalise panes",
           "named": "and it is here, without anybody having added it to a second list"
         },
         {
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "set value",
           "with": "new session",
           "expect": "new session",
@@ -118,14 +118,14 @@
         {
           // The session dialog had no way in at all until QS121: built and tested, and reachable
           // from nothing a user could do. This is the entry that makes it a feature.
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "New session",
           "named": "and a session can be made from the running client"
         },
         {
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "set value",
           "with": "move tab",
           "expect": "move tab",
@@ -135,14 +135,14 @@
         {
           // Left and not right: the tab on screen is the last one opened, so there is nowhere right
           // for it to go and the palette does not offer the move. What rises is the one that can run.
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "Move tab left",
           "named": "and only the move that can happen is offered"
         },
         {
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "set value",
           "with": "settings",
           "expect": "settings",
@@ -150,14 +150,14 @@
           "named": "the window over the settings file (QS170)"
         },
         {
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "Settings",
           "named": "is reachable from the palette as well as its chord"
         },
         {
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "set value",
           "with": "open session",
           "expect": "open session",
@@ -167,14 +167,14 @@
         {
           // Until QS217 a saved session could only be opened by typing its path on a command line.
           // Offered only where the program wired sessions to open, which the client always does.
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "Open session",
           "named": "and a saved session is reached from the palette"
         },
         {
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "set value",
           "with": "show forwards",
           "expect": "show forwards",
@@ -183,7 +183,7 @@
         },
         {
           // A forward has no window of its own, so this is the one place it can be seen.
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "Show forwards",
@@ -206,7 +206,7 @@
           "named": "the palette is opened the way a user opens it"
         },
         {
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "set value",
           "with": "new tab recorded",
           "expect": "new tab recorded",
@@ -214,14 +214,14 @@
           "named": "the way to record a session from its first byte"
         },
         {
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "New tab, recorded",
           "named": "is in the palette"
         },
         {
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "press",
           "with": "Enter",
           "named": "and taken"
@@ -264,7 +264,7 @@
           "named": "the palette is opened the way a user opens it"
         },
         {
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "set value",
           "with": "open session",
           "expect": "open session",
@@ -273,7 +273,7 @@
         },
         {
           // Enter takes what is selected, which is the top of the list: the same key a user presses.
-          "locator": "Edit",
+          "locator": "Edit[name=\"Command\"]",
           "act": "press",
           "with": "Enter",
           "named": "and taken"
@@ -291,7 +291,7 @@
         {
           // Only in the store this fixture staged. A client reading the desk's own store would show
           // something else here, or nothing.
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Sessions\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "Work/db-primary",
@@ -306,7 +306,7 @@
           "named": "and another, from another folder"
         },
         {
-          "locator": "ListItem[order=top]",
+          "locator": "List[name=\"Sessions\"] > ListItem[order=top]",
           "act": "read",
           "reads": "name",
           "expect": "Home/nas",

@@ -271,6 +271,55 @@ public sealed class SettingsFileTests : IDisposable
         Assert.Contains(Locations.Current.Means, bundle, StringComparison.Ordinal);
     }
 
+    // ---- A key the file does not mention (QS268) ----
+
+    /// <summary>
+    /// A value somebody chose for a key their file leaves out lands in the file, after the last key and
+    /// indented as it is, and the rest of the file is untouched. Until QS268 only keys already present
+    /// were edited, so folding the sessions sidebar over a hand-written file was lost on the next start.
+    /// </summary>
+    [Fact]
+    public void AChosenValueForAKeyTheFileLeavesOutIsAddedAfterTheLastKey()
+    {
+        string file = Path.Combine(_here, "settings.json");
+
+        Written(file, "{\n    // mine\n    \"theme\": \"Dark\"\n}\n");
+
+        SettingsFile.WriteTo(file, SettingsFile.ReadFrom(file) with { SessionsSidebar = false });
+
+        Assert.Equal("{\n    // mine\n    \"theme\": \"Dark\",\n    \"sessionsSidebar\": false\n}\n", File.ReadAllText(file));
+        Assert.False(SettingsFile.ReadFrom(file).SessionsSidebar);
+    }
+
+    /// <summary>A key left out and still at its default stays left out: writing it down would say somebody chose it.</summary>
+    [Fact]
+    public void AKeyLeftOutAtItsDefaultIsNotWrittenDown()
+    {
+        string file = Path.Combine(_here, "settings.json");
+
+        Written(file, "{\n  \"theme\": \"Dark\"\n}\n");
+
+        SettingsFile.WriteTo(file, SettingsFile.ReadFrom(file) with { Theme = ChromeTheme.Light });
+
+        Assert.Equal("{\n  \"theme\": \"Light\"\n}\n", File.ReadAllText(file));
+    }
+
+    /// <summary>
+    /// A comment with characters outside ASCII ahead of a value does not move where the value is
+    /// written: the edit is made on the bytes the reader measured, not on characters counted as bytes.
+    /// </summary>
+    [Fact]
+    public void ACommentOutsideAsciiDoesNotShiftAnEdit()
+    {
+        string file = Path.Combine(_here, "settings.json");
+
+        Written(file, "{\n  // configuração do terminal, à mão\n  \"fontSize\": 12\n}\n");
+
+        SettingsFile.WriteTo(file, SettingsFile.ReadFrom(file) with { FontSize = 14 });
+
+        Assert.Equal("{\n  // configuração do terminal, à mão\n  \"fontSize\": 14\n}\n", File.ReadAllText(file));
+    }
+
     private static void Written(string path, string text)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);

@@ -135,6 +135,7 @@
 - ✅ **QS229** **The session store's fields are documented nowhere, and Reconnect can only be set by editing the file** — docs/SESSIONS.md documents every store field, kept so by a test both ways, and the dialog sets Reconnect and no longer drops one set by hand.
 - ✅ **QS245** **A session's scheme, font size, terminal type, scrollback and credential are stored and inherited but never applied** — A session's credential name now keys its remembered password and FontSize is a non-goal out of the dialog, so no session field is shown and then ignored.
 - ✅ **QS254** **A session field written in the wrong place in the store is silently ignored, so the session connects with defaults** — A field the store does not have is refused by name and line, and a setting beside the host is told to move under settings, so nothing connects on defaults.
+- ✅ **QS268** **Saved sessions are reached only by typing in the palette, so nobody sees what is saved or what is connected** — A sidebar lists saved sessions as a tree, searches them, marks the ones a tab holds Connected, and folds to a remembered rail (design recorded in `docs/design/friendly-shell/README.md`).
 
 ## Block E — SCP and SFTP as a thing a person operates
 

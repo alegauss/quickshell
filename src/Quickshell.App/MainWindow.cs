@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -18,10 +18,13 @@ namespace Quickshell.App;
 /// <summary>
 /// The window, and the argument it makes by what is not in it.
 ///
-/// <para><b>A title bar, a terminal, and nothing else.</b> The tab strip builds itself and stays
-/// collapsed while there is one tab. There is no toolbar, no status bar and no sidebar — not hidden
-/// ones waiting to be switched on, but no elements at all, so that adding one is a change somebody
-/// makes on purpose against a test that says what a default installation looks like.</para>
+/// <para><b>A title bar, the saved sessions, a terminal, and nothing else.</b> The tab strip builds
+/// itself and stays collapsed while there is one tab. The sessions sidebar is the one addition, made on
+/// purpose (QS268, the friendly-shell design approved on 2026-10-11): saved sessions reached only
+/// through a palette chord were sessions a new user never saw. It folds to a rail. There is no toolbar
+/// and no menu — not hidden ones waiting to be switched on, but no elements at all, so that adding one
+/// is a change somebody makes on purpose against a test that says what a default installation looks
+/// like.</para>
 ///
 /// <para><b>The theme is handed to WPF rather than resolved here.</b> <c>ThemeMode.System</c> watches
 /// the setting and repaints while the window is open, which is what "follow the system" has to mean
@@ -61,6 +64,9 @@ public sealed class MainWindow : Window
         Margin = new Thickness(10, 0, 0, 0),
         VerticalAlignment = VerticalAlignment.Center,
     };
+
+    /// <summary>The saved sessions down the left (QS268), filled by <see cref="RefreshSessions"/> and never by the constructor.</summary>
+    private readonly SessionsSidebar _sidebar;
 
     private bool _recording;
 
@@ -151,17 +157,32 @@ public sealed class MainWindow : Window
 
         BuildFindBar();
 
+        _sidebar = new SessionsSidebar(this);
+        _sidebar.Shape(Chrome.Sidebar);
+
         Grid layout = new();
 
         layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
+        // The sidebar beside everything under the strip (QS268), as the approved design draws it: the
+        // tabs across the top, then the sessions and the terminal side by side. Beside and never over,
+        // because nothing can be drawn over a pane.
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
         Grid.SetRow(_tabs, 0);
+        Grid.SetColumnSpan(_tabs, 2);
+        Grid.SetRow(_sidebar, 1);
+        Grid.SetRowSpan(_sidebar, 2);
         Grid.SetRow(_find, 1);
+        Grid.SetColumn(_find, 1);
         Grid.SetRow(_terminal, 2);
+        Grid.SetColumn(_terminal, 1);
 
         layout.Children.Add(_tabs);
+        layout.Children.Add(_sidebar);
         layout.Children.Add(_find);
         layout.Children.Add(_terminal);
 
@@ -350,6 +371,16 @@ public sealed class MainWindow : Window
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
+
+        // A store edited by hand while the window was behind another is read again on coming back
+        // to it, and only where the file changed (QS268).
+        Activated += (_, _) =>
+        {
+            if (_sessionsRead is not null && StoreWritten() != _sessionsRead)
+            {
+                RefreshSessions();
+            }
+        };
     }
 
     /// <summary>How this window looks. The palette here is the terminal's and not the chrome's.</summary>
@@ -777,8 +808,9 @@ public sealed class MainWindow : Window
         ArgumentNullException.ThrowIfNull(e);
 
         // Alt chords arrive as System with the real key beside them, and a client reading only Key
-        // would send alt-f as nothing at all.
-        if (!e.Handled && Press(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers))
+        // would send alt-f as nothing at all. A key pressed in the sessions sidebar is the sidebar's,
+        // and Enter in its search box is not a line sent to the host (QS268).
+        if (!e.Handled && !_sidebar.IsKeyboardFocusWithin && Press(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers))
         {
             e.Handled = true;
         }
@@ -871,7 +903,7 @@ public sealed class MainWindow : Window
 
         ArgumentNullException.ThrowIfNull(e);
 
-        if (e.Handled)
+        if (e.Handled || _sidebar.IsKeyboardFocusWithin)
         {
             return;
         }
@@ -1134,6 +1166,9 @@ public sealed class MainWindow : Window
 
         Active = _open.Count - 1;
 
+        // A saved session's tab marks its row Connected (QS268).
+        ShowSessions();
+
         return _active;
     }
 
@@ -1362,6 +1397,8 @@ public sealed class MainWindow : Window
         // when the last tab went, because there is no one after.
         Active = Math.Min(at, _open.Count - 1);
 
+        ShowSessions();
+
         return going;
     }
 
@@ -1530,6 +1567,9 @@ public sealed class MainWindow : Window
 
         ThemeMode = Theme.Mode(settings.Theme);
 
+        // Open or folded as the file says, which a fold in any window wrote (QS268).
+        _sidebar.Shape(settings.SessionsSidebar);
+
         // And every window this one has open, not only the ones it opens next: a browser left open
         // across a change of theme would otherwise keep the one it was built with, which is two
         // windows of one client painted two ways. The browser is named as well as owned, because a
@@ -1632,6 +1672,8 @@ public sealed class MainWindow : Window
         string folder = ImportFolder(store, DateTime.Now, preview.Folder);
 
         store.With(folder, preview.Tree() with { Name = folder }).WriteTo(into);
+
+        RefreshSessions();
 
         return into;
     }
@@ -2868,9 +2910,363 @@ public sealed class MainWindow : Window
         SessionTree written = SessionTree.ReadFrom(file).With(editor.SavedAt, made);
 
         written.WriteTo(file);
+        RefreshSessions();
 
         return written;
     }
+
+    // ---- The sessions sidebar (QS268) ----
+
+    /// <summary>The store as last read for the sidebar, or null before the first read.</summary>
+    private SessionTree? _store;
+
+    /// <summary>What the sidebar says instead of rows where the store would not read.</summary>
+    private string? _storeRefused;
+
+    /// <summary>When the store file was last written, as of that read: what coming back to the window compares.</summary>
+    private DateTime? _sessionsRead;
+
+    private string _sessionsQuery = string.Empty;
+
+    /// <summary>The folders somebody folded, for as long as this window is open; every other folder is open.</summary>
+    private readonly HashSet<string> _folded = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The sessions sidebar, which a test reads rows and selections from.</summary>
+    public SessionsSidebar Sidebar => _sidebar;
+
+    /// <summary>Whether the sessions sidebar is open, rather than folded to its rail.</summary>
+    public bool SidebarShowing => _sidebar.IsOpen;
+
+    private string StoreFile => SessionsFile ?? Locations.Current.Sessions;
+
+    private DateTime StoreWritten() =>
+        System.IO.File.Exists(StoreFile) ? System.IO.File.GetLastWriteTimeUtc(StoreFile) : DateTime.MinValue;
+
+    /// <summary>
+    /// Reads the store and lists it in the sidebar. Called by the program once the window is on the
+    /// desk, after anything here writes the store, and on coming back to the window where the file
+    /// changed — never by the constructor, which reads nothing.
+    ///
+    /// <para>A store that will not read is said in the sidebar, where the sessions would have been,
+    /// rather than in a dialog on the way to a terminal: the window still works, and the sentence is
+    /// where somebody looking for their sessions is looking.</para>
+    /// </summary>
+    public void RefreshSessions()
+    {
+        try
+        {
+            _store = SessionTree.ReadFrom(StoreFile);
+            _storeRefused = null;
+        }
+        catch (SessionStoreException unreadable)
+        {
+            _store = SessionTree.Empty();
+            _storeRefused = $"{unreadable.Message} {unreadable.Means}";
+        }
+
+        _sessionsRead = StoreWritten();
+
+        ShowSessions();
+    }
+
+    /// <summary>Lists the store as last read, with the search, the folds and the tabs as they are now.</summary>
+    private void ShowSessions()
+    {
+        if (_store is not { } store)
+        {
+            return;
+        }
+
+        HashSet<string> open = new(_open.Select(tab => tab.Saved).OfType<string>(), StringComparer.OrdinalIgnoreCase);
+        string typed = _sessionsQuery.Trim();
+
+        string empty = _storeRefused
+                       ?? (typed.Length > 0
+                               ? $"No saved session matches {typed}."
+                               : "No saved sessions yet. New makes one, and Import sessions brings them in from MobaXterm.");
+
+        _sidebar.Show(SessionsView.Rows(store, _sessionsQuery, _folded, open.Contains), empty);
+    }
+
+    /// <summary>Filters the sidebar to the sessions a query finds, as <b>Open session</b> finds them.</summary>
+    public void SearchSessions(string query)
+    {
+        _sessionsQuery = query ?? string.Empty;
+
+        ShowSessions();
+    }
+
+    /// <summary>Folds a folder in the sidebar, or unfolds it.</summary>
+    public void ToggleFolder(string path)
+    {
+        if (!_folded.Remove(path))
+        {
+            _folded.Add(path);
+        }
+
+        ShowSessions();
+    }
+
+    /// <summary>
+    /// Opens the sidebar or folds it to its rail, and writes that to the settings file so the next
+    /// window opens the same way. Every other window follows when the watch reads the file back.
+    /// A file that does not parse is not written over; the fold still happens here.
+    /// </summary>
+    public void FoldSidebar(bool open)
+    {
+        _sidebar.Shape(open);
+
+        Settings = Settings with { SessionsSidebar = open };
+
+        string path = SettingsPath ?? Locations.Current.Settings;
+
+        if (SettingsFile.Readable(path))
+        {
+            SettingsFile.WriteTo(path, SettingsFile.ReadFrom(path) with { SessionsSidebar = open });
+        }
+    }
+
+    /// <summary>
+    /// Connects a saved session from the sidebar, as <b>Open session</b> would, and gives the keyboard
+    /// back to the window so what is typed next reaches the new tab.
+    /// </summary>
+    public void ConnectSession(string path)
+    {
+        if (OpensSession is not { } open)
+        {
+            return;
+        }
+
+        Remember(_recentSessions, path);
+        open(path);
+        Focus();
+    }
+
+    /// <summary>
+    /// Opens the session dialog over a saved session and writes what it saved (QS268). A new name is
+    /// a rename in place, refused where the folder already holds that name.
+    /// </summary>
+    /// <returns>The store as written, or null where nothing was.</returns>
+    /// <exception cref="SessionStoreException">The store is there and cannot be read, or holds nothing at that path.</exception>
+    public SessionTree? EditSession(string path)
+    {
+        SessionEditor editor = SessionEditor.Editing(SessionTree.ReadFrom(StoreFile), path);
+        SessionDialog dialog = new(editor);
+
+        bool saved = (ShowsSessionDialog ?? (shown =>
+        {
+            shown.Owner = this;
+
+            return shown.ShowDialog() == true;
+        }))(dialog);
+
+        string named = editor.Name.Length > 0 ? editor.Name : editor.Host.Trim();
+        string now = Beside(path, named);
+
+        if (!saved || dialog.Saved?.Find(now) is not { } made)
+        {
+            return null;
+        }
+
+        SessionTree store = SessionTree.ReadFrom(StoreFile);
+
+        if (!string.Equals(now, path, StringComparison.OrdinalIgnoreCase) && store.Find(now) is not null)
+        {
+            Sessionally($"There is already something called {named} in that folder, so {path} was not renamed.");
+
+            return null;
+        }
+
+        // Put where the old name was found, so a rename keeps its place in the folder.
+        SessionTree written = store.With(path, made);
+
+        written.WriteTo(StoreFile);
+        RefreshSessions();
+
+        return written;
+    }
+
+    /// <summary>A copy of a saved session beside it, named "… copy", and selected in the sidebar.</summary>
+    /// <returns>Where the copy is.</returns>
+    /// <exception cref="SessionStoreException">The store is there and cannot be read, or holds nothing at that path.</exception>
+    public string DuplicateSession(string path)
+    {
+        SessionTree store = SessionTree.ReadFrom(StoreFile);
+        SessionNode node = store.Find(path) ?? throw Missing(path);
+
+        string copy = $"{node.Name} copy";
+
+        for (int more = 2; store.Find(Beside(path, copy)) is not null; more++)
+        {
+            copy = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{node.Name} copy {more}");
+        }
+
+        string at = Beside(path, copy);
+
+        store.With(at, node with { Name = copy }).WriteTo(StoreFile);
+        RefreshSessions();
+        _sidebar.Select(at);
+
+        return at;
+    }
+
+    /// <summary>
+    /// Every folder a saved session could be moved to: the top level, written as the empty path, and
+    /// every folder in the store except the one it is in.
+    /// </summary>
+    public IReadOnlyList<string> FoldersBesides(string path)
+    {
+        string here = FolderOf(path);
+        List<string> folders = [string.Empty];
+
+        Collect(_store?.Root ?? SessionTree.Empty().Root, string.Empty);
+
+        return [.. folders.Where(folder => !string.Equals(folder, here, StringComparison.OrdinalIgnoreCase))];
+
+        void Collect(SessionNode node, string above)
+        {
+            foreach (SessionNode child in node.Children.Where(child => !child.IsSession))
+            {
+                string at = above.Length == 0 ? child.Name : $"{above}/{child.Name}";
+
+                folders.Add(at);
+                Collect(child, at);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Moves a saved session into another folder, or to the top level for the empty path. Refused, and
+    /// said, where that folder already holds something by its name.
+    /// </summary>
+    /// <returns>Where it is now, or null where it did not move.</returns>
+    /// <exception cref="SessionStoreException">The store is there and cannot be read, or holds nothing at that path.</exception>
+    public string? MoveSession(string path, string folder)
+    {
+        SessionTree store = SessionTree.ReadFrom(StoreFile);
+        SessionNode node = store.Find(path) ?? throw Missing(path);
+
+        string at = folder.Trim('/').Length == 0 ? node.Name : $"{folder.Trim('/')}/{node.Name}";
+
+        if (string.Equals(at, path, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        if (store.Find(at) is not null)
+        {
+            Sessionally($"{(folder.Length == 0 ? "The top level" : folder)} already holds something called {node.Name}, "
+                        + $"so {path} was not moved.");
+
+            return null;
+        }
+
+        store.Without(path).With(at, node).WriteTo(StoreFile);
+        RefreshSessions();
+        _sidebar.Select(at);
+
+        return at;
+    }
+
+    /// <summary>
+    /// Asks whether a saved session should be deleted, which a dialog does unless a caller says
+    /// otherwise — which is how a test answers. True deletes.
+    /// </summary>
+    public Func<string, bool>? AsksToDelete { get; set; }
+
+    /// <summary>
+    /// Deletes a saved session from the store, after asking: nothing in the client brings one back,
+    /// and a store is years of somebody's work.
+    /// </summary>
+    /// <returns>Whether it was deleted.</returns>
+    /// <exception cref="SessionStoreException">The store is there and cannot be read.</exception>
+    public bool DeleteSession(string path)
+    {
+        if (!(AsksToDelete ?? AskedToDelete)(path))
+        {
+            return false;
+        }
+
+        SessionTree store = SessionTree.ReadFrom(StoreFile);
+
+        if (store.Find(path) is null)
+        {
+            return false;
+        }
+
+        store.Without(path).WriteTo(StoreFile);
+        RefreshSessions();
+
+        return true;
+    }
+
+    private bool AskedToDelete(string path) =>
+        Choice.Ask(this, "Delete session",
+                   $"Delete {path} from your saved sessions?\n\nThe file keeps no copy, and nothing in "
+                   + "quickshell brings it back. An open tab stays connected.",
+                   new ChoiceButton("Delete it", "delete"),
+                   new ChoiceButton("Keep it", "keep")) == "delete";
+
+    /// <summary><see cref="NewSession"/>, with a store that will not read said rather than thrown.</summary>
+    public void NewSessionOrSay(string folder = "") => Sessionally(() => NewSession(folder));
+
+    /// <summary><see cref="EditSession"/>, with a store that will not read said rather than thrown.</summary>
+    public void EditSessionOrSay(string path) => Sessionally(() => EditSession(path));
+
+    /// <summary><see cref="DuplicateSession"/>, with a store that will not read said rather than thrown.</summary>
+    public void DuplicateSessionOrSay(string path) => Sessionally(() => DuplicateSession(path));
+
+    /// <summary><see cref="MoveSession"/>, with a store that will not read said rather than thrown.</summary>
+    public void MoveSessionOrSay(string path, string folder) => Sessionally(() => MoveSession(path, folder));
+
+    /// <summary><see cref="DeleteSession"/>, with a store that will not read said rather than thrown.</summary>
+    public void DeleteSessionOrSay(string path) => Sessionally(() => DeleteSession(path));
+
+    /// <summary>
+    /// Runs something that writes the store and says it where the store would not read: nothing is
+    /// written then, since a store that will not read must not be replaced by one holding only the
+    /// change just made.
+    /// </summary>
+    private void Sessionally(Action writing)
+    {
+        try
+        {
+            writing();
+        }
+        catch (SessionStoreException unreadable)
+        {
+            Sessionally($"{unreadable.Message}\n\n{unreadable.Means}\n\n{unreadable.Remedy}".Trim());
+        }
+    }
+
+    /// <summary>Says one sentence about the store, through <see cref="Tells"/> where a caller set it.</summary>
+    private void Sessionally(string sentence)
+    {
+        if (Tells is { } tell)
+        {
+            tell(sentence);
+
+            return;
+        }
+
+        MessageBox.Show(this, sentence, "Sessions", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    private static SessionStoreException Missing(string path) =>
+        new($"There is nothing at {path} in the session store.",
+            "It may have been moved or deleted in the file since the sidebar last read it.");
+
+    /// <summary>The folder a path is in, the top level being the empty path.</summary>
+    private static string FolderOf(string path)
+    {
+        int slash = path.LastIndexOf('/');
+
+        return slash < 0 ? string.Empty : path[..slash];
+    }
+
+    /// <summary>The same folder as <paramref name="path"/>, ending in <paramref name="name"/> instead.</summary>
+    private static string Beside(string path, string name) =>
+        FolderOf(path) is { Length: > 0 } folder ? $"{folder}/{name}" : name;
 
     /// <summary>
     /// Opens a saved session in a tab of its own, by its path in the store — or null while nothing
@@ -3127,20 +3523,7 @@ public sealed class MainWindow : Window
         public override string Name => "New session";
 
         /// <inheritdoc/>
-        public override void Execute(object? parameter)
-        {
-            try
-            {
-                Window.NewSession();
-            }
-            catch (SessionStoreException unreadable)
-            {
-                // Said, and nothing written: a store that will not read is one this must not
-                // replace with a file holding only the session just typed.
-                MessageBox.Show(Window, $"{unreadable.Message}\n\n{unreadable.Means}\n\n{unreadable.Remedy}",
-                                "Sessions", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
+        public override void Execute(object? parameter) => Window.NewSessionOrSay();
     }
 
     /// <summary>

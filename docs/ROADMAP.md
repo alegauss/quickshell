@@ -10,7 +10,6 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS268** (deps: —) **Saved sessions are reached only by typing in the palette, so nobody sees what is saved or what is connected** — The store is a tree and only Open session lists it, behind a chord a new user has not learnt. → §QS268
 - 📋 **QS270** (deps: —) **The session dialog decides how to sign in by which text box was filled, and cannot test a session** — Key file and Saved credential are two text boxes among eight, so the choice is implicit and a mistake shows only on connect. → §QS270
 - 📋 **QS271** (deps: —) **A host nobody has saved cannot be reached without filling and saving the session dialog first** — There is no box that takes user@host and connects, which is the first thing a new user tries. → §QS271
 
@@ -21,7 +20,7 @@
 ## Block G — The clean interface, defended
 
 - 📋 **QS269** (deps: —) **A connected tab shows nothing of its connection: where it goes, whether it is up, which forwards it holds** — The route, the state and the forwards are known to the client and shown only in dialogs or the palette. → §QS269
-- 📋 **QS272** (deps: QS268, QS271) **The window opens on a local Command Prompt, and nothing on screen says this client connects to servers** — A new user takes it for a terminal emulator: the way to a server is behind a chord they have not learnt. → §QS272
+- 📋 **QS272** (deps: QS268 ✅, QS271) **The window opens on a local Command Prompt, and nothing on screen says this client connects to servers** — A new user takes it for a terminal emulator: the way to a server is behind a chord they have not learnt. → §QS272
 
 ## Block H — The reason to leave the incumbent
 

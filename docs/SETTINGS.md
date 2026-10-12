@@ -41,7 +41,8 @@ and the chord works whether the watch armed or not.
   "cursor": "Block",
   "cursorBlink": true,
   "warnOnPaste": true,
-  "colourScheme": ""
+  "colourScheme": "",
+  "sessionsSidebar": true
 }
 ```
 
@@ -162,6 +163,14 @@ support questions are answered.
 A path that leads nowhere, or a file this cannot read, is the built-in scheme and no error. This is
 a value somebody typed, so it is the likeliest line in the file to have a typo in it, and refusing
 to start over one would be refusing at the worst possible moment.
+
+### `sessionsSidebar`
+
+Whether the saved sessions are listed down the left of the window, or folded to a narrow rail.
+
+`true` by default. The fold at the top of the sidebar sets it, so a window opens the way the last
+one was left; every open window follows. Folded, the rail keeps **New**, **Import sessions** and
+**Settings** as buttons, and the terminal takes the width.
 
 ## What is deliberately not here
 

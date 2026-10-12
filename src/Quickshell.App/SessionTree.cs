@@ -469,6 +469,36 @@ public sealed class SessionTree
         return parent with { Children = children };
     }
 
+    /// <summary>
+    /// The same tree without the node at a path, and everything under it where it is a folder. A
+    /// path that names nothing gives back the tree unchanged; the root cannot be removed.
+    /// </summary>
+    public SessionTree Without(string path)
+    {
+        IReadOnlyList<string> steps = Segments(path);
+
+        return steps.Count == 0 || Find(path) is null ? this : new SessionTree(Take(Root, steps, 0));
+    }
+
+    private static SessionNode Take(SessionNode parent, IReadOnlyList<string> steps, int depth)
+    {
+        List<SessionNode> children = [.. parent.Children];
+
+        int at = children.FindIndex(child =>
+            string.Equals(child.Name, steps[depth], StringComparison.OrdinalIgnoreCase));
+
+        if (depth == steps.Count - 1)
+        {
+            children.RemoveAt(at);
+        }
+        else
+        {
+            children[at] = Take(children[at], steps, depth + 1);
+        }
+
+        return parent with { Children = children };
+    }
+
     private static IReadOnlyList<string> Segments(string path) =>
         string.IsNullOrWhiteSpace(path) || path == "/"
             ? []

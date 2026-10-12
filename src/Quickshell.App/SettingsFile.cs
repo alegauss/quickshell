@@ -78,6 +78,13 @@ public sealed record Settings
     public ColourScheme Colours { get; init; } = ColourScheme.Default;
 
     /// <summary>
+    /// Whether the sessions sidebar is open beside the terminal, or folded to its rail (QS268). Open
+    /// by default, because the saved sessions are the thing a new user cannot otherwise see; folding
+    /// it writes this, so the window opens the way it was left.
+    /// </summary>
+    public bool SessionsSidebar { get; init; } = true;
+
+    /// <summary>
     /// Every key this build did not recognise, kept exactly as it was read so it can be written back
     /// unchanged.
     /// </summary>
@@ -121,7 +128,7 @@ public static class SettingsFile
     public static readonly string[] Known =
     [
         Version, "theme", "fontFamily", "fontSize", "scrollback", "ligatures", "cursor",
-        "cursorBlink", "warnOnPaste", "colourScheme",
+        "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar",
     ];
 
     /// <summary>
@@ -242,7 +249,7 @@ public static class SettingsFile
             }
         }
 
-        foreach (string key in (string[])["ligatures", "cursorBlink", "warnOnPaste"])
+        foreach (string key in (string[])["ligatures", "cursorBlink", "warnOnPaste", "sessionsSidebar"])
         {
             if (root.TryGetProperty(key, out JsonElement value) && value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
             {
@@ -387,6 +394,7 @@ public static class SettingsFile
             writer.WriteBoolean("cursorBlink", settings.CursorBlink);
             writer.WriteBoolean("warnOnPaste", settings.WarnOnPaste);
             writer.WriteString("colourScheme", settings.Scheme);
+            writer.WriteBoolean("sessionsSidebar", settings.SessionsSidebar);
 
             foreach ((string name, JsonElement value) in settings.Unrecognised)
             {
@@ -411,32 +419,30 @@ public static class SettingsFile
     /// comments, blank lines, the user's own spacing, and any key this build has never heard of —
     /// is carried through untouched because it is never looked at.</para>
     ///
-    /// <para>Only keys already present are replaced. Adding one would mean inventing where it goes
-    /// and how it is indented, which is the client deciding what somebody's file looks like; a
-    /// setting the file does not mention is a setting at its default, and writing it down would say
-    /// otherwise.</para>
+    /// <para><b>A key the file does not mention is not added</b>, because where it would go is the
+    /// user's to decide — with one kind of exception, <see cref="Remembered"/>: a state the client
+    /// keeps for the user from a gesture, such as folding the sessions sidebar (QS268), which no
+    /// person types and which would otherwise be lost on the next start. Such a key is added only
+    /// where its value is not the default, after the last key and indented as that key is.</para>
+    ///
+    /// <para>The edits are made on the bytes the reader measured, so a comment or a value carrying
+    /// a character outside ASCII before them does not shift where they land.</para>
     /// </summary>
     private static string? Spliced(string text, Settings settings)
     {
-        Dictionary<string, string> writing = new(StringComparer.Ordinal)
-        {
-            [Version] = Settings.Schema.ToString(CultureInfo.InvariantCulture),
-            ["theme"] = Quoted(settings.Theme.ToString()),
-            ["fontFamily"] = Quoted(settings.FontFamily),
-            ["fontSize"] = settings.FontSize.ToString(CultureInfo.InvariantCulture),
-            ["scrollback"] = settings.Scrollback.ToString(CultureInfo.InvariantCulture),
-            ["ligatures"] = settings.Ligatures ? "true" : "false",
-            ["cursor"] = Quoted(settings.Cursor.ToString()),
-            ["cursorBlink"] = settings.CursorBlink ? "true" : "false",
-            ["warnOnPaste"] = settings.WarnOnPaste ? "true" : "false",
-            ["colourScheme"] = Quoted(settings.Scheme),
-        };
+        Dictionary<string, string> writing = Written(settings);
+        Dictionary<string, string> defaults = Written(Settings.Default);
 
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(text);
         List<(int At, int Length, string Value)> edits = [];
+
+        // Where the root's last value ends and where its key began, which is what an added key is
+        // placed and indented by.
+        int lastEnd = -1;
+        int lastKey = -1;
 
         try
         {
-            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(text);
             Utf8JsonReader reader = new(bytes, new JsonReaderOptions
             {
                 CommentHandling = JsonCommentHandling.Skip,
@@ -456,13 +462,30 @@ public static class SettingsFile
 
                     case JsonTokenType.EndObject or JsonTokenType.EndArray:
                         depth--;
+
+                        if (depth == 1)
+                        {
+                            lastEnd = (int)reader.BytesConsumed;
+                        }
+
                         break;
 
                     case JsonTokenType.PropertyName:
                         name = depth == 1 ? reader.GetString() : null;
+
+                        if (depth == 1)
+                        {
+                            lastKey = (int)reader.TokenStartIndex;
+                        }
+
                         break;
 
                     default:
+                        if (depth == 1)
+                        {
+                            lastEnd = (int)reader.BytesConsumed;
+                        }
+
                         if (name is not null && writing.Remove(name, out string? value))
                         {
                             // The span DOES include the quotes on a string, which is why the
@@ -490,15 +513,64 @@ public static class SettingsFile
             return null;
         }
 
+        string[] added = [.. writing.Where(left => Remembered.Contains(left.Key, StringComparer.Ordinal)
+                                                   && left.Value != defaults[left.Key])
+                                    .Select(left => $"{Quoted(left.Key)}: {left.Value}")];
+
+        // A file with an edit in it has a key at its top level, so there is always a last one to
+        // follow; one with none was answered above by being written whole.
+        if (added.Length > 0)
+        {
+            string indent = Indent(bytes, lastKey);
+            string newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+
+            edits.Add((lastEnd, 0, string.Concat(added.Select(each => $",{newline}{indent}{each}"))));
+        }
+
         // Backwards, so an earlier edit's positions are still the ones that were measured.
-        System.Text.StringBuilder edited = new(text);
+        List<byte> edited = [.. bytes];
 
         foreach ((int at, int length, string value) in edits.OrderByDescending(one => one.At))
         {
-            edited.Remove(at, length).Insert(at, value);
+            edited.RemoveRange(at, length);
+            edited.InsertRange(at, System.Text.Encoding.UTF8.GetBytes(value));
         }
 
-        return edited.ToString();
+        return System.Text.Encoding.UTF8.GetString([.. edited]);
+    }
+
+    /// <summary>The keys a gesture sets rather than a person types, which a write may add to a file that leaves them out.</summary>
+    private static readonly string[] Remembered = ["sessionsSidebar"];
+
+    /// <summary>Every key this build writes, as the JSON it writes it as.</summary>
+    private static Dictionary<string, string> Written(Settings settings) => new(StringComparer.Ordinal)
+    {
+        [Version] = Settings.Schema.ToString(CultureInfo.InvariantCulture),
+        ["theme"] = Quoted(settings.Theme.ToString()),
+        ["fontFamily"] = Quoted(settings.FontFamily),
+        ["fontSize"] = settings.FontSize.ToString(CultureInfo.InvariantCulture),
+        ["scrollback"] = settings.Scrollback.ToString(CultureInfo.InvariantCulture),
+        ["ligatures"] = settings.Ligatures ? "true" : "false",
+        ["cursor"] = Quoted(settings.Cursor.ToString()),
+        ["cursorBlink"] = settings.CursorBlink ? "true" : "false",
+        ["warnOnPaste"] = settings.WarnOnPaste ? "true" : "false",
+        ["colourScheme"] = Quoted(settings.Scheme),
+        ["sessionsSidebar"] = settings.SessionsSidebar ? "true" : "false",
+    };
+
+    /// <summary>The spaces and tabs in front of the key that starts at <paramref name="at"/>, back to its line's start.</summary>
+    private static string Indent(byte[] bytes, int at)
+    {
+        int start = at;
+
+        while (start > 0 && bytes[start - 1] is (byte)' ' or (byte)'\t')
+        {
+            start--;
+        }
+
+        return start == 0 || bytes[start - 1] is (byte)'\n' or (byte)'\r'
+            ? System.Text.Encoding.ASCII.GetString(bytes, start, at - start)
+            : "  ";
     }
 
     /// <summary>A JSON string, with what a settings value can carry escaped.</summary>
@@ -532,6 +604,7 @@ public static class SettingsFile
             WarnOnPaste = Yes(root, "warnOnPaste") ?? Settings.Default.WarnOnPaste,
             Scheme = named,
             Colours = Scheme(named, path),
+            SessionsSidebar = Yes(root, "sessionsSidebar") ?? Settings.Default.SessionsSidebar,
             Unrecognised = unrecognised,
         };
     }

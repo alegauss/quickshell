@@ -18,7 +18,10 @@ public enum ChromeElement
     /// <summary>A bar along the bottom. Not shown unless a user asks.</summary>
     StatusBar,
 
-    /// <summary>A panel down the side. Not shown unless a user opens one.</summary>
+    /// <summary>
+    /// The saved sessions, down the side (QS268). Open by default, and folded to a rail by a user who
+    /// wants the width back.
+    /// </summary>
     Sidebar,
 
     /// <summary>
@@ -40,12 +43,14 @@ public enum ChromeElement
 ///
 /// <para>So it is a model with a test against it rather than a habit. Anything added later has to
 /// change <see cref="Default"/>, which means changing a test that says what a default installation
-/// looks like, which means somebody deciding to.</para>
+/// looks like, which means somebody deciding to. The sessions sidebar is the one element added that
+/// way (QS268): the owner approved it on 2026-10-11, because saved sessions reached only through a
+/// palette chord were sessions a new user never found.</para>
 /// </summary>
 public sealed record Chrome
 {
-    /// <summary>What a default installation shows: a title bar, a terminal, and nothing else.</summary>
-    public static Chrome Default { get; } = new();
+    /// <summary>What a default installation shows: a title bar, the sessions sidebar, a terminal, and nothing else.</summary>
+    public static Chrome Default { get; } = new() { Sidebar = true };
 
     /// <summary>Whether a toolbar is showing. False, and there is no default that says otherwise.</summary>
     public bool Toolbar { get; init; }
@@ -53,7 +58,7 @@ public sealed record Chrome
     /// <summary>Whether a status bar is showing.</summary>
     public bool StatusBar { get; init; }
 
-    /// <summary>Whether a sidebar is open.</summary>
+    /// <summary>Whether the sessions sidebar is open, rather than folded to its rail.</summary>
     public bool Sidebar { get; init; }
 
     /// <summary>Whether the find bar is open, which only a user's chord makes true.</summary>

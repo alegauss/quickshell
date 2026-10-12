@@ -1,0 +1,104 @@
+{
+  // QS268. The saved sessions, read off the sidebar a window opens with, without a chord pressed:
+  // the design's falsification is a saved session that cannot be found and connected without one.
+  //
+  // Nothing here connects. Connecting would open an SSH tab to a host the fixture made up, so the
+  // claim stops at the row being there, found by search, and the fold folding; that the row's
+  // double-click and Enter reach the same path Open session takes is SessionsSidebarTests'.
+
+  "fixtures": [
+    {
+      // The same store the palette case opens over, staged by the engine and named by
+      // QUICKSHELL_DATA, so the rows read are the ones this repository wrote and not the desk's.
+      // Not lent: the fold case writes the window's settings file.
+      "name": "a client with its sessions beside it",
+      "arguments": [],
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": ["cases/fixtures/sessions.json"]
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "the sidebar lists the saved sessions and its search finds one by part of its name",
+      "catches": "a sidebar that is there and empty, reads some other store than the client's, or lists sessions without finding them by what a user remembers of the name",
+      "filed": "QS268",
+      "tags": ["smoke", "sessions"],
+      "fixture": "a client with its sessions beside it",
+
+      "steps": [
+        {
+          // The top of the list with nothing typed is the store's first folder: the tree is listed
+          // as the file has it, and only this fixture's store starts with Work.
+          "locator": "List#SessionsList > ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Work",
+          "named": "the store is listed, as its tree, with nothing pressed"
+        },
+        {
+          // `set value` and not keystrokes, as the palette case types: the pattern is the act.
+          "locator": "Edit#SessionsSearch",
+          "act": "set value",
+          "with": "primary",
+          "expect": "primary",
+          "reads": "value",
+          "named": "a word of the name somebody remembers, not its path"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Work/db-primary",
+          "named": "the session is found, by its path"
+        },
+        {
+          "locator": "Edit#SessionsSearch",
+          "act": "set value",
+          "with": "nas",
+          "expect": "nas",
+          "reads": "value",
+          "named": "and another, from another folder"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Home/nas",
+          "named": "is found the same way"
+        }
+      ]
+    },
+    {
+      "name": "the sidebar folds to a rail and opens again",
+      "catches": "a fold that does nothing, or one that folds and leaves no way back",
+      "filed": "QS268",
+      "tags": ["sessions"],
+      "fixture": "a client with its sessions beside it",
+
+      "steps": [
+        {
+          "locator": "Button#SessionsFold",
+          "act": "read",
+          "reads": "toggle",
+          "expect": "On",
+          "named": "a new window opens with the sidebar open"
+        },
+        {
+          "locator": "Button#SessionsFold",
+          "act": "toggle",
+          "expect": "Off",
+          "reads": "toggle",
+          "named": "folded to the rail"
+        },
+        {
+          "locator": "Button#SessionsFold",
+          "act": "toggle",
+          "expect": "On",
+          "reads": "toggle",
+          "named": "and opened again from the rail, by the same button"
+        }
+      ]
+    }
+  ]
+}

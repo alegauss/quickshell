@@ -27,8 +27,9 @@
       "steps": [
         {
           // The one path box there is on a local tab, and read for its value: a directory of this
-          // machine, which is all the claim can say about a path the machine decides.
-          "locator": "Edit",
+          // machine, which is all the claim can say about a path the machine decides. Named, since
+          // the sessions sidebar's search box is an Edit too (QS268).
+          "locator": "Edit[name=\"Path on This computer\"]",
           "act": "read",
           "reads": "value",
           "matches": "^[A-Za-z]:\\\\",

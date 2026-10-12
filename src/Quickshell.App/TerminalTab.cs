@@ -70,6 +70,12 @@ public sealed class TerminalTab : IAsyncDisposable
     /// </summary>
     public string? Named { get; set; }
 
+    /// <summary>
+    /// The saved session this tab was opened from, by its path in the store, or null for a local
+    /// shell or a folder's group. What the sessions sidebar marks Connected (QS268).
+    /// </summary>
+    public string? Saved { get; set; }
+
     /// <summary>What the strip shows: the user's name for it, or the focused pane's own title.</summary>
     public string Title => Named is { Length: > 0 } named ? named : Focused.Title;
 

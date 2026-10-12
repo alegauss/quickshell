@@ -10,6 +10,14 @@ comments stay beside the session or field they stood before. Field names are rea
 written as this page spells them. **New session**, **Open session** and **Open session, recorded** in
 the palette ([KEYS.md](KEYS.md)) are ways into it; editing it by hand is equally first-class.
 
+**The sessions sidebar** down the left of the window lists the store as its tree: a folder with what
+it hands down beside it, a session with its address, and **Connected** on each one a tab holds.
+Double-click or Enter connects; the arrows fold a folder; the search box finds a session by name,
+host or tag, as **Open session** does. Right-click a session to edit, duplicate, move or delete it,
+and a folder to make a session in it. The fold at its top narrows it to a rail
+([SETTINGS.md](SETTINGS.md), `sessionsSidebar`). A hand edit shows the next time you come back to the
+window.
+
 **A field this page does not list is refused, not skipped.** A misspelt name, or a setting such as
 `Port` written beside `Host` instead of inside `Settings`, stops the store from opening with a
 message naming the field, its line and where it belongs; nothing in the file is changed. Skipped,

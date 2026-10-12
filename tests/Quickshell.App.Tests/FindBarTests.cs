@@ -24,11 +24,11 @@ public sealed class FindBarTests
 
         Assert.False(showing);
 
-        Assert.Equal([ChromeElement.TitleBar, ChromeElement.Terminal], Chrome.Default.Showing(1));
+        Assert.DoesNotContain(ChromeElement.FindBar, Chrome.Default.Showing(1));
         Assert.False(Chrome.Default.FindBar);
 
         // And when it is open it sits above the terminal, which is where the layout puts it.
-        Assert.Equal([ChromeElement.TitleBar, ChromeElement.FindBar, ChromeElement.Terminal],
+        Assert.Equal([ChromeElement.TitleBar, ChromeElement.Sidebar, ChromeElement.FindBar, ChromeElement.Terminal],
                      (Chrome.Default with { FindBar = true }).Showing(1));
     }
 
@@ -201,12 +201,14 @@ public sealed class FindBarTests
     /// <summary>Puts text in the find bar the way a person would, and asserts it arrived.</summary>
     private static void Typed(MainWindow window, string needle)
     {
-        System.Windows.Controls.TextBox box = Boxes(window).Single();
+        // The sessions sidebar's search box is the other one in the window (QS268).
+        System.Windows.Controls.TextBox box = Boxes(window).Single(each =>
+            System.Windows.Automation.AutomationProperties.GetAutomationId(each) != "SessionsSearch");
 
         box.Text = needle;
     }
 
-    /// <summary>Every text box in the window, which is the find bar's and nothing else.</summary>
+    /// <summary>Every text box in the window: the find bar's and the sessions sidebar's search.</summary>
     private static IEnumerable<System.Windows.Controls.TextBox> Boxes(System.Windows.DependencyObject from)
     {
         int children = System.Windows.Media.VisualTreeHelper.GetChildrenCount(from);

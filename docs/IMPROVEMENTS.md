@@ -206,29 +206,6 @@ the per-frame cost is the wake and the present, which is a different line.
 
 ## Block D — The tree a user organises work in
 
-### §QS268 A sessions sidebar
-
-Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Main.dc.html`). A user's saved
-sessions are reached only through the palette's **Open session**, so somebody who has
-not learnt the chord sees no sessions at all, and nobody can see at a glance what is
-saved or what is connected.
-
-What to build: a sessions sidebar on the left of the window, 292 px, on the layer brush
-with a 1 px divider. At the top, **Sessions** and a **New** button; a search box that
-filters by path, host and tag, the same match **Open session** makes. Below it, the
-store as a tree: a folder row with a chevron and what it hands down, a session row with
-its name and host, and a **Connected** chip on each session open in a tab. Double-click
-or Enter connects; the context menu edits, duplicates, moves and deletes. **Import
-sessions** and **Settings** sit at the foot. A toggle folds it to a 52 px rail, and the
-choice is remembered in settings, open by default.
-
-Read from `SessionStore` and the session tree the palette already uses: one source, two
-views. Rows follow the sibling apps' list conventions and every row has an automation
-id, so a UI case can find a session and connect it; the case lives beside
-`tabs.cases.json`.
-
-Falsified when a saved session cannot be found and connected without the keyboard chord.
-
 ### §QS270 A session dialog that says how it signs in
 
 Approved on 2026-10-11 (`docs/design/friendly-shell/`, `NewSession.dc.html`).
