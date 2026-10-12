@@ -469,27 +469,6 @@ shape of that fix, and QS260 carries it.
 Falsified when one local pane, blink off, reads zero frames and under 0.1 % of a core
 over ten idle minutes on a quiet desk.
 
-### §QS283 The client's own icon
-
-Seen 2026-10-12: the window's caption, the taskbar and Alt+Tab show Windows' generic
-application icon. No project in `src` names an `ApplicationIcon` and no `.ico` is in the
-repository, so the executable, the Start menu shortcut QS77's installer writes and the
-uninstall entry carry the generic one too.
-
-What to build: the mark the design draws in its title bar (`Main.dc.html`: a rounded
-terminal frame, a prompt chevron and an underscore, stroke 2 on a 24 grid) as one
-`assets\quickshell.ico`, rendered from an SVG kept beside it at 16, 20, 24, 32, 40, 48,
-64 and 256 px, with the small sizes hinted to whole pixels rather than scaled down. The
-accent in the mockup is the site's violet; the icon is the one place a fixed colour is
-right, since Windows draws it outside any theme, so it uses that violet with a light
-variant tested against both taskbar themes. `ApplicationIcon` in
-`Quickshell.App.csproj`, and `Window.Icon` set from the same resource so every window,
-dialogs included, carries it. The installer's shortcut and uninstall entry point at the
-executable's icon.
-
-Evidence: a test that the built exe carries an icon resource with every size listed;
-`run-install-vm.cmd` reads the shortcut's icon location; a picture for the owner.
-
 ## Block I — An error a user can act on
 
 ### §QS128 A trace that carries both sides of the negotiation

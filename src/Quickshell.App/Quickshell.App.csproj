@@ -13,6 +13,11 @@
          process that lies about its awareness gets a bitmap-stretched window instead. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
+    <!-- QS283: the client's own mark, written by tools\make-icon.py. The executable carries it, and
+         with it the Start menu shortcut and the uninstall entry, which point at the executable; a WPF
+         window with no icon of its own takes the executable's, so every window does too. -->
+    <ApplicationIcon>..\..\assets\quickshell.ico</ApplicationIcon>
+
     <!-- WPF, which is what QS4 measured and chose: a child HWND per pane reaches a click-to-pixel
          floor of one refresh interval where neither D3DImage nor a SwapChainPanel reaches a single
          frame in any pass. -->

@@ -24,7 +24,6 @@
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
-- 📋 **QS283** (deps: —) **The window, taskbar, Alt+Tab and Start menu show Windows' generic application icon** — No project names an icon, so the executable and everything pointing at it carry the generic one. → §QS283
 
 ## Block I — An error a user can act on
 

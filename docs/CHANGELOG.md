@@ -249,6 +249,7 @@
 - ✅ **QS253 (side-by-side check)** **The gate fails unchanged code, because the desk runs a seventh slower some days than when the baseline was taken** — A check runs the baseline's code beside the tree and judges the ratio; a sitting too noisy to see a tenth now says it judged nothing.
 - ✅ **QS255 (the loop silent)** **An idle pane costs 0.6 % of a core and GPU work even with the cursor blink off, and four cost nearly three times one** — An idle pane with blink off now wakes its loop zero times and draws nothing: the blink wait no longer spins, and cursorBlink reaches panes open at start.
 - ✅ **QS256** **One local pane holds 172 MB and a connected session 211 MB, where the budget allows 120 MB for the connected one** — Figure 6 is 160 MB, argued from the account: 126 MB is the window and the device, and a connected session now settles at 142 to 145 MB (design recorded in `docs/PERFORMANCE.md`).
+- ✅ **QS283** **The window, taskbar, Alt+Tab and Start menu show Windows' generic application icon** — The executable carries the client's own mark at 16 to 256 px, drawn per size by tools\make-icon.py, so the window, taskbar, shortcut and uninstall entry show it.
 
 ## Block I — An error a user can act on
 
