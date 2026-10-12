@@ -695,27 +695,3 @@ The automation ids are the ones `SessionBar.cs` and `ConnectionStatusBar.cs` set
 The guest needs the address to answer: either the sshd reached from the guest over the
 host's network, or a container in the guest. Which one is the open choice, and an absent
 server must read as not observed rather than as a pass.
-
-### §QS284 Clipboard sharing stays off for the whole guest run
-
-Found 2026-10-12 running QS275's suite in the guest: no test failed, and the run still
-exited 1 with "Quickshell.App.Tests skipped 3, budget 2". Before the suite, QS226's
-check read the guest clipboard, found text, and left VMware's sharing on ("the guest
-holds text; sharing left as it was"). By the time
-`CopyPasteTests.TheWindowUsesTheSystemClipboardAndLeavesItAsItWasFound` ran, the
-clipboard held `DeviceIndependentBitmap, Bitmap`, so the case measured nothing. With
-sharing on, a picture copied on the host during the run reaches the guest. The host is
-somebody's desk, and copying a screenshot while a run is going is ordinary.
-
-`Use-TextGuestClipboard` in `tools\vm-guest.ps1` decides once, before the run, from what
-the guest holds at that moment. That covers a bitmap left over from an earlier session
-and misses everything that arrives afterwards.
-
-What to build: `run-tests-vm.ps1` turns sharing off for every run, whatever the guest
-holds, then writes text to the guest clipboard and turns sharing back on in the
-`finally` it already has. The host clipboard is never written: sharing is off before the
-guest's clipboard is touched, which is the QS180 rule QS226 already keeps. The log line
-says sharing is off for the run and back on afterwards.
-
-Falsified when a guest run with no failing test goes over the skip budget because the
-clipboard case found something other than text.

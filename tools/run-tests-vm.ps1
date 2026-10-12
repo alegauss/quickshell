@@ -187,8 +187,9 @@ Write-Host "  running the suite in the guest ($Configuration). The host is yours
 # -activeWindow deliberately not. It brings this batch's console to the foreground in the guest, and
 # the fixtures take the foreground for themselves - the console must never compete for it.
 #
-# The guest's clipboard is made to hold text first (QS226), and where that meant turning VMware's
-# sharing off it is turned back on in the finally, so neither a red run nor a refusal leaves it off.
+# The guest's clipboard is made to hold text first (QS226), with VMware's sharing off for the whole
+# run so nothing copied on the host arrives mid-run (QS284). It is turned back on in the finally, so
+# neither a red run nor a refusal leaves it off.
 #
 # -noWait, and the run followed from here (QS230). Waiting on vmrun left the host blind until the
 # run ended: a test that hung held a run for over an hour with one line on screen. Now the guest's

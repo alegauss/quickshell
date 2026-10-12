@@ -41,7 +41,6 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS273** (deps: winwright WW522) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — The bars exist only on a live connection, so their evidence is an xunit test on the fixture sshd and not a case. → §QS273
-- 📋 **QS284** (deps: —) **A guest run with no failing test goes red on the skip budget when a bitmap is copied on the host during it** — QS226 checks the guest clipboard once before the run and leaves sharing on when it holds text, so a later host copy still reaches the clipboard case. → §QS284
 
 ## Done when — Block A
 

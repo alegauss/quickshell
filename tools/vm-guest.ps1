@@ -484,12 +484,13 @@ function Use-TextGuestClipboard {
     .DESCRIPTION
       Something in the guest leaves a bitmap on its clipboard, and the clipboard case cannot put a
       bitmap back exactly, so it measures nothing and the run goes red on the skip budget with no
-      test failing. The guest's formats are read first, and where they are text nothing is done.
-      Otherwise sharing is turned off before the guest's clipboard is written, because with VMware
-      sharing the clipboard, writing the guest's would overwrite the host's too - the thing QS180
-      stopped the suite doing.
+      test failing. Sharing is turned off for the whole run (QS284), because a picture copied on the
+      host mid-run arrives the same way, and it is off before the guest's clipboard is written, since
+      with VMware sharing the clipboard, writing the guest's would overwrite the host's too - the
+      thing QS180 stopped the suite doing. Where the guest then holds something other than text, it
+      is made to hold text.
 
-      Returns whether sharing was turned off, which the caller hands to Restore-ClipboardSharing in a
+      Returns whether sharing was turned off, which the caller hands to Set-ClipboardSharing in a
       finally, so a failed run never leaves it off.
     #>
     param([Parameter(Mandatory)] [string] $Stage)
@@ -530,19 +531,27 @@ powershell -NoProfile -STA -ExecutionPolicy Bypass -File "$script:GuestSync\clip
         return 'failed nothing came back'
     }
 
+    # Off for the whole run, whatever the guest holds now (QS284). Deciding from what it held before
+    # the run left sharing on when that was text, and a picture copied on the host during the run
+    # then reached the clipboard case anyway. Off before anything is written, so the host's
+    # clipboard is never touched (QS180).
+    Set-ClipboardSharing -Off $true
+
     $said = Ask 'read'
     # An empty clipboard answers 'formats' and nothing after it, which is an answer and not a failure.
-    if ($said -notmatch '^formats\b') { Refuse "the guest's clipboard could not be read: $said" }
+    if ($said -notmatch '^formats\b') {
+        Set-ClipboardSharing -Off $false
+        Refuse "the guest's clipboard could not be read: $said"
+    }
 
     $text = @('Text', 'UnicodeText', 'OEMText', 'Locale', 'System.String')
     $other = @(($said -replace '^formats\s*', '') -split ',' | Where-Object { $_ -and $text -notcontains $_ })
 
     if ($other.Count -eq 0) {
-        Write-Host '  clipboard   the guest holds text; sharing left as it was'
-        return $false
+        Write-Host '  clipboard   the guest holds text; sharing is off for this run'
+        return $true
     }
 
-    Set-ClipboardSharing -Off $true
     $written = Ask 'text'
 
     if ($written -notmatch '^formats\b') {
