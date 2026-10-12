@@ -62,6 +62,17 @@ public sealed class CasesRun
         // means that file under every runner (QS181, WW508).
         SuiteVerdict verdict = Suite.Launch(declared, Selection.All, register, project);
 
+        // Written on a pass as well as a failure (QS274): a passed test carries no message, so the
+        // report of a green run said Passed and nothing about which cases ran or how many. The first
+        // line is the count count-the-run.ps1 prints beside the assembly table.
+        string ran = $"UI cases: {verdict.Ran.Count} of {declared.Count} declared ran";
+
+        TestContext.Current.TestOutputHelper?.WriteLine(ran);
+        TestContext.Current.TestOutputHelper?.WriteLine(Read(verdict));
+
+        // A case declared and not run is a claim nobody checked, so a short count is red on its own.
+        Assert.True(verdict.Ran.Count == declared.Count, $"{ran}.{Environment.NewLine}{Read(verdict)}");
+
         // The whole reading and not the outcome: xUnit shows one message, so the message has to be
         // the report. A red that says "Broken" and nothing else costs a debugger session to turn
         // into a sentence — this session already paid that twice by truncating a log.

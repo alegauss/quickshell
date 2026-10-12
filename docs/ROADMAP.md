@@ -28,7 +28,6 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS273** (deps: winwright WW522) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — The bars exist only on a live connection, so their evidence is an xunit test on the fixture sshd and not a case. → §QS273
-- 📋 **QS274** (deps: —) **A green guest run brings no reports back, so which UI cases ran cannot be read on the host** — The archive returns only on a red run, so the guest folder holds the last red run's reports, which read as the current ones. → §QS274
 
 ## Done when — Block A
 

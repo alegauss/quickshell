@@ -136,6 +136,21 @@ foreach ($report in $reports) {
 Write-Host ('  {0,-34} {1,6} {2,7} {3,7} {4,8}' -f 'all', $totals.Total, $totals.Passed, $totals.Failed,
             $(if ($totals.Waived -gt 0) { "$($totals.Skipped)+$($totals.Waived)" } else { "$($totals.Skipped)" }))
 
+# How many UI cases ran out of how many are declared (QS274): the Cases assembly is one test over
+# every case, so its row above counts one whichever number ran. The line is its own first line of
+# output, written on a pass as on a failure.
+$cases = $reports | Where-Object { $_.BaseName -eq 'Quickshell.Cases' } | Select-Object -First 1
+
+if ($cases) {
+    $caseText = Get-Content -LiteralPath $cases.FullName -Raw
+    $caseLine = [regex]::Match($caseText, 'UI cases: \d+ of \d+ declared ran')
+
+    if ($caseLine.Success) {
+        Write-Host ''
+        Write-Host "  $($caseLine.Value)"
+    }
+}
+
 if ($reasons.Count -gt 0) {
     Write-Host ''
     Write-Host '  skipped, and why:'

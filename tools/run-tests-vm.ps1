@@ -238,32 +238,41 @@ $code = [int]$said
 $logFile = Join-Path $results 'vm-run.log'
 $null = Invoke-VmRun -Guest -Arguments @('copyFileFromGuestToHost', $vmxPath, "$script:GuestSync\vm-run.log", $logFile)
 
-# Only chased on a red run: the archive exists only when a golden scene wrote its difference images,
-# and asking for it on a green run reports a missing file that was never due.
-if ($code -ne 0) {
-    $archive = Join-Path $results 'results.zip'
-    $archiveBack = Invoke-VmRun -Guest -Arguments @('copyFileFromGuestToHost', $vmxPath, "$script:GuestSync\results.zip", $archive)
+# Brought back on every run, green or red (QS274). The guest archives its TestResults after every
+# run, and the reports in it are the only account of which tests and which UI cases ran there. Until
+# QS274 this was fetched on a red run alone, so on a green one TestResults\vm\guest kept the last red
+# run's reports, and a reader took an hours-old failure for the run in front of them. The folder is
+# emptied first either way, so what is in it is always this run's or nothing.
+$archive = Join-Path $results 'results.zip'
+$unpacked = Join-Path $results 'guest'
 
-    if ($archiveBack.Ok) {
-        Write-Host "  artefacts   $archive"
+if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
+if (Test-Path -LiteralPath $unpacked) { Remove-Item -LiteralPath $unpacked -Recurse -Force }
 
-        # QS175. The archive carries the guest's own TRX reports, so a red run there names its
-        # tests here - the console this run wrote lives on a machine nobody is looking at, and the
-        # log copied back is whatever survived a pipe.
-        $unpacked = Join-Path $results 'guest'
-        if (Test-Path -LiteralPath $unpacked) { Remove-Item -LiteralPath $unpacked -Recurse -Force }
+$archiveBack = Invoke-VmRun -Guest -Arguments @('copyFileFromGuestToHost', $vmxPath, "$script:GuestSync\results.zip", $archive)
 
-        try {
-            Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
-            [IO.Compression.ZipFile]::ExtractToDirectory($archive, $unpacked)
+if ($archiveBack.Ok) {
+    Write-Host "  artefacts   $archive"
 
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+        [IO.Compression.ZipFile]::ExtractToDirectory($archive, $unpacked)
+        Write-Host "  reports     $(Join-Path $unpacked 'reports')"
+
+        # QS175. On a red run the archive's own TRX reports name the tests here - the console this
+        # run wrote lives on a machine nobody is looking at, and the log copied back is whatever
+        # survived a pipe.
+        if ($code -ne 0) {
             Write-Host ''
             & (Join-Path $PSScriptRoot 'name-the-red.ps1') -From (Join-Path $unpacked 'reports')
         }
-        catch {
-            Write-Host "  the artefacts would not unpack: $($_.Exception.Message)" -ForegroundColor Yellow
-        }
     }
+    catch {
+        Write-Host "  the artefacts would not unpack: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+else {
+    Write-Host '  artefacts   none came back, so this run left no reports on this machine' -ForegroundColor Yellow
 }
 
 if ($WriteGoldens) {
