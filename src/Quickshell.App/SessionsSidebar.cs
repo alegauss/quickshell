@@ -3,6 +3,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Markup;
 using System.Windows.Media;
 
 namespace Quickshell.App;
@@ -16,11 +17,16 @@ namespace Quickshell.App;
 ///
 /// <para><b>Fluent's brushes and no colour of its own</b>, as every surface of this client and its two
 /// sibling apps: the sidebar sits on the layer brush with a divider beside it, the selected row is the
-/// list's own selection, and the Connected chip carries its word as well as its colour.</para>
+/// accent at a tenth, and the Connected chip carries its word as well as its colour.</para>
 ///
-/// <para><b>Open or a rail.</b> Folded, it is 52 pixels of buttons — the fold itself, New, Import and
-/// Settings — and the terminal takes the rest. Which one it is lives in the settings file
-/// (<c>sessionsSidebar</c>), so a window opens the way the last one was left.</para>
+/// <para><b>Open or a rail.</b> Folded, it is 52 pixels of buttons — the fold itself, the files of the
+/// server on screen and its tunnels — and the terminal takes the rest. Which one it is lives in the
+/// settings file (<c>sessionsSidebar</c>), so a window opens the way the last one was left.</para>
+///
+/// <para><b>Sizes are the design's</b> (<c>docs/design/friendly-shell/Main.dc.html</c> open,
+/// <c>Connected.dc.html</c> folded), in device-independent pixels, and QS277's tests read them back off
+/// the elements. The buttons other than New are ghosts: no fill until hovered, and the fold shows
+/// whether it is on by the shape of the sidebar, not by an accent block.</para>
 /// </summary>
 public sealed class SessionsSidebar : Border
 {
@@ -30,18 +36,97 @@ public sealed class SessionsSidebar : Border
     /// <summary>Its width folded to the rail.</summary>
     public const double RailWidth = 52;
 
+    /// <summary>A row's height, folder or session.</summary>
+    public const double RowHeight = 32;
+
+    /// <summary>How far in a top-level row starts.</summary>
+    public const double Indent = 8;
+
+    /// <summary>How much further in each level of folder goes, which puts a session in a folder at 30.</summary>
+    public const double Step = 22;
+
     /// <summary>Segoe's icon faces, the newer first: what Windows itself draws its glyphs with.</summary>
     private static readonly FontFamily Glyphs = new("Segoe Fluent Icons, Segoe MDL2 Assets");
+
+    /// <summary>
+    /// A button with no fill until the pointer is over it, rounded as the design's are. A template and
+    /// not a style, because Fluent's own toggle template fills a checked toggle with the accent, which
+    /// is the opaque block QS277 was filed about.
+    /// </summary>
+    private const string GhostXaml = """
+        <ControlTemplate TargetType="ButtonBase">
+          <Border x:Name="Ground" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Ground" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Ground" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.4" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+        """;
+
+    /// <summary>A row: rounded, a subtle fill under the pointer, and the accent at a tenth where selected.</summary>
+    private const string RowXaml = """
+        <ControlTemplate TargetType="ListBoxItem">
+          <Border x:Name="Ground" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Ground" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="Ground" Property="Background" Value="{DynamicResource SessionsSelectionBrush}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+        """;
+
+    /// <summary>The search's text box with nothing of its own around it: the frame and the magnifier are the sidebar's.</summary>
+    private const string BareXaml = """
+        <ControlTemplate TargetType="TextBox">
+          <ScrollViewer x:Name="PART_ContentHost" Focusable="False" VerticalAlignment="Center"
+                        HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+        </ControlTemplate>
+        """;
+
+    /// <summary>
+    /// The session glyph, a terminal: a rounded rectangle with a prompt in it, on a 24 grid. Drawn, because
+    /// the icon fonts' nearest glyph is Command Prompt's <c>C:\</c>, which reads as a local shell.
+    /// </summary>
+    private static readonly Geometry Terminal = Frozen(Geometry.Parse(
+        "M5,4 H19 A2,2 0 0 1 21,6 V18 A2,2 0 0 1 19,20 H5 A2,2 0 0 1 3,18 V6 A2,2 0 0 1 5,4 Z M7,9 L10,12 L7,15"));
+
+    /// <summary>The key a selected row's fill is found by, set on this sidebar from the theme's accent.</summary>
+    private const string SelectionKey = "SessionsSelectionBrush";
+
+    /// <summary>The theme's quieter text, which every glyph and second line here is drawn in.</summary>
+    private const string Secondary = "TextFillColorSecondaryBrush";
+
+    // The templates are this sidebar's own and not shared: a template is sealed on the thread that first
+    // uses it, and a second window on another thread would then be refused it.
+    private readonly ControlTemplate _ghost = Template(GhostXaml);
+    private readonly ControlTemplate _row = Template(RowXaml);
+    private readonly ControlTemplate _bare = Template(BareXaml);
 
     private readonly MainWindow _window;
     private readonly ToggleButton _fold;
     private readonly TextBlock _heading;
     private readonly Button _new;
-    private readonly Grid _search;
+    private readonly DockPanel _top;
+    private readonly Border _search;
     private readonly TextBox _query;
     private readonly ListBox _list;
     private readonly TextBlock _empty;
-    private readonly List<TextBlock> _labels = [];
+    private readonly Border _footing;
+    private readonly List<Button> _railOnly = [];
 
     private bool _loading;
 
@@ -60,14 +145,21 @@ public sealed class SessionsSidebar : Border
         AutomationProperties.SetAutomationId(this, "Sessions");
         AutomationProperties.SetName(this, "Sessions");
 
-        // The fold, first and in both shapes: it is how the rail becomes the sidebar again.
+        // The theme is the window's, so the accent is read again once the sidebar is in it.
+        Resources[SelectionKey] = Selection();
+        Loaded += (_, _) => Resources[SelectionKey] = Selection();
+
+        // The fold, first and in both shapes: it is how the rail becomes the sidebar again. Docked to
+        // the left as a panel is, which is what it does to the sidebar.
         _fold = new ToggleButton
         {
             IsChecked = true,
-            Width = 32,
-            Height = 32,
+            Width = 28,
+            Height = 28,
             Padding = new Thickness(0),
-            Content = Glyph(""),
+            Template = _ghost,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Content = Glyph("\uE90C", 16),
             ToolTip = "Fold the sessions sidebar",
         };
 
@@ -84,31 +176,35 @@ public sealed class SessionsSidebar : Border
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 0, 0),
+            Margin = new Thickness(6, 0, 0, 0),
         };
 
-        _heading.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+        _heading.SetResourceReference(TextBlock.ForegroundProperty, Secondary);
 
-        _new = Action("", "New", "SessionsNew", "Make a saved session", () => _window.NewSessionOrSay());
-        _new.SetResourceReference(StyleProperty, "AccentButtonStyle");
-        _new.Height = 28;
+        _new = NewButton();
 
-        DockPanel top = new() { Margin = new Thickness(10, 12, 10, 8), LastChildFill = false };
+        _top = new DockPanel { LastChildFill = false };
 
         DockPanel.SetDock(_fold, Dock.Left);
         DockPanel.SetDock(_heading, Dock.Left);
         DockPanel.SetDock(_new, Dock.Right);
 
-        top.Children.Add(_fold);
-        top.Children.Add(_heading);
-        top.Children.Add(_new);
+        _top.Children.Add(_fold);
+        _top.Children.Add(_heading);
+        _top.Children.Add(_new);
 
         _query = new TextBox
         {
-            Height = 32,
+            Template = _bare,
+            FontSize = 13,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
             VerticalContentAlignment = VerticalAlignment.Center,
             ToolTip = "Search by name, host or tag",
         };
+
+        _query.SetResourceReference(Control.ForegroundProperty, "TextFillColorPrimaryBrush");
+        _query.SetResourceReference(TextBoxBase.CaretBrushProperty, "TextFillColorPrimaryBrush");
 
         AutomationProperties.SetAutomationId(_query, "SessionsSearch");
         AutomationProperties.SetName(_query, "Search sessions");
@@ -127,23 +223,57 @@ public sealed class SessionsSidebar : Border
         TextBlock hint = new()
         {
             Text = "Search by name, host or tag",
+            FontSize = 13,
             IsHitTestVisible = false,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(12, 0, 0, 0),
         };
 
         hint.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorTertiaryBrush");
         _query.TextChanged += (_, _) => hint.Visibility = _query.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        _search = new Grid { Margin = new Thickness(12, 0, 12, 8) };
-        _search.Children.Add(_query);
-        _search.Children.Add(hint);
+        TextBlock magnifier = Glyph("\uE721", 14);
 
+        magnifier.Margin = new Thickness(0, 0, 8, 0);
+        magnifier.SetResourceReference(TextBlock.ForegroundProperty, Secondary);
+
+        Grid field = new();
+
+        field.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        field.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(_query, 1);
+        Grid.SetColumn(hint, 1);
+        field.Children.Add(magnifier);
+        field.Children.Add(_query);
+        field.Children.Add(hint);
+
+        // The frame is a border of its own, 32 high and rounded at 6, with the magnifier 10 in; the
+        // stroke takes the accent while the box has the keyboard, as a Fluent field's does.
+        _search = new Border
+        {
+            Height = 32,
+            CornerRadius = new CornerRadius(6),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(10, 0, 10, 0),
+            Margin = new Thickness(0, 10, 0, 0),
+            Child = field,
+        };
+
+        _search.SetResourceReference(BackgroundProperty, "ControlFillColorDefaultBrush");
+        _search.SetResourceReference(BorderBrushProperty, "ControlStrokeColorDefaultBrush");
+        _query.IsKeyboardFocusWithinChanged += (_, _) => _search.SetResourceReference(
+            BorderBrushProperty, _query.IsKeyboardFocusWithin ? "AccentFillColorDefaultBrush" : "ControlStrokeColorDefaultBrush");
+
+        StackPanel head = new() { Margin = new Thickness(16, 16, 16, 10) };
+
+        head.Children.Add(_top);
+        head.Children.Add(_search);
+
+        // 4 above and 8 to the sides, the right 8 being what keeps a row clear of the scrollbar.
         _list = new ListBox
         {
             BorderThickness = new Thickness(0),
             Background = Brushes.Transparent,
-            Margin = new Thickness(4, 0, 4, 0),
+            Padding = new Thickness(8, 4, 8, 4),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
         };
 
@@ -160,30 +290,42 @@ public sealed class SessionsSidebar : Border
             Visibility = Visibility.Collapsed,
         };
 
-        _empty.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+        _empty.SetResourceReference(TextBlock.ForegroundProperty, Secondary);
         AutomationProperties.SetAutomationId(_empty, "SessionsEmpty");
 
-        StackPanel foot = new() { Margin = new Thickness(8, 8, 8, 12) };
+        StackPanel foot = new() { Margin = new Thickness(16, 10, 16, 14) };
 
-        foot.Children.Add(Action("", "Import sessions", "SessionsImport", "Bring sessions in from MobaXterm",
-                                 () => _window.ImportOrSay(), ghost: true));
-        foot.Children.Add(Action("", "Settings", "SessionsSettings", "Open the settings window",
-                                 () => _window.ShowSettings(), ghost: true));
+        foot.Children.Add(Footer("\uE896", "Import sessions", "SessionsImport", "Bring sessions in from MobaXterm",
+                                 () => _window.ImportOrSay()));
+        foot.Children.Add(Footer("\uE713", "Settings", "SessionsSettings", "Open the settings window",
+                                 () => _window.ShowSettings()));
 
-        Border footing = new() { BorderThickness = new Thickness(0, 1, 0, 0), Child = foot };
+        _footing = new Border { BorderThickness = new Thickness(0, 1, 0, 0), Child = foot };
 
-        footing.SetResourceReference(BorderBrushProperty, "DividerStrokeColorDefaultBrush");
+        _footing.SetResourceReference(BorderBrushProperty, "DividerStrokeColorDefaultBrush");
+
+        // Only on the rail: what a remote tab has besides its terminal, a press away while the sidebar
+        // is out of the way. Each acts on the tab on screen, as its palette entry does.
+        _railOnly.Add(RailButton("\uE8B7", "Files on this server", "SessionsFiles", "Browse the files of the server on screen",
+                                 () => _window.BrowseFiles()));
+        _railOnly.Add(RailButton("\uE8AB", "Tunnels", "SessionsTunnels", "Show the forwards every session has open",
+                                 () => _window.ShowForwards()));
+
+        foreach (Button only in _railOnly)
+        {
+            DockPanel.SetDock(only, Dock.Top);
+            only.Visibility = Visibility.Collapsed;
+            _top.Children.Add(only);
+        }
 
         DockPanel body = new();
 
-        DockPanel.SetDock(top, Dock.Top);
-        DockPanel.SetDock(_search, Dock.Top);
-        DockPanel.SetDock(footing, Dock.Bottom);
+        DockPanel.SetDock(head, Dock.Top);
+        DockPanel.SetDock(_footing, Dock.Bottom);
         DockPanel.SetDock(_empty, Dock.Top);
 
-        body.Children.Add(top);
-        body.Children.Add(_search);
-        body.Children.Add(footing);
+        body.Children.Add(head);
+        body.Children.Add(_footing);
         body.Children.Add(_empty);
         body.Children.Add(_list);
 
@@ -237,24 +379,29 @@ public sealed class SessionsSidebar : Border
 
         Width = open ? OpenWidth : RailWidth;
 
-        // Across the top while open; one above the other on the rail, where there is room for one.
+        // Across the top while open. On the rail the fold is the first of a column of 36-pixel buttons,
+        // 4 apart from 10 down, centred in the 52.
         DockPanel.SetDock(_fold, open ? Dock.Left : Dock.Top);
-        DockPanel.SetDock(_new, open ? Dock.Right : Dock.Top);
-        _new.Margin = open ? new Thickness(0) : new Thickness(0, 6, 0, 0);
+        _fold.Width = _fold.Height = open ? 28 : 36;
+        ((TextBlock)_fold.Content).FontSize = open ? 16 : 18;
+        ((FrameworkElement)_top.Parent).Margin = open ? new Thickness(16, 16, 16, 10) : new Thickness(8, 10, 8, 0);
 
         Visibility shown = open ? Visibility.Visible : Visibility.Collapsed;
+        Visibility railed = open ? Visibility.Collapsed : Visibility.Visible;
 
         _heading.Visibility = shown;
+        _new.Visibility = shown;
         _search.Visibility = shown;
         _list.Visibility = shown;
+        _footing.Visibility = shown;
         _empty.Visibility = open && _list.Items.Count == 0 && _empty.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        foreach (TextBlock label in _labels)
+        foreach (Button only in _railOnly)
         {
-            label.Visibility = shown;
+            only.Visibility = railed;
         }
 
-        _fold.ToolTip = open ? "Fold the sessions sidebar" : "Open the sessions sidebar";
+        _fold.ToolTip = open ? "Fold the sessions sidebar" : "Show sessions";
     }
 
     /// <summary>
@@ -340,55 +487,103 @@ public sealed class SessionsSidebar : Border
 
     /// <summary>
     /// One row: a surface rather than a form, as the design has it. A folder is a chevron, its icon,
-    /// its name and what it hands down; a session is its icon, its name over its address, and the
-    /// Connected chip where a tab holds it.
+    /// its name and what it hands down; a session is its terminal glyph, its name over its address, and
+    /// the Connected chip where a tab holds it. Every row is 32 high, 8 apart inside, and 22 further in
+    /// per folder.
     /// </summary>
     private ListBoxItem Item(SessionRow row)
     {
-        Grid line = new() { Margin = new Thickness(row.Depth * 16, 0, 0, 0) };
+        Grid line = new();
 
-        line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
-        line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
+        StackPanel marks = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
         if (row.IsFolder)
         {
-            TextBlock chevron = Glyph(row.Expanded ? "" : "");
+            // One chevron, turned a quarter when the folder is open, as the design turns it.
+            TextBlock chevron = Glyph("\uE76C", 10);
 
-            chevron.FontSize = 10;
-            line.Children.Add(chevron);
+            chevron.Width = 10;
+            chevron.Margin = new Thickness(0, 0, 8, 0);
+            chevron.RenderTransformOrigin = new Point(0.5, 0.5);
+            chevron.RenderTransform = new RotateTransform(row.Expanded ? 90 : 0);
+            chevron.SetResourceReference(TextBlock.ForegroundProperty, Secondary);
+            AutomationProperties.SetAutomationId(chevron, "Chevron");
+            marks.Children.Add(chevron);
+
+            TextBlock folder = Glyph("\uE8B7", 15);
+
+            folder.Width = 15;
+            folder.SetResourceReference(TextBlock.ForegroundProperty, Secondary);
+            AutomationProperties.SetAutomationId(folder, "Icon");
+            marks.Children.Add(folder);
+        }
+        else
+        {
+            marks.Children.Add(TerminalGlyph());
         }
 
-        TextBlock icon = Glyph(row.IsFolder ? "" : "");
+        line.Children.Add(marks);
 
-        Grid.SetColumn(icon, 1);
-        line.Children.Add(icon);
-
-        StackPanel words = new() { VerticalAlignment = VerticalAlignment.Center };
-
-        words.Children.Add(new TextBlock
+        TextBlock name = new()
         {
             Text = row.Name,
             FontSize = 13,
             FontWeight = row.IsFolder ? FontWeights.SemiBold : FontWeights.Normal,
             TextTrimming = TextTrimming.CharacterEllipsis,
-        });
+            VerticalAlignment = VerticalAlignment.Center,
+        };
 
-        if (row.Meta.Length > 0)
+        FrameworkElement words = name;
+
+        if (row.IsFolder)
         {
+            if (row.Meta.Length > 0)
+            {
+                // What a folder hands down sits at the right of its row, not under its name.
+                TextBlock handed = new()
+                {
+                    Text = row.Meta,
+                    FontSize = 11,
+                    Margin = new Thickness(8, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                };
+
+                handed.SetResourceReference(TextBlock.ForegroundProperty, Secondary);
+                Grid.SetColumn(handed, 2);
+                line.Children.Add(handed);
+            }
+        }
+        else if (row.Meta.Length > 0)
+        {
+            // Name over address, at a line-height of 1.2 each, so two lines fit the 32 of a row.
+            name.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            name.LineHeight = 13 * 1.2;
+
             TextBlock meta = new()
             {
                 Text = row.Meta,
                 FontSize = 11,
+                LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+                LineHeight = 11 * 1.2,
                 TextTrimming = TextTrimming.CharacterEllipsis,
             };
 
-            meta.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
-            words.Children.Add(meta);
+            meta.SetResourceReference(TextBlock.ForegroundProperty, Secondary);
+
+            StackPanel stacked = new() { VerticalAlignment = VerticalAlignment.Center };
+
+            stacked.Children.Add(name);
+            stacked.Children.Add(meta);
+            words = stacked;
         }
 
-        Grid.SetColumn(words, 2);
+        words.Margin = new Thickness(8, 0, 0, 0);
+        Grid.SetColumn(words, 1);
         line.Children.Add(words);
 
         if (row.Connected)
@@ -404,14 +599,14 @@ public sealed class SessionsSidebar : Border
                 CornerRadius = new CornerRadius(5),
                 BorderThickness = new Thickness(1),
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(6, 0, 0, 0),
+                Margin = new Thickness(8, 0, 0, 0),
             };
 
             chip.SetResourceReference(BackgroundProperty, "SystemFillColorSuccessBackgroundBrush");
             chip.SetResourceReference(BorderBrushProperty, "SystemFillColorSuccessBrush");
             AutomationProperties.SetAutomationId(chip, "Connected");
 
-            Grid.SetColumn(chip, 3);
+            Grid.SetColumn(chip, 2);
             line.Children.Add(chip);
         }
 
@@ -419,8 +614,10 @@ public sealed class SessionsSidebar : Border
         {
             Content = line,
             Tag = row,
-            MinHeight = row.IsFolder || row.Meta.Length == 0 ? 32 : 40,
-            Padding = new Thickness(6, 2, 8, 2),
+            Template = _row,
+            Height = RowHeight,
+            Margin = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(Indent + (row.Depth * Step), 0, 8, 0),
             ContextMenu = Menu(row),
         };
 
@@ -493,34 +690,86 @@ public sealed class SessionsSidebar : Border
         return entry;
     }
 
-    /// <summary>A button with a glyph and a word, the word hidden on the rail where the glyph alone fits.</summary>
-    private Button Action(string glyph, string label, string id, string help, Action run, bool ghost = false)
+    /// <summary>New: the one filled button, 28 high, a 12-pixel plus 6 before a 12-pixel word.</summary>
+    private Button NewButton()
     {
-        TextBlock word = new() { Text = label, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-
-        _labels.Add(word);
+        TextBlock plus = Glyph("\uE710", 12);
+        TextBlock word = new() { Text = "New", FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
 
         StackPanel inside = new() { Orientation = Orientation.Horizontal };
 
-        inside.Children.Add(Glyph(glyph));
+        inside.Children.Add(plus);
         inside.Children.Add(word);
 
         Button button = new()
         {
             Content = inside,
-            ToolTip = help,
-            Padding = new Thickness(8, 4, 10, 4),
-            Margin = new Thickness(0, 1, 0, 1),
+            Height = 28,
+            Padding = new Thickness(10, 0, 10, 0),
+            ToolTip = "Make a saved session",
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        button.SetResourceReference(StyleProperty, "AccentButtonStyle");
+        AutomationProperties.SetAutomationId(button, "SessionsNew");
+        AutomationProperties.SetName(button, "New");
+        AutomationProperties.SetHelpText(button, "Make a saved session");
+
+        button.Click += (_, _) => _window.NewSessionOrSay();
+
+        return button;
+    }
+
+    /// <summary>A footer button: a ghost 32 high, a 15-pixel glyph 10 before a 13-pixel word.</summary>
+    private Button Footer(string glyph, string label, string id, string help, Action run)
+    {
+        TextBlock word = new() { Text = label, FontSize = 13, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        TextBlock mark = Glyph(glyph, 15);
+
+        mark.SetResourceReference(TextBlock.ForegroundProperty, Secondary);
+
+        StackPanel inside = new() { Orientation = Orientation.Horizontal };
+
+        inside.Children.Add(mark);
+        inside.Children.Add(word);
+
+        Button button = new()
+        {
+            Content = inside,
+            Template = _ghost,
+            Height = 32,
+            Padding = new Thickness(8, 0, 8, 0),
+            Margin = new Thickness(0, 0, 0, 2),
             HorizontalContentAlignment = HorizontalAlignment.Left,
         };
 
-        if (ghost)
-        {
-            button.HorizontalAlignment = HorizontalAlignment.Stretch;
-            button.Background = Brushes.Transparent;
-            button.BorderThickness = new Thickness(0);
-        }
+        return Named(button, label, id, help, run);
+    }
 
+    /// <summary>A rail button: a ghost 36 square with an 18-pixel glyph, 4 below the one above.</summary>
+    private Button RailButton(string glyph, string label, string id, string help, Action run)
+    {
+        TextBlock mark = Glyph(glyph, 18);
+
+        mark.SetResourceReference(TextBlock.ForegroundProperty, Secondary);
+
+        Button button = new()
+        {
+            Content = mark,
+            Template = _ghost,
+            Width = 36,
+            Height = 36,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0, 4, 0, 0),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+        };
+
+        return Named(button, label, id, help, run);
+    }
+
+    private static Button Named(Button button, string label, string id, string help, Action run)
+    {
+        button.ToolTip = label;
         AutomationProperties.SetAutomationId(button, id);
         AutomationProperties.SetName(button, label);
         AutomationProperties.SetHelpText(button, help);
@@ -530,12 +779,77 @@ public sealed class SessionsSidebar : Border
         return button;
     }
 
-    private static TextBlock Glyph(string glyph) => new()
+    /// <summary>The session row's glyph: <see cref="Terminal"/> stroked at 2 on its 24 grid, drawn at 15.</summary>
+    private static Viewbox TerminalGlyph()
+    {
+        System.Windows.Shapes.Path drawn = new()
+        {
+            Data = Terminal,
+            StrokeThickness = 2,
+            StrokeLineJoin = PenLineJoin.Round,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+        };
+
+        drawn.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, Secondary);
+
+        Viewbox glyph = new()
+        {
+            Width = 15,
+            Height = 15,
+            Child = new Canvas { Width = 24, Height = 24, Children = { drawn } },
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        AutomationProperties.SetAutomationId(glyph, "Terminal");
+
+        return glyph;
+    }
+
+    private static TextBlock Glyph(string glyph, double size) => new()
     {
         Text = glyph,
         FontFamily = Glyphs,
-        FontSize = 14,
+        FontSize = size,
         VerticalAlignment = VerticalAlignment.Center,
         HorizontalAlignment = HorizontalAlignment.Center,
     };
+
+    /// <summary>
+    /// The accent at a tenth, from the theme this sidebar is in, or the system's highlight where there is
+    /// none. No colour of its own: Brand is the one place this client writes one (QS83).
+    /// </summary>
+    private SolidColorBrush Selection()
+    {
+        Color accent = SystemColors.HighlightColor;
+
+        if (TryFindResource("SystemAccentColor") is Color system)
+        {
+            accent = system;
+        }
+        else if (TryFindResource("AccentFillColorDefaultBrush") is SolidColorBrush fill)
+        {
+            accent = fill.Color;
+        }
+
+        SolidColorBrush brush = new(accent) { Opacity = 0.1 };
+
+        brush.Freeze();
+
+        return brush;
+    }
+
+    private static Geometry Frozen(Geometry geometry)
+    {
+        geometry.Freeze();
+
+        return geometry;
+    }
+
+    private static ControlTemplate Template(string xaml) =>
+        (ControlTemplate)XamlReader.Parse(xaml.Replace(
+            "<ControlTemplate ",
+            "<ControlTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" "
+            + "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" ",
+            StringComparison.Ordinal));
 }

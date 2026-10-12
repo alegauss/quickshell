@@ -92,6 +92,21 @@
           "named": "folded to the rail"
         },
         {
+          // QS277: the rail carries what a remote tab has besides its terminal, as the design draws it.
+          "locator": "Button#SessionsFiles",
+          "act": "read",
+          "reads": "name",
+          "expect": "Files on this server",
+          "named": "the rail offers the server's files"
+        },
+        {
+          "locator": "Button#SessionsTunnels",
+          "act": "read",
+          "reads": "name",
+          "expect": "Tunnels",
+          "named": "and its tunnels"
+        },
+        {
           "locator": "Button#SessionsFold",
           "act": "toggle",
           "expect": "On",

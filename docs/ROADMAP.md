@@ -18,7 +18,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS277** (deps: —) **The sidebar is not the approved one: a filled hamburger, Command Prompt icons on SSH rows, an opaque selection** — Rows, header, search and rail use stock control looks and sizes, so a saved server reads as a local shell and the list is half as dense. → §QS277
 - 📋 **QS278** (deps: —) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — The approved strip carries Home, each tab's state and the palette's entry, and the stock one shows a title and nothing else. → §QS278
 - 📋 **QS279** (deps: —) **Home's recent sessions are forgotten on every restart and their cards cannot say when each was last used** — Recents live in one window's memory, so a new start shows the store's first three, and the design's cards carry a time nothing records. → §QS279
 - 📋 **QS280** (deps: —) **Home has the design's content in another layout: quick connect in three rows, other start-point copy and shape** — The first screen a new user sees is the one most worth matching to what was approved, and it was built to the content, not the layout. → §QS280

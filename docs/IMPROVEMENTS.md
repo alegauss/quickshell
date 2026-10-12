@@ -306,34 +306,6 @@ Home is the default, and is the owner's to restate.
 Falsified when a new window's first screen still gives no way to a server without the
 palette.
 
-### §QS277 The sidebar, to the design's pixel
-
-Measured 2026-10-12 against `docs/design/friendly-shell/Main.dc.html` (open) and
-`Connected.dc.html` (rail), from the owner's screenshot. Sizes in device-independent px.
-
-Open: header row padding 16/16/10. The fold is a ghost button, 28x28, radius 6, no fill
-when on, glyph "panel" (Fluent DockLeft), not the accent-filled square hamburger shown
-now. "Sessions" 13px SemiBold, TextFillColorSecondary. New: height 28, padding 0 10, gap
-6, 12px plus glyph, 12px SemiBold, accent fill. Search: height 32, radius 6, 1px border,
-a 14px magnifier inside at left 10, placeholder 13px.
-
-Rows: list padding 4/8, rows 1px apart, radius 6. A folder row is 32 high: 10px chevron
-(rotated 90 when open), 15px folder glyph, name 13 SemiBold, what it hands down 11px
-right. A session row is 32 high at indent 30 (8 at the top level): 15px terminal glyph
-drawn as a rect and a chevron, never the "C:\" glyph used now, which reads as a local
-shell; name 13 over address 11, line-height 1.2, ellipsised; Connected chip 11px.
-Selected fill is the accent at 10% alpha, hover SubtleFillColorSecondary, not the opaque
-block shown now. Rows keep 8px clear of the scrollbar.
-
-Footer: top divider, padding 10/16/14, buttons 32 high, 15px glyph, gap 10, 13px.
-
-Rail (52 wide): 36x36 ghost buttons, radius 6, 18px glyphs, 4 apart from top 10: Show
-sessions, Files on this server, Tunnels; with a remote tab focused the latter two act on
-it.
-
-Evidence: SessionsSidebarTests reading each size above off the element tree, and a
-run-app-vm.cmd picture for the owner to compare.
-
 ### §QS278 The tab strip the design draws
 
 Measured 2026-10-12 against `Main.dc.html` and `Connected.dc.html`. The strip today is

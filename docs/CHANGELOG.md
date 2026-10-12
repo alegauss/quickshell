@@ -212,6 +212,7 @@
 - ✅ **QS250** **A tab cannot be dragged along the strip, and there is no way back to the tab used before this one** — A tab dragged along the strip moves under the pointer, and the palette's Go to the last tab used switches by order of use, which Ctrl+Tab leaves positional.
 - ✅ **QS269** **A connected tab shows nothing of its connection: where it goes, whether it is up, which forwards it holds** — A remote tab shows a session bar (name, user@host:port via its jump host, a Connected/Reconnecting/Disconnected chip, a chip per forward, Files, Split, More) and a status bar under it.
 - ✅ **QS272 (the Home page)** **The window opens on a local Command Prompt, and nothing on screen says this client connects to servers** — Home shows quick connect, recent sessions and three ways to start in place of the terminal, from the palette, --home and a strip button.
+- ✅ **QS277** **The sidebar is not the approved one: a filled hamburger, Command Prompt icons on SSH rows, an opaque selection** — The sidebar is the design's: a ghost panel fold, 32-high rows indented 8 plus 22 a level, a drawn terminal glyph on sessions, the accent at a tenth when selected, a Files and Tunnels rail.
 
 ## Block H — The reason to leave the incumbent
 

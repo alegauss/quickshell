@@ -1,6 +1,9 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 using Quickshell.App;
 using Xunit;
 
@@ -396,6 +399,157 @@ public sealed class SessionsSidebarTests : IDisposable
         });
 
         Assert.Equal(0, rows);
+    }
+
+    // ---- The design's sizes (QS277) ----
+
+    /// <summary>
+    /// The open sidebar's header, search and footer at the design's sizes: a 28-pixel ghost fold, a
+    /// 28-high New, a 32-high search rounded at 6, and 32-high footer buttons.
+    /// </summary>
+    [Fact]
+    public void TheHeaderSearchAndFooterAreTheDesignsSize()
+    {
+        (double fold, string foldTemplate, double make, double search, double corner, double[] footer) = Sta.Run(() =>
+        {
+            MainWindow window = new() { SessionsFile = Stored() };
+            ButtonBase folding = Find<ButtonBase>(window.Sidebar, "SessionsFold");
+            Border frame = (Border)((Grid)Find<TextBox>(window.Sidebar, "SessionsSearch").Parent).Parent;
+
+            folding.ApplyTemplate();
+
+            return (folding.Width,
+                    folding.Template.FindName("Ground", folding) is Border ground ? $"{ground.CornerRadius.TopLeft}" : "none",
+                    Find<Button>(window.Sidebar, "SessionsNew").Height,
+                    frame.Height,
+                    frame.CornerRadius.TopLeft,
+                    new[] { Find<Button>(window.Sidebar, "SessionsImport").Height, Find<Button>(window.Sidebar, "SessionsSettings").Height });
+        });
+
+        Assert.Equal(28, fold);
+        Assert.Equal("6", foldTemplate);
+        Assert.Equal(28, make);
+        Assert.Equal(32, search);
+        Assert.Equal(6, corner);
+        Assert.Equal([32, 32], footer);
+    }
+
+    /// <summary>
+    /// Every row is 32 high and starts 8 in plus 22 per folder; a session is drawn with the terminal
+    /// glyph and never the icon fonts' Command Prompt, and an open folder's chevron is turned a quarter.
+    /// </summary>
+    [Fact]
+    public void RowsAreTheDesignsAndASessionIsNotACommandPrompt()
+    {
+        (string path, double height, double left, bool terminal, bool prompt, double turn)[] rows = Sta.Run(() =>
+        {
+            MainWindow window = new() { SessionsFile = Stored() };
+
+            window.RefreshSessions();
+
+            return Find<ListBox>(window.Sidebar, "SessionsList").Items.OfType<ListBoxItem>()
+                .Select(item => (((SessionRow)item.Tag).Path,
+                                 item.Height,
+                                 item.Padding.Left,
+                                 Under(item).Any(each => AutomationProperties.GetAutomationId(each) == "Terminal"),
+                                 Under(item).OfType<TextBlock>().Any(each => each.Text == ""),
+                                 Under(item).OfType<TextBlock>().FirstOrDefault(each => AutomationProperties.GetAutomationId(each) == "Chevron")
+                                     ?.RenderTransform is RotateTransform rotated ? rotated.Angle : -1))
+                .ToArray();
+        });
+
+        Assert.All(rows, row => Assert.Equal(SessionsSidebar.RowHeight, row.height));
+        Assert.All(rows, row => Assert.False(row.prompt, $"{row.path} carries the Command Prompt glyph"));
+
+        Assert.Equal((8d, false, 90d), (rows.Single(row => row.path == "Work").left, rows.Single(row => row.path == "Work").terminal,
+                                       rows.Single(row => row.path == "Work").turn));
+        Assert.Equal((30d, true), (rows.Single(row => row.path == "Work/db-primary").left, rows.Single(row => row.path == "Work/db-primary").terminal));
+        Assert.Equal((8d, true), (rows.Single(row => row.path == "pi").left, rows.Single(row => row.path == "pi").terminal));
+    }
+
+    /// <summary>The selected row is the accent at a tenth, and the row's template fills with it rather than with an opaque block.</summary>
+    [Fact]
+    public void TheSelectedRowIsTheAccentAtATenth()
+    {
+        (double tenth, bool selects) = Sta.Run(() =>
+        {
+            MainWindow window = new() { SessionsFile = Stored() };
+
+            window.RefreshSessions();
+            window.Sidebar.Select("Work/db-primary");
+
+            ListBoxItem item = Find<ListBox>(window.Sidebar, "SessionsList").Items.OfType<ListBoxItem>().Single(each => each.IsSelected);
+            bool usesIt = item.Template.Triggers.OfType<Trigger>().Any(trigger =>
+                trigger.Property == ListBoxItem.IsSelectedProperty
+                && trigger.Setters.OfType<Setter>().Any(setter => setter.Value is DynamicResourceExtension { ResourceKey: "SessionsSelectionBrush" }));
+
+            return (((SolidColorBrush)window.Sidebar.Resources["SessionsSelectionBrush"]).Opacity, usesIt);
+        });
+
+        Assert.Equal(0.1, tenth, 3);
+        Assert.True(selects, "the selected row is not filled with the selection brush");
+    }
+
+    /// <summary>
+    /// The rail is the design's: Show sessions, Files on this server and Tunnels, 36 square, and nothing
+    /// of the open sidebar left on it.
+    /// </summary>
+    [Fact]
+    public void TheRailShowsSessionsFilesAndTunnels()
+    {
+        (string[] shown, double side, double width) = Sta.Run(() =>
+        {
+            MainWindow window = new() { SessionsFile = Stored() };
+
+            window.Sidebar.Shape(open: false);
+
+            string[] ids = ["SessionsFold", "SessionsFiles", "SessionsTunnels", "SessionsNew", "SessionsImport", "SessionsSettings", "SessionsSearch", "SessionsList"];
+
+            return (ids.Where(id => Shown(Find<FrameworkElement>(window.Sidebar, id))).ToArray(),
+                    Find<ButtonBase>(window.Sidebar, "SessionsFiles").Width,
+                    window.Sidebar.Width);
+        });
+
+        Assert.Equal(["SessionsFold", "SessionsFiles", "SessionsTunnels"], shown);
+        Assert.Equal(36, side);
+        Assert.Equal(SessionsSidebar.RailWidth, width);
+    }
+
+    /// <summary>The element under a root with this automation id, by the logical tree, which is there before any layout.</summary>
+    private static T Find<T>(DependencyObject root, string id) where T : DependencyObject =>
+        Under(root).OfType<T>().First(each => AutomationProperties.GetAutomationId(each) == id);
+
+    /// <summary>Everything under an element in the logical tree, the element first.</summary>
+    private static IEnumerable<DependencyObject> Under(DependencyObject root)
+    {
+        yield return root;
+
+        foreach (DependencyObject child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            foreach (DependencyObject below in Under(child))
+            {
+                yield return below;
+            }
+        }
+    }
+
+    /// <summary>Whether an element and everything above it is visible, which a window never shown cannot say for itself.</summary>
+    private static bool Shown(FrameworkElement element)
+    {
+        for (DependencyObject? at = element; at is not null; at = LogicalTreeHelper.GetParent(at))
+        {
+            if (at is UIElement { Visibility: not Visibility.Visible })
+            {
+                return false;
+            }
+
+            if (at is SessionsSidebar)
+            {
+                return true;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>The store <see cref="Store"/> describes, written to a file of this test's own.</summary>
