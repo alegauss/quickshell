@@ -29,7 +29,6 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- 📋 **QS285** (deps: —) **The repository declares no licence, so "free and open" cannot be said of it to anyone it is shown to** — With no LICENSE file the source is public but all rights are reserved, which is what a reader of the README's comparison table will find. → §QS285
 - 📋 **QS286** (deps: —) **The site and llms.txt describe features as shipped that the client lacks, so a visitor arriving from a post is misled** — A switcher who reads "signed", "agent forwarding" or "under 120 MB" and finds otherwise stops trusting every true claim beside it. → §QS286
 
 ## Block K — The build and the harness — what a green run is evidence of
