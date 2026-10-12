@@ -9,6 +9,7 @@
 ## Block C — Emulation that does not lie about the remote
 
 - 📋 **QS281** (deps: —) **The terminal's text touches the sidebar's divider and the window's top edge, with no inset around the grid** — The approved design pads the terminal 14 by 18 in its own background, and the grid is laid out flush to the cell. → §QS281
+- 📋 **QS287** (deps: QS215 ✅) **The contrast test's Direct2D reference still draws blank in the guest after every redraw, and the run goes red** — QS215 redraws a blank reference, but on 2026-10-12 all three redraws were blank too, so a green tree failed on a draw that never reached its target. → §QS287
 
 ## Block D — The tree a user organises work in
 
@@ -18,7 +19,7 @@
 
 ## Block G — The clean interface, defended
 
-- 🛠 **QS278** (deps: —) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — The approved strip carries Home, each tab's state and the palette's entry, and the stock one shows a title and nothing else. → §QS278
+- ⏳ **QS278** (deps: winwright WW523) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — tabs.cases.json reads each tab's state off its ItemStatus once a case can read one (winwright WW523). → §QS278
 - 📋 **QS279** (deps: —) **Home's recent sessions are forgotten on every restart and their cards cannot say when each was last used** — Recents live in one window's memory, so a new start shows the store's first three, and the design's cards carry a time nothing records. → §QS279
 - 📋 **QS280** (deps: —) **Home has the design's content in another layout: quick connect in three rows, other start-point copy and shape** — The first screen a new user sees is the one most worth matching to what was approved, and it was built to the content, not the layout. → §QS280
 - 📋 **QS282** (deps: —) **A local tab and the window are titled C:\WINDOWS\system32\cmd.exe instead of naming the shell** — cmd writes its own executable's path as its title, and the client shows it as written, so a local shell is named by a path. → §QS282
@@ -289,6 +290,12 @@
 - **A Home start is timed, and figure 5 still times the local shell** Settled by
   run-startup-vm.cmd before and after the switch, both numbers in the commit, and the
   performance gate passing --tabs 1 so its baseline stays the shell's.
+
+## Done when — QS278
+
+- **A UI case reads a tab's state from its ItemStatus** Settled when tabs.cases.json
+  carries a step reading a local tab's status as Local, run green in the guest, which
+  needs winwright's status reading (WW523).
 
 ## Non-goals
 

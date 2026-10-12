@@ -48,30 +48,6 @@ public sealed class SessionsSidebar : Border
     /// <summary>Segoe's icon faces, the newer first: what Windows itself draws its glyphs with.</summary>
     private static readonly FontFamily Glyphs = new("Segoe Fluent Icons, Segoe MDL2 Assets");
 
-    /// <summary>
-    /// A button with no fill until the pointer is over it, rounded as the design's are. A template and
-    /// not a style, because Fluent's own toggle template fills a checked toggle with the accent, which
-    /// is the opaque block QS277 was filed about.
-    /// </summary>
-    private const string GhostXaml = """
-        <ControlTemplate TargetType="ButtonBase">
-          <Border x:Name="Ground" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
-            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
-          </Border>
-          <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Ground" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
-            </Trigger>
-            <Trigger Property="IsPressed" Value="True">
-              <Setter TargetName="Ground" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
-            </Trigger>
-            <Trigger Property="IsEnabled" Value="False">
-              <Setter Property="Opacity" Value="0.4" />
-            </Trigger>
-          </ControlTemplate.Triggers>
-        </ControlTemplate>
-        """;
-
     /// <summary>A row: rounded, a subtle fill under the pointer, and the accent at a tenth where selected.</summary>
     private const string RowXaml = """
         <ControlTemplate TargetType="ListBoxItem">
@@ -112,7 +88,7 @@ public sealed class SessionsSidebar : Border
 
     // The templates are this sidebar's own and not shared: a template is sealed on the thread that first
     // uses it, and a second window on another thread would then be refused it.
-    private readonly ControlTemplate _ghost = Template(GhostXaml);
+    private readonly ControlTemplate _ghost = Templates.Ghost();
     private readonly ControlTemplate _row = Template(RowXaml);
     private readonly ControlTemplate _bare = Template(BareXaml);
 

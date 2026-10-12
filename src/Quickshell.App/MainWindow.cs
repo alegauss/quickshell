@@ -34,7 +34,7 @@ namespace Quickshell.App;
 /// constructed, shown and interactive before any session work begins, because cold start is a number
 /// this project publishes and the first paint is the half of it a user feels.</para>
 /// </summary>
-public sealed class MainWindow : Window
+public sealed partial class MainWindow : Window
 {
     /// <summary>
     /// Where the panes live, all of them, with one visible.
@@ -207,8 +207,12 @@ public sealed class MainWindow : Window
         _strip.Children.Add(_homeSlot);
         _strip.Children.Add(_tabs);
 
-        Grid.SetRow(_strip, 0);
-        Grid.SetColumnSpan(_strip, 2);
+        // Then New tab and Commands, and the row they are all drawn in (QS278).
+        BuildStrip();
+        Strip();
+
+        Grid.SetRow(_stripFrame, 0);
+        Grid.SetColumnSpan(_stripFrame, 2);
         Grid.SetRow(_sidebar, 1);
         Grid.SetRowSpan(_sidebar, 3);
         Grid.SetRow(_find, 2);
@@ -216,7 +220,7 @@ public sealed class MainWindow : Window
         Grid.SetRow(_terminal, 3);
         Grid.SetColumn(_terminal, 1);
 
-        layout.Children.Add(_strip);
+        layout.Children.Add(_stripFrame);
         layout.Children.Add(_sidebar);
         layout.Children.Add(_find);
         layout.Children.Add(_terminal);
@@ -1198,7 +1202,7 @@ public sealed class MainWindow : Window
 
         // The first item is selected the moment it is added, before its panes are held.
         _rearranging = true;
-        _tabs.Items.Add(new TabItem { Header = tab.Title });
+        _tabs.Items.Add(TabFor(tab));
         _rearranging = false;
 
         foreach (TerminalLeaf leaf in tab.Leaves)
@@ -1456,24 +1460,9 @@ public sealed class MainWindow : Window
     /// </summary>
     public void Retitle()
     {
-        for (int tab = 0; tab < _open.Count && tab < _tabs.Items.Count; tab++)
-        {
-            if (_tabs.Items[tab] is not TabItem item)
-            {
-                continue;
-            }
-
-            // The name is the title and only the title. A marker put into the header string lands
-            // in the element's accessibility name too — so a screen reader would read the dot out,
-            // and every case reading a tab would have to know about it. What activity gets instead
-            // is weight, which is a property of how the tab is drawn and not of what it is called.
-            if (!Equals(item.Header, _open[tab].Title))
-            {
-                item.Header = _open[tab].Title;
-            }
-
-            item.FontWeight = _open[tab].HasActivity ? FontWeights.Bold : FontWeights.Normal;
-        }
+        // Each tab's dot, title and underline, and Home's (QS278). The name stays the title and only
+        // the title: a marker in it would be read out by a screen reader and by every case.
+        DressTabs();
 
         // Recording while any pane is (QS134), or while somebody said so directly.
         bool recording = _recording || RecordingPanes() > 0;
@@ -1651,6 +1640,11 @@ public sealed class MainWindow : Window
             ? Visibility.Visible
             : Visibility.Collapsed;
         _homeSlot.Visibility = _homeOpen ? Visibility.Visible : Visibility.Collapsed;
+
+        // The row goes with what is in it: New tab and Commands are not a strip on their own.
+        _stripFrame.Visibility = _tabs.Visibility == Visibility.Visible || _homeOpen
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     /// <summary>
@@ -2622,14 +2616,8 @@ public sealed class MainWindow : Window
             Grid.SetColumn(_home, 1);
             _layout.Children.Add(_home);
 
-            Button button = new()
-            {
-                Content = new TextBlock { Text = "  Home", FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI") },
-                Padding = new Thickness(14, 6, 14, 6),
-                Margin = new Thickness(8, 4, 4, 2),
-                VerticalAlignment = VerticalAlignment.Bottom,
-                ToolTip = "Connect to a server, open a recent session, or start another way",
-            };
+            // The strip's first tab to look at, drawn as the tabs are (QS278).
+            Button button = HomeTab();
 
             System.Windows.Automation.AutomationProperties.SetAutomationId(button, "HomeButton");
             System.Windows.Automation.AutomationProperties.SetName(button, "Home");
