@@ -2,13 +2,20 @@
 
 ## Priority
 
+- QS275
+- QS276
+
 ## Block A — A session that stays up, or says why it did not
 
 ## Block B — Keys, agents, and the host you think you reached
 
 ## Block C — Emulation that does not lie about the remote
 
+- 📋 **QS281** (deps: —) **The terminal's text touches the sidebar's divider and the window's top edge, with no inset around the grid** — The approved design pads the terminal 14 by 18 in its own background, and the grid is laid out flush to the cell. → §QS281
+
 ## Block D — The tree a user organises work in
+
+- 📋 **QS275** (deps: —) **A store whose root node has a name opens none of its sessions: every row says there is no such session** — Session(path) puts the root's name in the path and the sidebar, Find and the editor do not, so no row's path ever resolves. → §QS275
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -16,14 +23,23 @@
 
 ## Block G — The clean interface, defended
 
+- 📋 **QS277** (deps: —) **The sidebar is not the approved one: a filled hamburger, Command Prompt icons on SSH rows, an opaque selection** — Rows, header, search and rail use stock control looks and sizes, so a saved server reads as a local shell and the list is half as dense. → §QS277
+- 📋 **QS278** (deps: —) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — The approved strip carries Home, each tab's state and the palette's entry, and the stock one shows a title and nothing else. → §QS278
+- 📋 **QS279** (deps: —) **Home's recent sessions are forgotten on every restart and their cards cannot say when each was last used** — Recents live in one window's memory, so a new start shows the store's first three, and the design's cards carry a time nothing records. → §QS279
+- 📋 **QS280** (deps: —) **Home has the design's content in another layout: quick connect in three rows, other start-point copy and shape** — The first screen a new user sees is the one most worth matching to what was approved, and it was built to the content, not the layout. → §QS280
+- 📋 **QS282** (deps: —) **A local tab and the window are titled C:\WINDOWS\system32\cmd.exe instead of naming the shell** — cmd writes its own executable's path as its title, and the client shows it as written, so a local shell is named by a path. → §QS282
+
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
+- 📋 **QS283** (deps: —) **The window, taskbar, Alt+Tab and Start menu show Windows' generic application icon** — No project names an icon, so the executable and everything pointing at it carry the generic one. → §QS283
 
 ## Block I — An error a user can act on
 
 ## Block J — Leaving MobaXterm, proven by the switch
+
+- 📋 **QS276** (deps: —) **An imported key path keeps MobaXterm's _ProfileDir_ placeholder, so the key file is never found or offered** — The importer copies the key field verbatim and nothing expands MobaXterm's path placeholders, so the session silently skips its key. → §QS276
 
 ## Block K — The build and the harness — what a green run is evidence of
 

@@ -204,7 +204,50 @@ Falsified when a one-cell blink costs what a whole-grid one did on that desk. Th
 swap effect goes back to `FlipDiscard` unless photon says sequential costs nothing, and
 the per-frame cost is the wake and the present, which is a different line.
 
+### §QS281 An inset around the terminal, in its own colour
+
+Seen 2026-10-12 in the owner's screenshot: the first column of the grid sits about 2px
+from the sidebar's divider and the first row against the window's top, where
+`Connected.dc.html` gives the terminal `padding: 14px 18px`.
+
+What to build: the terminal area keeps an inset of 14 above and below and 18 left and
+right, in the colour scheme's own background so the inset reads as part of the terminal
+and not as a frame: a Border around `_terminal` whose Background follows the scheme the
+focused pane wears (QS245's own scheme where a session sets one), changed with it. The
+grid is laid out inside the inset, so the column and row counts the host is told shrink
+by exactly what the inset takes; split panes keep their 4px dividers inside it, and zoom
+fills it. The pointer, selection and drop coordinates stay in the pane's own space,
+which the inset does not move.
+
+Tests: WindowTests read the canvas's offset from the cell (18, 14) and that its
+background equals the scheme's background after a scheme change; the grid size at a
+known window size drops by the expected columns and rows. A run-app-vm.cmd picture for
+the owner.
+
 ## Block D — The tree a user organises work in
+
+### §QS275 The root's name is never part of a path
+
+Found 2026-10-12 on the owner's own store (`%AppData%\quickshell\sessions.json`), whose
+root node is `"Name": "imported"`, written by an early MobaXterm import. Every session
+row in the sidebar, double-clicked, ends in "There is no saved session or folder of
+sessions called Eztec/ezsv72 (root)": not one of the 42 sessions opens.
+
+The two halves of `SessionTree` disagree about the root. `Walk` (behind `Sessions()`,
+`Session(path)`, `Search` and `Group`) starts a path with the root's own name, so the
+session resolves as `imported/Eztec/ezsv72 (root)`. `Find`, `Inherits`, `With` and
+`SessionsView.Rows` start below the root, so the sidebar, the editor and every write say
+`Eztec/ezsv72 (root)`. A probe over a copy of the store resolved all 42 sidebar paths to
+null.
+
+What to build: the root's name is never part of a path. `Walk` is called with the root
+treated as unnamed (start each child at the empty path), whatever the file says; the
+name is kept on write so a hand edit is not rewritten. A test reads a store whose root
+is named and asserts, for every row `SessionsView.Rows` lists, that `Session(row.Path)`
+is not null and that `Find`, `Inherits` and `Session` agree on it; another asserts the
+palette's Open session opens the same path.
+
+Falsified when a session listed in the sidebar of any readable store does not open.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -285,6 +328,135 @@ Home is the default, and is the owner's to restate.
 
 Falsified when a new window's first screen still gives no way to a server without the
 palette.
+
+### §QS277 The sidebar, to the design's pixel
+
+Measured 2026-10-12 against `docs/design/friendly-shell/Main.dc.html` (open) and
+`Connected.dc.html` (rail), from the owner's screenshot. Sizes in device-independent px.
+
+Open: header row padding 16/16/10. The fold is a ghost button, 28x28, radius 6, no fill
+when on, glyph "panel" (Fluent DockLeft), not the accent-filled square hamburger shown
+now. "Sessions" 13px SemiBold, TextFillColorSecondary. New: height 28, padding 0 10, gap
+6, 12px plus glyph, 12px SemiBold, accent fill. Search: height 32, radius 6, 1px border,
+a 14px magnifier inside at left 10, placeholder 13px.
+
+Rows: list padding 4/8, rows 1px apart, radius 6. A folder row is 32 high: 10px chevron
+(rotated 90 when open), 15px folder glyph, name 13 SemiBold, what it hands down 11px
+right. A session row is 32 high at indent 30 (8 at the top level): 15px terminal glyph
+drawn as a rect and a chevron, never the "C:\" glyph used now, which reads as a local
+shell; name 13 over address 11, line-height 1.2, ellipsised; Connected chip 11px.
+Selected fill is the accent at 10% alpha, hover SubtleFillColorSecondary, not the opaque
+block shown now. Rows keep 8px clear of the scrollbar.
+
+Footer: top divider, padding 10/16/14, buttons 32 high, 15px glyph, gap 10, 13px.
+
+Rail (52 wide): 36x36 ghost buttons, radius 6, 18px glyphs, 4 apart from top 10: Show
+sessions, Files on this server, Tunnels; with a remote tab focused the latter two act on
+it.
+
+Evidence: SessionsSidebarTests reading each size above off the element tree, and a
+run-app-vm.cmd picture for the owner to compare.
+
+### §QS278 The tab strip the design draws
+
+Measured 2026-10-12 against `Main.dc.html` and `Connected.dc.html`. The strip today is
+WPF's stock TabControl, hidden with one tab, and Home is a separate button beside it
+(QS272's first part). The design draws one strip.
+
+The row: 42 high, padding 0 12, items aligned to the bottom, 2 apart, a 1px divider
+under it. Home is the first tab: 15px house glyph, the word Home, no close button. Each
+tab is 38 high, padding 0 12 0 16, gap 8: an 8px status dot (filled
+SystemFillColorSuccess while connected, caution while reconnecting, a 1.5px hollow
+TextFillColorTertiary ring for a local shell or one that ended), the title, and a 22x22
+ghost close button with an 8px cross. The selected tab is SemiBold,
+TextFillColorPrimary, with a 3px accent underline inset 10 each side at bottom -1 and
+radius 2; others are Regular, TextFillColorSecondary. Then a 30x28 ghost "+" (New tab,
+radius 6, 5 from the bottom). At the far right a ghost "Commands" button, 28 high, 14px
+magnifier, 12px text, and a keycap "Ctrl+Shift+P" (11px, 1px border, radius 4) that
+opens the palette.
+
+The strip shows whenever Home is open or two tabs are, which with Home the default is
+always. Drag to reorder (QS250), pull down to detach (QS160) and a click on the shown
+tab leaving Home (QS272) keep working.
+
+Evidence: tabs.cases.json reads the dot's state through each tab's ItemStatus and the
+Home tab's name; a WindowTests check reads the sizes; a run-app-vm.cmd picture for the
+owner.
+
+### §QS279 Recent sessions, kept and drawn
+
+Measured 2026-10-12 against `Main.dc.html`. Home's cards (QS272) come from
+`MainWindow._recentSessions`, a list in memory per window: after a restart Home shows
+the store's first three as "Saved sessions", and no card can say when it was last used.
+
+Kept: the sessions connected last, newest first, at most twenty, each with the time of
+its last connection, in a file of the client's own beside the settings
+(`%AppData%\quickshell\recent.json`, or `data\` when portable), written when a
+connection goes live, never when one is merely asked for. Renaming or deleting a session
+from the sidebar or the dialog carries the rename and drops the deleted one, so a card
+never opens a path the store lacks. Open session's ranking in the palette (QS217) reads
+the same list.
+
+Drawn: "Recent" 16 SemiBold with a "Show all sessions" link at right that focuses the
+sidebar's search; three equal columns 12 apart. A card: padding 16, gap 12, radius 8,
+1px CardStroke, hover stroke one step stronger; a 34x34 tile, radius 8, on the layer
+fill, holding a 17px server glyph in accent; the name SemiBold over user@host in
+monospace 12; tag chips 11px (padding 1/7, radius 5, 1px stroke) with the folder as the
+first chip; at the bottom, the time in words ("Connected now" while a tab holds it,
+"Today", "Yesterday", "Last week", then the date) and a 28-high Connect.
+
+Tests: the list survives a new window; a rename and a delete carry; the time's wording,
+from a fixed clock.
+
+### §QS280 Home, to the design's pixel
+
+Measured 2026-10-12 against `Main.dc.html`; `HomePage.cs` and `QuickConnect.cs` (QS271,
+QS272) were built to the content, not the layout. Page padding 32/40, sections 28 apart.
+The Recent cards are QS279.
+
+Heading: "Connect to a server" 26px Bold, letter-spacing -0.01em; under it, 6 apart,
+"Type an address, or pick one of your saved sessions on the left." in
+TextFillColorSecondary.
+
+Quick connect is one card (padding 20, radius 8, 1px CardStroke) of one row, bottom
+aligned, 12 apart: Address (label 12 SemiBold; a 40-high box with a 16px terminal glyph
+at left 12, monospace 14, placeholder "user@host or user@host:port"), then Sign in with
+as a 230-wide drop-down ("Key or agent (automatic)", "Password", "A specific key file…",
+the last opening a file picker) in place of today's segments, then Connect, 40 high,
+padding 0 22, accent, with a 14px arrow. Under the row, 12px secondary: the Save as a
+session checkbox, and "Hosts in ~/.ssh/config are offered as you type." Errors stay
+under the box.
+
+Start points: three equal cards, 12 apart, padding 14/16, subtle fill, 1px stroke,
+radius 8, an 18px accent glyph at left, title SemiBold over 12px secondary: "Bring your
+MobaXterm sessions" / "Previewed first; nothing is written until you agree."; "Open a
+local shell" / "Command Prompt, PowerShell or WSL in a new tab."; "Browse files" / "Drag
+files to and from a server over SFTP."
+
+Evidence: home.cases.json reads the copy and the drop-down's three entries; a
+run-app-vm.cmd picture beside Main.dc.html for the owner.
+
+### §QS282 A shell's path, named as the shell
+
+Seen 2026-10-12: the window is titled "C:\WINDOWS\system32\cmd.exe — quickshell", and a
+local tab would carry the same path, where the design names a local tab by its shell
+("PowerShell" in `Connected.dc.html`). cmd writes its own executable's full path through
+OSC as soon as it starts; QS161 deliberately ranks a host-written title above the tab's
+host, and that ranking stays.
+
+What to build: one narrow rule in `TerminalLeaf.Title`. Where the title a host wrote is
+exactly the full path of an executable (a rooted path ending in `.exe`, nothing after
+it), the leaf shows that program's friendly name instead: cmd.exe "Command Prompt",
+powershell.exe "Windows PowerShell", pwsh.exe "PowerShell", wsl.exe and bash.exe "WSL",
+and otherwise the file's own name without `.exe`. Anything else a host writes, a
+directory or a running command included ("Administrator: C:\…", "vim notes.txt"), is
+shown as written, and a name the user gave still outranks both. The window's title
+follows, as it already does, so the case asserting it contains "quickshell" is
+unchanged.
+
+Tests: the mapping for each executable, a rooted path with arguments after it left
+alone, a user's name outranking it; tabs.cases.json reads a fresh local tab named
+"Command Prompt".
 
 ## Block H — The reason to leave the incumbent
 
@@ -418,6 +590,27 @@ shape of that fix, and QS260 carries it.
 Falsified when one local pane, blink off, reads zero frames and under 0.1 % of a core
 over ten idle minutes on a quiet desk.
 
+### §QS283 The client's own icon
+
+Seen 2026-10-12: the window's caption, the taskbar and Alt+Tab show Windows' generic
+application icon. No project in `src` names an `ApplicationIcon` and no `.ico` is in the
+repository, so the executable, the Start menu shortcut QS77's installer writes and the
+uninstall entry carry the generic one too.
+
+What to build: the mark the design draws in its title bar (`Main.dc.html`: a rounded
+terminal frame, a prompt chevron and an underscore, stroke 2 on a 24 grid) as one
+`assets\quickshell.ico`, rendered from an SVG kept beside it at 16, 20, 24, 32, 40, 48,
+64 and 256 px, with the small sizes hinted to whole pixels rather than scaled down. The
+accent in the mockup is the site's violet; the icon is the one place a fixed colour is
+right, since Windows draws it outside any theme, so it uses that violet with a light
+variant tested against both taskbar themes. `ApplicationIcon` in
+`Quickshell.App.csproj`, and `Window.Icon` set from the same resource so every window,
+dialogs included, carries it. The installer's shortcut and uninstall entry point at the
+executable's icon.
+
+Evidence: a test that the built exe carries an icon resource with every size listed;
+`run-install-vm.cmd` reads the shortcut's icon location; a picture for the owner.
+
 ## Block I — An error a user can act on
 
 ### §QS128 A trace that carries both sides of the negotiation
@@ -474,6 +667,34 @@ This is the last thing written rather than the first, since every claim in it ha
 true of the shipped build and not of the plan.
 
 Falsified when a figure in it cannot be reproduced from a documented run.
+
+### §QS276 MobaXterm's path placeholders, expanded
+
+Found 2026-10-12 in the owner's store: imported sessions carry keys such as
+`_ProfileDir_\OneDrive\CustomerCerts\EZTEC\EZTEC.ppk`. `_ProfileDir_` is MobaXterm's own
+placeholder for the user's profile folder, and `MobaXtermImport.Key` copies it verbatim,
+so the file is never found and the session falls back to the default keys and a
+password. `RemoteShell.Expand` knows only a leading `~`.
+
+MobaXterm writes these placeholders in a session's key field: `_ProfileDir_` (the
+profile, `%USERPROFILE%`), `_CurrentDrive_` (the drive MobaXterm runs from, `C:` where
+it is unknown), `_MyDocuments_` (the Documents folder) and `_AppDataDir_` (`%APPDATA%`).
+Confirm the list against the MobaXterm.ini fixtures in `cases\fixtures` and the
+MobaXterm documentation before relying on it.
+
+What to build: a `MobaXtermPaths.Expand` that replaces each placeholder at the start of
+a path, case-insensitively, and is called in two places. On import, so a new store holds
+a real path. And in `RemoteShell.Credentials`, before `File.Exists`, so the stores
+already imported this way work without being imported again. A key that still does not
+exist after expansion is said in the pane ("The key file … named by this session is not
+there") rather than silently skipped, since a session that named a key was asking for
+that key.
+
+Tests: each placeholder expands; an unknown underscore word is left alone; an imported
+fixture line yields a rooted path; a session whose key is missing narrates it.
+
+Falsified when an imported session's key file exists on disk and the connection does not
+offer it.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
