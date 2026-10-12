@@ -18,7 +18,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS278** (deps: —) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — The approved strip carries Home, each tab's state and the palette's entry, and the stock one shows a title and nothing else. → §QS278
+- 🛠 **QS278** (deps: —) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — The approved strip carries Home, each tab's state and the palette's entry, and the stock one shows a title and nothing else. → §QS278
 - 📋 **QS279** (deps: —) **Home's recent sessions are forgotten on every restart and their cards cannot say when each was last used** — Recents live in one window's memory, so a new start shows the store's first three, and the design's cards carry a time nothing records. → §QS279
 - 📋 **QS280** (deps: —) **Home has the design's content in another layout: quick connect in three rows, other start-point copy and shape** — The first screen a new user sees is the one most worth matching to what was approved, and it was built to the content, not the layout. → §QS280
 - 📋 **QS282** (deps: —) **A local tab and the window are titled C:\WINDOWS\system32\cmd.exe instead of naming the shell** — cmd writes its own executable's path as its title, and the client shows it as written, so a local shell is named by a path. → §QS282
@@ -32,6 +32,9 @@
 ## Block I — An error a user can act on
 
 ## Block J — Leaving MobaXterm, proven by the switch
+
+- 📋 **QS285** (deps: —) **The repository declares no licence, so "free and open" cannot be said of it to anyone it is shown to** — With no LICENSE file the source is public but all rights are reserved, which is what a reader of the README's comparison table will find. → §QS285
+- 📋 **QS286** (deps: —) **The site and llms.txt describe features as shipped that the client lacks, so a visitor arriving from a post is misled** — A switcher who reads "signed", "agent forwarding" or "under 120 MB" and finds otherwise stops trusting every true claim beside it. → §QS286
 
 ## Block K — The build and the harness — what a green run is evidence of
 
