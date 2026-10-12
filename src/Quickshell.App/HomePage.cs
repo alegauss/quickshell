@@ -35,8 +35,18 @@ public sealed record SessionCard(string Path, string Name, string Address, strin
 public sealed class HomePage : Border
 {
     private readonly MainWindow _window;
-    private readonly WrapPanel _cards;
+    /// <summary>The theme's quieter text: an address, a chip, a time.</summary>
+    private const string Quiet = "TextFillColorSecondaryBrush";
+
+    private readonly UniformGrid _cards;
     private readonly TextBlock _cardsHeading;
+    private readonly Grid _cardsHead;
+
+    /// <summary>The server glyph a card's tile holds: two stacked units with a light each, on a 24 grid, as the design draws it.</summary>
+    private static readonly Geometry Server = Frozen(Geometry.Parse(
+        "M4.5,4 H19.5 A1.5,1.5 0 0 1 21,5.5 V9.5 A1.5,1.5 0 0 1 19.5,11 H4.5 A1.5,1.5 0 0 1 3,9.5 V5.5 A1.5,1.5 0 0 1 4.5,4 Z "
+        + "M4.5,13 H19.5 A1.5,1.5 0 0 1 21,14.5 V18.5 A1.5,1.5 0 0 1 19.5,20 H4.5 A1.5,1.5 0 0 1 3,18.5 V14.5 A1.5,1.5 0 0 1 4.5,13 Z "
+        + "M7,7.5 L7.01,7.5 M7,16.5 L7.01,16.5"));
 
     /// <summary>Builds the page over a window.</summary>
     public HomePage(MainWindow window, QuickConnect quick)
@@ -68,10 +78,32 @@ public sealed class HomePage : Border
 
         body.Children.Add(Card(quick, new Thickness(20, 8, 20, 20)));
 
+        // "Recent", with Show all sessions at its right (QS279): the cards are three, and the rest are
+        // in the sidebar, which the link opens with the keyboard in its search.
         _cardsHeading = Heading(string.Empty);
-        body.Children.Add(_cardsHeading);
+        _cardsHeading.Margin = new Thickness(0);
 
-        _cards = new WrapPanel();
+        Button all = new()
+        {
+            Content = new TextBlock { Text = "Show all sessions", FontSize = 12 },
+            Template = Templates.Plain(),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+        };
+
+        all.SetResourceReference(Control.ForegroundProperty, "AccentTextFillColorPrimaryBrush");
+        AutomationProperties.SetAutomationId(all, "ShowAllSessions");
+        AutomationProperties.SetName(all, "Show all sessions");
+        all.Click += (_, _) => _window.ShowAllSessions();
+
+        _cardsHead = new Grid { Margin = new Thickness(0, 28, 0, 12) };
+        _cardsHead.Children.Add(_cardsHeading);
+        _cardsHead.Children.Add(all);
+        body.Children.Add(_cardsHead);
+
+        // Three equal columns, 12 apart: each card carries 12 at its right and the grid gives the last one's back.
+        _cards = new UniformGrid { Rows = 1, Columns = 3, Margin = new Thickness(0, 0, -12, 0) };
         AutomationProperties.SetAutomationId(_cards, "HomeSessions");
         body.Children.Add(_cards);
 
@@ -107,7 +139,7 @@ public sealed class HomePage : Border
 
         _cards.Children.Clear();
         _cardsHeading.Text = cards.Count == 0 ? string.Empty : recent ? "Recent" : "Saved sessions";
-        _cardsHeading.Visibility = cards.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        _cardsHead.Visibility = cards.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
 
         foreach (SessionCard card in cards)
         {
@@ -115,12 +147,24 @@ public sealed class HomePage : Border
         }
     }
 
-    /// <summary>One session's card: its name, its address, its folder and tags, and Connect.</summary>
+    /// <summary>
+    /// One session's card, as the design draws it (QS279): a 34-pixel tile with the server glyph beside
+    /// its name over its address; its folder and tags as chips, the folder first; and at the bottom when
+    /// it last connected, beside a 28-high Connect. Padding 16, 12 between the three, radius 8.
+    /// </summary>
     private Border Session(SessionCard card)
     {
         StackPanel inside = new();
 
-        inside.Children.Add(new TextBlock { Text = card.Name, FontSize = 14, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+        Grid top = new();
+
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        top.Children.Add(Tile());
+
+        StackPanel named = new() { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+
+        named.Children.Add(new TextBlock { Text = card.Name, FontSize = 14, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
 
         TextBlock address = new()
         {
@@ -128,43 +172,124 @@ public sealed class HomePage : Border
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
             FontSize = 12,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            Margin = new Thickness(0, 2, 0, 0),
         };
 
-        address.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
-        inside.Children.Add(address);
+        address.SetResourceReference(TextBlock.ForegroundProperty, Quiet);
+        named.Children.Add(address);
+        Grid.SetColumn(named, 1);
+        top.Children.Add(named);
+        inside.Children.Add(top);
 
-        string filed = string.Join(" · ", new[] { card.Folder }.Concat(card.Tags).Where(each => each.Length > 0));
+        WrapPanel chips = new() { Margin = new Thickness(0, 12, 0, 0) };
 
-        TextBlock meta = new() { Text = filed, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), TextTrimming = TextTrimming.CharacterEllipsis };
+        AutomationProperties.SetAutomationId(chips, "Chips");
 
-        meta.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorTertiaryBrush");
-        inside.Children.Add(meta);
-
-        // When it last connected, where it is a recent one (QS279).
-        if (card.When.Length > 0)
+        foreach (string label in new[] { card.Folder }.Concat(card.Tags).Where(each => each.Length > 0))
         {
-            TextBlock when = new() { Text = card.When, FontSize = 12, Margin = new Thickness(0, 6, 0, 0) };
-
-            when.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
-            AutomationProperties.SetAutomationId(when, "When");
-            inside.Children.Add(when);
+            chips.Children.Add(Chip(label));
         }
 
-        Button connect = new() { Content = "Connect", Margin = new Thickness(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+        if (chips.Children.Count > 0)
+        {
+            inside.Children.Add(chips);
+        }
 
+        Grid bottom = new() { Margin = new Thickness(0, 12, 0, 0) };
+
+        // When it last connected, where it is a recent one.
+        if (card.When.Length > 0)
+        {
+            TextBlock when = new() { Text = card.When, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+
+            when.SetResourceReference(TextBlock.ForegroundProperty, Quiet);
+            AutomationProperties.SetAutomationId(when, "When");
+            bottom.Children.Add(when);
+        }
+
+        Button connect = new()
+        {
+            Content = "Connect",
+            Height = 28,
+            Padding = new Thickness(12, 0, 12, 0),
+            FontSize = 12,
+            FontWeight = FontWeights.SemiBold,
+            HorizontalAlignment = HorizontalAlignment.Right,
+        };
+
+        AutomationProperties.SetAutomationId(connect, "CardConnect");
         AutomationProperties.SetName(connect, $"Connect {card.Path}");
         connect.Click += (_, _) => _window.ConnectSession(card.Path);
-        inside.Children.Add(connect);
+        bottom.Children.Add(connect);
+        inside.Children.Add(bottom);
 
         Border made = Card(inside, new Thickness(16));
 
-        made.Width = 260;
-        made.Margin = new Thickness(0, 0, 12, 12);
+        made.Margin = new Thickness(0, 0, 12, 0);
         AutomationProperties.SetName(made, card.Path);
         AutomationProperties.SetHelpText(made, card.Address);
 
+        // The stroke one step stronger under the pointer.
+        made.MouseEnter += (_, _) => made.SetResourceReference(BorderBrushProperty, "ControlStrokeColorSecondaryBrush");
+        made.MouseLeave += (_, _) => made.SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
+
         return made;
+    }
+
+    /// <summary>The 34-pixel tile, radius 8, on the layer fill, holding the server glyph at 17 in the accent.</summary>
+    private static Border Tile()
+    {
+        System.Windows.Shapes.Path glyph = new()
+        {
+            Data = Server,
+            StrokeThickness = 2,
+            StrokeLineJoin = PenLineJoin.Round,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+        };
+
+        glyph.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "AccentFillColorDefaultBrush");
+
+        Border tile = new()
+        {
+            Width = 34,
+            Height = 34,
+            CornerRadius = new CornerRadius(8),
+            Child = new Viewbox { Width = 17, Height = 17, Child = new Canvas { Width = 24, Height = 24, Children = { glyph } } },
+        };
+
+        tile.SetResourceReference(BackgroundProperty, "LayerFillColorDefaultBrush");
+        AutomationProperties.SetAutomationId(tile, "Tile");
+
+        return tile;
+    }
+
+    /// <summary>A tag chip: 11-pixel words, padding 1 by 7, radius 5, a one-pixel stroke, 6 from the next.</summary>
+    private static Border Chip(string label)
+    {
+        TextBlock said = new() { Text = label, FontSize = 11 };
+
+        said.SetResourceReference(TextBlock.ForegroundProperty, Quiet);
+
+        Border chip = new()
+        {
+            Child = said,
+            Padding = new Thickness(7, 1, 7, 1),
+            CornerRadius = new CornerRadius(5),
+            BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 0, 6, 6),
+        };
+
+        chip.SetResourceReference(BackgroundProperty, "SubtleFillColorSecondaryBrush");
+        chip.SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
+
+        return chip;
+    }
+
+    private static Geometry Frozen(Geometry geometry)
+    {
+        geometry.Freeze();
+
+        return geometry;
     }
 
     /// <summary>One way to start: a glyph, what it does, and a line on what that means.</summary>

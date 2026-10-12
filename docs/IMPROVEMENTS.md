@@ -357,31 +357,6 @@ Evidence: tabs.cases.json reads the dot's state through each tab's ItemStatus an
 Home tab's name; a WindowTests check reads the sizes; a run-app-vm.cmd picture for the
 owner.
 
-### §QS279 Recent sessions, kept and drawn
-
-Measured 2026-10-12 against `Main.dc.html`. Home's cards (QS272) come from
-`MainWindow._recentSessions`, a list in memory per window: after a restart Home shows
-the store's first three as "Saved sessions", and no card can say when it was last used.
-
-Kept: the sessions connected last, newest first, at most twenty, each with the time of
-its last connection, in a file of the client's own beside the settings
-(`%AppData%\quickshell\recent.json`, or `data\` when portable), written when a
-connection goes live, never when one is merely asked for. Renaming or deleting a session
-from the sidebar or the dialog carries the rename and drops the deleted one, so a card
-never opens a path the store lacks. Open session's ranking in the palette (QS217) reads
-the same list.
-
-Drawn: "Recent" 16 SemiBold with a "Show all sessions" link at right that focuses the
-sidebar's search; three equal columns 12 apart. A card: padding 16, gap 12, radius 8,
-1px CardStroke, hover stroke one step stronger; a 34x34 tile, radius 8, on the layer
-fill, holding a 17px server glyph in accent; the name SemiBold over user@host in
-monospace 12; tag chips 11px (padding 1/7, radius 5, 1px stroke) with the folder as the
-first chip; at the bottom, the time in words ("Connected now" while a tab holds it,
-"Today", "Yesterday", "Last week", then the date) and a 28-high Connect.
-
-Tests: the list survives a new window; a rename and a delete carry; the time's wording,
-from a fixed clock.
-
 ### §QS280 Home, to the design's pixel
 
 Measured 2026-10-12 against `Main.dc.html`; `HomePage.cs` and `QuickConnect.cs` (QS271,

@@ -2744,6 +2744,20 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Home's Show all sessions: the sidebar opened, if it was folded, with the keyboard in its search
+    /// (QS279). Opened for now and not written: folding it again is the person's own choice to make.
+    /// </summary>
+    public void ShowAllSessions()
+    {
+        if (!_sidebar.IsOpen)
+        {
+            _sidebar.Shape(open: true);
+        }
+
+        _sidebar.FocusSearch();
+    }
+
     /// <summary>Whether a tab in this window holds a saved session.</summary>
     private bool Holds(string path) =>
         _open.Any(tab => string.Equals(tab.Saved, path, StringComparison.OrdinalIgnoreCase));

@@ -174,6 +174,66 @@ public sealed class HomeTests : IDisposable
         Assert.Equal(["Yesterday", "Yesterday"], when);
     }
 
+    /// <summary>
+    /// QS279's cards, at the design's sizes: three columns, padding 16, radius 8, a 34-pixel tile, the
+    /// folder as the first chip, and a 28-high Connect.
+    /// </summary>
+    [Fact]
+    public void TheCardsAreTheDesigns()
+    {
+        (int columns, double padding, double radius, double tile, string firstChip, double connect) = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "local"));
+            window.SessionWentLive("Work/db-primary");
+
+            HomePage home = window.ShowHome();
+
+            System.Windows.Controls.Primitives.UniformGrid grid = Find<System.Windows.Controls.Primitives.UniformGrid>(home, "HomeSessions");
+            System.Windows.Controls.Border card = grid.Children.OfType<System.Windows.Controls.Border>().First();
+            System.Windows.Controls.WrapPanel chips = Find<System.Windows.Controls.WrapPanel>(card, "Chips");
+
+            return (grid.Columns, card.Padding.Left, card.CornerRadius.TopLeft, Find<System.Windows.Controls.Border>(card, "Tile").Width,
+                    ((System.Windows.Controls.TextBlock)((System.Windows.Controls.Border)chips.Children[0]).Child).Text,
+                    Find<System.Windows.Controls.Button>(card, "CardConnect").Height);
+        });
+
+        Assert.Equal(3, columns);
+        Assert.Equal(16, padding);
+        Assert.Equal(8, radius);
+        Assert.Equal(34, tile);
+        Assert.Equal("Work", firstChip);
+        Assert.Equal(28, connect);
+    }
+
+    /// <summary>Show all sessions opens a folded sidebar, where the rest of the sessions are.</summary>
+    [Fact]
+    public void ShowAllSessionsOpensTheSidebar()
+    {
+        (bool before, bool after) = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "local"));
+            window.Sidebar.Shape(open: false);
+
+            HomePage home = window.ShowHome();
+            bool folded = window.SidebarShowing;
+
+            Find<System.Windows.Controls.Button>(home, "ShowAllSessions")
+                .RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+            return (folded, window.SidebarShowing);
+        });
+
+        Assert.False(before);
+        Assert.True(after, "Show all sessions left the sidebar folded");
+    }
+
+    private static T Find<T>(System.Windows.DependencyObject root, string id) where T : System.Windows.DependencyObject =>
+        Under(root).OfType<T>().First(each => System.Windows.Automation.AutomationProperties.GetAutomationId(each) == id);
+
     /// <summary>A rename or a move carries a session's place in the recent list, and a delete drops it.</summary>
     [Fact]
     public void ARenameOrAMoveCarriesItsPlaceAndADeleteDropsIt()

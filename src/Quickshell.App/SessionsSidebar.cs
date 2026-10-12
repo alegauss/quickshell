@@ -320,6 +320,9 @@ public sealed class SessionsSidebar : Border
     /// <summary>The row selected in the list, or null.</summary>
     public SessionRow? Selected => (_list.SelectedItem as ListBoxItem)?.Tag as SessionRow;
 
+    /// <summary>Puts the keyboard in the search box, as Home's Show all sessions does (QS279).</summary>
+    public void FocusSearch() => _query.Focus();
+
     /// <summary>Selects the row at a path, as a click would; false where none is listed.</summary>
     public bool Select(string path)
     {

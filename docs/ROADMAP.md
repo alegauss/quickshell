@@ -20,7 +20,6 @@
 ## Block G — The clean interface, defended
 
 - ⏳ **QS278** (deps: winwright WW523) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — tabs.cases.json reads each tab's state off its ItemStatus once a case can read one (winwright WW523). → §QS278
-- ⏳ **QS279** (deps: —) **Home's recent sessions are forgotten on every restart and their cards cannot say when each was last used** — Home's cards drawn as the design has them: Recent with Show all sessions, three columns, the tile, tag chips and a 28-high Connect. → §QS279
 - 📋 **QS280** (deps: —) **Home has the design's content in another layout: quick connect in three rows, other start-point copy and shape** — The first screen a new user sees is the one most worth matching to what was approved, and it was built to the content, not the layout. → §QS280
 - 📋 **QS282** (deps: —) **A local tab and the window are titled C:\WINDOWS\system32\cmd.exe instead of naming the shell** — cmd writes its own executable's path as its title, and the client shows it as written, so a local shell is named by a path. → §QS282
 
@@ -296,12 +295,6 @@
 - **A UI case reads a tab's state from its ItemStatus** Settled when tabs.cases.json
   carries a step reading a local tab's status as Local, run green in the guest, which
   needs winwright's status reading (WW523).
-
-## Done when — QS279
-
-- **Home's cards are the design's** Settled when a HomeTests check reads a card's
-  padding 16, radius 8, the 34x34 tile, the folder as first tag chip and a 28-high
-  Connect, and Recent carries a Show all sessions link that focuses the sidebar search.
 
 ## Non-goals
 
