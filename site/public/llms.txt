@@ -11,11 +11,10 @@
 > .NET 10, WPF host with a child HWND per pane. Per-user install, no service, no telemetry,
 > no account.
 
-**Note for anything reading this file as a status report.** The site this ships with
-describes Quickshell with every block of `docs/ROADMAP.md` delivered. Today the terminal,
-the renderer and the measurement harness are largely built and the transport, the session
-tree, the transfers, the forwards and the packaging are open. The roadmap is the record of
-what is actually done: <https://github.com/alegauss/quickshell/blob/main/docs/ROADMAP.md>.
+**Status: pre-release, version 0.1.0.** No release has been published yet, and the build is not
+signed yet. The SSH client, SFTP, port forwards, tabs, split panes and the MobaXterm and PuTTY
+importers work today; what is done and what is still open is in the roadmap,
+<https://github.com/alegauss/quickshell/blob/main/docs/ROADMAP.md>, and the changelog.
 Every figure on the site is a budget from `docs/PERFORMANCE.md` or a "Done when" criterion
 from the roadmap, quoted as the threshold it is.
 
@@ -56,7 +55,7 @@ build rather than reaching a release.
   held by the process. Small is not a pass here; the number is zero.
 - **Cold start, under 400 ms.** Process creation to an interactive local shell, meaning a
   prompt that accepts a keystroke rather than a window that has appeared.
-- **Resident memory, under 120 MB.** One connected session at default scrollback, private
+- **Resident memory, under 160 MB.** One connected session at default scrollback, private
   working set after it has settled, and flat across a seventy-two-hour soak.
 
 The reference machine is named in the same document: Intel Core i7-14700, NVIDIA RTX 4060,
@@ -73,7 +72,7 @@ and a figure quoted without the run that produced it is not a measurement.
   twenty-byte cells, blended in linear light. Five underline styles, overline, strike, three
   cursor shapes and the selection are all derived in the pixel shader from those same twenty
   bytes. A golden-image suite of scenes rendered offscreen is compared against committed
-  references on NVIDIA, AMD, Intel integrated, WARP and inside an RDP session.
+  references on NVIDIA and WARP; AMD, Intel integrated and an RDP session are still to be run.
 - **Damage tracking.** Every mutation of the buffer moves a generation the renderer compares
   against the one it last drew, and a scroll dirties one row rather than the screen. After
   the host stops writing, the window authorises no further frame. This is what makes the
@@ -93,8 +92,8 @@ and a figure quoted without the run that produced it is not a measurement.
   numbers. Pastes are bracketed. A click past column 223 in the legacy mouse encoding is
   refused out loud rather than reported as a different cell, and SGR encoding is asked for
   instead.
-- **The session.** Reconnect keeps the tab, the scrollback, the pane layout and the forwards,
-  and states which attempt restored it. Connection failures are enumerated and named: a
+- **The session.** A session set to reconnect keeps its tab and its scrollback, brings its
+  forwards back, and says each attempt and which forwards returned. Connection failures are enumerated and named: a
   wrong port, a refused algorithm, a rejected key and an expired second factor are four
   messages with four remedies. Every server in the compatibility matrix is connected to
   deliberately, with the algorithms it negotiated recorded per row.
@@ -103,8 +102,8 @@ and a figure quoted without the run that produced it is not a measurement.
   hardware token. `known_hosts` is written in the format OpenSSH reads back unchanged, and a
   host key that has changed raises a dialog with no default accept button. Stored secrets are
   protected with DPAPI at user scope and never rest in a managed string; the settings surface
-  says plainly that this does not stop an attacker already running as the same user. Agent
-  forwarding is decided per host rather than by one checkbox.
+  says plainly that this does not stop an attacker already running as the same user. There is
+  no agent forwarding: the SSH library has none, and a jump host is the way through a bastion.
 - **The session tree.** An existing `ssh_config` opens its hosts without anything being
   retyped, including patterns, `Include` and `ProxyJump` chains. A bastion chain uses one
   code path at any depth and verifies the target's own host key rather than the bastion's.
@@ -152,11 +151,11 @@ and a figure quoted without the run that produced it is not a measurement.
 
 ## Installation
 
-- **An installer, from the release page**:
-  <https://github.com/alegauss/quickshell/releases/latest>, with `SHA256SUMS.txt` beside it.
+- **From the releases page**, once one is published:
+  <https://github.com/alegauss/quickshell/releases>, with `SHA256SUMS.txt` beside it. None is yet.
   Windows 10 or 11, x64.
 - **Per-user, no administrator prompt.** It installs under `%LOCALAPPDATA%`, which is what
-  reaches a managed laptop, and the binary is signed so SmartScreen does not refuse it.
+  reaches a managed laptop. The build is not signed yet, so SmartScreen warns on first start.
 - **From source**: needs the .NET 10 SDK and Windows. `.\run-tests.cmd` builds and runs every
   test assembly and its exit code is the verdict.
 

@@ -46,10 +46,10 @@ export const meta = {
 export const repoUrl = "https://github.com/alegauss/quickshell";
 export const parentUrl = "https://alegauss.github.io/";
 
-// The release page rather than a file: the installer carries its version in its name, so
-// there is no version-independent URL for the asset itself. `releases/latest` is the one
-// link that cannot go stale, and it is also where the checksum lives.
-export const releasesUrl = `${repoUrl}/releases/latest`;
+// The releases page rather than a file: the installer carries its version in its name, so
+// there is no version-independent URL for the asset itself. Not `releases/latest` while no
+// release has been published, since that link answers a 404 until one is (QS286).
+export const releasesUrl = `${repoUrl}/releases`;
 
 export const navLinks = [
   { href: "#session", label: "Session" },
@@ -104,7 +104,7 @@ export const sponsor = {
 /* ------------------------------------------------------------------ hero */
 
 export const hero = {
-  badge: "Windows 10 / 11 · x64 · Per-user install",
+  badge: "Pre-release 0.1.0 · Windows 10 / 11 · x64",
   titleLead: "SSH on Windows,",
   titleAccent: "without the suite around it.",
   sub: [
@@ -214,7 +214,7 @@ export const session = {
   points: [
     [
       "Reconnect keeps the tab",
-      ": the scrollback, the pane layout and every forward come back on the session that dropped, and the client states which attempt restored it rather than reopening a blank tab beside the dead one.",
+      ": on a session set to reconnect, the scrollback stays and the forwards come back on the session that dropped, and the client says each attempt and which forwards returned rather than reopening a blank tab beside the dead one.",
     ],
     [
       "Failures are named, not raised",
@@ -229,8 +229,8 @@ export const session = {
       ": what is stored is protected with DPAPI at user scope, so a copy of the store does not decrypt on another machine, and the settings surface says plainly that this does not stop an attacker already running as you.",
     ],
     [
-      "Agent forwarding is a per-host decision",
-      ": forwarding hands a remote machine the ability to authenticate as you everywhere, so it is answered per host rather than by a checkbox set once and forgotten.",
+      "No agent forwarding",
+      ": forwarding hands a remote machine the ability to authenticate as you everywhere, and the SSH library this client uses has none, so the way through a bastion is a jump host, which keeps the key on your machine.",
     ],
     [
       "Bastions are the ordinary path",
@@ -273,8 +273,8 @@ export const terminal = {
       ": narrowing and widening the window restores the original rows exactly, proven by property tests over random buffers and width sequences rather than by dragging a window.",
     ],
     [
-      "Pixels checked on five environments",
-      ": the golden-image suite runs on NVIDIA, AMD, Intel integrated, WARP and inside an RDP session, because a driver bug is by definition the thing the machine that wrote the code cannot see.",
+      "Pixels checked against references",
+      ": the golden-image suite runs on NVIDIA and on WARP today, with AMD, Intel integrated and an RDP session still to be run, because a driver bug is by definition the thing the machine that wrote the code cannot see.",
     ],
   ] as [string, string][],
   terminalTitle: "protocol trace · what a host is answered, and what it is not",
@@ -553,14 +553,14 @@ export const nonGoals = {
 
 export const download = {
   eyebrow: "Install it",
-  heading: "Per-user, signed, and no administrator prompt",
-  cta: "Download for Windows",
+  heading: "Per-user, and no administrator prompt",
+  cta: "Releases on GitHub",
   ctaShort: "Download",
   secondary: "Checksums and notes",
   intro: [
     "Windows 10 or 11, x64. It installs under ",
     { code: "%LOCALAPPDATA%" },
-    " and asks for nothing else, which is what reaches a managed laptop with SmartScreen on.",
+    " and asks for nothing else, which is what reaches a managed laptop. This is a pre-release, version 0.1.0: no release has been published yet, and the build is not signed yet, so SmartScreen warns on first start.",
   ] as Rich,
   facts: [
     "No service, no scheduled task",

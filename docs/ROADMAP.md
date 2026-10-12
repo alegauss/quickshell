@@ -29,8 +29,6 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- 📋 **QS286** (deps: —) **The site and llms.txt describe features as shipped that the client lacks, so a visitor arriving from a post is misled** — A switcher who reads "signed", "agent forwarding" or "under 120 MB" and finds otherwise stops trusting every true claim beside it. → §QS286
-
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS273** (deps: winwright WW522) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — The bars exist only on a live connection, so their evidence is an xunit test on the fixture sshd and not a case. → §QS273
