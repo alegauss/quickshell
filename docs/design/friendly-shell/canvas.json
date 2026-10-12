@@ -1,0 +1,18 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-11T22:40:00Z" },
+  "title": "quickshell — interface amigável",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1280, "h": 800, "title": "Home — sessions and quick connect", "radius": 10 },
+    "Connected.dc.html": { "x": 1360, "y": 0, "w": 1280, "h": 800, "title": "A connected session", "radius": 10 },
+    "NewSession.dc.html": { "x": 0, "y": 920, "w": 1280, "h": 800, "title": "New session", "radius": 10 },
+    "HomeDark.dc.html": { "x": 1360, "y": 920, "w": 1280, "h": 800, "title": "Home — dark theme", "radius": 10 }
+  },
+  "order": ["Main.dc.html", "Connected.dc.html", "NewSession.dc.html", "HomeDark.dc.html"],
+  "notes": {
+    "heading": { "x": 0, "y": -300, "text": "quickshell — a friendlier way in", "kind": "title1", "maxW": 2640 }
+  },
+  "designSystems": []
+}

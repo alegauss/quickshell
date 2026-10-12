@@ -206,6 +206,71 @@ the per-frame cost is the wake and the present, which is a different line.
 
 ## Block D — The tree a user organises work in
 
+### §QS268 A sessions sidebar
+
+Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Main.dc.html`). A user's saved
+sessions are reached only through the palette's **Open session**, so somebody who has
+not learnt the chord sees no sessions at all, and nobody can see at a glance what is
+saved or what is connected.
+
+What to build: a sessions sidebar on the left of the window, 292 px, on the layer brush
+with a 1 px divider. At the top, **Sessions** and a **New** button; a search box that
+filters by path, host and tag, the same match **Open session** makes. Below it, the
+store as a tree: a folder row with a chevron and what it hands down, a session row with
+its name and host, and a **Connected** chip on each session open in a tab. Double-click
+or Enter connects; the context menu edits, duplicates, moves and deletes. **Import
+sessions** and **Settings** sit at the foot. A toggle folds it to a 52 px rail, and the
+choice is remembered in settings, open by default.
+
+Read from `SessionStore` and the session tree the palette already uses: one source, two
+views. Rows follow the sibling apps' list conventions and every row has an automation
+id, so a UI case can find a session and connect it; the case lives beside
+`tabs.cases.json`.
+
+Falsified when a saved session cannot be found and connected without the keyboard chord.
+
+### §QS270 A session dialog that says how it signs in
+
+Approved on 2026-10-11 (`docs/design/friendly-shell/`, `NewSession.dc.html`).
+`SessionDialog` already shows a host and a name and keeps the rest shut, which the
+design keeps. What it lacks: how the session signs in is decided by which text box was
+filled, Key file or Saved credential, every field is a text box, and a session is only
+known to work once it is opened.
+
+What to build, over `SessionEditor` as it is: Host with Port beside it, Name and Folder,
+and User showing what it inherits and from which folder, with "set here instead". **Sign
+in with** as a three-way segmented control, key or agent, password, key file, writing
+the same `Key` and `Credential` fields it does today. The rest folded into named groups,
+each with a one-line summary: Jump host, Tunnels, After login, Terminal. In the footer
+**Test connection**, which connects, signs in, reports what it reached or why it did
+not, and closes again, beside **Cancel** and **Save and connect**.
+
+The editor keeps deciding what is inherited and refused; the window only arranges it, as
+now.
+
+Falsified when a session saved from this dialog differs from the same fields written by
+hand.
+
+### §QS271 Quick connect
+
+Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Main.dc.html`). Reaching a host
+nobody has saved means opening the session dialog, filling it and saving it first, where
+every other client takes `user@host` and connects.
+
+What to build: an **Address** box that takes `user@host`, `host`, `user@host:port` and a
+Host alias from `~/.ssh/config`, which it offers as you type. Beside it **Sign in
+with**: key or agent (automatic), password, or a specific key file. **Connect** opens
+the session in a new tab, and **Save as a session**, checked by default, writes it to
+the store with the address's parts in their fields, under no folder, named after the
+host. An address that does not parse says why under the box and connects nothing.
+
+It parses into the same session the store would hold and connects through the same path,
+so the host-key prompt, the sign-in dialog and the trace behave as they do for a saved
+one. It sits on the Home tab and in the palette as **Connect to an address**.
+
+Falsified when an address typed here connects differently from the same session saved
+and opened.
+
 ## Block E — SCP and SFTP as a thing a person operates
 
 ### §QS188 A drag that starts on the server
@@ -259,6 +324,48 @@ A UI case toggles it and reads the window's bounds against the monitor's through
 accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
+
+### §QS269 A session bar and a status bar
+
+Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Connected.dc.html`). A connected
+tab is a grid and a title: where it went, through which jump host, whether it is still
+up and which forwards it holds are found only in dialogs or the palette.
+
+What to build: a session bar, 48 px, above the terminal of a remote tab. The session's
+name, then `user@host:port` in the monospace face and "via" its jump host; a state chip
+that always carries a word, Connected, Reconnecting or Disconnected; a chip per open
+forward, its click opening the forwards window; **Files** (the SFTP browser on this
+session), **Split** and a menu with what the palette offers for a session. A local tab
+shows its shell's name and nothing else. Below the window, a 28 px status bar: the
+connection's state and route, whether it reconnects, the encoding, the terminal type and
+the grid size.
+
+Both read state the client already keeps: the session's own events and the forwards'
+lifecycle. A UI case reads the chip's word and the forward chip after a forward opens.
+
+Falsified when what a connected tab is connected to still has to be asked of a dialog.
+
+### §QS272 A Home tab
+
+Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Main.dc.html`,
+`HomeDark.dc.html`). The window opens on a local Command Prompt, and nothing on screen
+says this client connects to servers at all: a new user takes it for a terminal emulator
+and goes back to what they had.
+
+What to build: a **Home** tab, the first tab of a new window, which a user can close and
+reopen from the palette and the tab strip. On it, **Connect to a server**, the
+quick-connect box (QS271), the three sessions opened last as cards with their host,
+folder and tags and a **Connect** button, and three ways to start: import from
+MobaXterm, open a local shell, browse files. With the sidebar (QS268) beside it.
+
+A setting, `startWith`, keeps what some users want: `home` by default, `shell` for a
+local shell as today. A window started with `--session`, `--tabs` or `--panes` opens on
+what it was asked for and not on Home. The cold-start budget holds: Home is drawn by WPF
+and holds no device until a terminal tab opens, which is measured with
+`run-startup-vm.cmd` before and after.
+
+Falsified when a new window's first screen still gives no way to a server without the
+palette.
 
 ## Block H — The reason to leave the incumbent
 

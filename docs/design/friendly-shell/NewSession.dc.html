@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>quickshell new session</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#5b3fd6}a:hover{color:#4a30bd}
+.qs-ghost:hover{background:rgba(20,16,42,0.06)}
+.qs-more:hover{background:#f5f3fc}
+input::placeholder{color:#7d7699}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; position: relative; background: #f8f7fd; color: #14102a; font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; font-size: 14px; overflow: hidden; border: 1px solid #ded9f0">
+
+  <!-- The window behind, quietened -->
+  <div aria-hidden="true" style="position: absolute; inset: 0; display: flex; flex-direction: column">
+    <div style="height: 82px; border-bottom: 1px solid #ded9f0"></div>
+    <div style="flex-grow: 1; display: flex">
+      <div style="width: 292px; background: #efedf9; border-right: 1px solid #ded9f0"></div>
+      <div style="flex-grow: 1; padding: 40px; display: flex; flex-direction: column; gap: 20px">
+        <div style="width: 320px; height: 26px; border-radius: 6px; background: #ece9f8"></div>
+        <div style="height: 110px; border-radius: 8px; background: #ffffff; border: 1px solid #ded9f0"></div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+          <div style="height: 130px; border-radius: 8px; background: #ffffff; border: 1px solid #ded9f0"></div>
+          <div style="height: 130px; border-radius: 8px; background: #ffffff; border: 1px solid #ded9f0"></div>
+          <div style="height: 130px; border-radius: 8px; background: #ffffff; border: 1px solid #ded9f0"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(20,16,42,0.32)"></div>
+
+  <!-- Dialog -->
+  <form role="dialog" aria-labelledby="ns-title" style="position: absolute; left: 330px; top: 56px; width: 620px; box-sizing: border-box; display: flex; flex-direction: column; background: #ffffff; border: 1px solid #ded9f0; border-radius: 8px; box-shadow: 0 16px 48px rgba(20,16,42,0.28)">
+
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 6px">
+      <h1 id="ns-title" style="margin: 0; font-size: 20px; font-weight: 700">New session</h1>
+      <a href="Main.dc.html" aria-label="Close" class="qs-ghost" style="width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0l10 10M10 0L0 10" stroke="#4c4668" stroke-width="1.4"></path></svg></a>
+    </div>
+    <p style="margin: 0; padding: 0 24px 16px; color: #4c4668; font-size: 13px">Only the host is needed. Everything else has a sensible default.</p>
+
+    <div style="padding: 0 24px; display: flex; flex-direction: column; gap: 16px">
+
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+        <div style="grid-column: span 3; display: flex; flex-direction: column; gap: 6px">
+          <label for="ns-host" style="font-size: 12px; font-weight: 600; color: #4c4668">Host</label>
+          <input id="ns-host" value="db1.example.com" style="height: 38px; box-sizing: border-box; padding: 0 12px; border: 1px solid #c9c1ea; border-radius: 6px; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 14px; color: #14102a; outline: none; box-shadow: 0 0 0 3px rgba(91,63,214,0.12)">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="ns-port" style="font-size: 12px; font-weight: 600; color: #4c4668">Port</label>
+          <input id="ns-port" value="2222" style="height: 38px; box-sizing: border-box; padding: 0 12px; border: 1px solid #ded9f0; border-radius: 6px; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 14px; color: #14102a">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="ns-name" style="font-size: 12px; font-weight: 600; color: #4c4668">Name</label>
+          <input id="ns-name" value="db-primary" style="height: 38px; box-sizing: border-box; padding: 0 12px; border: 1px solid #ded9f0; border-radius: 6px; font: inherit; color: #14102a">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="ns-folder" style="font-size: 12px; font-weight: 600; color: #4c4668">Folder</label>
+          <select id="ns-folder" style="height: 38px; padding: 0 10px; border: 1px solid #ded9f0; border-radius: 6px; background: #ffffff; font: inherit; color: #14102a">
+            <option>Work</option>
+            <option>Home lab</option>
+            <option>No folder</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <label for="ns-user" style="font-size: 12px; font-weight: 600; color: #4c4668">User</label>
+          <span style="font-size: 11px; color: #635c80">Inherited from <strong style="font-weight: 600; color: #4c4668">Work</strong> · <a href="#" style="text-decoration: none">set here instead</a></span>
+        </div>
+        <input id="ns-user" value="deploy" disabled style="height: 38px; box-sizing: border-box; padding: 0 12px; border: 1px dashed #c9c1ea; border-radius: 6px; background: #f5f3fc; font: inherit; color: #4c4668">
+      </div>
+
+      <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+        <legend style="padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: #4c4668">Sign in with</legend>
+        <div style="display: flex; padding: 2px; gap: 2px; border: 1px solid #ded9f0; border-radius: 9px; background: #f5f3fc">
+          <label style="flex: 1 1 0; display: flex; align-items: center; justify-content: center; gap: 8px; height: 34px; border-radius: 7px; background: {{accent}}; color: #ffffff; font-weight: 600; font-size: 13px">
+            <input type="radio" name="ns-auth" checked style="position: absolute; opacity: 0; width: 1px; height: 1px">
+            Key or agent
+          </label>
+          <label style="flex: 1 1 0; display: flex; align-items: center; justify-content: center; height: 34px; border-radius: 7px; color: #4c4668; font-weight: 600; font-size: 13px">
+            <input type="radio" name="ns-auth" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+            Password
+          </label>
+          <label style="flex: 1 1 0; display: flex; align-items: center; justify-content: center; height: 34px; border-radius: 7px; color: #4c4668; font-weight: 600; font-size: 13px">
+            <input type="radio" name="ns-auth" style="position: absolute; opacity: 0; width: 1px; height: 1px">
+            Key file
+          </label>
+        </div>
+        <span style="font-size: 12px; color: #635c80">Tries the Windows SSH agent, Pageant, then your keys in ~/.ssh. A password is asked for only if those are refused.</span>
+      </fieldset>
+
+      <!-- More options, collapsed -->
+      <div style="border: 1px solid #ded9f0; border-radius: 8px; overflow: hidden">
+        <sc-for list="{{more}}" as="m" hint-placeholder-count="4">
+          <button type="button" class="qs-more" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 0; border-top: {{m.rule}}; background: #ffffff; font: inherit; color: #14102a; text-align: left">
+            <svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#635c80" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+            <span style="flex-grow: 1; font-size: 13px; font-weight: 600">{{m.title}}</span>
+            <span style="font-size: 12px; color: #635c80">{{m.summary}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 20px 24px; margin-top: 20px; border-top: 1px solid #ded9f0; background: #f8f7fd; border-radius: 0 0 8px 8px">
+      <button type="button" class="qs-ghost" style="height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #ded9f0; border-radius: 6px; background: #ffffff; font: inherit; font-size: 13px; color: #14102a">
+        <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#4c4668" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+        Test connection
+      </button>
+      <div style="flex-grow: 1"></div>
+      <a href="Main.dc.html" class="qs-ghost" style="height: 34px; display: flex; align-items: center; padding: 0 16px; border: 1px solid #ded9f0; border-radius: 6px; background: #ffffff; font-size: 13px; color: #14102a; text-decoration: none">Cancel</a>
+      <a href="Connected.dc.html" style="height: 34px; display: flex; align-items: center; padding: 0 18px; border-radius: 6px; background: {{accent}}; font-size: 13px; font-weight: 600; color: #ffffff; text-decoration: none">Save and connect</a>
+    </div>
+  </form>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#5b3fd6","options":["#5b3fd6","#17699c","#b25334","#1a7f37"]},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = (title, summary, first) => ({ title, summary, rule: first ? '0' : '1px solid #ded9f0' });
+    return {
+      accent: this.props.accent ?? '#5b3fd6',
+      more: [
+        row('Jump host', 'bastion.example.com, from Work', true),
+        row('Tunnels', 'None', false),
+        row('After login', 'Nothing typed', false),
+        row('Terminal', 'Default scheme, reconnect after a drop', false)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

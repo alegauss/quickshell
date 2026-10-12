@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>quickshell home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#5b3fd6}a:hover{color:#4a30bd}
+.qs-row:hover{background:rgba(20,16,42,0.05)}
+.qs-card:hover{border-color:#c9c1ea}
+.qs-ghost:hover{background:rgba(20,16,42,0.06)}
+input::placeholder{color:#7d7699}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; display: flex; flex-direction: column; background: #f8f7fd; color: #14102a; font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; font-size: 14px; overflow: hidden; border: 1px solid #ded9f0">
+
+  <!-- Title bar -->
+  <div style="height: 40px; flex-shrink: 0; display: flex; align-items: center; padding-left: 14px; gap: 10px">
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="M7 9l3 3-3 3"></path><path d="M12 15h5"></path></svg>
+    <span style="font-size: 12px; color: #4c4668">quickshell</span>
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex">
+      <button aria-label="Minimise" class="qs-ghost" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5h10" stroke="#14102a" stroke-width="1"></path></svg></button>
+      <button aria-label="Maximise" class="qs-ghost" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="#14102a" stroke-width="1"></rect></svg></button>
+      <button aria-label="Close" class="qs-ghost" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0l10 10M10 0L0 10" stroke="#14102a" stroke-width="1"></path></svg></button>
+    </div>
+  </div>
+
+  <!-- Tab strip -->
+  <div style="height: 42px; flex-shrink: 0; display: flex; align-items: flex-end; padding: 0 12px; gap: 2px; border-bottom: 1px solid #ded9f0">
+    <div style="position: relative; display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 38px; font-weight: 600">
+      <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#14102a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg>
+      Home
+      <div style="position: absolute; left: 10px; right: 10px; bottom: -1px; height: 3px; border-radius: 2px; background: {{accent}}"></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 38px; color: #4c4668">
+      <span style="width: 8px; height: 8px; border-radius: 4px; background: #1a7f37"></span>
+      db-primary
+      <button aria-label="Close tab db-primary" class="qs-ghost" style="width: 22px; height: 22px; border: 0; border-radius: 4px; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="8" height="8" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0l10 10M10 0L0 10" stroke="#635c80" stroke-width="1.5"></path></svg></button>
+    </div>
+    <button aria-label="New tab" class="qs-ghost" style="margin-bottom: 5px; width: 30px; height: 28px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#4c4668" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></button>
+    <div style="flex-grow: 1"></div>
+    <button class="qs-ghost" style="margin-bottom: 5px; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #4c4668; font: inherit; font-size: 12px">
+      <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#4c4668" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      Commands
+      <span style="border: 1px solid #ded9f0; border-radius: 4px; padding: 0 5px; font-size: 11px; color: #635c80">Ctrl+Shift+P</span>
+    </button>
+  </div>
+
+  <!-- Body -->
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+
+    <!-- Sessions sidebar -->
+    <div style="width: 292px; flex-shrink: 0; display: flex; flex-direction: column; background: #efedf9; border-right: 1px solid #ded9f0">
+      <div style="padding: 16px 16px 10px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span style="font-size: 13px; font-weight: 600; color: #635c80">Sessions</span>
+          <a href="NewSession.dc.html" style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 6px; background: {{accent}}; color: #ffffff; font-size: 12px; font-weight: 600; text-decoration: none">
+            <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+            New
+          </a>
+        </div>
+        <label style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid #ded9f0; border-radius: 6px; background: #ffffff">
+          <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#635c80" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input aria-label="Search sessions" placeholder="Search by name, host or tag" style="flex-grow: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; font-size: 13px; color: #14102a">
+        </label>
+      </div>
+
+      <div style="flex-grow: 1; overflow: hidden; padding: 4px 8px; display: flex; flex-direction: column; gap: 1px">
+        <sc-for list="{{tree}}" as="node" hint-placeholder-count="9">
+          <div class="qs-row" style="display: flex; align-items: center; gap: 8px; height: 32px; border-radius: 6px; box-sizing: border-box; padding-left: {{node.indent}}; padding-right: 8px; background: {{node.fill}}">
+            <sc-if value="{{node.folder}}" hint-placeholder-val="{{false}}">
+              <svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#635c80" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transform: {{node.turn}}"><path d="M9 6l6 6-6 6"></path></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#4c4668" stroke-width="2" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+              <span style="flex-grow: 1; font-weight: 600; font-size: 13px">{{node.name}}</span>
+              <span style="font-size: 11px; color: #635c80">{{node.meta}}</span>
+            </sc-if>
+            <sc-if value="{{node.session}}" hint-placeholder-val="{{true}}">
+              <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#4c4668" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 9l3 3-3 3"></path></svg>
+              <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2">
+                <span style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{node.name}}</span>
+                <span style="font-size: 11px; color: #635c80; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{node.meta}}</span>
+              </div>
+              <sc-if value="{{node.live}}" hint-placeholder-val="{{false}}">
+                <span style="font-size: 11px; padding: 1px 7px; border-radius: 5px; color: #1a7f37; background: rgba(26,127,55,0.12); border: 1px solid rgba(26,127,55,0.3)">Connected</span>
+              </sc-if>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="padding: 10px 16px 14px; border-top: 1px solid #ded9f0; display: flex; flex-direction: column; gap: 2px">
+        <button class="qs-ghost" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 13px; color: #14102a; text-align: left">
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#4c4668" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 21h16"></path></svg>
+          Import sessions
+        </button>
+        <button class="qs-ghost" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 13px; color: #14102a; text-align: left">
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#4c4668" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"></path></svg>
+          Settings
+        </button>
+      </div>
+    </div>
+
+    <!-- Main pane -->
+    <div style="flex-grow: 1; min-width: 0; padding: 32px 40px; display: flex; flex-direction: column; gap: 28px; overflow: hidden">
+
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em">Connect to a server</h1>
+        <p style="margin: 0; color: #4c4668">Type an address, or pick one of your saved sessions on the left.</p>
+      </div>
+
+      <!-- Quick connect -->
+      <form style="display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid #ded9f0; border-radius: 8px; background: #ffffff">
+        <div style="display: flex; gap: 12px; align-items: flex-end">
+          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px">
+            <label for="qc-address" style="font-size: 12px; font-weight: 600; color: #4c4668">Address</label>
+            <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border: 1px solid #c9c1ea; border-radius: 6px; background: #ffffff; box-shadow: 0 0 0 3px rgba(91,63,214,0.12)">
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#635c80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 9l3 3-3 3"></path></svg>
+              <input id="qc-address" placeholder="user@host or user@host:port" style="flex-grow: 1; min-width: 0; border: 0; outline: none; background: transparent; font-family: 'Cascadia Mono', Consolas, monospace; font-size: 14px; color: #14102a">
+            </div>
+          </div>
+          <div style="width: 230px; display: flex; flex-direction: column; gap: 6px">
+            <label for="qc-auth" style="font-size: 12px; font-weight: 600; color: #4c4668">Sign in with</label>
+            <select id="qc-auth" style="height: 40px; padding: 0 10px; border: 1px solid #ded9f0; border-radius: 6px; background: #ffffff; font: inherit; color: #14102a">
+              <option>Key or agent (automatic)</option>
+              <option>Password</option>
+              <option>A specific key file…</option>
+            </select>
+          </div>
+          <button type="button" style="height: 40px; padding: 0 22px; border: 0; border-radius: 6px; background: {{accent}}; color: #ffffff; font: inherit; font-weight: 600; display: flex; align-items: center; gap: 8px">
+            Connect
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg>
+          </button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px; font-size: 12px; color: #635c80">
+          <label style="display: flex; align-items: center; gap: 6px"><input type="checkbox" checked style="accent-color: {{accent}}; margin: 0"> Save as a session</label>
+          <span>Hosts in ~/.ssh/config are offered as you type.</span>
+        </div>
+      </form>
+
+      <!-- Recent -->
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 600">Recent</h2>
+          <a href="#" style="font-size: 12px; text-decoration: none">Show all sessions</a>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+          <sc-for list="{{recent}}" as="r" hint-placeholder-count="3">
+            <div class="qs-card" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid #ded9f0; border-radius: 8px; background: #ffffff">
+              <div style="display: flex; align-items: center; gap: 10px">
+                <div style="width: 34px; height: 34px; border-radius: 8px; background: #efedf9; display: flex; align-items: center; justify-content: center">
+                  <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="1.5"></rect><rect x="3" y="13" width="18" height="7" rx="1.5"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg>
+                </div>
+                <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column">
+                  <span style="font-weight: 600">{{r.name}}</span>
+                  <span style="font-size: 12px; color: #635c80; font-family: 'Cascadia Mono', Consolas, monospace">{{r.host}}</span>
+                </div>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                <sc-for list="{{r.tags}}" as="t" hint-placeholder-count="2">
+                  <span style="font-size: 11px; padding: 1px 7px; border-radius: 5px; color: #4c4668; background: #f5f3fc; border: 1px solid #ded9f0">{{t}}</span>
+                </sc-for>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between">
+                <span style="font-size: 12px; color: #635c80">{{r.when}}</span>
+                <a href="Connected.dc.html" style="height: 28px; display: flex; align-items: center; padding: 0 12px; border-radius: 6px; border: 1px solid #ded9f0; background: #f8f7fd; color: #14102a; font-size: 12px; font-weight: 600; text-decoration: none">Connect</a>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Start points -->
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+        <button class="qs-card" style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid #ded9f0; border-radius: 8px; background: #f5f3fc; font: inherit; color: inherit; text-align: left">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 21h16"></path></svg>
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">Bring your MobaXterm sessions</span><span style="font-size: 12px; color: #635c80">Previewed first; nothing is written until you agree.</span></span>
+        </button>
+        <button class="qs-card" style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid #ded9f0; border-radius: 8px; background: #f5f3fc; font: inherit; color: inherit; text-align: left">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6"></path><path d="M12 19h8"></path></svg>
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">Open a local shell</span><span style="font-size: 12px; color: #635c80">Command Prompt, PowerShell or WSL in a new tab.</span></span>
+        </button>
+        <button class="qs-card" style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid #ded9f0; border-radius: 8px; background: #f5f3fc; font: inherit; color: inherit; text-align: left">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">Browse files</span><span style="font-size: 12px; color: #635c80">Drag files to and from a server over SFTP.</span></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div style="height: 28px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 14px; border-top: 1px solid #ded9f0; font-size: 12px; color: #635c80">
+    <span style="display: flex; align-items: center; gap: 6px"><span style="width: 7px; height: 7px; border-radius: 4px; background: #1a7f37"></span>1 session connected</span>
+    <div style="flex-grow: 1"></div>
+    <span>Sessions saved in %AppData%\quickshell</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#5b3fd6","options":["#5b3fd6","#17699c","#b25334","#1a7f37"]},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#5b3fd6';
+    const folder = (name, meta, open) => ({ folder: true, session: false, name, meta, indent: '8px', turn: open ? 'rotate(90deg)' : 'none', fill: 'transparent' });
+    const session = (name, meta, live, selected) => ({ folder: false, session: true, name, meta, live, indent: '30px', fill: selected ? 'rgba(91,63,214,0.10)' : 'transparent' });
+    return {
+      accent,
+      tree: [
+        folder('Work', 'deploy · via bastion', true),
+        session('build-box', 'build.example.com', false, false),
+        session('db-primary', 'db1.example.com:2222', true, true),
+        session('staging-web', 'web.staging.example.com', false, false),
+        folder('Home lab', '', true),
+        session('nas', 'admin@nas.home.arpa', false, false),
+        session('pi-hole', 'pi@192.168.1.4', false, false),
+        folder('Imported from MobaXterm', '', false),
+        folder('From ~/.ssh/config', '', false)
+      ],
+      recent: [
+        { name: 'db-primary', host: 'deploy@db1.example.com', tags: ['Work', 'Forward 5432'], when: 'Connected now' },
+        { name: 'build-box', host: 'deploy@build.example.com', tags: ['Work', 'ci'], when: 'Yesterday' },
+        { name: 'nas', host: 'admin@nas.home.arpa', tags: ['Home lab'], when: 'Last week' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
