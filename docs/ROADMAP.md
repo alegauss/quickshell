@@ -19,7 +19,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS269** (deps: —) **A connected tab shows nothing of its connection: where it goes, whether it is up, which forwards it holds** — The route, the state and the forwards are known to the client and shown only in dialogs or the palette. → §QS269
 - 📋 **QS272** (deps: QS268 ✅, QS271) **The window opens on a local Command Prompt, and nothing on screen says this client connects to servers** — A new user takes it for a terminal emulator: the way to a server is behind a chord they have not learnt. → §QS272
 
 ## Block H — The reason to leave the incumbent
@@ -32,6 +31,8 @@
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+- 📋 **QS273** (deps: winwright WW522) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — The bars exist only on a live connection, so their evidence is an xunit test on the fixture sshd and not a case. → §QS273
 
 ## Done when — Block A
 

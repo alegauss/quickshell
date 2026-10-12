@@ -68,6 +68,13 @@ public sealed class MainWindow : Window
     /// <summary>The saved sessions down the left (QS268), filled by <see cref="RefreshSessions"/> and never by the constructor.</summary>
     private readonly SessionsSidebar _sidebar;
 
+    /// <summary>The window's one grid, which the connection's two bars join when a remote tab first shows (QS269).</summary>
+    private readonly Grid _layout = new();
+
+    // Null until a remote tab is first on screen, so a window of local shells has neither (QS269).
+    private SessionBar? _sessionBar;
+    private ConnectionStatusBar? _statusBar;
+
     private bool _recording;
 
     // Set while the window moves or removes a strip item itself, whose passing selections are not
@@ -160,11 +167,15 @@ public sealed class MainWindow : Window
         _sidebar = new SessionsSidebar(this);
         _sidebar.Shape(Chrome.Sidebar);
 
-        Grid layout = new();
+        Grid layout = _layout;
 
+        // The strip, the session bar (QS269), the find bar, the terminal, and the status bar. The two
+        // bars' rows are there from the start and measure nothing until a remote tab builds them.
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         // The sidebar beside everything under the strip (QS268), as the approved design draws it: the
         // tabs across the top, then the sessions and the terminal side by side. Beside and never over,
@@ -175,10 +186,10 @@ public sealed class MainWindow : Window
         Grid.SetRow(_tabs, 0);
         Grid.SetColumnSpan(_tabs, 2);
         Grid.SetRow(_sidebar, 1);
-        Grid.SetRowSpan(_sidebar, 2);
-        Grid.SetRow(_find, 1);
+        Grid.SetRowSpan(_sidebar, 3);
+        Grid.SetRow(_find, 2);
         Grid.SetColumn(_find, 1);
-        Grid.SetRow(_terminal, 2);
+        Grid.SetRow(_terminal, 3);
         Grid.SetColumn(_terminal, 1);
 
         layout.Children.Add(_tabs);
@@ -1451,6 +1462,97 @@ public sealed class MainWindow : Window
         {
             Title = titled;
         }
+
+        ShowConnection();
+    }
+
+    /// <summary>
+    /// The session bar and the status bar, for the pane with the keyboard (QS269): shown while it
+    /// holds a remote session, and collapsed otherwise.
+    ///
+    /// <para><b>On the title's own wake-up, and on nothing new.</b> The session's state is written
+    /// on a connection's thread and the grid on the render thread, so like the title they are asked
+    /// for rather than told; a view equal to the last one touches nothing, which keeps an idle window
+    /// at no layout and no draw.</para>
+    /// </summary>
+    private void ShowConnection()
+    {
+        ConnectionView? view = ConnectionView.Of(Current?.Focused);
+
+        if (view is null)
+        {
+            if (_sessionBar is { Visibility: Visibility.Visible })
+            {
+                _sessionBar.Visibility = Visibility.Collapsed;
+                _statusBar!.Visibility = Visibility.Collapsed;
+            }
+
+            return;
+        }
+
+        if (_sessionBar is null || _statusBar is null)
+        {
+            _sessionBar = new SessionBar(this);
+            _statusBar = new ConnectionStatusBar();
+
+            Grid.SetRow(_sessionBar, 1);
+            Grid.SetColumn(_sessionBar, 1);
+            Grid.SetRow(_statusBar, 4);
+            Grid.SetColumnSpan(_statusBar, 2);
+
+            _layout.Children.Add(_sessionBar);
+            _layout.Children.Add(_statusBar);
+        }
+
+        _sessionBar.Show(view);
+        _statusBar.Show(view);
+
+        if (_sessionBar.Visibility != Visibility.Visible)
+        {
+            _sessionBar.Visibility = Visibility.Visible;
+            _statusBar.Visibility = Visibility.Visible;
+        }
+    }
+
+    /// <summary>The bar over a remote tab, or null where none has been on screen in this window (QS269).</summary>
+    public SessionBar? SessionBar => _sessionBar;
+
+    /// <summary>The bar along the bottom while a remote tab is on screen, or null where none has been (QS269).</summary>
+    public ConnectionStatusBar? StatusBar => _statusBar;
+
+    /// <summary>Whether the session bar and the status bar are on screen, which is while the focused pane is remote.</summary>
+    public bool ConnectionShowing => _sessionBar is { Visibility: Visibility.Visible };
+
+    /// <summary>
+    /// What the session bar's menu offers for the session in the pane with the keyboard: the palette's
+    /// own entries for a session, each only where it can run now.
+    /// </summary>
+    public IReadOnlyList<(string Header, Action Run)> SessionActions()
+    {
+        List<(string, Action)> actions =
+        [
+            ("Browse files", () => BrowseFiles()),
+            ("Show forwards", () => ShowForwards()),
+        ];
+
+        if (TraceFor is not null && Current?.Focused.Remote is not null)
+        {
+            actions.Add(("Trace this session", () => TraceFocused()));
+        }
+
+        if (Current?.Saved is { Length: > 0 } saved)
+        {
+            actions.Add(("Edit session…", () => EditSessionOrSay(saved)));
+        }
+
+        if (Detaches is not null && Held.Count > 1)
+        {
+            actions.Add(("Move tab to a new window", () => Detach(Active)));
+        }
+
+        actions.Add(("Close tab", () => CloseTab()));
+
+        return actions;
     }
 
     /// <summary>How many forwards every open session is running now.</summary>

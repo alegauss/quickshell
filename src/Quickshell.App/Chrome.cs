@@ -15,7 +15,11 @@ public enum ChromeElement
     /// <summary>Buttons across the top. Not shown, ever, unless a user asks.</summary>
     Toolbar,
 
-    /// <summary>A bar along the bottom. Not shown unless a user asks.</summary>
+    /// <summary>
+    /// A bar along the bottom. Not part of a default window: a remote tab brings the connection's
+    /// own status bar with it and takes it away again (QS269), and that one follows the tab on screen
+    /// rather than this model, which says what the window shows whatever it holds.
+    /// </summary>
     StatusBar,
 
     /// <summary>

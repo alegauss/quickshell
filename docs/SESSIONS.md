@@ -18,6 +18,14 @@ and a folder to make a session in it. The fold at its top narrows it to a rail
 ([SETTINGS.md](SETTINGS.md), `sessionsSidebar`). A hand edit shows the next time you come back to the
 window.
 
+**A connected session shows where it goes.** While the pane with the keyboard holds a saved session,
+a bar over the terminal names the session, its `user@host:port` and the jump host it goes through,
+and a chip saying **Connected**, **Reconnecting** or **Disconnected**. Each running forward has a chip
+of its own, which opens **Show forwards**; **Files** browses the server, **Split** opens a pane beside
+it, and **…** holds the rest of what the palette offers for a session. A bar along the bottom says
+the same connection in a line, whether it reconnects after a drop, and the encoding, terminal type
+and grid size. A local shell has neither bar.
+
 **A field this page does not list is refused, not skipped.** A misspelt name, or a setting such as
 `Port` written beside `Host` instead of inside `Settings`, stops the store from opening with a
 message naming the field, its line and where it belongs; nothing in the file is changed. Skipped,

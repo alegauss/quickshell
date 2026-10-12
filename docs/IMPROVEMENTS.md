@@ -302,26 +302,6 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
-### §QS269 A session bar and a status bar
-
-Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Connected.dc.html`). A connected
-tab is a grid and a title: where it went, through which jump host, whether it is still
-up and which forwards it holds are found only in dialogs or the palette.
-
-What to build: a session bar, 48 px, above the terminal of a remote tab. The session's
-name, then `user@host:port` in the monospace face and "via" its jump host; a state chip
-that always carries a word, Connected, Reconnecting or Disconnected; a chip per open
-forward, its click opening the forwards window; **Files** (the SFTP browser on this
-session), **Split** and a menu with what the palette offers for a session. A local tab
-shows its shell's name and nothing else. Below the window, a 28 px status bar: the
-connection's state and route, whether it reconnects, the encoding, the terminal type and
-the grid size.
-
-Both read state the client already keeps: the session's own events and the forwards'
-lifecycle. A UI case reads the chip's word and the forward chip after a forward opens.
-
-Falsified when what a connected tab is connected to still has to be asked of a dialog.
-
 ### §QS272 A Home tab
 
 Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Main.dc.html`,
@@ -534,3 +514,24 @@ true of the shipped build and not of the plan.
 Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+### §QS273 A case over a connected tab
+
+QS269 shipped the session bar and the status bar over a remote tab. Its design asked for
+a UI case reading the state chip's word and the forward chip after a forward opens; none
+could be written, because the bars exist only while a pane holds a live SSH session and
+no case fixture can depend on a server (filed as WW522 in winwright). The evidence
+instead is `RemoteShellTests.TheSessionBarSaysWhereATabGoesAndWhichForwardsItHolds`, an
+STA test on a real tab against the Docker sshd fixture, plus `ConnectionBarTests` for
+the words.
+
+What to build once WW522 lands: `cases/connected.cases.json`, a fixture staging a store
+whose one session is the fixture's `probe` account on `127.0.0.1:2222` with a `Local`
+forward and `--session` naming it, declaring that address as what it reaches. Cases:
+`SessionBar` is present; `ConnectionState`'s name reads `Connected`; a `Forward`
+element's name starts with `Forward `; `StatusBar`'s `ConnectionStatus` names the host.
+The automation ids are the ones `SessionBar.cs` and `ConnectionStatusBar.cs` set.
+
+The guest needs the address to answer: either the sshd reached from the guest over the
+host's network, or a container in the guest. Which one is the open choice, and an absent
+server must read as not observed rather than as a pass.

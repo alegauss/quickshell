@@ -630,6 +630,75 @@ public sealed class RemoteShellTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// QS269's falsification, against a real tab: what a connected tab is connected to is on screen
+    /// without a dialog — the route and its jump host, the state's word, the forward's chip once it
+    /// opens and gone once it stops, and the status bar's account of the same connection.
+    /// </summary>
+    [Fact]
+    public async Task TheSessionBarSaysWhereATabGoesAndWhichForwardsItHolds()
+    {
+        SkipWithoutFixture();
+
+        ResolvedSession inside = SessionTree.ReadFrom(Store("""
+            { "Name": "", "Children": [ { "Name": "Work", "Children": [
+                { "Name": "db-primary", "Host": "qs-sshd-target",
+                  "Settings": { "User": "probe", "Key": "KEY", "JumpHost": "probe@127.0.0.1:2223", "Reconnect": true },
+                  "Forwards": [ { "Kind": "Local", "ListenPort": 0, "TargetHost": "qs-sshd-jump", "TargetPort": 22 } ] }
+            ] } ] }
+            """)).Session("Work/db-primary")!;
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+
+        RemoteShell shell = await RemoteShell.OpenAsync(inside, trust, new Emulator(80, 25), new DamageSignal(), 80, 25, Stop);
+
+        try
+        {
+            int port = shell.Forwards.Started[0].BoundPort;
+
+            (bool local, string name, string route, string state, string[] chips, string[] status, string[] after) = Sta.Run(() =>
+            {
+                MainWindow window = new();
+
+                window.Add(TerminalTab.Open(Settings.Default, Shared, "local"));
+                window.Retitle();
+
+                bool localShowing = window.ConnectionShowing;
+
+                TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "qs-sshd-target");
+
+                window.Add(tab);
+                tab.Focused.ConnectAsync((_, _, _, _, _) => Task.FromResult<IShellSession>(shell)).GetAwaiter().GetResult();
+                window.Retitle();
+
+                SessionBar bar = window.SessionBar!;
+                ConnectionView view = bar.Showing!;
+                string[] chipped = [.. bar.ForwardChips];
+                string[] said = [.. window.StatusBar!.Said];
+
+                shell.Forwards.StopAsync(shell.Forwards.Started[0].Spec).AsTask().GetAwaiter().GetResult();
+                window.Retitle();
+
+                return (localShowing, view.Name, view.Address, bar.StateSaid, chipped, said, bar.ForwardChips.ToArray());
+            });
+
+            Assert.False(local, "a local tab showed the connection's bars");
+            Assert.Equal("db-primary", name);
+            Assert.Equal("probe@qs-sshd-target:22 · via probe@127.0.0.1:2223", route);
+            Assert.Equal("Connected", state);
+            Assert.Equal([$"Forward {port} → qs-sshd-jump:22"], chips);
+            Assert.Equal("Connected to qs-sshd-target through probe@127.0.0.1:2223", status[0]);
+            Assert.Equal("Reconnects after a drop", status[1]);
+            Assert.Equal("UTF-8", status[2]);
+            Assert.Equal("xterm-256color", status[3]);
+            Assert.Empty(after);
+        }
+        finally
+        {
+            await shell.DisposeAsync();
+        }
+    }
+
     /// <summary>The one device, atlas and render loop a tab in these tests draws with. See QS49.</summary>
     private static readonly TerminalShare Shared = new();
 

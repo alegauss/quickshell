@@ -48,6 +48,21 @@ public sealed class RemoteShell : IShellSession
     /// <summary>The host as the session names it.</summary>
     public string Host => _connection.Host;
 
+    /// <summary>The session's own name, the last step of its path in the store, which the session bar leads with (QS269).</summary>
+    public string Name => _connection.Name;
+
+    /// <summary>Who it signs in as, where, and on which port: the endpoint every connection is made to.</summary>
+    public SshEndpoint Target => _connection.Target;
+
+    /// <summary>The jump host it is reached through, as the session writes it, or null where it is reached directly.</summary>
+    public string? JumpHost => _connection.Through;
+
+    /// <summary>Whether a dropped link is tried again, which the session turns on and nothing else does (QS38).</summary>
+    public bool Reconnects => _connection.Reconnects;
+
+    /// <summary>The terminal type the server was told, after <see cref="Claimed"/> has had its say.</summary>
+    public string TerminalType => _connection.TerminalType;
+
     /// <summary>The connection there is now, for whatever else a pane opens over it; null between connections.</summary>
     public ISshTransport? Transport => _inner.Transport;
 
@@ -283,6 +298,14 @@ public sealed class RemoteShell : IShellSession
         public SshEndpoint Target { get; }
 
         public string Host => _session.Host;
+
+        public string Name => _session.Path[(_session.Path.LastIndexOf('/') + 1)..] is { Length: > 0 } named ? named : _session.Host;
+
+        public string? Through => _session.JumpHost?.Value is { Length: > 0 } jump ? jump : null;
+
+        public bool Reconnects => _session.Reconnect?.Value == true;
+
+        public string TerminalType => Claimed(_session.TerminalType?.Value);
 
         public SessionForwards? Forwards => Volatile.Read(ref _forwards);
 

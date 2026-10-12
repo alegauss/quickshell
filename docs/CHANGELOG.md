@@ -207,6 +207,7 @@
 - ✅ **QS223** **Clicking a tab on the strip moves its highlight but leaves the other tab's terminal on screen** — A click on the strip switches tabs as the chords do; a UI case that failed before the fix now reads the clicked tab's session in the window's title.
 - ✅ **QS231** **No screen reader in another process can read the terminal's output: its TextPattern gives a null document range** — TerminalDocument addressed lines by their place in the buffer's life, so every read threw once a line was let go; a reader in another process now reads the text.
 - ✅ **QS250** **A tab cannot be dragged along the strip, and there is no way back to the tab used before this one** — A tab dragged along the strip moves under the pointer, and the palette's Go to the last tab used switches by order of use, which Ctrl+Tab leaves positional.
+- ✅ **QS269** **A connected tab shows nothing of its connection: where it goes, whether it is up, which forwards it holds** — A remote tab shows a session bar (name, user@host:port via its jump host, a Connected/Reconnecting/Disconnected chip, a chip per forward, Files, Split, More) and a status bar under it.
 
 ## Block H — The reason to leave the incumbent
 
