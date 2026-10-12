@@ -357,34 +357,6 @@ Evidence: tabs.cases.json reads the dot's state through each tab's ItemStatus an
 Home tab's name; a WindowTests check reads the sizes; a run-app-vm.cmd picture for the
 owner.
 
-### §QS280 Home, to the design's pixel
-
-Measured 2026-10-12 against `Main.dc.html`; `HomePage.cs` and `QuickConnect.cs` (QS271,
-QS272) were built to the content, not the layout. Page padding 32/40, sections 28 apart.
-The Recent cards are QS279.
-
-Heading: "Connect to a server" 26px Bold, letter-spacing -0.01em; under it, 6 apart,
-"Type an address, or pick one of your saved sessions on the left." in
-TextFillColorSecondary.
-
-Quick connect is one card (padding 20, radius 8, 1px CardStroke) of one row, bottom
-aligned, 12 apart: Address (label 12 SemiBold; a 40-high box with a 16px terminal glyph
-at left 12, monospace 14, placeholder "user@host or user@host:port"), then Sign in with
-as a 230-wide drop-down ("Key or agent (automatic)", "Password", "A specific key file…",
-the last opening a file picker) in place of today's segments, then Connect, 40 high,
-padding 0 22, accent, with a 14px arrow. Under the row, 12px secondary: the Save as a
-session checkbox, and "Hosts in ~/.ssh/config are offered as you type." Errors stay
-under the box.
-
-Start points: three equal cards, 12 apart, padding 14/16, subtle fill, 1px stroke,
-radius 8, an 18px accent glyph at left, title SemiBold over 12px secondary: "Bring your
-MobaXterm sessions" / "Previewed first; nothing is written until you agree."; "Open a
-local shell" / "Command Prompt, PowerShell or WSL in a new tab."; "Browse files" / "Drag
-files to and from a server over SFTP."
-
-Evidence: home.cases.json reads the copy and the drop-down's three entries; a
-run-app-vm.cmd picture beside Main.dc.html for the owner.
-
 ### §QS282 A shell's path, named as the shell
 
 Seen 2026-10-12: the window is titled "C:\WINDOWS\system32\cmd.exe — quickshell", and a

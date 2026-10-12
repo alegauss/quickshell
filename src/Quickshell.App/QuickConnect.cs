@@ -22,13 +22,26 @@ public sealed class QuickConnect : Border
 {
     private static readonly FontFamily Mono = new("Cascadia Mono, Consolas");
 
+    private static readonly FontFamily Glyphs = new("Segoe Fluent Icons, Segoe MDL2 Assets");
+
+    /// <summary>The sign-in ways in the drop-down's order, each as it is said there.</summary>
+    private static readonly (SignInMethod Way, string Said)[] Ways =
+    [
+        (SignInMethod.KeyOrAgent, "Key or agent (automatic)"),
+        (SignInMethod.Password, "Password"),
+        (SignInMethod.KeyFile, "A specific key file…"),
+    ];
+
     private readonly MainWindow _window;
     private readonly ComboBox _address;
-    private readonly Dictionary<SignInMethod, RadioButton> _ways = [];
+    private readonly ComboBox _signIn;
     private readonly TextBox _key;
     private readonly FrameworkElement _keyRow;
     private readonly CheckBox _save;
     private readonly TextBlock _refused;
+
+    // Set while the drop-down is changed from code, so only a person's choice opens the file picker.
+    private bool _setting;
 
     /// <summary>Builds it over a window, which connects what it is given.</summary>
     /// <param name="window">Who connects.</param>
@@ -44,13 +57,17 @@ public sealed class QuickConnect : Border
         AutomationProperties.SetName(this, "Quick connect");
 
         // Editable, so it is a box first and a list of the config's hosts second: typing the start of
-        // one completes it, and the arrow lists them all.
+        // one completes it, and the arrow lists them all. 40 high, monospace 14, with a terminal glyph
+        // 12 in from its left and the placeholder the design gives it (QS280).
         _address = new ComboBox
         {
             IsEditable = true,
             IsTextSearchEnabled = true,
-            Height = 36,
+            Height = 40,
             FontFamily = Mono,
+            FontSize = 14,
+            Padding = new Thickness(36, 0, 8, 0),
+            VerticalContentAlignment = VerticalAlignment.Center,
             Name = "Address",
             ToolTip = "user@host, host, user@host:port, or a host from ~/.ssh/config",
         };
@@ -64,13 +81,64 @@ public sealed class QuickConnect : Border
         AutomationProperties.SetName(_address, "Address");
         AutomationProperties.SetHelpText(_address, "user@host, host, user@host:port, or a host from ~/.ssh/config");
 
+        System.Windows.Controls.Viewbox prompt = Templates.Terminal(16, "TextFillColorSecondaryBrush");
+
+        prompt.Margin = new Thickness(12, 0, 0, 0);
+        prompt.HorizontalAlignment = HorizontalAlignment.Left;
+        prompt.IsHitTestVisible = false;
+
+        TextBlock hint = new()
+        {
+            Text = "user@host or user@host:port",
+            FontFamily = Mono,
+            FontSize = 14,
+            Margin = new Thickness(38, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            IsHitTestVisible = false,
+        };
+
+        hint.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorTertiaryBrush");
+
+        _address.AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
+                            new TextChangedEventHandler((_, _) => hint.Visibility = _address.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed));
+
+        Grid box = new();
+
+        box.Children.Add(_address);
+        box.Children.Add(prompt);
+        box.Children.Add(hint);
+
+        _signIn = new ComboBox { Height = 40, Width = 230, Name = "SignIn", VerticalContentAlignment = VerticalAlignment.Center };
+
+        foreach ((SignInMethod way, string said) in Ways)
+        {
+            ComboBoxItem item = new() { Content = said, Tag = way, Name = $"Quick{way}" };
+
+            AutomationProperties.SetName(item, said);
+            _signIn.Items.Add(item);
+        }
+
+        _signIn.SelectedIndex = 0;
+        AutomationProperties.SetAutomationId(_signIn, "SignIn");
+        AutomationProperties.SetName(_signIn, "Sign in with");
+        _signIn.SelectionChanged += (_, _) => Chose();
+
+        StackPanel arrowed = new() { Orientation = Orientation.Horizontal };
+
+        arrowed.Children.Add(new TextBlock { Text = "Connect", FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+
+        TextBlock arrow = Glyph("", 14);
+
+        arrow.Margin = new Thickness(8, 0, 0, 0);
+        arrowed.Children.Add(arrow);
+
         Button connect = new()
         {
-            Content = "Connect",
+            Content = arrowed,
             IsDefault = true,
-            Height = 36,
-            Padding = new Thickness(18, 0, 18, 0),
-            Margin = new Thickness(10, 0, 0, 0),
+            Height = 40,
+            Padding = new Thickness(22, 0, 22, 0),
+            VerticalAlignment = VerticalAlignment.Bottom,
             Name = "Connect",
         };
 
@@ -78,74 +146,67 @@ public sealed class QuickConnect : Border
         AutomationProperties.SetName(connect, "Connect");
         connect.Click += (_, _) => Go();
 
-        DockPanel line = new();
+        // One row, bottom-aligned, 12 apart: the address, how to sign in, and Connect.
+        Grid row = new();
 
-        DockPanel.SetDock(connect, Dock.Right);
-        line.Children.Add(connect);
-        line.Children.Add(_address);
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        UniformGrid ways = new() { Rows = 1, Columns = 3, Margin = new Thickness(0, 6, 0, 0) };
+        FrameworkElement address = Labelled("Address", box);
+        FrameworkElement signIn = Labelled("Sign in with", _signIn);
 
-        foreach ((SignInMethod way, string said) in new[]
-                 {
-                     (SignInMethod.KeyOrAgent, "Key or agent"),
-                     (SignInMethod.Password, "Password"),
-                     (SignInMethod.KeyFile, "Key file"),
-                 })
-        {
-            RadioButton segment = new()
-            {
-                Content = said,
-                GroupName = "QuickSignIn",
-                Name = $"Quick{way}",
-                Height = 32,
-                Margin = new Thickness(1),
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center,
-                IsChecked = way == SignInMethod.KeyOrAgent,
-            };
+        signIn.Margin = new Thickness(12, 0, 0, 0);
+        connect.Margin = new Thickness(12, 0, 0, 0);
+        Grid.SetColumn(signIn, 1);
+        Grid.SetColumn(connect, 2);
+        row.Children.Add(address);
+        row.Children.Add(signIn);
+        row.Children.Add(connect);
 
-            segment.SetResourceReference(StyleProperty, typeof(ToggleButton));
-            AutomationProperties.SetName(segment, said);
-            segment.Checked += (_, _) => Shape();
-
-            _ways[way] = segment;
-            ways.Children.Add(segment);
-        }
+        _refused = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0), Name = "AddressRefused" };
+        _refused.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCriticalBrush");
+        AutomationProperties.SetAutomationId(_refused, "AddressRefused");
 
         _key = new TextBox { Height = 32, FontFamily = Mono, Name = "QuickKey" };
         AutomationProperties.SetName(_key, "Key file");
 
-        StackPanel keyRow = new() { Margin = new Thickness(0, 6, 0, 0) };
-
-        keyRow.Children.Add(Small("Key file"));
-        keyRow.Children.Add(_key);
-        _keyRow = keyRow;
+        _keyRow = Labelled("Key file", _key);
+        _keyRow.Margin = new Thickness(0, 12, 0, 0);
 
         _save = new CheckBox
         {
             Content = "Save as a session",
             IsChecked = true,
-            Margin = new Thickness(0, 10, 0, 0),
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center,
             Name = "SaveAddress",
             ToolTip = "Keeps it in the sessions sidebar, under no folder, named after the host",
         };
 
         AutomationProperties.SetName(_save, "Save as a session");
 
-        _refused = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0), Name = "AddressRefused" };
-        _refused.SetResourceReference(TextBlock.ForegroundProperty, "SystemFillColorCriticalBrush");
-        AutomationProperties.SetAutomationId(_refused, "AddressRefused");
+        TextBlock offered = new()
+        {
+            Text = "Hosts in ~/.ssh/config are offered as you type.",
+            FontSize = 12,
+            Margin = new Thickness(16, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        offered.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+
+        StackPanel under = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0) };
+
+        under.Children.Add(_save);
+        under.Children.Add(offered);
 
         StackPanel body = new();
 
-        body.Children.Add(Small("Address"));
-        body.Children.Add(line);
+        body.Children.Add(row);
         body.Children.Add(_refused);
-        body.Children.Add(Small("Sign in with"));
-        body.Children.Add(ways);
-        body.Children.Add(keyRow);
-        body.Children.Add(_save);
+        body.Children.Add(_keyRow);
+        body.Children.Add(under);
 
         Child = body;
 
@@ -162,9 +223,26 @@ public sealed class QuickConnect : Border
     /// <summary>How it signs in.</summary>
     public SignInMethod SignIn
     {
-        get => _ways.First(way => way.Value.IsChecked == true).Key;
-        set => _ways[value].IsChecked = true;
+        get => _signIn.SelectedItem is ComboBoxItem { Tag: SignInMethod way } ? way : SignInMethod.KeyOrAgent;
+        set
+        {
+            _setting = true;
+
+            try
+            {
+                _signIn.SelectedIndex = Array.FindIndex(Ways, each => each.Way == value);
+            }
+            finally
+            {
+                _setting = false;
+            }
+
+            Shape();
+        }
     }
+
+    /// <summary>The ways the drop-down offers, as it says them, which is what a test reads.</summary>
+    public IReadOnlyList<string> SignInWays => [.. _signIn.Items.OfType<ComboBoxItem>().Select(item => (string)item.Content)];
 
     /// <summary>The key file, where it signs in with one.</summary>
     public string KeyFile
@@ -179,6 +257,12 @@ public sealed class QuickConnect : Border
         get => _save.IsChecked == true;
         set => _save.IsChecked = value;
     }
+
+    /// <summary>
+    /// What choosing <b>A specific key file…</b> asks: a file picker, unless a caller says otherwise —
+    /// which is how a test answers. Null back is a picker left without a file.
+    /// </summary>
+    public Func<string?>? PicksKey { get; set; }
 
     /// <summary>Puts the keyboard in the address box, which is where a person starts.</summary>
     public void FocusAddress() => _address.Focus();
@@ -206,21 +290,60 @@ public sealed class QuickConnect : Border
         return true;
     }
 
-    private void Shape() =>
-        _keyRow.Visibility = _ways.TryGetValue(SignInMethod.KeyFile, out RadioButton? file) && file.IsChecked == true
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-
-    private static TextBlock Small(string text)
+    /// <summary>A person chose a way: a key file is asked for there and then, and the key's box shows.</summary>
+    private void Chose()
     {
-        TextBlock label = new() { Text = text, FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 6) };
+        Shape();
+
+        if (_setting || SignIn != SignInMethod.KeyFile)
+        {
+            return;
+        }
+
+        if ((PicksKey ?? Picked)() is { Length: > 0 } file)
+        {
+            _key.Text = file;
+        }
+    }
+
+    private string? Picked()
+    {
+        Microsoft.Win32.OpenFileDialog dialog = new()
+        {
+            Title = "A specific key file",
+            Filter = "Private keys|*.*",
+            InitialDirectory = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh"),
+        };
+
+        return dialog.ShowDialog(Window.GetWindow(this)) == true ? dialog.FileName : null;
+    }
+
+    private void Shape() =>
+        _keyRow.Visibility = SignIn == SignInMethod.KeyFile ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>A 12-pixel SemiBold label 6 above what it names.</summary>
+    private static StackPanel Labelled(string text, FrameworkElement named)
+    {
+        TextBlock label = new() { Text = text, FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 6) };
 
         label.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
 
-        return label;
-    }
-}
+        StackPanel labelled = new() { VerticalAlignment = VerticalAlignment.Bottom };
 
+        labelled.Children.Add(label);
+        labelled.Children.Add(named);
+
+        return labelled;
+    }
+
+    private static TextBlock Glyph(string glyph, double size) => new()
+    {
+        Text = glyph,
+        FontFamily = Glyphs,
+        FontSize = size,
+        VerticalAlignment = VerticalAlignment.Center,
+    };
+}
 /// <summary>Quick connect in a small window of its own, from the palette's <b>Connect to an address</b> (QS271).</summary>
 public sealed class QuickConnectWindow : Window
 {
@@ -231,7 +354,7 @@ public sealed class QuickConnectWindow : Window
 
         Quick = quick;
         Title = "Connect to an address";
-        Width = 480;
+        Width = 760;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;

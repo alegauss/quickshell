@@ -28,7 +28,9 @@ drops it; the file is the client's own, and one that will not read is started ag
 takes `host`, `user@host`, `user@host:port` or `[v6-address]:port`, and offers the hosts in your
 `~/.ssh/config` as you type; a config host connects with the HostName, User, Port, first
 IdentityFile and ProxyJump the config gives it, and what you typed wins over the config, as on
-`ssh`'s command line. **Sign in with** is the session dialog's choice. **Save as a session**, on by
+`ssh`'s command line. **Sign in with** is the session dialog's choice, as a drop-down: **Key or agent
+(automatic)**, **Password**, or **A specific key file…**, which asks for the file there and then.
+**Save as a session**, on by
 default, writes it at the top of the store named after the host (with a number after it if that
 name is taken by another session) and opens it from there; off, the same session is opened and
 nothing is written. An address that does not parse says why under the box.

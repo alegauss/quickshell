@@ -73,13 +73,6 @@ public sealed class SessionsSidebar : Border
         </ControlTemplate>
         """;
 
-    /// <summary>
-    /// The session glyph, a terminal: a rounded rectangle with a prompt in it, on a 24 grid. Drawn, because
-    /// the icon fonts' nearest glyph is Command Prompt's <c>C:\</c>, which reads as a local shell.
-    /// </summary>
-    private static readonly Geometry Terminal = Frozen(Geometry.Parse(
-        "M5,4 H19 A2,2 0 0 1 21,6 V18 A2,2 0 0 1 19,20 H5 A2,2 0 0 1 3,18 V6 A2,2 0 0 1 5,4 Z M7,9 L10,12 L7,15"));
-
     /// <summary>The key a selected row's fill is found by, set on this sidebar from the theme's accent.</summary>
     private const string SelectionKey = "SessionsSelectionBrush";
 
@@ -758,27 +751,10 @@ public sealed class SessionsSidebar : Border
         return button;
     }
 
-    /// <summary>The session row's glyph: <see cref="Terminal"/> stroked at 2 on its 24 grid, drawn at 15.</summary>
+    /// <summary>The session row's glyph: the drawn terminal at 15, in the quieter text colour.</summary>
     private static Viewbox TerminalGlyph()
     {
-        System.Windows.Shapes.Path drawn = new()
-        {
-            Data = Terminal,
-            StrokeThickness = 2,
-            StrokeLineJoin = PenLineJoin.Round,
-            StrokeStartLineCap = PenLineCap.Round,
-            StrokeEndLineCap = PenLineCap.Round,
-        };
-
-        drawn.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, Secondary);
-
-        Viewbox glyph = new()
-        {
-            Width = 15,
-            Height = 15,
-            Child = new Canvas { Width = 24, Height = 24, Children = { drawn } },
-            VerticalAlignment = VerticalAlignment.Center,
-        };
+        Viewbox glyph = Templates.Terminal(15, Secondary);
 
         AutomationProperties.SetAutomationId(glyph, "Terminal");
 
@@ -816,13 +792,6 @@ public sealed class SessionsSidebar : Border
         brush.Freeze();
 
         return brush;
-    }
-
-    private static Geometry Frozen(Geometry geometry)
-    {
-        geometry.Freeze();
-
-        return geometry;
     }
 
     private static ControlTemplate Template(string xaml) =>

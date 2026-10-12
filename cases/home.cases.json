@@ -48,10 +48,43 @@
           "named": "with Connect beside it"
         },
         {
+          // QS280: how to sign in is one drop-down beside the address, as the design draws it. A
+          // drop-down that is not editable has no value to read, so its entries are read open.
+          "locator": "ComboBox#SignIn",
+          "act": "expand",
+          "named": "the ways to sign in are opened"
+        },
+        {
+          "locator": "ComboBox#SignIn > ListItem[order=top]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "signing in is automatic until somebody says otherwise"
+        },
+        {
+          "locator": "ComboBox#SignIn > ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Key or agent (automatic)",
+          "named": "and says so"
+        },
+        {
+          "locator": "ComboBox#SignIn > ListItem[order=bottom]",
+          "act": "read",
+          "reads": "name",
+          "expect": "A specific key file…",
+          "named": "and a key file of one's own is the last of them"
+        },
+        {
+          "locator": "ComboBox#SignIn",
+          "act": "collapse",
+          "named": "and closed again with nothing chosen"
+        },
+        {
           "locator": "Button#HomeImport",
           "act": "read",
           "reads": "name",
-          "expect": "Import from MobaXterm",
+          "expect": "Bring your MobaXterm sessions",
           "named": "and the ways to start below"
         },
         {

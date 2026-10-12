@@ -63,20 +63,21 @@ public sealed class HomePage : Border
 
         StackPanel body = new() { Margin = new Thickness(40, 32, 40, 32), MaxWidth = 880, HorizontalAlignment = HorizontalAlignment.Left };
 
-        body.Children.Add(new TextBlock { Text = "Connect to a server", FontSize = 24, FontWeight = FontWeights.SemiBold });
+        // The heading and its line, 6 apart, as the design sets them (QS280).
+        body.Children.Add(new TextBlock { Text = "Connect to a server", FontSize = 26, FontWeight = FontWeights.Bold });
 
         TextBlock lead = new()
         {
-            Text = "Type an address, open a session you saved, or bring yours over from MobaXterm.",
-            FontSize = 13,
-            Margin = new Thickness(0, 4, 0, 16),
+            Text = "Type an address, or pick one of your saved sessions on the left.",
+            FontSize = 14,
+            Margin = new Thickness(0, 6, 0, 28),
             TextWrapping = TextWrapping.Wrap,
         };
 
         lead.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
         body.Children.Add(lead);
 
-        body.Children.Add(Card(quick, new Thickness(20, 8, 20, 20)));
+        body.Children.Add(Card(quick, new Thickness(20)));
 
         // "Recent", with Show all sessions at its right (QS279): the cards are three, and the rest are
         // in the sidebar, which the link opens with the keyboard in its search.
@@ -107,13 +108,12 @@ public sealed class HomePage : Border
         AutomationProperties.SetAutomationId(_cards, "HomeSessions");
         body.Children.Add(_cards);
 
-        body.Children.Add(Heading("Ways to start"));
+        // The ways to start, 28 under what is above them: three equal cards, 12 apart.
+        UniformGrid ways = new() { Rows = 1, Columns = 3, Margin = new Thickness(0, 28, -12, 0) };
 
-        UniformGrid ways = new() { Rows = 1, Columns = 3 };
-
-        ways.Children.Add(Way("", "Import from MobaXterm", "Your sessions and their folders", "HomeImport", () => _window.ImportOrSay()));
-        ways.Children.Add(Way("", "Open a local shell", "A Command Prompt on this computer", "HomeLocal", () => _window.Opens?.Invoke()));
-        ways.Children.Add(Way("", "Browse files", "This computer, and a server's over SFTP", "HomeFiles", () => _window.BrowseFiles()));
+        ways.Children.Add(Way("", "Bring your MobaXterm sessions", "Previewed first; nothing is written until you agree.", "HomeImport", () => _window.ImportOrSay()));
+        ways.Children.Add(Way("", "Open a local shell", "Command Prompt, PowerShell or WSL in a new tab.", "HomeLocal", () => _window.Opens?.Invoke()));
+        ways.Children.Add(Way("", "Browse files", "Drag files to and from a server over SFTP.", "HomeFiles", () => _window.BrowseFiles()));
 
         body.Children.Add(ways);
 
@@ -292,28 +292,55 @@ public sealed class HomePage : Border
         return geometry;
     }
 
-    /// <summary>One way to start: a glyph, what it does, and a line on what that means.</summary>
+    /// <summary>
+    /// One way to start, as the design draws it (QS280): a card on the subtle fill, padding 14 by 16,
+    /// radius 8, an 18-pixel accent glyph at its left beside what it does in SemiBold over a 12-pixel
+    /// line on what that means.
+    /// </summary>
     private static Button Way(string glyph, string title, string said, string id, Action run)
     {
-        StackPanel inside = new() { Margin = new Thickness(4) };
+        TextBlock mark = new() { Text = glyph, FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 18, Margin = new Thickness(0, 1, 12, 0) };
 
-        inside.Children.Add(new TextBlock { Text = glyph, FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 20 });
-        inside.Children.Add(new TextBlock { Text = title, FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 2) });
+        mark.SetResourceReference(TextBlock.ForegroundProperty, "AccentTextFillColorPrimaryBrush");
 
-        TextBlock line = new() { Text = said, FontSize = 12, TextWrapping = TextWrapping.Wrap };
+        StackPanel words = new();
 
-        line.SetResourceReference(TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
-        inside.Children.Add(line);
+        words.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+
+        TextBlock line = new() { Text = said, FontSize = 12, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap };
+
+        line.SetResourceReference(TextBlock.ForegroundProperty, Quiet);
+        words.Children.Add(line);
+
+        Grid inside = new();
+
+        inside.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        inside.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        inside.Children.Add(mark);
+        Grid.SetColumn(words, 1);
+        inside.Children.Add(words);
+
+        Border card = new()
+        {
+            Child = inside,
+            Padding = new Thickness(16, 14, 16, 14),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+        };
+
+        card.SetResourceReference(BackgroundProperty, "CardBackgroundFillColorSecondaryBrush");
+        card.SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
 
         Button way = new()
         {
-            Content = inside,
-            HorizontalContentAlignment = HorizontalAlignment.Left,
-            VerticalContentAlignment = VerticalAlignment.Top,
-            Padding = new Thickness(14),
+            Content = card,
+            Template = Templates.Plain(),
             Margin = new Thickness(0, 0, 12, 0),
-            MinHeight = 120,
+            Cursor = System.Windows.Input.Cursors.Hand,
         };
+
+        way.MouseEnter += (_, _) => card.SetResourceReference(BorderBrushProperty, "ControlStrokeColorSecondaryBrush");
+        way.MouseLeave += (_, _) => card.SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
 
         AutomationProperties.SetAutomationId(way, id);
         AutomationProperties.SetName(way, title);

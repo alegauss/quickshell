@@ -228,4 +228,64 @@ public sealed class QuickConnectTests : IDisposable
         Assert.StartsWith("There is no host", refused, StringComparison.Ordinal);
         Assert.False(connected);
     }
+
+    /// <summary>
+    /// QS280: signing in is one drop-down of three. A person choosing a key file of their own is asked
+    /// for it there and then, and it fills the key's box; set from code, nothing is asked.
+    /// </summary>
+    [Fact]
+    public void AKeyFileChosenFromTheDropDownIsAskedFor()
+    {
+        (string[] ways, int askedFromCode, int askedByPerson, string key, SignInMethod way) = Sta.Run(() =>
+        {
+            MainWindow window = new()
+            {
+                SessionsFile = Path.Combine(_directory, "sessions.json"),
+                SshConfigFile = Path.Combine(_directory, "none"),
+            };
+
+            int asked = 0;
+            QuickConnect quick = window.ShowHome().Quick;
+
+            quick.PicksKey = () =>
+            {
+                asked++;
+
+                return @"C:\keys\work.ppk";
+            };
+
+            quick.SignIn = SignInMethod.KeyFile;
+
+            int fromCode = asked;
+
+            quick.SignIn = SignInMethod.KeyOrAgent;
+
+            // As a person chooses it: the drop-down's own selection.
+            System.Windows.Controls.ComboBox box = (System.Windows.Controls.ComboBox)quick.FindName("SignIn")
+                ?? Under(quick).OfType<System.Windows.Controls.ComboBox>().Single(each => each.Name == "SignIn");
+
+            box.SelectedIndex = 2;
+
+            return (quick.SignInWays.ToArray(), fromCode, asked, quick.KeyFile, quick.SignIn);
+        });
+
+        Assert.Equal(["Key or agent (automatic)", "Password", "A specific key file…"], ways);
+        Assert.Equal(0, askedFromCode);
+        Assert.Equal(1, askedByPerson);
+        Assert.Equal(@"C:\keys\work.ppk", key);
+        Assert.Equal(SignInMethod.KeyFile, way);
+    }
+
+    private static IEnumerable<System.Windows.DependencyObject> Under(System.Windows.DependencyObject root)
+    {
+        yield return root;
+
+        foreach (System.Windows.DependencyObject child in System.Windows.LogicalTreeHelper.GetChildren(root).OfType<System.Windows.DependencyObject>())
+        {
+            foreach (System.Windows.DependencyObject below in Under(child))
+            {
+                yield return below;
+            }
+        }
+    }
 }

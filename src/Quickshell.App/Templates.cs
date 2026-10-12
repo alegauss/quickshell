@@ -63,6 +63,43 @@ internal static class Templates
         </ControlTemplate>
         """);
 
+    /// <summary>
+    /// The terminal glyph the design draws for a server — a rounded rectangle with a prompt in it, on a
+    /// 24 grid, stroked at 2 — at a size. Drawn, because the icon fonts' nearest glyph is Command
+    /// Prompt's <c>C:\</c>, which reads as a local shell (QS277).
+    /// </summary>
+    public static System.Windows.Controls.Viewbox Terminal(double size, string stroke)
+    {
+        System.Windows.Shapes.Path drawn = new()
+        {
+            Data = TerminalShape,
+            StrokeThickness = 2,
+            StrokeLineJoin = System.Windows.Media.PenLineJoin.Round,
+            StrokeStartLineCap = System.Windows.Media.PenLineCap.Round,
+            StrokeEndLineCap = System.Windows.Media.PenLineCap.Round,
+        };
+
+        drawn.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, stroke);
+
+        return new System.Windows.Controls.Viewbox
+        {
+            Width = size,
+            Height = size,
+            Child = new Canvas { Width = 24, Height = 24, Children = { drawn } },
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+        };
+    }
+
+    private static readonly System.Windows.Media.Geometry TerminalShape = Frozen(System.Windows.Media.Geometry.Parse(
+        "M5,4 H19 A2,2 0 0 1 21,6 V18 A2,2 0 0 1 19,20 H5 A2,2 0 0 1 3,18 V6 A2,2 0 0 1 5,4 Z M7,9 L10,12 L7,15"));
+
+    private static System.Windows.Media.Geometry Frozen(System.Windows.Media.Geometry geometry)
+    {
+        geometry.Freeze();
+
+        return geometry;
+    }
+
     private static ControlTemplate Parse(string xaml) =>
         (ControlTemplate)XamlReader.Parse(xaml.Replace(
             "<ControlTemplate ",
