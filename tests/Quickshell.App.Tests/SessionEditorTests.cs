@@ -426,33 +426,241 @@ public sealed class SessionEditorTests
     // ---- The window over it ----
 
     /// <summary>
-    /// What a new-session dialog shows before anything is opened: a host, a name, and the way on.
+    /// What a new-session dialog shows before anything is opened (QS270): where it goes, what it is
+    /// called, who it signs in as and how, and every other field in a group that is shut.
     ///
     /// <para>Run against a real window on a real STA thread, because asking the model what it would
-    /// show would be asking the object that decides. Everything else is inside a disclosure that is
-    /// shut, and a dialog that opened with it showing would be the twelve-field dialog with an extra
-    /// click in it.</para>
+    /// show would be asking the object that decides. A dialog that opened with a group showing would be
+    /// the twelve-field dialog with an extra click in it.</para>
     /// </summary>
     [Fact]
-    public void ANewSessionDialogAsksForAHostAndANameAndNothingElse()
+    public void ANewSessionDialogAsksWhereWhoAndHowAndFoldsTheRest()
     {
-        (int boxes, bool expanded, bool enabled) = Sta.Run(() =>
+        (string[] boxes, bool[] expanded, bool enabled, string save) = Sta.Run<(string[], bool[], bool, string)>(() =>
         {
-            SessionDialog dialog = new(SessionEditor.Creating(Fleet(), "prod", "cache"));
+            SessionDialog dialog = new(SessionEditor.Creating(SessionTree.Empty(), string.Empty, "cache"));
 
-            dialog.Measure(new Size(600, 900));
+            dialog.Measure(new Size(700, 1200));
 
-            Expander more = Named<Expander>(dialog, "More")!;
+            List<Expander> groups = [.. All<Expander>(dialog)];
 
-            return (Showing<TextBox>(dialog, more).Count, more.IsExpanded,
-                    Named<Button>(dialog, "Save")!.IsEnabled);
+            return ([.. Showing(dialog).Select(box => box.Name)], [.. groups.Select(group => group.IsExpanded)],
+                    Named<Button>(dialog, "Save")!.IsEnabled, (string)Named<Button>(dialog, "Save")!.Content);
         });
 
-        Assert.Equal(2, boxes);
-        Assert.False(expanded);
+        Assert.Equal(["Host", "Port", "Name", "User"], boxes);
+        Assert.Equal(4, expanded.Length);
+        Assert.All(expanded, Assert.False);
+        Assert.Equal("Save and connect", save);
 
         // And it will not save yet, because the one thing it asked for is empty.
         Assert.False(enabled);
+    }
+
+    /// <summary>
+    /// The sign-in choice is a choice: a segment shows the one field it needs, and saving writes the
+    /// same Key and Credential a hand edit would.
+    /// </summary>
+    [Fact]
+    public void ChoosingAKeyFileShowsItsPathAndSavesItAsTheKey()
+    {
+        (string[] before, string[] after, string? key, string? credential) = Sta.Run<(string[], string[], string?, string?)>(() =>
+        {
+            SessionEditor editor = SessionEditor.Creating(SessionTree.Empty(), string.Empty, "cache");
+            SessionDialog dialog = new(editor);
+
+            dialog.Measure(new Size(700, 1200));
+            Named<TextBox>(dialog, "Host")!.Text = "cache.example";
+
+            string[] first = [.. Showing(dialog).Select(box => box.Name)];
+
+            Named<RadioButton>(dialog, "SignInKeyFile")!.IsChecked = true;
+            Named<TextBox>(dialog, "Key")!.Text = "~/.ssh/id_cache";
+
+            string[] then = [.. Showing(dialog).Select(box => box.Name)];
+
+            Named<Button>(dialog, "Save")!.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+            SessionNode saved = dialog.Saved!.Find(dialog.Editor.SavedAt)!;
+
+            return (first, then, saved.Settings.Key, saved.Settings.Credential);
+        });
+
+        Assert.DoesNotContain("Key", before);
+        Assert.Contains("Key", after);
+        Assert.Equal("~/.ssh/id_cache", key);
+        Assert.Null(credential);
+    }
+
+    /// <summary>
+    /// QS270's falsification: a session saved from this dialog is the session the same fields make
+    /// written by hand, field for field.
+    /// </summary>
+    [Fact]
+    public void ASessionSavedFromTheDialogIsTheOneWrittenByHand()
+    {
+        string dialogs = Sta.Run(() =>
+        {
+            SessionDialog dialog = new(SessionEditor.Creating(SessionTree.Empty(), string.Empty, "x"));
+
+            Named<TextBox>(dialog, "Host")!.Text = "db1.example.com";
+            Named<TextBox>(dialog, "Name")!.Text = "db-primary";
+            Named<TextBox>(dialog, "Port")!.Text = "2222";
+            Named<TextBox>(dialog, "User")!.Text = "deploy";
+            Named<RadioButton>(dialog, "SignInPassword")!.IsChecked = true;
+            Named<TextBox>(dialog, "Credential")!.Text = "db-primary";
+            Named<TextBox>(dialog, "JumpHost")!.Text = "bastion.example.com";
+            Named<TextBox>(dialog, "Reconnect")!.Text = "true";
+            Named<Button>(dialog, "Save")!.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+            return Written(dialog.Saved!);
+        });
+
+        string hands = Written(SessionTree.Of(new SessionNode
+        {
+            Name = string.Empty,
+            Children =
+            [
+                new SessionNode
+                {
+                    Name = "db-primary",
+                    Host = "db1.example.com",
+                    Settings = new SessionSettings
+                    {
+                        Port = 2222, User = "deploy", Credential = "db-primary",
+                        JumpHost = "bastion.example.com", Reconnect = true,
+                    },
+                },
+            ],
+        }));
+
+        Assert.Equal(hands, dialogs);
+    }
+
+    [Fact]
+    public void TheSignInChoiceIsReadFromWhatTheFieldsSay()
+    {
+        Assert.Equal(SignInMethod.KeyFile, SessionEditor.Editing(Fleet(), "prod/web").SignIn);
+        Assert.Equal(SignInMethod.KeyOrAgent, SessionEditor.Creating(SessionTree.Empty(), string.Empty, "x").SignIn);
+
+        SessionEditor saved = SessionEditor.Creating(SessionTree.Empty(), string.Empty, "x");
+
+        saved.Field(nameof(SessionSettings.Credential)).Override("db");
+
+        Assert.Equal(SignInMethod.Password, SessionEditor.Editing(Saved(saved, "db.example"), "x").SignIn);
+    }
+
+    [Fact]
+    public void AKeyFileWithNoPathAndAKeyAFolderHandsDownAreBothSaid()
+    {
+        SessionEditor bare = SessionEditor.Creating(SessionTree.Empty(), string.Empty, "x");
+
+        bare.Host = "a.example";
+        bare.SignIn = SignInMethod.KeyFile;
+
+        Assert.Contains(bare.Complaints, said => said.Contains("key file's path", StringComparison.Ordinal));
+
+        SessionEditor underProd = SessionEditor.Creating(Fleet(), "prod", "cache");
+
+        underProd.Host = "cache.prod.example";
+        underProd.SignIn = SignInMethod.KeyOrAgent;
+
+        Assert.Contains(underProd.Complaints, said => said.Contains("prod hands down the key file", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ChoosingAWayGivesTheOtherFieldBack()
+    {
+        SessionEditor editor = SessionEditor.Creating(SessionTree.Empty(), string.Empty, "x");
+
+        editor.SignIn = SignInMethod.KeyFile;
+        editor.Field(nameof(SessionSettings.Key)).Override("~/.ssh/k");
+        editor.SignIn = SignInMethod.Password;
+
+        Assert.False(editor.Field(nameof(SessionSettings.Key)).IsOverridden);
+    }
+
+    [Fact]
+    public void AGroupsSummarySaysWhatItHoldsAndWhereItCameFrom()
+    {
+        SessionEditor web = SessionEditor.Editing(Fleet(), "prod/web");
+
+        Assert.Equal("bastion.example, from prod", web.Summary(SessionGroupName.JumpHost));
+        Assert.Equal("None", web.Summary(SessionGroupName.Tunnels));
+        Assert.Equal("Nothing typed", web.Summary(SessionGroupName.AfterLogin));
+        Assert.Equal("quickshell, no reconnect", web.Summary(SessionGroupName.Terminal));
+    }
+
+    /// <summary>A new session moved to another folder keeps what was typed and inherits from there.</summary>
+    [Fact]
+    public void ANewSessionInAnotherFolderInheritsFromIt()
+    {
+        SessionEditor top = SessionEditor.Creating(Fleet(), string.Empty, "cache");
+
+        top.Host = "cache.example";
+        top.Field(nameof(SessionSettings.Port)).Override("2200");
+
+        SessionEditor moved = top.InFolder("prod");
+
+        Assert.Equal(["", "prod"], top.Folders);
+        Assert.Equal("prod", moved.Folder);
+        Assert.Equal("cache.example", moved.Host);
+        Assert.Equal("2200", moved.Field(nameof(SessionSettings.Port)).Own);
+        Assert.Equal("inherited from prod", moved.Field(nameof(SessionSettings.User)).Explains);
+        Assert.Throws<InvalidOperationException>(() => SessionEditor.Editing(Fleet(), "prod/web").InFolder(""));
+    }
+
+    /// <summary>Test connection runs on the session as it stands, unsaved, and says what it was told.</summary>
+    [Fact]
+    public void TestConnectionRunsOnTheUnsavedSession()
+    {
+        (string? host, string said, bool saved) = Sta.Run(() =>
+        {
+            string? asked = null;
+            SessionDialog dialog = new(SessionEditor.Creating(SessionTree.Empty(), string.Empty, "x"))
+            {
+                Tests = (session, _) =>
+                {
+                    asked = $"{session.User?.Value}@{session.Host}";
+
+                    return Task.FromResult("Signed in.");
+                },
+            };
+
+            Named<TextBox>(dialog, "Host")!.Text = "a.example";
+            Named<TextBox>(dialog, "User")!.Text = "me";
+
+            dialog.TestAsync().GetAwaiter().GetResult();
+
+            return (asked, dialog.TestSaid, dialog.Saved is not null);
+        });
+
+        Assert.Equal("me@a.example", host);
+        Assert.Equal("Signed in.", said);
+        Assert.False(saved, "testing saved the session");
+    }
+
+    private static SessionTree Saved(SessionEditor editor, string host)
+    {
+        editor.Host = host;
+
+        return editor.Save();
+    }
+
+    private static string Written(SessionTree tree)
+    {
+        string file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"quickshell-written-{Guid.NewGuid():N}.json");
+
+        try
+        {
+            tree.WriteTo(file);
+
+            return System.IO.File.ReadAllText(file);
+        }
+        finally
+        {
+            System.IO.File.Delete(file);
+        }
     }
 
     /// <summary>
@@ -525,10 +733,10 @@ public sealed class SessionEditorTests
         return null;
     }
 
-    /// <summary>Every text box outside the disclosure, which is what the dialog asks for outright.</summary>
-    private static List<TextBox> Showing<T>(DependencyObject root, Expander behind)
+    /// <summary>Every element of a type, in tree order.</summary>
+    private static List<T> All<T>(DependencyObject root)
     {
-        List<TextBox> found = [];
+        List<T> found = [];
 
         Walk(root);
 
@@ -536,7 +744,43 @@ public sealed class SessionEditorTests
 
         void Walk(DependencyObject node)
         {
-            if (ReferenceEquals(node, behind))
+            if (node is T hit)
+            {
+                found.Add(hit);
+            }
+
+            foreach (object? child in Children(node))
+            {
+                if (child is DependencyObject inner)
+                {
+                    Walk(inner);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Every text box on screen before any group is opened, which is what the dialog asks for
+    /// outright: outside every group, and under nothing collapsed.
+    /// </summary>
+    private static List<TextBox> Showing(DependencyObject root)
+    {
+        List<TextBox> found = [];
+
+        // From what the window holds: a window that was never shown reads as collapsed itself.
+        foreach (object? child in Children(root))
+        {
+            if (child is DependencyObject inner)
+            {
+                Walk(inner);
+            }
+        }
+
+        return found;
+
+        void Walk(DependencyObject node)
+        {
+            if (node is Expander || node is UIElement { Visibility: not Visibility.Visible })
             {
                 return;
             }

@@ -206,28 +206,6 @@ the per-frame cost is the wake and the present, which is a different line.
 
 ## Block D — The tree a user organises work in
 
-### §QS270 A session dialog that says how it signs in
-
-Approved on 2026-10-11 (`docs/design/friendly-shell/`, `NewSession.dc.html`).
-`SessionDialog` already shows a host and a name and keeps the rest shut, which the
-design keeps. What it lacks: how the session signs in is decided by which text box was
-filled, Key file or Saved credential, every field is a text box, and a session is only
-known to work once it is opened.
-
-What to build, over `SessionEditor` as it is: Host with Port beside it, Name and Folder,
-and User showing what it inherits and from which folder, with "set here instead". **Sign
-in with** as a three-way segmented control, key or agent, password, key file, writing
-the same `Key` and `Credential` fields it does today. The rest folded into named groups,
-each with a one-line summary: Jump host, Tunnels, After login, Terminal. In the footer
-**Test connection**, which connects, signs in, reports what it reached or why it did
-not, and closes again, beside **Cancel** and **Save and connect**.
-
-The editor keeps deciding what is inherited and refused; the window only arranges it, as
-now.
-
-Falsified when a session saved from this dialog differs from the same fields written by
-hand.
-
 ### §QS271 Quick connect
 
 Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Main.dc.html`). Reaching a host

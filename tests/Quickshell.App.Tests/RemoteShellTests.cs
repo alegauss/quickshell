@@ -699,6 +699,33 @@ public sealed class RemoteShellTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// QS270's Test connection, against the fixture: a session that signs in says so and leaves no
+    /// forward listening behind it; one the server refuses says why, in the transport's own words.
+    /// </summary>
+    [Fact]
+    public async Task TestConnectionSignsInOrSaysWhyItDidNot()
+    {
+        SkipWithoutFixture();
+
+        SessionTree store = SessionTree.ReadFrom(Store("""
+            { "Name": "", "Children": [
+                { "Name": "web", "Host": "127.0.0.1", "Settings": { "User": "probe", "Port": 2222, "Key": "KEY" },
+                  "Forwards": [ { "Kind": "Dynamic", "ListenPort": 0 } ] },
+                { "Name": "nobody", "Host": "127.0.0.1", "Settings": { "User": "nobody-here", "Port": 2222, "Key": "KEY" } }
+            ] }
+            """));
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+
+        string signed = await RemoteShell.TestAsync(store.Session("web")!, trust, Stop);
+        string refused = await RemoteShell.TestAsync(store.Session("nobody")!, trust, Stop);
+
+        Assert.Equal("Signed in to probe@127.0.0.1:2222, and a shell started.", signed);
+        Assert.DoesNotContain("Signed in", refused, StringComparison.Ordinal);
+        Assert.NotEmpty(refused);
+    }
+
     /// <summary>The one device, atlas and render loop a tab in these tests draws with. See QS49.</summary>
     private static readonly TerminalShare Shared = new();
 

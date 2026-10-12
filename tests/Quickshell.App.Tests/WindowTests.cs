@@ -799,6 +799,33 @@ public sealed class WindowTests : IDisposable
         Assert.Equal("web1.example", host);
     }
 
+    /// <summary>A new session's Save and connect does both (QS270): it is in the store, and it is opened.</summary>
+    [Fact]
+    public void SaveAndConnectOpensTheSessionItSaved()
+    {
+        string into = Path.Combine(_directory, "connect.json");
+
+        string? opened = Sta.Run(() =>
+        {
+            Directory.CreateDirectory(_directory);
+
+            string? asked = null;
+            MainWindow window = new()
+            {
+                SessionsFile = into,
+                ShowsSessionDialog = Fill("web2.example"),
+                OpensSession = path => asked = path,
+            };
+
+            window.NewSession();
+
+            return asked;
+        });
+
+        Assert.Equal("web2.example", opened);
+        Assert.NotNull(SessionTree.ReadFrom(into).Session("web2.example"));
+    }
+
     /// <summary>
     /// The file is read again when the dialog saves, so what a person changed in it while the dialog
     /// was open — a session added by hand, with a comment — is still there afterwards.

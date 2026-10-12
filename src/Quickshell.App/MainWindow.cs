@@ -2995,7 +2995,7 @@ public sealed class MainWindow : Window
 
         editor.Name = string.Empty;
 
-        SessionDialog dialog = new(editor);
+        SessionDialog dialog = new(editor) { Tests = TestsConnection };
 
         bool saved = (ShowsSessionDialog ?? (shown =>
         {
@@ -3004,18 +3004,30 @@ public sealed class MainWindow : Window
             return shown.ShowDialog() == true;
         }))(dialog);
 
-        if (!saved || dialog.Saved?.Find(editor.SavedAt) is not { } made)
+        // The dialog's editor and not the one it was opened with: a change of folder replaces it.
+        string at = dialog.Editor.SavedAt;
+
+        if (!saved || dialog.Saved?.Find(at) is not { } made)
         {
             return null;
         }
 
-        SessionTree written = SessionTree.ReadFrom(file).With(editor.SavedAt, made);
+        SessionTree written = SessionTree.ReadFrom(file).With(at, made);
 
         written.WriteTo(file);
         RefreshSessions();
 
+        // Save and connect, as the button says (QS270).
+        ConnectSession(at);
+
         return written;
     }
+
+    /// <summary>
+    /// What the session dialog's Test connection runs (QS270): connects a session as it stands, signs
+    /// in, and answers what it reached or why it did not. Null hides the button.
+    /// </summary>
+    public Func<ResolvedSession, CancellationToken, Task<string>>? TestsConnection { get; set; }
 
     // ---- The sessions sidebar (QS268) ----
 
@@ -3153,7 +3165,7 @@ public sealed class MainWindow : Window
     public SessionTree? EditSession(string path)
     {
         SessionEditor editor = SessionEditor.Editing(SessionTree.ReadFrom(StoreFile), path);
-        SessionDialog dialog = new(editor);
+        SessionDialog dialog = new(editor) { Tests = TestsConnection };
 
         bool saved = (ShowsSessionDialog ?? (shown =>
         {

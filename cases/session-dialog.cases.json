@@ -1,0 +1,79 @@
+{
+  // QS270. The session dialog, opened from the sidebar's New as a person opens it: how a session
+  // signs in is a choice of three, the choice says what it does, and changing it changes what it says.
+  //
+  // Nothing here saves or connects. Save and connect would open an SSH tab to a host the fixture made
+  // up, and Test connection needs a server no case fixture can name yet (QS273, WW522); what a save
+  // writes, and that it equals the hand-written session, is SessionEditorTests'.
+
+  "fixtures": [
+    {
+      // The palette's and the sidebar's store, staged by the engine and named by QUICKSHELL_DATA, so
+      // the folders the dialog offers are this repository's and not the desk's.
+      "name": "a client to make a session in",
+      "arguments": [],
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": ["cases/fixtures/sessions.json"]
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "the new-session dialog asks how to sign in and says what each way does",
+      "catches": "a dialog that still decides how to sign in by which box was filled, or a choice that changes nothing it says",
+      "filed": "QS270",
+      "tags": ["smoke", "sessions"],
+      "fixture": "a client to make a session in",
+
+      "steps": [
+        {
+          "locator": "Button#SessionsNew",
+          "act": "invoke",
+          "named": "New, from the sidebar, with no chord"
+        },
+        {
+          "locator": "Window#SessionDialog",
+          "act": "read",
+          "reads": "name",
+          "expect": "New session",
+          "named": "the dialog is up under its own caption"
+        },
+        {
+          // A new session with nothing typed signs in the way OpenSSH would: the agent and ~/.ssh.
+          "locator": "Window#SessionDialog > RadioButton#SignInKeyOrAgent",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "key or agent is the way a new session starts with"
+        },
+        {
+          "locator": "Window#SessionDialog > Text#SignInSays",
+          "act": "read",
+          "reads": "name",
+          "expect": "Tries the Windows SSH agent, then your keys in ~/.ssh. A password is asked for only if those are refused.",
+          "named": "and the choice says what it does"
+        },
+        {
+          // `select` and not a click: the pattern is the act.
+          "locator": "Window#SessionDialog > RadioButton#SignInKeyFile",
+          "act": "select",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "a key file is chosen"
+        },
+        {
+          "locator": "Window#SessionDialog > Text#SignInSays",
+          "act": "read",
+          "reads": "name",
+          "expect": "Signs in with this one key file, and offers nothing else.",
+          "named": "and what it says follows the choice"
+        },
+        {
+          "locator": "Window#SessionDialog > Button#Cancel",
+          "act": "invoke",
+          "named": "leaving without saving, which writes nothing"
+        }
+      ]
+    }
+  ]
+}

@@ -72,6 +72,35 @@ public sealed class EditableField
     }
 }
 
+/// <summary>How a session signs in, as the session dialog offers it (QS270).</summary>
+public enum SignInMethod
+{
+    /// <summary>The agent and the keys OpenSSH looks for, then a password where those are refused.</summary>
+    KeyOrAgent,
+
+    /// <summary>A password, asked for or remembered under a saved credential's name.</summary>
+    Password,
+
+    /// <summary>One key file the session names.</summary>
+    KeyFile,
+}
+
+/// <summary>The groups the session dialog folds its less-asked fields into (QS270).</summary>
+public enum SessionGroupName
+{
+    /// <summary>What it is reached through.</summary>
+    JumpHost,
+
+    /// <summary>The forwards it starts.</summary>
+    Tunnels,
+
+    /// <summary>What it types once the shell is there.</summary>
+    AfterLogin,
+
+    /// <summary>The scheme, the terminal type, the scrollback and reconnecting.</summary>
+    Terminal,
+}
+
 /// <summary>
 /// The session dialog's model: what it asks, what it assumes, and what it refuses.
 ///
@@ -113,6 +142,7 @@ public sealed class SessionEditor
 
     private readonly SessionTree _tree;
     private readonly List<EditableField> _fields = [];
+    private SignInMethod _signIn;
 
     private SessionEditor(SessionTree tree, string path, SessionNode? existing)
     {
@@ -124,6 +154,7 @@ public sealed class SessionEditor
         Host = existing?.Host ?? string.Empty;
         PostLogin = existing?.PostLogin;
         Tags = [.. existing?.Tags ?? []];
+        Forwards = existing?.Forwards ?? [];
 
         IReadOnlyDictionary<string, Source<string>> inherited = tree.Inherits(path);
         SessionSettings own = existing?.Settings ?? new SessionSettings();
@@ -142,6 +173,12 @@ public sealed class SessionEditor
         // somebody had set by hand, because only the fields shown were written back.
         Add(nameof(SessionSettings.Reconnect), "Reconnect after a drop",
             own.Reconnect is { } again ? (again ? "true" : "false") : null);
+
+        // What the fields already say, read the way a connection reads them: a key file wins, then a
+        // remembered password, then whatever the agent and ~/.ssh offer (QS270).
+        _signIn = Field(nameof(SessionSettings.Key)).Effective is { Length: > 0 } ? SignInMethod.KeyFile
+            : Field(nameof(SessionSettings.Credential)).Effective is { Length: > 0 } ? SignInMethod.Password
+            : SignInMethod.KeyOrAgent;
 
         void Add(string name, string label, string? mine)
         {
@@ -179,6 +216,131 @@ public sealed class SessionEditor
 
     /// <summary>Labels a search can find it by.</summary>
     public IList<string> Tags { get; }
+
+    /// <summary>The forwards this session starts with, which the dialog lists and the file edits (QS69).</summary>
+    public IReadOnlyList<Quickshell.Transport.ForwardSpec> Forwards { get; }
+
+    /// <summary>The folder it is in, or will be, as a path; empty at the top level.</summary>
+    public string Folder => Path.LastIndexOf('/') is var slash and > 0 ? Path[..slash] : string.Empty;
+
+    /// <summary>Every folder in the store, the top level first as the empty path, which a new session can go in.</summary>
+    public IReadOnlyList<string> Folders
+    {
+        get
+        {
+            List<string> folders = [string.Empty];
+
+            Collect(_tree.Root, string.Empty);
+
+            return folders;
+
+            void Collect(SessionNode node, string above)
+            {
+                foreach (SessionNode child in node.Children.Where(child => !child.IsSession))
+                {
+                    string at = above.Length == 0 ? child.Name : $"{above}/{child.Name}";
+
+                    folders.Add(at);
+                    Collect(child, at);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// The same new session in another folder (QS270): what was typed carried over, and what it
+    /// inherits read again from there, since a folder is what hands values down.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The session is saved already; moving one is the sidebar's.</exception>
+    public SessionEditor InFolder(string folder)
+    {
+        if (!IsNew)
+        {
+            throw new InvalidOperationException("A saved session is moved from the sidebar, not from its dialog.");
+        }
+
+        string leaf = Path[(Path.LastIndexOf('/') + 1)..];
+
+        SessionEditor moved = Creating(_tree, folder, leaf.Length > 0 ? leaf : "New session");
+
+        moved.Name = Name;
+        moved.Host = Host;
+        moved.PostLogin = PostLogin;
+
+        foreach (string tag in Tags)
+        {
+            moved.Tags.Add(tag);
+        }
+
+        foreach (EditableField field in _fields.Where(field => field.IsOverridden))
+        {
+            moved.Field(field.Name).Override(field.Own!);
+        }
+
+        moved._signIn = _signIn;
+
+        return moved;
+    }
+
+    /// <summary>
+    /// How this session signs in (QS270): the agent and the usual keys, a password, or one key file.
+    ///
+    /// <para><b>A choice over the two fields the store already has</b>, Key and Credential, and
+    /// nothing written of its own. Choosing one gives the other back to what it inherits, so the
+    /// file holds what a hand edit making the same choice would.</para>
+    /// </summary>
+    public SignInMethod SignIn
+    {
+        get => _signIn;
+
+        set
+        {
+            _signIn = value;
+
+            if (value != SignInMethod.KeyFile)
+            {
+                Field(nameof(SessionSettings.Key)).Inherit();
+            }
+
+            if (value != SignInMethod.Password)
+            {
+                Field(nameof(SessionSettings.Credential)).Inherit();
+            }
+        }
+    }
+
+    /// <summary>What the chosen way of signing in does, in a sentence under the choice.</summary>
+    public string SignInSays => _signIn switch
+    {
+        SignInMethod.Password =>
+            "Asks for the password when it connects. Name a saved credential to have Windows remember it.",
+        SignInMethod.KeyFile => "Signs in with this one key file, and offers nothing else.",
+        _ => "Tries the Windows SSH agent, then your keys in ~/.ssh. A password is asked for only if those are refused.",
+    };
+
+    /// <summary>What a group of the dialog holds, in the one line its header shows while it is shut.</summary>
+    public string Summary(SessionGroupName group) => group switch
+    {
+        SessionGroupName.JumpHost => Said(Field(nameof(SessionSettings.JumpHost)), "None, a direct connection"),
+        SessionGroupName.Tunnels => Forwards.Count switch
+        {
+            0 => "None",
+            1 => Forwards[0].ToString(),
+            _ => string.Create(CultureInfo.InvariantCulture, $"{Forwards.Count} forwards"),
+        },
+        SessionGroupName.AfterLogin => string.IsNullOrWhiteSpace(PostLogin) ? "Nothing typed" : PostLogin.Trim(),
+        _ => string.Join(", ",
+                         Field(nameof(SessionSettings.Scheme)).Effective is { Length: > 0 } scheme ? scheme : "Default scheme",
+                         Toggle(Field(nameof(SessionSettings.Reconnect)).Effective) == true
+                             ? "reconnects after a drop"
+                             : "no reconnect"),
+    };
+
+    /// <summary>A field's value in a summary: what it is and, where a folder set it, which one.</summary>
+    private static string Said(EditableField field, string none) =>
+        field.Effective is not { Length: > 0 } value ? none
+        : field.IsInherited ? $"{value}, from {field.Inherited!.Value.From}"
+        : value;
 
     /// <summary>Every field the dialog can show, in the order it shows them.</summary>
     public IReadOnlyList<EditableField> Fields => _fields;
@@ -226,6 +388,18 @@ public sealed class SessionEditor
             {
                 wrong.Add($"Reconnect after a drop is true or false, and {again} is neither. Leave it empty to "
                           + "take what the folder says.");
+            }
+
+            // The choice and the fields agree, or a save would not do what the dialog showed (QS270).
+            if (SignIn == SignInMethod.KeyFile && Field(nameof(SessionSettings.Key)).Effective is not { Length: > 0 })
+            {
+                wrong.Add("Sign in with a key file needs the key file's path.");
+            }
+
+            if (SignIn != SignInMethod.KeyFile && Field(nameof(SessionSettings.Key)) is { IsInherited: true } handed)
+            {
+                wrong.Add($"{handed.Inherited!.Value.From} hands down the key file {handed.Inherited.Value.Value}, "
+                          + "so this session signs in with it. Choose Key file, or remove it from that folder.");
             }
 
             if (PostLogin is { Length: > 0 } command)

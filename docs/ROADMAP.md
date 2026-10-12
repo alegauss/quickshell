@@ -10,7 +10,6 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS270** (deps: —) **The session dialog decides how to sign in by which text box was filled, and cannot test a session** — Key file and Saved credential are two text boxes among eight, so the choice is implicit and a mistake shows only on connect. → §QS270
 - 📋 **QS271** (deps: —) **A host nobody has saved cannot be reached without filling and saving the session dialog first** — There is no box that takes user@host and connects, which is the first thing a new user tries. → §QS271
 
 ## Block E — SCP and SFTP as a thing a person operates

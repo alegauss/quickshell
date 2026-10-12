@@ -305,6 +305,14 @@ public static class Entry
         window.Connects = leaf => _ = leaf.ConnectAsync();
         window.OpensSession = path => OpenedSession(window, window.Settings, share, path, trace: false);
 
+        // The session dialog's Test connection (QS270): the host-key check and the sign-in questions
+        // a tab would put, on a connection that closes again.
+        window.TestsConnection = (session, token) =>
+            RemoteShell.TestAsync(session,
+                                  new Quickshell.Transport.TrustOnFirstUse(Quickshell.Transport.KnownHosts.ReadFrom(), window.AskHostKey),
+                                  token, Logged.Value, window.AskSignIn,
+                                  Locations.Current.Portable ? null : Quickshell.Transport.SecretStore.Installed());
+
         // The sidebar's sessions, read now that the window is on the desk and not before (QS268).
         window.RefreshSessions();
 

@@ -33,7 +33,16 @@ the same slip would quietly connect on the defaults: as you, to port 22.
 
 **It is a tree.** A node with a `Host` is a session; a node with `Children` is a folder. A folder's
 `Settings` are inherited by everything under it unless something lower down sets the same field, and
-the session dialog says beside every field whether it is set there or inherited, and from which folder.
+the session dialog says beside every field whether it is set there or inherited, and from which folder;
+**set here instead** takes an inherited value over, and **use … instead** gives it back.
+
+**The session dialog** asks for the host and its port, a name and a folder, and who the session signs
+in as. **Sign in with** is a choice of three: **Key or agent** (the Windows agent, then your keys in
+`~/.ssh`, then a password if those are refused), **Password** (asked for when it connects, or kept
+under the saved credential you name), or **Key file** (that one file). It writes `Key` and `Credential`
+exactly as you would by hand. Jump host, Tunnels, After login and Terminal are folded, each saying what
+it holds. **Test connection** connects, signs in and closes again, and says what it reached or why not,
+without saving anything or starting any forward; **Save and connect** saves a new session and opens it.
 Two things are never inherited, on purpose: what a session types after login, and its forwards.
 
 ```jsonc

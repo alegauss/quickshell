@@ -260,6 +260,42 @@ public sealed class RemoteShell : IShellSession
     }
 
     /// <summary>
+    /// The session dialog's Test connection (QS270): connects the way a tab would, signs in, waits
+    /// for the shell, and closes again, then says what it reached or why it did not.
+    ///
+    /// <para><b>The same path a tab takes, less what a test must not do.</b> No forwards are started,
+    /// since a test that took a port would be a forward somebody did not ask for, and nothing is
+    /// typed after login, since a test that ran a command would not be a test.</para>
+    /// </summary>
+    /// <returns>One sentence for the dialog's footer.</returns>
+    public static async Task<string> TestAsync(ResolvedSession session, TrustOnFirstUse trust,
+                                               CancellationToken cancellationToken = default,
+                                               SessionLog? log = null,
+                                               Func<SignInQuestion, CancellationToken, ValueTask<SignInAnswer?>>? ask = null,
+                                               SecretStore? secrets = null)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(trust);
+
+        ResolvedSession bare = session with { Forwards = [], PostLogin = null };
+
+        try
+        {
+            await using RemoteShell shell = await OpenAsync(bare, trust, new Emulator(80, 24), new DamageSignal(),
+                                                            80, 24, cancellationToken, log, ask, secrets)
+                                                 .ConfigureAwait(false);
+
+            return shell.JumpHost is { } through
+                ? $"Signed in to {shell.Target} through {through}, and a shell started."
+                : $"Signed in to {shell.Target}, and a shell started.";
+        }
+        catch (SshException failed)
+        {
+            return failed.Remedy.Length > 0 ? $"{failed.Message} {failed.Remedy}" : failed.Message;
+        }
+    }
+
+    /// <summary>
     /// How one connection to a saved session is made, every time it is made (QS220): the
     /// credentials, the sign-in questions, a password-only server asked once, and once it is up,
     /// its forwards and its file channel. A reconnect is this called again.
