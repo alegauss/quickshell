@@ -11,6 +11,7 @@ produced it.
 
 [Website](https://alegauss.github.io/quickshell/) ·
 [Install](docs/INSTALL.md) ·
+[Switching from MobaXterm](docs/SWITCHING.md) ·
 [Sessions](docs/SESSIONS.md) ·
 [Keys](docs/KEYS.md) ·
 [Command line](docs/COMMAND-LINE.md) ·

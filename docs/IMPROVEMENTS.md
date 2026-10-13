@@ -397,33 +397,6 @@ both sides' algorithm lists.
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-### §QS81 The document the non-goals were written for
-
-The non-goals are a decision record aimed inward. This is the same content aimed
-outward, at somebody deciding whether to move their working life onto this client.
-
-It states what quickshell does, what it deliberately does not, and what the alternative
-is for each refusal — because a user who genuinely needs an X server is better served by
-being told to keep one than by discovering the absence after migrating. Every refusal
-names the thing to use instead, or says plainly that there is not one.
-
-It states the migration path: import, what carries over, what does not, and roughly how
-long it takes.
-
-And it states the comparison honestly, with numbers rather than adjectives, on a named
-machine: start-up, memory, idle cost, terminal throughput. A comparison with no
-methodology is marketing, and this audience will re-run it themselves within an hour of
-reading it.
-
-Where the incumbent is better, that is written down too. A client claiming to win
-everywhere is a client nobody believes about anything, and this audience in particular
-will find the one exception and then discount the rest of the page.
-
-This is the last thing written rather than the first, since every claim in it has to be
-true of the shipped build and not of the plan.
-
-Falsified when a figure in it cannot be reproduced from a documented run.
-
 ## Block K — The build and the harness — what a green run is evidence of
 
 ### §QS291 Skips that belong to the guest

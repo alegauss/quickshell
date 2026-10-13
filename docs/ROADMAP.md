@@ -26,8 +26,6 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- 🛠 **QS81** (deps: QS80 ✅, QS116 ✅, QS126 ✅, QS217 ✅, QS218 ✅, QS219 ✅) **A user weighing the switch has nothing that says what they will and will not get** — Its figures need MobaXterm measured where it may run, and the build it describes still lacks a password prompt. → §QS81
-
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS291** (deps: —) **A host run is over the skip budget, because the tests that only the guest can run count as its skips** — Each guest-only test skips on the host naming a provision-guest script, and count-the-run holds those to a budget meant for the host. → §QS291

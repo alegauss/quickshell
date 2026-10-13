@@ -279,6 +279,7 @@
 - ✅ **QS294** **The import preview says each setting left behind is named beside its session, and names none** — The import preview names what each session left behind, grouped with the sessions that had it, and the store carries it as a comment above each session that later writes keep.
 - ✅ **QS295** **PuTTY's sessions cannot be imported from the window, though the import reads them** — The window's import reads PuTTY's sessions as well as MobaXterm's, each previewed and written on its own under a folder named for its client.
 - ✅ **QS296** **A MobaXterm import drops jump hosts, flattens nested folders, and finds no portable edition's file** — A MobaXterm import carries the jump host into the session's own, keeps nested folders nested, and asks for the file where none is where MobaXterm keeps it.
+- ✅ **QS81** **A user weighing the switch has nothing that says what they will and will not get** — docs/SWITCHING.md says what comes across, what quickshell does and refuses with what to use instead, and compares it with MobaXterm 26.5 from a documented guest run.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
