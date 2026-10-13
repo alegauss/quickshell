@@ -24,9 +24,12 @@
   <!-- 1.0.0, from nuget.org (QS176). alpha.3 came from a machine's package cache and nowhere a clean
        clone can reach, and it predates `press` spelling a chord (WW317) — which is why the case files
        opened the palette, the import and the tabs by flag rather than by the chord a user presses.
-       1.0.1 for a fixture's own staged files (WW509) and working directory (WW508), QS217. -->
+       1.0.1 for a fixture's own staged files (WW509) and working directory (WW508), QS217.
+       1.0.2 for a fixture that reaches a server (WW522), a staged file filled with where it landed
+       (WW527), a tab found by its item status (WW523), and a red case that collapses what it
+       expanded (WW525): QS273 and QS278. -->
   <ItemGroup>
-    <PackageReference Include="Winwright" Version="1.0.1" />
+    <PackageReference Include="Winwright" Version="1.0.2" />
   </ItemGroup>
 
 </Project>

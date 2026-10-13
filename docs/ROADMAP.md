@@ -16,7 +16,7 @@
 
 ## Block G — The clean interface, defended
 
-- ⏳ **QS278** (deps: winwright WW523) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — tabs.cases.json reads each tab's state off its ItemStatus once a case can read one (winwright WW523). → §QS278
+- ⏳ **QS278** (deps: —) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — tabs.cases.json reads each tab's state off its ItemStatus once a case can read one (winwright WW523). → §QS278
 
 ## Block H — The reason to leave the incumbent
 
@@ -29,7 +29,7 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS273** (deps: winwright WW522) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — The bars exist only on a live connection, so their evidence is an xunit test on the fixture sshd and not a case. → §QS273
+- ⏳ **QS273** (deps: —) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — The connected case seen green: a desk the guest run reaches the SSH fixture from, a container in the guest or the host's sshd. → §QS273
 
 ## Done when — Block A
 
@@ -286,6 +286,12 @@
 - **A UI case reads a tab's state from its ItemStatus** Settled when tabs.cases.json
   carries a step reading a local tab's status as Local, run green in the guest, which
   needs winwright's status reading (WW523).
+
+## Done when — QS273
+
+- **The connected case passes in a guest run** Settled when run-tests-vm's report shows
+  EveryUiCaseOnAServerRuns passed rather than waived, with 127.0.0.1:2222 or its
+  replacement answering inside the guest.
 
 ## Non-goals
 

@@ -1,0 +1,84 @@
+{
+  // QS273. A connected tab's session bar and status bar, read from outside the process. The bars
+  // exist only while a pane holds a live SSH session, so this fixture reaches the project's own sshd
+  // (prototypes\SshProbe\fixture, up.sh) and opens one session on it by --session. The bars are
+  // Borders, which publish nothing, so each step reads the words inside them by their own ids.
+  //
+  // Where nothing answers at that address (the guest, a desk without Docker) the client is never
+  // launched and every check below is a hole naming the address, never a pass (winwright WW522).
+  // The in-process half, against the same server, is RemoteShellTests'
+  // TheSessionBarSaysWhereATabGoesAndWhichForwardsItHolds.
+
+  "fixtures": [
+    {
+      // The store and the key the session signs in with, staged together; the store is filled so
+      // it names the key where it landed. Not lent: the case answers the host-key question.
+      "name": "a client connected to the fixture's server",
+      "reaches": ["127.0.0.1:2222"],
+      "arguments": ["--session", "probe"],
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": [
+        { "from": "cases/fixtures/connected.json", "to": "sessions.json", "fill": true },
+        "prototypes/SshProbe/fixture/keys/probe_ed25519"
+      ]
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "a connected tab says where it goes, that it is up, and which forwards it holds",
+      "catches": "a session bar that is missing over a live session, says the wrong state, or omits a forward the session opened",
+      "filed": "QS273",
+      "tags": ["sessions", "connected"],
+      "fixture": "a client connected to the fixture's server",
+
+      "steps": [
+        {
+          // The fixture's container makes a new host key every start, so it is never one this desk
+          // has seen: trusted this time and not remembered, so nothing is written to known_hosts.
+          // A desk that once remembered 127.0.0.1:2222 refuses the new key outright; remove that
+          // line from %USERPROFILE%\.ssh\known_hosts.
+          "locator": "Window#Choice > Button#once",
+          "act": "invoke",
+          "named": "the server's key is trusted for this connection only"
+        },
+        {
+          "locator": "Text#SessionName",
+          "act": "read",
+          "reads": "name",
+          "expect": "probe",
+          "named": "the session bar names the session"
+        },
+        {
+          "locator": "Text#ConnectionState",
+          "act": "read",
+          "reads": "name",
+          "expect": "Connected",
+          "named": "and says it is up, in a word"
+        },
+        {
+          "locator": "Button#Forward",
+          "act": "read",
+          "reads": "name",
+          "matches": "^Forward \\d+ → localhost:22$",
+          "named": "the forward the session opened is a chip beside it"
+        },
+        {
+          "locator": "Text#ConnectionStatus",
+          "act": "read",
+          "reads": "name",
+          "matches": "^Connected to 127\\.0\\.0\\.1",
+          "named": "and the status bar says where it is connected"
+        },
+        {
+          // QS278 with WW523: the tab is found by the state it publishes, not by its title.
+          "locator": "TabItem[status=\"Connected\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "the connected tab is found by its state"
+        }
+      ]
+    }
+  ]
+}

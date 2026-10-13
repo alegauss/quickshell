@@ -40,7 +40,43 @@ public sealed class CasesRun
     /// observer between two runs fails the run instead of passing it quietly.</para>
     /// </summary>
     [Fact]
-    public void EveryUiCaseInThisRepositoryRuns()
+    public void EveryUiCaseInThisRepositoryRuns() => Run(Declared().Where(each => !Reaches(each)).ToList());
+
+    /// <summary>
+    /// The cases whose fixture reaches a server outside the client (QS273, winwright WW522): the
+    /// connected tab, over the SSH fixture's sshd.
+    ///
+    /// <para><b>A test of their own, so an absent server is a skip and not a hole in the run
+    /// above.</b> Where nothing answers, winwright never launches the client and every check is
+    /// a hole, which made the whole suite Degraded and red. Here the server is probed first, and
+    /// its absence is skipped in the words the SSH fixture's own tests use, which the run waives on a
+    /// desk that declares no fixture (QUICKSHELL_NO_FIXTURE) and counts against the budget anywhere
+    /// else.</para>
+    /// </summary>
+    [Fact]
+    public void EveryUiCaseOnAServerRuns()
+    {
+        List<CaseDeclaration> reaching = [.. Declared().Where(Reaches)];
+
+        foreach (string address in reaching.SelectMany(each => each.Fixture.Reaches).Distinct())
+        {
+            Precondition listening = Reaching.Probe([address], Reaching.DefaultTimeoutMs);
+
+            Assert.SkipUnless(listening.Satisfied,
+                              $"{address}: run prototypes/SshProbe/fixture/up.sh. {listening.Absence}, "
+                              + $"so {reaching.Count} UI case(s) on a server did not run");
+        }
+
+        Run(reaching);
+    }
+
+    private static bool Reaches(CaseDeclaration declared) => declared.Fixture.Reaches.Count > 0;
+
+    private static IReadOnlyList<CaseDeclaration> Declared() =>
+        ScenarioFile.Across(ScenarioFile.LoadAll(Path.Combine(Repository.Root, "cases")));
+
+    /// <summary>Runs these cases and holds them to every count and verdict.</summary>
+    private static void Run(List<CaseDeclaration> declared)
     {
         Desk desk = Desk.Read();
 
@@ -49,11 +85,7 @@ public sealed class CasesRun
             Assert.Skip($"no UI case ran: this desk lacks {desk.FirstAbsent!.Name}");
         }
 
-        string repository = Repository.Root;
-
-        ProjectDeclaration project = ForThisBuild(repository);
-        IReadOnlyList<CaseDeclaration> declared =
-            ScenarioFile.Across(ScenarioFile.LoadAll(Path.Combine(repository, "cases")));
+        ProjectDeclaration project = ForThisBuild(Repository.Root);
 
         using ProcessRegister register = ProcessRegister.For(project);
 

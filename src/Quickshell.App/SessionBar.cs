@@ -78,7 +78,9 @@ public sealed class SessionBar : Border
             Margin = new Thickness(12, 0, 0, 0),
         };
 
-        AutomationProperties.SetAutomationId(_state, "ConnectionState");
+        // On the word and not the chip around it: a Border has no automation peer, so an id on it is
+        // in no tree a screen reader or a case can read (QS273).
+        AutomationProperties.SetAutomationId(_stateWord, "ConnectionState");
 
         _forwards = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
