@@ -171,9 +171,10 @@ then the server's own questions are put to you.
 
 ### `JumpHost`
 
-A host to go through, written as OpenSSH writes it: `[user@]host[:port]`. The jump host is offered
-your keys alone; its questions would be asked as though they were the target's, so none are put to
-you.
+A host to go through, written as OpenSSH writes it: `[user@]host[:port]`, and more than one with a
+comma between them, gone through in order — `jump@bastion,ops@inner:2200`. A hop that names no user
+signs in as the session's. Each jump host is offered your keys alone; its questions would be asked
+as though they were the target's, so none are put to you.
 
 ### `Reconnect`
 

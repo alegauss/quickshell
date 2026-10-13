@@ -342,6 +342,31 @@ public sealed class MobaXtermImportTests : IDisposable
     }
 
     /// <summary>
+    /// QS297: a jump as a real file holds it — host, port and user in fields 8, 9 and 10, and two
+    /// jumps joined by __PIPE__ in each — comes across as OpenSSH's chain, in order, with users and
+    /// ports, the port left out where it is 22.
+    /// </summary>
+    [Fact]
+    public void AJumpChainComesAcrossWithItsUsersAndPorts()
+    {
+        string from = File(string.Join(Environment.NewLine,
+        [
+            "[Bookmarks]", "SubRep=", "ImgNum=41",
+            Line("one", 0, "10.0.0.9", "22", "alex", (8, "10.0.0.1"), (9, "2222"), (10, "jumper")),
+            Line("two", 0, "10.0.0.9", "22", "alex", (8, "10.0.0.1__PIPE__10.0.0.2"), (9, "22__PIPE__2200"), (10, "jumper__PIPE__ops")),
+        ]), whole: true);
+
+        ImportPreview preview = MobaXtermImport.Preview(from);
+
+        Assert.Equal("jumper@10.0.0.1:2222", preview.Sessions.Single(each => each.Name == "one").Node!.Settings.JumpHost);
+        Assert.Equal("jumper@10.0.0.1,ops@10.0.0.2:2200", preview.Sessions.Single(each => each.Name == "two").Node!.Settings.JumpHost);
+
+        // Fields 9 and 10 are the jump's, read, and not reported as unidentified.
+        Assert.DoesNotContain(preview.Sessions.SelectMany(each => each.Unmapped), note => note.Contains("not identified", StringComparison.Ordinal));
+        Assert.Contains(preview.Sessions.Single(each => each.Name == "two").Unmapped, note => note.StartsWith("the 2 jump hosts", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// QS296: with nothing where MobaXterm and PuTTY keep their sessions, the import offers to choose
     /// the file — a portable MobaXterm's is beside its executable — and imports the one chosen.
     /// </summary>
@@ -473,6 +498,68 @@ public sealed class MobaXtermImportTests : IDisposable
         }
 
         Assert.Equal(preview.Sessions.Count, preview.Carrying + preview.Skipping);
+    }
+
+    /// <summary>
+    /// Block J's criterion against a real file: imported the way the window imports it, every setting
+    /// a carried session could not bring is named in the preview and written above that session in
+    /// the store. Counts are reported, never names — a real file is somebody's estate.
+    /// </summary>
+    [Fact]
+    public void ARealFileImportsWithEverySettingLeftBehindNamed()
+    {
+        string? real = MobaXtermImport.Find();
+
+        Assert.SkipWhen(real is null, "no MobaXterm.ini on this machine, so there is nothing real to "
+                                      + "read - the fixture tests above are what run everywhere");
+
+        string store = Path.Combine(_here, "sessions.json");
+
+        Directory.CreateDirectory(_here);
+
+        ImportPreview shown = Sta.Run(() =>
+        {
+            ImportPreview? seen = null;
+            MainWindow window = new()
+            {
+                SessionsFile = store,
+                PuttySessions = () => null,
+                Importing = preview => { seen = preview; return true; },
+            };
+
+            window.ImportSessions(real);
+
+            return seen!;
+        });
+
+        List<(ImportedSession Session, string What)> left =
+            [.. shown.Sessions.Where(session => session.Carried).SelectMany(session => session.Unmapped.Select(what => (session, what)))];
+
+        IReadOnlyList<string> listed = shown.LeftBehind();
+        string text = System.IO.File.ReadAllText(store);
+
+        // Every distinct thing left behind is a line of the preview; every instance is a comment in the store.
+        foreach (string what in left.Select(each => each.What).Distinct(StringComparer.Ordinal))
+        {
+            Assert.Contains(listed, line => line.StartsWith(what + " (", StringComparison.Ordinal));
+        }
+
+        Assert.Equal(left.Count, Count(text, "// Not carried over from MobaXterm: "));
+
+        // And every jump host carried is one a connection can read (QS297): no MobaXterm joiner left
+        // in it, and every hop a host.
+        foreach (string jump in shown.Sessions.Select(session => session.Node?.Settings.JumpHost).OfType<string>())
+        {
+            Assert.DoesNotContain("__", jump, StringComparison.Ordinal);
+            Assert.All(RemoteShell.Hops(jump, "anyone"), hop => Assert.False(string.IsNullOrWhiteSpace(hop.Host)));
+        }
+
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            $"{shown.Sessions.Count} sessions, {shown.Carrying} carried, {shown.Skipping} skipped; "
+            + $"{left.Count} settings left behind across {left.Select(each => each.Session).Distinct().Count()} sessions, "
+            + $"{listed.Count} kinds; X11 on {left.Count(each => each.What.StartsWith("X11", StringComparison.Ordinal))}, "
+            + $"a login macro on {left.Count(each => each.What.StartsWith("an execute-on-login", StringComparison.Ordinal))}, "
+            + $"a jump host on {left.Count(each => each.What.StartsWith("the jump host", StringComparison.Ordinal))}");
     }
 
     // ---- plumbing ----

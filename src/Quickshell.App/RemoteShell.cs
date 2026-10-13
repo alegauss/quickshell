@@ -472,10 +472,11 @@ public sealed class RemoteShell : IShellSession
             SessionLog? log = Volatile.Read(ref _log);
             string claimed = Claimed(_session.TerminalType?.Value);
 
+            // Each jump takes the keys alone: its questions would be asked as the target's. A chain is
+            // OpenSSH's spelling, hops in order with a comma between them (QS297).
             return _session.JumpHost is { } jump
                 ? new SshChain([
-                    // The jump host takes the keys alone: its questions would be asked as the target's.
-                    new SshHop(Through(jump.Value, Target.User), _keys, _trust.CheckAsync),
+                    .. Hops(jump.Value, Target.User).Select(hop => new SshHop(hop, _keys, _trust.CheckAsync)),
                     new SshHop(Target, offered, _trust.CheckAsync),
                   ]) { KeepAlive = keepAlive, SignIn = _signIn, Log = log, TerminalType = claimed }
                 : new SshNetTransport { KeepAlive = keepAlive, SignIn = _signIn, Log = log, TerminalType = claimed };
@@ -545,6 +546,16 @@ public sealed class RemoteShell : IShellSession
 
         return offered;
     }
+
+    /// <summary>
+    /// The jumps a session names, in the order they are gone through: OpenSSH's ProxyJump spelling,
+    /// <c>[user@]host[:port]</c> with a comma between hops (QS297).
+    /// </summary>
+    /// <param name="jumps">What the session's JumpHost says.</param>
+    /// <param name="defaultUser">Who to be at a hop that names nobody.</param>
+    public static IReadOnlyList<SshEndpoint> Hops(string jumps, string defaultUser) =>
+        [.. jumps.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                 .Select(hop => Through(hop, defaultUser))];
 
     /// <summary>A jump host as a session names one: <c>[user@]host[:port]</c>, as OpenSSH writes it.</summary>
     /// <param name="jump">What the session's JumpHost says.</param>

@@ -30,6 +30,7 @@
 
 - 📋 **QS291** (deps: —) **A host run is over the skip budget, because the tests that only the guest can run count as its skips** — Each guest-only test skips on the host naming a provision-guest script, and count-the-run holds those to a budget meant for the host. → §QS291
 - 📋 **QS292** (deps: QS188 ✅, winwright WW530) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — ExplorerDropRun does the engine's work in C# because a case cannot release a drag over another window yet. → §QS292
+- 📋 **QS298** (deps: —) **A UI case's client sometimes outlives its case and turns a green run red, without saying which case** — CasesRun names only the pid of what would not stop, and the same cases alone passed straight afterwards. → §QS298
 
 ## Done when — Block A
 

@@ -272,7 +272,7 @@ public static class MobaXtermImport
             JumpHost = Empty(Jump(fields, unmapped)),
         };
 
-        Note(fields, unmapped);
+        Note(fields, unmapped, jumping: settings.JumpHost is not null);
 
         return new ImportedSession(folder, name,
                                    new SessionNode { Name = name, Host = host, Settings = settings },
@@ -306,20 +306,46 @@ public static class MobaXtermImport
     /// </summary>
     private static string Jump(string[] fields, List<string> unmapped)
     {
-        string jump = At(fields, 8);
+        // Host, port and user in fields 8, 9 and 10, as a real file has them (QS297); a session
+        // through more than one jump holds them all, in order, joined by MobaXterm's __PIPE__.
+        string[] hosts = Hops(At(fields, 8));
 
-        if (Chosen(jump))
+        if (hosts.Length == 0 || !Chosen(hosts[0]))
         {
-            unmapped.Add("the jump host is carried, and is reached with your keys and agents only, never a password");
-
-            return jump;
+            return string.Empty;
         }
 
-        return string.Empty;
+        string[] ports = Hops(At(fields, 9));
+        string[] users = Hops(At(fields, 10));
+
+        List<string> written = [];
+
+        for (int hop = 0; hop < hosts.Length; hop++)
+        {
+            string user = hop < users.Length && Chosen(users[hop]) ? users[hop] + "@" : string.Empty;
+            string port = hop < ports.Length && int.TryParse(ports[hop], CultureInfo.InvariantCulture, out int number)
+                                             && number is > 0 and not 22
+                ? $":{number}"
+                : string.Empty;
+
+            written.Add(user + hosts[hop] + port);
+        }
+
+        unmapped.Add(written.Count == 1
+            ? "the jump host is carried, and is reached with your keys and agents only, never a password"
+            : $"the {written.Count} jump hosts are carried in order, each reached with your keys and agents only, never a password");
+
+        return string.Join(',', written);
     }
 
-    /// <summary>The fields this import reads and turns into something.</summary>
+    /// <summary>One field's hops, split where MobaXterm joins them.</summary>
+    private static string[] Hops(string field) =>
+        field.Split("__PIPE__", StringSplitOptions.TrimEntries).Select(hop => hop.Replace("__PERCENT__", "%", StringComparison.Ordinal)).ToArray();
+
+    /// <summary>The fields this import reads and turns into something; 9 and 10 with a jump host.</summary>
     private static readonly int[] Consumed = [0, 1, 2, 3, 8, 14];
+
+    private static readonly int[] ConsumedWithJump = [9, 10];
 
     /// <summary>
     /// What the positions mean, as far as they have been identified against a real file.
@@ -349,13 +375,13 @@ public static class MobaXtermImport
     /// a setting anybody chose, so it is not reported. Reporting those would drown the four that
     /// matter in fifty that do not.</para>
     /// </summary>
-    private static void Note(string[] fields, List<string> unmapped)
+    private static void Note(string[] fields, List<string> unmapped, bool jumping)
     {
         List<int> unidentified = [];
 
         for (int at = 0; at < fields.Length; at++)
         {
-            if (Consumed.Contains(at) || !Chosen(At(fields, at)))
+            if (Consumed.Contains(at) || (jumping && ConsumedWithJump.Contains(at)) || !Chosen(At(fields, at)))
             {
                 continue;
             }
