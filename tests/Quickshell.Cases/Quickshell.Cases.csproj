@@ -15,6 +15,14 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Quickshell.Cases</RootNamespace>
 
+    <!-- For System.Windows.Automation in ExplorerDropRun alone, whose drop lands in another
+         process's window — a gesture no case can spell yet (winwright WW530). Not Quickshell.App:
+         the rule above still holds. -->
+    <UseWPF>true</UseWPF>
+
+    <!-- LibraryImport's generated marshalling, for the same file's SendInput. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
     <!-- No RuntimeIdentifier, deliberately. It would put the executable under a win-x64 segment,
          and run-tests.cmd looks for tests\<Name>\bin\<Config>\net10.0-windows\<Name>.exe — so a RID
          here reads as "no test application" and counts as a failed assembly. The application under

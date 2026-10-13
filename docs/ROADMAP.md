@@ -12,8 +12,6 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-- 🛠 **QS188** (deps: QS219 ✅) **Nothing can be dragged out of the host's pane, so a file on the server reaches Explorer only through a copy** — A real drop onto Explorer is untried: no SSH tab has a remote pane until QS219, and then the guest drags one. → §QS188
-
 ## Block F — A forward is a lifecycle, not a checkbox
 
 ## Block G — The clean interface, defended
@@ -31,6 +29,7 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS291** (deps: —) **A host run is over the skip budget, because the tests that only the guest can run count as its skips** — Each guest-only test skips on the host naming a provision-guest script, and count-the-run holds those to a budget meant for the host. → §QS291
+- 📋 **QS292** (deps: QS188 ✅, winwright WW530) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — ExplorerDropRun does the engine's work in C# because a case cannot release a drag over another window yet. → §QS292
 
 ## Done when — Block A
 
@@ -241,13 +240,6 @@
   typing Japanese through Microsoft IME into a running client: the phrase is underlined
   in the pane with no floating box, the candidate list sits beside it, and the committed
   text reaches the shell once.
-
-## Done when — QS188
-
-- **A file dragged from the host's pane lands in Explorer byte for byte** Once QS219
-  gives an SSH tab its remote pane: run-app-vm opens the browser in the guest, a
-  winwright case drags a file from the host's pane onto an Explorer folder, and the file
-  there is compared with the server's.
 
 ## Done when — QS214
 

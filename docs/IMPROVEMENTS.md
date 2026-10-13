@@ -183,29 +183,6 @@ the per-frame cost is the wake and the present, which is a different line.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
-### §QS188 A drag that starts on the server
-
-Carried out of QS64's design, which shipped the drops into the client and left the
-direction out of it. Dragging entries out of the host's pane onto Explorer or the
-desktop is a download, and it is the harder direction: Windows asks for the data during
-the drop, not afterwards, and a server over a slow link cannot answer in the time a drop
-is allowed to take.
-
-The mechanism is deferred rendering. The pane offers a data object carrying
-`CFSTR_FILEDESCRIPTOR` — the names, sizes and times, which it already has from the
-listing — and `CFSTR_FILECONTENTS`, whose stream for each file is read from the
-session's file channel only when Explorer asks for it. Landed as `RemoteDrag`: no
-placeholder or queued download is needed, because the object offers the shell's
-asynchronous capability and Explorer copies on its own thread after the drop returns;
-the object is served from a thread of its own, so the reads never hold the window.
-
-The same drag source is what dragging between two browsers needs, one per tab, on two
-hosts. That copy goes through this client, and it says so, because a user may reasonably
-have assumed the two servers were talking to each other.
-
-Falsified when dragging a file from the host's pane onto a local folder does not leave
-that file there, byte for byte.
-
 ## Block F — A forward is a lifecycle, not a checkbox
 
 ## Block G — The clean interface, defended
@@ -469,3 +446,23 @@ absence is a finding.
 
 Falsified when a host run with the SSH fixture up and nothing else changed is over the
 skip budget, or a guest run without the provisioning is not.
+
+### §QS292 The drop as a case
+
+QS188's Explorer drop is proven by tests/Quickshell.Cases/ExplorerDropRun.cs
+(2026-10-13), and not by a case file, because winwright's `drag` releases over an
+element of the window it started in (WW530). The test does the engine's work by hand: it
+launches the client on the guest's sshd, answers the host-key question, opens the
+browser through the palette with synthesised keys, finds everything in the accessibility
+tree, and moves the pointer itself with SendInput. That is about four hundred lines
+doing what a case says in thirty, with its own waits, its own input and its own reading
+of a failure — which is exactly what QS147 adopted winwright to stop writing.
+
+What to build, once WW530 lets a `to` name another window's element: a case in
+browser.cases.json whose fixture reaches 127.0.0.1:2240 as connected.cases.json's does,
+dragging the served file onto an Explorer folder view, followed by the fixture's check
+that the file landed with the served bytes. Then ExplorerDropRun.cs and the Cases
+project's WPF and unsafe settings go.
+
+Falsified when the case replaces the test and an Explorer drop that leaves a different
+file, or none, is not red.
