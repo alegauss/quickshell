@@ -154,6 +154,22 @@ your machine, which is not much.
 release that regresses one. The roadmap, changelog and decision records are written by
 [roadkeep](https://github.com/alegauss/roadkeep), not by hand.
 
+## More tools by alegauss
+
+For Claude Code:
+
+- **[Claude Code Tray](https://alegauss.github.io/claude-tray/)**: your rate-limit usage as a Windows tray icon that turns red before you run out.
+- **[roadkeep](https://alegauss.github.io/roadkeep/)**: keeps ROADMAP, CHANGELOG and IMPROVEMENTS to one format, as a CLI and a Claude Code plugin.
+- **[commitclerk](https://alegauss.github.io/commitclerk/)**: Conventional Commits messages from your staged diff, in a single-file Python CLI.
+- **[polyweave](https://alegauss.github.io/polyweave/)**: a Claude Code plugin that makes a game's 3D assets, sounds and names by declaring what each has to satisfy.
+
+For Windows developers:
+
+- **[winwright](https://alegauss.github.io/winwright/)**: drives a Windows desktop app from a test and reports what was actually observed.
+- **[FreeWilly](https://alegauss.github.io/freewilly/)**: Docker on Windows without Docker Desktop, with no admin prompt and no telemetry.
+
+All of them: [alegauss.github.io](https://alegauss.github.io/)
+
 ## Licence
 
 MIT: see [LICENSE](LICENSE). The libraries the release carries beside it, each under MIT or ISC, are
