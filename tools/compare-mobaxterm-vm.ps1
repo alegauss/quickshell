@@ -111,15 +111,23 @@ public static class Desk {
 }
 "@
 
+# A process's children, and theirs: only those created after it, because Windows reuses process ids
+# and a process whose parent exited long ago still names that parent's id - one run counted a
+# hundred and twenty strangers as MobaXterm's before this.
 function Tree([int] $root) {
-    $all = @(Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId)
+    $all = @(Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, CreationDate)
+    $born = @{}
+    foreach ($p in $all) { $born[[int]$p.ProcessId] = $p.CreationDate }
     $tree = New-Object System.Collections.Generic.List[int]
     $tree.Add($root)
     $grew = $true
     while ($grew) {
         $grew = $false
         foreach ($p in $all) {
-            if ($tree.Contains([int]$p.ParentProcessId) -and -not $tree.Contains([int]$p.ProcessId)) { $tree.Add([int]$p.ProcessId); $grew = $true }
+            $parent = [int]$p.ParentProcessId
+            if ($tree.Contains($parent) -and -not $tree.Contains([int]$p.ProcessId) -and $p.CreationDate -ge $born[$parent]) {
+                $tree.Add([int]$p.ProcessId); $grew = $true
+            }
         }
     }
     ,$tree.ToArray()
