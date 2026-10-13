@@ -500,9 +500,17 @@ public sealed class RemoteShell : IShellSession
     }
 
     /// <summary>
-    /// What to offer: the session's key, or OpenSSH's default ones; and the agent where one runs.
+    /// What to offer: the session's key, or OpenSSH's default ones; and each agent that runs.
+    ///
+    /// <para><b>Windows' OpenSSH agent, then Pageant (QS293).</b> Pageant is asked through its window,
+    /// which every release still opens — 0.78 and later beside a pipe of their own — so the window
+    /// alone reaches all of them, and MobAgent, MobaXterm's, which answers there too. Without it a
+    /// PuTTY or MobaXterm user's keys were never offered, however many were loaded.</para>
     /// </summary>
-    internal static IReadOnlyList<SshCredential> Credentials(ResolvedSession session)
+    /// <param name="session">The session being connected.</param>
+    /// <param name="openSsh">Whether Windows' OpenSSH agent runs; the machine's answer unless a test gives one.</param>
+    /// <param name="pageant">Whether a Pageant window is open; likewise.</param>
+    public static IReadOnlyList<SshCredential> Credentials(ResolvedSession session, bool? openSsh = null, bool? pageant = null)
     {
         List<SshCredential> offered = [];
 
@@ -525,9 +533,14 @@ public sealed class RemoteShell : IShellSession
             }
         }
 
-        if (new SshAgent().IsRunning)
+        if (openSsh ?? new SshAgent().IsRunning)
         {
             offered.Add(new SshCredential.Agent());
+        }
+
+        if (pageant ?? new SshAgent(SshAgent.PageantWindow).IsRunning)
+        {
+            offered.Add(new SshCredential.Agent(SshAgent.PageantWindow));
         }
 
         return offered;

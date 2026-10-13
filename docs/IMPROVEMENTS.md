@@ -424,6 +424,64 @@ true of the shipped build and not of the plan.
 
 Falsified when a figure in it cannot be reproduced from a documented run.
 
+### §QS294 What an import leaves behind, named
+
+Found while gathering QS81's facts (2026-10-13). MobaXtermImport keeps, per session, the
+settings it found set and could not place — a jump host, X11 forwarding, compression, a
+login macro, and any field it does not know by position. The import preview then counts
+them and says "each is named beside the session it came from rather than dropped". None
+is named: the preview shows the count alone, and nothing is written into the imported
+session or anywhere else. Block J's criterion, "a MobaXterm session file imports with
+every unmapped setting named", is not met.
+
+What to build: the preview names them, grouped by setting with the sessions that had it
+(two hundred sessions with compression on are one line, not two hundred); and each
+imported session carries what it lost as a comment in sessions.json, which the store
+already keeps through a write, so the user finds it beside the session three weeks later
+as well as at the moment of import.
+
+Falsified when a session imported with a setting this client cannot place shows that
+setting neither in the preview nor beside the session in the store.
+
+### §QS295 PuTTY's sessions, offered
+
+Found while gathering QS81's facts (2026-10-13). QS80 shipped PuttyImport, which reads
+PuTTY's sessions from HKCU\Software\SimonTatham\PuTTY\Sessions (and so KiTTY's and the
+other forks that keep them there), maps host, port, user and key, and names what it
+cannot place. Nothing in the client calls it: its only callers are PuttyImportTests.
+Ctrl+Shift+I, the palette's "Import sessions from another client", the sidebar's Import
+sessions and --import all read MobaXterm alone, so the palette entry's "another client"
+promises a choice the window does not offer.
+
+What to build: the import reads both, and the preview says which client each group came
+from, in one folder per client; where only one has sessions, it is that one's preview as
+now. --import <file> stays MobaXterm's, since a .ini is MobaXterm's and PuTTY's sessions
+are a registry key.
+
+Falsified when a machine with PuTTY sessions and no MobaXterm.ini is told no session
+file was found.
+
+### §QS296 What a MobaXterm import could carry
+
+Found while gathering QS81's facts (2026-10-13). Three things MobaXtermImport could
+carry and does not:
+
+- The jump host. MobaXterm's field 8 is reported as having nowhere to go, but a session here has
+  JumpHost, written as OpenSSH writes it; only a jump that signs in by password differs, since a
+  jump here uses keys alone.
+- Nested folders. SubRep holds the whole path, folder\subfolder, and only its last part is kept, so
+  every level collapses to one and two folders with the same last name are merged.
+- A portable MobaXterm. The import looks in Documents, OneDrive's Documents and AppData, and never
+  beside a portable MobaXterm.exe, where that edition keeps its MobaXterm.ini; such a user has to
+  know about --import <file>.
+
+What to build: the jump host mapped where it can be and named where it cannot; SubRep
+kept as a tree of folders; and the preview, finding nothing in the usual places,
+offering to choose the file rather than saying none was found.
+
+Falsified when a MobaXterm.ini with a jump host and a nested folder imports without that
+jump host or that nesting.
+
 ## Block K — The build and the harness — what a green run is evidence of
 
 ### §QS291 Skips that belong to the guest

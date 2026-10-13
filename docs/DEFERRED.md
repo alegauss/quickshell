@@ -38,6 +38,4 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
-- ⏸ **QS81** (deps: QS80 ✅, QS116 ✅, QS126 ✅, QS217, QS218, QS219) **A user weighing the switch has nothing that says what they will and will not get** — set aside (Needs MobaXterm in the guest.): Its figures need MobaXterm measured where it may run, and the build it describes still lacks a password prompt. → §QS81
-
 ## Block K — The build and the harness — what a green run is evidence of

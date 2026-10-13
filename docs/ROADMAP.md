@@ -26,6 +26,11 @@
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
+- 🛠 **QS81** (deps: QS80 ✅, QS116 ✅, QS126 ✅, QS217 ✅, QS218 ✅, QS219 ✅) **A user weighing the switch has nothing that says what they will and will not get** — Its figures need MobaXterm measured where it may run, and the build it describes still lacks a password prompt. → §QS81
+- 📋 **QS294** (deps: —) **The import preview says each setting left behind is named beside its session, and names none** — MobaXtermImport keeps what it could not place per session, and the preview prints only their count. → §QS294
+- 📋 **QS295** (deps: QS80 ✅) **PuTTY's sessions cannot be imported from the window, though the import reads them** — PuttyImport has no caller but its tests, and every way into the import reads MobaXterm alone. → §QS295
+- 📋 **QS296** (deps: —) **A MobaXterm import drops jump hosts, flattens nested folders, and finds no portable edition's file** — Sessions here have JumpHost and folders nest, and the import keeps neither, nor looks beside a portable MobaXterm. → §QS296
+
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS291** (deps: —) **A host run is over the skip budget, because the tests that only the guest can run count as its skips** — Each guest-only test skips on the host naming a provision-guest script, and count-the-run holds those to a budget meant for the host. → §QS291
