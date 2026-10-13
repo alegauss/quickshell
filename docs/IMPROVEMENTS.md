@@ -473,24 +473,3 @@ true of the shipped build and not of the plan.
 Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
-
-### §QS273 A case over a connected tab
-
-QS269 shipped the session bar and the status bar over a remote tab. Its design asked for
-a UI case reading the state chip's word and the forward chip after a forward opens; none
-could be written, because the bars exist only while a pane holds a live SSH session and
-no case fixture can depend on a server (filed as WW522 in winwright). The evidence
-instead is `RemoteShellTests.TheSessionBarSaysWhereATabGoesAndWhichForwardsItHolds`, an
-STA test on a real tab against the Docker sshd fixture, plus `ConnectionBarTests` for
-the words.
-
-What to build once WW522 lands: `cases/connected.cases.json`, a fixture staging a store
-whose one session is the fixture's `probe` account on `127.0.0.1:2222` with a `Local`
-forward and `--session` naming it, declaring that address as what it reaches. Cases:
-`SessionBar` is present; `ConnectionState`'s name reads `Connected`; a `Forward`
-element's name starts with `Forward `; `StatusBar`'s `ConnectionStatus` names the host.
-The automation ids are the ones `SessionBar.cs` and `ConnectionStatusBar.cs` set.
-
-The guest needs the address to answer: either the sshd reached from the guest over the
-host's network, or a container in the guest. Which one is the open choice, and an absent
-server must read as not observed rather than as a pass.

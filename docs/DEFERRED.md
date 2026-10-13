@@ -44,5 +44,3 @@
 - ⏸ **QS81** (deps: QS80 ✅, QS116 ✅, QS126 ✅, QS217, QS218, QS219) **A user weighing the switch has nothing that says what they will and will not get** — set aside (Needs MobaXterm in the guest.): Its figures need MobaXterm measured where it may run, and the build it describes still lacks a password prompt. → §QS81
 
 ## Block K — The build and the harness — what a green run is evidence of
-
-- ⏸ **QS273** (deps: —) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — set aside (The owner chooses how the guest reaches the SSH fixture.): The connected case is yet to be seen green in the guest. → §QS273

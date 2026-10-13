@@ -44,14 +44,12 @@ public sealed class CasesRun
 
     /// <summary>
     /// The cases whose fixture reaches a server outside the client (QS273, winwright WW522): the
-    /// connected tab, over the SSH fixture's sshd.
+    /// connected tab, over the guest's own sshd (tools/provision-guest-sshd.ps1).
     ///
     /// <para><b>A test of their own, so an absent server is a skip and not a hole in the run
     /// above.</b> Where nothing answers, winwright never launches the client and every check is
-    /// a hole, which made the whole suite Degraded and red. Here the server is probed first, and
-    /// its absence is skipped in the words the SSH fixture's own tests use, which the run waives on a
-    /// desk that declares no fixture (QUICKSHELL_NO_FIXTURE) and counts against the budget anywhere
-    /// else.</para>
+    /// a hole, which made the whole suite Degraded and red. Here the server is probed first, and its
+    /// absence is a skip that names the script that provides it, counted against the skip budget.</para>
     /// </summary>
     [Fact]
     public void EveryUiCaseOnAServerRuns()
@@ -62,8 +60,10 @@ public sealed class CasesRun
         {
             Precondition listening = Reaching.Probe([address], Reaching.DefaultTimeoutMs);
 
+            // The guest's own sshd (QS273), and not the Docker fixture, so this skip is not one the run
+            // waives for a desk with no fixture: a guest without it is a guest to provision.
             Assert.SkipUnless(listening.Satisfied,
-                              $"{address}: run prototypes/SshProbe/fixture/up.sh. {listening.Absence}, "
+                              $"{address}: run tools/provision-guest-sshd.ps1 once. {listening.Absence}, "
                               + $"so {reaching.Count} UI case(s) on a server did not run");
         }
 

@@ -1,14 +1,15 @@
-// QS273: one session on the SSH fixture's probe account, with a local forward, for the case that
-// reads a connected tab's session bar and status bar. Staged with "fill": {files} is where its key
-// was staged beside it. The address is the fixture's, the one connected.cases.json reaches.
+// QS273: one session on the guest sshd's probe account (tools\provision-guest-sshd.ps1), with a
+// local forward, for the case that reads a connected tab's session bar and status bar. The key is the
+// pair the same script made in the guest, at a path it keeps; the address is the one
+// connected.cases.json reaches.
 {
   "name": "",
   "children": [
     {
       "name": "probe",
       "host": "127.0.0.1",
-      "settings": { "user": "probe", "port": 2222, "key": "{files}\\probe_ed25519" },
-      "forwards": [ { "kind": "Local", "listenPort": 0, "targetHost": "localhost", "targetPort": 22 } ]
+      "settings": { "user": "probe", "port": 2240, "key": "C:\\ProgramData\\quickshell-cases\\probe_ed25519" },
+      "forwards": [ { "kind": "Local", "listenPort": 0, "targetHost": "localhost", "targetPort": 2240 } ]
     }
   ]
 }

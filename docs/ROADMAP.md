@@ -270,12 +270,6 @@
   --frames on one local pane with cursorBlink false, ten minutes on a quiet reference
   desk, reads zero frames and under 0.1 % of a core.
 
-## Done when — QS273
-
-- **The connected case passes in a guest run** Settled when run-tests-vm's report shows
-  EveryUiCaseOnAServerRuns passed rather than waived, with 127.0.0.1:2222 or its
-  replacement answering inside the guest.
-
 ## Done when — QS288
 
 - **The gate's start holds against 40fb448** Settled by run-perf-gate.cmd on the
