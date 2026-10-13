@@ -12,6 +12,8 @@
 
 ## Block E — SCP and SFTP as a thing a person operates
 
+- 🛠 **QS188** (deps: QS219 ✅) **Nothing can be dragged out of the host's pane, so a file on the server reaches Explorer only through a copy** — A real drop onto Explorer is untried: no SSH tab has a remote pane until QS219, and then the guest drags one. → §QS188
+
 ## Block F — A forward is a lifecycle, not a checkbox
 
 ## Block G — The clean interface, defended
@@ -27,6 +29,8 @@
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+- 📋 **QS291** (deps: —) **A host run is over the skip budget, because the tests that only the guest can run count as its skips** — Each guest-only test skips on the host naming a provision-guest script, and count-the-run holds those to a budget meant for the host. → §QS291
 
 ## Done when — Block A
 
@@ -225,12 +229,6 @@
 - **Every server class the design names has a row** Windows OpenSSH, a network appliance
   and a commercial server each have a row in docs/measurements/compatibility.md with
   their negotiated algorithms.
-
-## Done when — QS114
-
-- **A real Pageant older than 0.78 signs through the window** A session opens with a key
-  loaded only in an installed Pageant 0.77 or older, reached through
-  SshAgent.PageantWindow.
 
 ## Done when — QS215
 

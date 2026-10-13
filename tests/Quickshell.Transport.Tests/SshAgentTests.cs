@@ -20,6 +20,7 @@ namespace Quickshell.Transport.Tests;
 /// succeeds — which it can only do if a signature this client did not make verified against a public
 /// key this client never saw the other half of.</para>
 /// </summary>
+[Collection(PageantWindow.Collection)]
 public sealed class SshAgentTests
 {
     private static CancellationToken Stop => TestContext.Current.CancellationToken;

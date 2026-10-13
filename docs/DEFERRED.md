@@ -6,7 +6,6 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- ⏸ **QS114** (deps: QS41 ✅) **A PuTTY user on Pageant older than 0.78 has an agent this client cannot reach at all** — set aside (Needs a real Pageant installed.): It has met only a window answering as Pageant does, since no real Pageant is installed here or in the guest. → §QS114
 - ⏸ **QS43** (deps: QS41 ✅, QS114 ✅) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — set aside (Needs a hardware token.): Both carriers now reach an agent, and no key on a hardware token has yet signed a session through either. → §QS43
 
 ## Block C — Emulation that does not lie about the remote
@@ -20,8 +19,6 @@
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates
-
-- ⏸ **QS188** (deps: QS219 ✅) **Nothing can be dragged out of the host's pane, so a file on the server reaches Explorer only through a copy** — set aside (The guest has no SSH fixture to drag from.): A real drop onto Explorer is untried: no SSH tab has a remote pane until QS219, and then the guest drags one. → §QS188
 
 ## Block F — A forward is a lifecycle, not a checkbox
 

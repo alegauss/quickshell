@@ -57,31 +57,6 @@ to be worth it.
 
 Falsified when a token-backed key cannot authenticate a session.
 
-### §QS114 The other transport under the same protocol
-
-QS43's design names two agents to reach on Windows and says the useful thing about them:
-they speak the same requests, so only the transport differs. One of the two landed — the
-named pipe, which Windows' own OpenSSH agent uses and which Pageant added in 0.78.
-
-What is left is older Pageant, and it is the population this client was written for:
-PuTTY and MobaXterm users, many of whom are running whatever version their organisation
-packaged. Its transport is a file mapping plus a `WM_COPYDATA` sent to a hidden window
-whose class name is `Pageant`, with the request written into the mapping and the
-mapping's name passed in the message.
-
-None of that touches the protocol above it. `SshAgent` already separates the two —
-`Exchange` is the only method that knows there is a pipe — so this is an implementation
-of that one method against a different carrier, and everything that reads identities and
-asks for signatures is already written and already tested.
-
-Two things it needs that the pipe did not. A security descriptor on the mapping that
-Pageant will accept, since it checks the caller's SID. And a message pump, because
-`SendMessage` to another process's window blocks and the answer arrives by the mapping
-rather than by a return value.
-
-Falsified when a signature obtained through shared memory differs from one obtained
-through the pipe for the same key and the same data.
-
 ## Block C — Emulation that does not lie about the remote
 
 ### §QS92 The three environments this machine is not
@@ -473,3 +448,24 @@ true of the shipped build and not of the plan.
 Falsified when a figure in it cannot be reproduced from a documented run.
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+### §QS291 Skips that belong to the guest
+
+Found while adding QS114's real-Pageant tests (2026-10-13). Some tests can only run in
+the guest, because what they meet is provisioned there and nowhere else: Windows OpenSSH
+on 127.0.0.1:2240 (QS273's connected case, QS290's matrix row), Pageant 0.77 with the
+case key (QS114), an Explorer drop (QS188). On the host each of them skips, naming the
+tools/provision-guest-*.ps1 script.
+
+count-the-run.ps1 counts those skips against tests/skips.json, whose numbers are for a
+host desk with the SSH fixture up. Quickshell.Cases has no allowance at all, so a host
+run is over budget from QS273 on, and Transport's two are now five. Raising the numbers
+would hide a real new skip on the host behind the guest's ones.
+
+What to build: the skip whose reason names tools/provision-guest-*.ps1 is waived on a
+host run and printed as waived, as a missing Docker fixture is waived in the guest, and
+counted in the guest, where the provisioning is expected to have been done and its
+absence is a finding.
+
+Falsified when a host run with the SSH fixture up and nothing else changed is over the
+skip budget, or a guest run without the provisioning is not.
