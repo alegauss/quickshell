@@ -38,6 +38,14 @@ nothing is written. An address that does not parse says why under the box.
 **Home** — *Home* in the palette — puts quick connect on the screen, with the three sessions you
 opened last in this window as cards (the store's first three before you have opened any), each with
 **Connect**, and three ways to start: import from MobaXterm, a local shell, and the file browser.
+
+**Importing** — Ctrl+Shift+I, *Import sessions from another client* in the palette, or the card on
+Home — reads MobaXterm's `MobaXterm.ini` from where MobaXterm keeps it and PuTTY's sessions from the
+registry, and previews each before anything is written; where neither is found, it asks for the
+file, which a portable MobaXterm keeps beside `MobaXterm.exe`. SSH sessions come across with their
+host, port, user, key and jump host, in MobaXterm's folders, nested as they were, under a folder
+named for the client and the day. What a session carried that has nowhere to go here is listed in
+the preview and written as a comment above that session in this file.
 It takes the terminal's place without closing anything; choose a tab to go back, and the **Home**
 button at the start of the tab strip to return. With Home open, closing the last tab goes back to
 Home instead of closing the window.
@@ -61,8 +69,9 @@ the session dialog says beside every field whether it is set there or inherited,
 **set here instead** takes an inherited value over, and **use … instead** gives it back.
 
 **The session dialog** asks for the host and its port, a name and a folder, and who the session signs
-in as. **Sign in with** is a choice of three: **Key or agent** (the Windows agent, then your keys in
-`~/.ssh`, then a password if those are refused), **Password** (asked for when it connects, or kept
+in as. **Sign in with** is a choice of three: **Key or agent** (your keys in `~/.ssh`, then the
+Windows agent and Pageant, which is also where MobaXterm's MobAgent answers, then a password if
+those are refused), **Password** (asked for when it connects, or kept
 under the saved credential you name), or **Key file** (that one file). It writes `Key` and `Credential`
 exactly as you would by hand. Jump host, Tunnels, After login and Terminal are folded, each saying what
 it holds. **Test connection** connects, signs in and closes again, and says what it reached or why not,

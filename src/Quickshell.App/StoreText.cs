@@ -29,9 +29,21 @@ internal static class StoreText
     /// <summary>The tree as indented JSON, with the comments of <paramref name="previous"/> back in place.</summary>
     /// <param name="tree">The serialised tree, as the store's options write it.</param>
     /// <param name="previous">The file being replaced, or empty where there is none.</param>
-    internal static byte[] Write(JsonElement tree, ReadOnlySpan<byte> previous)
+    /// <param name="added">
+    /// Comments this write adds, each on a line of its own before the node its path of names leads
+    /// to — what an import could not carry, written beside the session it came from (QS294). Once
+    /// written they are the file's own, and kept by every later write as a person's would be.
+    /// </param>
+    internal static byte[] Write(JsonElement tree, ReadOnlySpan<byte> previous,
+                                 IEnumerable<(IReadOnlyList<string> Path, string Text)>? added = null)
     {
         Comments comments = Harvest(previous);
+
+        foreach ((IReadOnlyList<string> names, string comment) in added ?? [])
+        {
+            comments.Add(string.Concat(names.Select(name => $".{nameof(SessionNode.Children)}[{name}]")),
+                         "// " + comment.ReplaceLineEndings(" "), trailing: false);
+        }
         StringBuilder text = new();
 
         Leading(text, comments, "#top", 0);

@@ -284,7 +284,12 @@ public sealed class SessionTree
     }
 
     /// <summary>Writes the tree, indented so a diff of it reads as a change somebody made.</summary>
-    public void WriteTo(string file)
+    /// <param name="file">The store.</param>
+    /// <param name="notes">
+    /// Comments to add before nodes, each by the names leading to it from the root — see
+    /// <see cref="StoreText.Write"/>.
+    /// </param>
+    public void WriteTo(string file, IEnumerable<(IReadOnlyList<string> Path, string Text)>? notes = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(file);
 
@@ -301,7 +306,7 @@ public sealed class SessionTree
 
         using JsonDocument tree = JsonSerializer.SerializeToDocument(Root, Writing);
 
-        File.WriteAllBytes(file, StoreText.Write(tree.RootElement, previous));
+        File.WriteAllBytes(file, StoreText.Write(tree.RootElement, previous, notes));
     }
 
     /// <summary>Every session in the tree, with its inherited values resolved.</summary>

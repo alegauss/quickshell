@@ -184,7 +184,9 @@ public sealed class MobaXtermImportTests : IDisposable
 
         Assert.Contains(tree.Children, child => child.Name == "at-the-root");
 
-        SessionNode folder = Assert.Single(tree.Children, child => child.Name == "Europe");
+        // Nested as MobaXterm nests it (QS296), not flattened to the last level.
+        SessionNode production = Assert.Single(tree.Children, child => child.Name == "Production");
+        SessionNode folder = Assert.Single(production.Children, child => child.Name == "Europe");
 
         Assert.Equal("inside", Assert.Single(folder.Children).Name);
     }
@@ -263,6 +265,125 @@ public sealed class MobaXtermImportTests : IDisposable
         Assert.Equal("mine.example", after.Find("mine")?.Host);
         Assert.Equal("theirs.example", after.Find($"{folder}/theirs")?.Host);
         Assert.Equal(2, after.Sessions().Count);
+    }
+
+    /// <summary>
+    /// QS294: what a session could not bring is named in the preview with the sessions that had it,
+    /// and written beside each of those sessions in the store, where a later write keeps it.
+    /// </summary>
+    [Fact]
+    public void WhatIsLeftBehindIsNamedInThePreviewAndBesideEachSession()
+    {
+        string from = File(string.Join(Environment.NewLine,
+        [
+            "[Bookmarks]", "SubRep=", "ImgNum=41",
+            Line("loose", 0, "loose.example", "22", "alex", (6, "1")),
+            "[Bookmarks_1]", "SubRep=Work", "ImgNum=41",
+            Line("db", 0, "db.example", "22", "alex", (6, "1"), (8, "bastion.example")),
+            Line("plain", 0, "plain.example", "22", "alex"),
+        ]), whole: true);
+
+        string store = Path.Combine(_here, "sessions.json");
+
+        ImportPreview shown = Sta.Run(() =>
+        {
+            ImportPreview? seen = null;
+            MainWindow window = new() { Importing = preview => { seen = preview; return true; }, SessionsFile = store };
+
+            window.ImportSessions(from);
+
+            return seen!;
+        });
+
+        // In the preview: compression once, with both sessions that had it; the jump host with its one.
+        IReadOnlyList<string> left = shown.LeftBehind();
+
+        Assert.Contains(left, line => line.StartsWith("compression", StringComparison.Ordinal) && line.EndsWith("(loose, db)", StringComparison.Ordinal));
+        Assert.Contains(left, line => line.StartsWith("the jump host is carried", StringComparison.Ordinal) && line.EndsWith("(db)", StringComparison.Ordinal));
+        Assert.DoesNotContain(left, line => line.Contains("plain", StringComparison.Ordinal));
+
+        // In the store: before the session it came from, and still there after the store is written again.
+        string folder = $"Imported from MobaXterm {DateTime.Now:yyyy-MM-dd}";
+
+        SessionTree.ReadFrom(store).With("mine", new SessionNode { Name = "mine", Host = "mine.example" }).WriteTo(store);
+
+        string text = System.IO.File.ReadAllText(store);
+        int db = text.IndexOf("\"Name\": \"db\"", StringComparison.Ordinal);
+        int note = text.IndexOf("// Not carried over from MobaXterm: the jump host", StringComparison.Ordinal);
+
+        Assert.True(note >= 0 && note < db && text.LastIndexOf("\"Name\"", db - 1, StringComparison.Ordinal) < note,
+                    $"the jump host was not written just before db:{Environment.NewLine}{text}");
+        Assert.Equal(3, Count(text, "// Not carried over from MobaXterm:"));
+        Assert.NotNull(SessionTree.ReadFrom(store).Find($"{folder}/Work/db"));
+    }
+
+    /// <summary>
+    /// QS296: a jump host comes across as the session's own, and folders nested in MobaXterm stay
+    /// nested — two subfolders of the same name under different parents stay two.
+    /// </summary>
+    [Fact]
+    public void AJumpHostAndNestedFoldersComeAcross()
+    {
+        string from = File(string.Join(Environment.NewLine,
+        [
+            "[Bookmarks_1]", @"SubRep=Clients\Acme\prod", "ImgNum=41",
+            Line("web", 0, "web.acme.example", "22", "alex", (8, "bastion.acme.example")),
+            "[Bookmarks_2]", @"SubRep=Clients\Other\prod", "ImgNum=41",
+            Line("web", 0, "web.other.example", "22", "alex"),
+        ]), whole: true);
+
+        ImportPreview preview = MobaXtermImport.Preview(from) with { Folder = "in" };
+        SessionTree tree = SessionTree.Of(new SessionNode { Children = [preview.Tree()] });
+
+        Assert.Equal("web.acme.example", tree.Find("in/Clients/Acme/prod/web")?.Host);
+        Assert.Equal("web.other.example", tree.Find("in/Clients/Other/prod/web")?.Host);
+        Assert.Equal("bastion.acme.example", tree.Find("in/Clients/Acme/prod/web")?.Settings.JumpHost);
+        Assert.Null(tree.Find("in/Clients/Other/prod/web")?.Settings.JumpHost);
+    }
+
+    /// <summary>
+    /// QS296: with nothing where MobaXterm and PuTTY keep their sessions, the import offers to choose
+    /// the file — a portable MobaXterm's is beside its executable — and imports the one chosen.
+    /// </summary>
+    [Fact]
+    public void WithNothingFoundTheFileIsChosen()
+    {
+        Assert.SkipWhen(MobaXtermImport.Find() is not null, "this desk has a MobaXterm.ini where MobaXterm keeps one, so nothing is chosen");
+
+        string from = File(Line("portable", 0, "portable.example", "22", "alex"));
+        string store = Path.Combine(_here, "sessions.json");
+
+        int asked = Sta.Run(() =>
+        {
+            int chooser = 0;
+            MainWindow window = new()
+            {
+                SessionsFile = store,
+                PuttySessions = () => null,
+                ChoosesSessionFile = () => { chooser++; return from; },
+                Importing = _ => true,
+            };
+
+            window.ImportSessions();
+
+            return chooser;
+        });
+
+        Assert.Equal(1, asked);
+        Assert.Equal("portable.example",
+                     SessionTree.ReadFrom(store).Find($"Imported from MobaXterm {DateTime.Now:yyyy-MM-dd}/portable")?.Host);
+    }
+
+    private static int Count(string text, string what)
+    {
+        int count = 0;
+
+        for (int at = text.IndexOf(what, StringComparison.Ordinal); at >= 0; at = text.IndexOf(what, at + 1, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
     }
 
     /// <summary>A second import the same day is a second folder, not a merge into the first.</summary>

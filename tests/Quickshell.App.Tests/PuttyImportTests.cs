@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.Win32;
 using Quickshell.App;
 using Xunit;
@@ -168,6 +169,57 @@ public sealed class PuttyImportTests : IDisposable
             {
                 Assert.False(string.IsNullOrWhiteSpace(session.Skipped));
             }
+        }
+    }
+
+    // ---- From the window (QS295) ----
+
+    /// <summary>
+    /// The import the window runs reads PuTTY's sessions too, previews them as PuTTY's, and writes
+    /// them under a folder named for PuTTY — on any machine, MobaXterm or not, since a MobaXterm
+    /// preview the same import shows is refused here.
+    /// </summary>
+    [Fact]
+    public void TheWindowsImportBringsPuttysSessions()
+    {
+        RegistryKey sessions = Sessions(("work box", new Dictionary<string, object>
+        {
+            ["HostName"] = "10.0.0.9",
+            ["UserName"] = "root",
+            ["Protocol"] = "ssh",
+            ["Compression"] = 1,
+        }));
+
+        string store = Path.Combine(Path.GetTempPath(), $"quickshell-putty-{Guid.NewGuid():N}.json");
+
+        try
+        {
+            List<string> clients = Sta.Run(() =>
+            {
+                List<string> seen = [];
+                MainWindow window = new()
+                {
+                    SessionsFile = store,
+                    PuttySessions = () => sessions,
+                    Importing = preview => { seen.Add(preview.Client); return preview.Client == "PuTTY"; },
+                };
+
+                window.ImportSessions();
+
+                return seen;
+            });
+
+            Assert.Contains("PuTTY", clients);
+
+            string folder = $"Imported from PuTTY {DateTime.Now:yyyy-MM-dd}";
+
+            Assert.Equal("10.0.0.9", SessionTree.ReadFrom(store).Find($"{folder}/work box")?.Host);
+            Assert.Contains("// Not carried over from PuTTY: ", File.ReadAllText(store), StringComparison.Ordinal);
+        }
+        finally
+        {
+            sessions.Dispose();
+            File.Delete(store);
         }
     }
 

@@ -1771,6 +1771,32 @@ public sealed partial class MainWindow : Window
     public string? SessionsFile { get; set; }
 
     /// <summary>
+    /// Where PuTTY's sessions are read from: its key in this user's registry unless a caller says,
+    /// and null where there is none (QS295).
+    /// </summary>
+    public Func<Microsoft.Win32.RegistryKey?>? PuttySessions { get; set; }
+
+    /// <summary>
+    /// Who is asked for a MobaXterm.ini where none is where MobaXterm keeps one, answering null for
+    /// none. A file dialog when the import is the window's own; nobody when a caller handles the
+    /// preview and gives no chooser, so a test never waits on a dialog.
+    /// </summary>
+    public Func<string?>? ChoosesSessionFile { get; set; }
+
+    /// <summary>The file dialog, opened on the documents folder, for a MobaXterm.ini anywhere.</summary>
+    private string? ChooseSessionFile()
+    {
+        Microsoft.Win32.OpenFileDialog choosing = new()
+        {
+            Title = "No MobaXterm.ini where MobaXterm keeps it - a portable MobaXterm keeps it beside MobaXterm.exe",
+            Filter = "MobaXterm sessions (MobaXterm.ini)|MobaXterm*.ini|All files|*.*",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        };
+
+        return choosing.ShowDialog(this) == true ? choosing.FileName : null;
+    }
+
+    /// <summary>
     /// Reads the incumbent's sessions, shows what the import would do, and writes only if the user
     /// agrees.
     ///
@@ -1783,23 +1809,54 @@ public sealed partial class MainWindow : Window
     /// own named for where it came from and when, so it never collides by name with what is there
     /// and moving it out is the user's decision. The preview says how many sessions the store
     /// already holds and that they stay.</para>
+    ///
+    /// <para><b>MobaXterm's and PuTTY's, each its own (QS295).</b> Where both are on the machine,
+    /// MobaXterm's file is previewed and then PuTTY's sessions, each into a folder named for it, so
+    /// either can be refused alone and neither is mixed into the other.</para>
     /// </summary>
     /// <param name="from">
-    /// The session file to read, or null to look where MobaXterm keeps it. A named file that is not
-    /// there is answered the way a machine with no MobaXterm is: there is nothing to import.
+    /// The MobaXterm session file to read, or null to look where MobaXterm and PuTTY keep theirs. A
+    /// named file that is not there is answered the way a machine with neither is: there is nothing
+    /// to import.
     /// </param>
     /// <returns>Where the sessions were written, or empty where nothing was.</returns>
     /// <exception cref="SessionStoreException">The store is there and cannot be read.</exception>
     public string ImportSessions(string? from = null)
     {
-        string? found = MobaXtermImport.Find();
+        string? found = from is not null
+            ? System.IO.File.Exists(from) ? from : null
+            : MobaXtermImport.Find();
 
-        if (from is not null)
+        List<(string Client, Func<ImportPreview> Read)> sources = [];
+
+        if (found is not null)
         {
-            found = System.IO.File.Exists(from) ? from : null;
+            sources.Add(("MobaXterm", () => MobaXtermImport.Preview(found)));
         }
 
-        if (found is null)
+        // A named file is MobaXterm's, so PuTTY is looked for only where nothing was named.
+        if (from is null && (PuttySessions ?? PuttyImport.Find)() is { } putty)
+        {
+            using (putty)
+            {
+                ImportPreview read = PuttyImport.Preview(putty);
+
+                if (read.Sessions.Count > 0)
+                {
+                    sources.Add(("PuTTY", () => read));
+                }
+            }
+        }
+
+        // Nothing where MobaXterm keeps its file: a portable MobaXterm keeps it beside its executable,
+        // anywhere at all, so the user is offered the choice rather than told there is nothing (QS296).
+        if (sources.Count == 0 && from is null
+            && (ChoosesSessionFile ?? (Importing is null ? ChooseSessionFile : null))?.Invoke() is { } chosen)
+        {
+            return ImportSessions(chosen);
+        }
+
+        if (sources.Count == 0)
         {
             (Importing ?? Asked)(new ImportPreview([], string.Empty));
 
@@ -1807,32 +1864,42 @@ public sealed partial class MainWindow : Window
         }
 
         string into = SessionsFile ?? Locations.Current.Sessions;
+        string written = string.Empty;
 
-        // Read before asking, for the count the preview states - and so a store that will not read
-        // refuses here, before a user agrees to anything, rather than being written over.
-        SessionTree before = SessionTree.ReadFrom(into);
-
-        ImportPreview preview = MobaXtermImport.Preview(found) with
+        foreach ((string client, Func<ImportPreview> read) in sources)
         {
-            Kept = before.Sessions().Count,
-            Folder = ImportFolder(before, DateTime.Now),
-        };
+            // Read before asking, for the count the preview states - and so a store that will not read
+            // refuses here, before a user agrees to anything, rather than being written over.
+            SessionTree before = SessionTree.ReadFrom(into);
 
-        if (!(Importing ?? Asked)(preview))
-        {
-            return string.Empty;
+            ImportPreview preview = read() with
+            {
+                Client = client,
+                Kept = before.Sessions().Count,
+                Folder = ImportFolder(before, DateTime.Now, client),
+            };
+
+            if (!(Importing ?? Asked)(preview))
+            {
+                continue;
+            }
+
+            // And again at the moment of writing: a session made or a hand edit saved while the preview
+            // was up is in the file now, and must still be there afterwards.
+            SessionTree store = SessionTree.ReadFrom(into);
+            string folder = ImportFolder(store, DateTime.Now, client, preview.Folder);
+
+            store.With(folder, preview.Tree() with { Name = folder }).WriteTo(into, preview.Notes(folder));
+
+            written = into;
         }
 
-        // And again at the moment of writing: a session made or a hand edit saved while the preview
-        // was up is in the file now, and must still be there afterwards.
-        SessionTree store = SessionTree.ReadFrom(into);
-        string folder = ImportFolder(store, DateTime.Now, preview.Folder);
+        if (written.Length > 0)
+        {
+            RefreshSessions();
+        }
 
-        store.With(folder, preview.Tree() with { Name = folder }).WriteTo(into);
-
-        RefreshSessions();
-
-        return into;
+        return written;
     }
 
     /// <summary>
@@ -1861,15 +1928,16 @@ public sealed partial class MainWindow : Window
     /// </summary>
     /// <param name="store">The store it is going into.</param>
     /// <param name="when">The day it is happening.</param>
+    /// <param name="client">The client the sessions came from.</param>
     /// <param name="wanted">The name the preview showed, kept where it is still free.</param>
-    private static string ImportFolder(SessionTree store, DateTime when, string? wanted = null)
+    private static string ImportFolder(SessionTree store, DateTime when, string client, string? wanted = null)
     {
         if (wanted is not null && store.Find(wanted) is null)
         {
             return wanted;
         }
 
-        string named = string.Create(CultureInfo.InvariantCulture, $"Imported from MobaXterm {when:yyyy-MM-dd}");
+        string named = string.Create(CultureInfo.InvariantCulture, $"Imported from {client} {when:yyyy-MM-dd}");
         string free = named;
 
         for (int again = 2; store.Find(free) is not null; again++)
@@ -2340,7 +2408,7 @@ public sealed partial class MainWindow : Window
     {
         if (preview.Source.Length == 0)
         {
-            MessageBox.Show("No MobaXterm session file was found on this machine.",
+            MessageBox.Show("No MobaXterm session file and no PuTTY sessions were found on this machine.",
                             "Import sessions", MessageBoxButton.OK, MessageBoxImage.Information);
 
             return false;
@@ -2371,14 +2439,17 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        int noted = preview.Sessions.Sum(session => session.Unmapped.Count);
-
-        if (noted > 0)
+        // Named, each with the sessions that had it (QS294); and written beside each of those
+        // sessions in the store, as a comment, where the user will find it later.
+        if (preview.LeftBehind() is { Count: > 0 } left)
         {
             said.AppendLine()
-                .AppendLine(Count(noted, "setting")
-                            + " across those sessions have nowhere to go here, and each is named "
-                            + "beside the session it came from rather than dropped.");
+                .AppendLine("What these sessions carry that has nowhere to go here, which is written beside each one in your sessions file:");
+
+            foreach (string what in left)
+            {
+                said.AppendLine("  • " + what);
+            }
         }
 
         return Choice.Ask(null, "Import sessions", said.ToString().TrimEnd(),

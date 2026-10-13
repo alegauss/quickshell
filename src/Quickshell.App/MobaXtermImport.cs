@@ -42,49 +42,75 @@ public sealed record ImportPreview(IReadOnlyList<ImportedSession> Sessions, stri
     /// <summary>The folder the import goes under, so nothing it brings collides with what is there.</summary>
     public string Folder { get; init; } = "imported";
 
+    /// <summary>The client the sessions are read from, as the preview and the notes name it.</summary>
+    public string Client { get; init; } = "MobaXterm";
+
     /// <summary>
     /// The tree this would produce, folders and all.
     ///
     /// <para>Built rather than written: nothing lands until a caller takes this and saves it, which
     /// is what makes the preview a preview.</para>
     /// </summary>
-    public SessionNode Tree()
+    public SessionNode Tree() =>
+        Built(Folder, [.. Sessions.Where(session => session.Carried).Select(session => (FolderPath(session), session.Node!))]);
+
+    /// <summary>
+    /// A session's folder as the names leading to it, MobaXterm's nesting kept (QS296): a backslash
+    /// in its <c>SubRep</c> is a level, not part of a name.
+    /// </summary>
+    internal static IReadOnlyList<string> FolderPath(ImportedSession session) =>
+        session.Folder.Split('\\', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    /// <summary>A folder named <paramref name="name"/> holding its sessions and, after them, its folders in order.</summary>
+    private static SessionNode Built(string name, List<(IReadOnlyList<string> Folder, SessionNode Node)> inside)
     {
-        Dictionary<string, List<SessionNode>> folders = new(StringComparer.Ordinal);
-        List<SessionNode> loose = [];
+        List<SessionNode> children = [.. inside.Where(each => each.Folder.Count == 0).Select(each => each.Node)];
 
-        foreach (ImportedSession session in Sessions)
+        foreach (IGrouping<string, (IReadOnlyList<string> Folder, SessionNode Node)> folder in
+                 inside.Where(each => each.Folder.Count > 0)
+                       .GroupBy(each => each.Folder[0], StringComparer.Ordinal)
+                       .OrderBy(group => group.Key, StringComparer.Ordinal))
         {
-            if (session.Node is not { } node)
-            {
-                continue;
-            }
-
-            if (session.Folder.Length == 0)
-            {
-                loose.Add(node);
-
-                continue;
-            }
-
-            if (!folders.TryGetValue(session.Folder, out List<SessionNode>? inside))
-            {
-                inside = [];
-                folders[session.Folder] = inside;
-            }
-
-            inside.Add(node);
+            children.Add(Built(folder.Key, [.. folder.Select(each => ((IReadOnlyList<string>)[.. each.Folder.Skip(1)], each.Node))]));
         }
 
-        List<SessionNode> children = [.. loose];
+        return new SessionNode { Name = name, Children = children };
+    }
 
-        foreach ((string folder, List<SessionNode> inside) in folders.OrderBy(pair => pair.Key,
-                                                                             StringComparer.Ordinal))
-        {
-            children.Add(new SessionNode { Name = folder, Children = inside });
-        }
+    /// <summary>
+    /// What each carried session could not bring, as comments to write before it in the store, by
+    /// the names leading to it from under <paramref name="into"/> (QS294) — so it is found beside
+    /// the session weeks later, not only in a preview that was dismissed.
+    /// </summary>
+    /// <param name="into">The folder the import is written under.</param>
+    public IEnumerable<(IReadOnlyList<string> Path, string Text)> Notes(string into) =>
+        Sessions.Where(session => session.Carried)
+                .SelectMany(session => session.Unmapped.Select(what =>
+                    ((IReadOnlyList<string>)[into, .. FolderPath(session), session.Name],
+                     $"Not carried over from {Client}: {what}.")));
 
-        return new SessionNode { Name = Folder, Children = children };
+    /// <summary>
+    /// What was left behind, one line per thing, with the sessions that had it — two hundred sessions
+    /// with compression on are one line naming a few of them and how many more, not two hundred.
+    /// </summary>
+    public IReadOnlyList<string> LeftBehind()
+    {
+        const int Named = 3;
+
+        return [.. Sessions.Where(session => session.Carried)
+                           .SelectMany(session => session.Unmapped.Select(what => (what, session.Name)))
+                           .GroupBy(pair => pair.what, StringComparer.Ordinal)
+                           .OrderByDescending(group => group.Count())
+                           .ThenBy(group => group.Key, StringComparer.Ordinal)
+                           .Select(group =>
+                           {
+                               List<string> names = [.. group.Select(pair => pair.Name).Distinct(StringComparer.Ordinal)];
+                               string who = names.Count <= Named
+                                   ? string.Join(", ", names)
+                                   : string.Join(", ", names.Take(Named)) + $" and {names.Count - Named} more";
+
+                               return $"{group.Key} ({who})";
+                           })];
     }
 }
 
@@ -188,9 +214,8 @@ public static class MobaXtermImport
 
             if (string.Equals(key, "SubRep", StringComparison.Ordinal))
             {
-                // MobaXterm nests with a backslash; the leaf is the folder a session is shown in.
-                folder = value.Split('\\', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()
-                         ?? string.Empty;
+                // MobaXterm nests with a backslash, kept whole so the tree keeps its levels (QS296).
+                folder = value.Trim();
 
                 continue;
             }
@@ -244,6 +269,7 @@ public static class MobaXtermImport
                 ? port
                 : null,
             Key = Empty(Key(fields, unmapped)),
+            JumpHost = Empty(Jump(fields, unmapped)),
         };
 
         Note(fields, unmapped);
@@ -273,8 +299,27 @@ public static class MobaXtermImport
         return key;
     }
 
+    /// <summary>
+    /// The jump host, carried into the session's own (QS296), and said how it differs: a jump here
+    /// signs in with the user's keys and agents alone, so a password MobaXterm used for it is asked of
+    /// nobody and the jump is refused instead.
+    /// </summary>
+    private static string Jump(string[] fields, List<string> unmapped)
+    {
+        string jump = At(fields, 8);
+
+        if (Chosen(jump))
+        {
+            unmapped.Add("the jump host is carried, and is reached with your keys and agents only, never a password");
+
+            return jump;
+        }
+
+        return string.Empty;
+    }
+
     /// <summary>The fields this import reads and turns into something.</summary>
-    private static readonly int[] Consumed = [0, 1, 2, 3, 14];
+    private static readonly int[] Consumed = [0, 1, 2, 3, 8, 14];
 
     /// <summary>
     /// What the positions mean, as far as they have been identified against a real file.
@@ -287,7 +332,6 @@ public static class MobaXtermImport
     {
         [5] = "X11 forwarding, which this client does not do and will not (a non-goal)",
         [6] = "compression",
-        [8] = "a jump host",
         [20] = "an execute-on-login command or macro",
     };
 

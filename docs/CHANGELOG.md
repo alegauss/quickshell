@@ -276,6 +276,9 @@
 - ✅ **QS276** **An imported key path keeps MobaXterm's _ProfileDir_ placeholder, so the key file is never found or offered** — MobaXterm's _ProfileDir_, _MyDocuments_, _AppDataDir_ and _CurrentDrive_ expand on import and when a key is offered, and a named key that is not there is said in the pane.
 - ✅ **QS286** **The site and llms.txt describe features as shipped that the client lacks, so a visitor arriving from a post is misled** — The site and llms.txt say what has shipped: pre-release 0.1.0, unsigned, no release yet, 160 MB, golden images on NVIDIA and WARP, no agent forwarding, reconnect as delivered.
 - ✅ **QS285** **The repository declares no licence, so "free and open" cannot be said of it to anyone it is shown to** — quickshell is MIT: LICENSE at the root, PackageLicenseExpression set, the README and site say so, and the bundled MIT and ISC libraries are credited in the archive.
+- ✅ **QS294** **The import preview says each setting left behind is named beside its session, and names none** — The import preview names what each session left behind, grouped with the sessions that had it, and the store carries it as a comment above each session that later writes keep.
+- ✅ **QS295** **PuTTY's sessions cannot be imported from the window, though the import reads them** — The window's import reads PuTTY's sessions as well as MobaXterm's, each previewed and written on its own under a folder named for its client.
+- ✅ **QS296** **A MobaXterm import drops jump hosts, flattens nested folders, and finds no portable edition's file** — A MobaXterm import carries the jump host into the session's own, keeps nested folders nested, and asks for the file where none is where MobaXterm keeps it.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
