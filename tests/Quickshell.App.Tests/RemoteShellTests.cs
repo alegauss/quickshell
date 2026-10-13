@@ -1097,20 +1097,7 @@ public sealed class RemoteShellTests : IDisposable
 
     private static void SkipWithoutFixture()
     {
-        bool up;
-
-        try
-        {
-            using TcpClient probe = new();
-
-            up = probe.ConnectAsync("127.0.0.1", 2222).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception failure) when (failure is SocketException or AggregateException)
-        {
-            up = false;
-        }
-
-        Assert.SkipUnless(up && File.Exists(Key()),
+        Assert.SkipUnless(SshFixture.Listening(2222) && File.Exists(Key()),
             "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
     }
 }

@@ -15,6 +15,11 @@ rem to look, and the console it named the test on is gone the moment anybody pip
 rem
 rem Usage:  run-tests.cmd [Configuration]        default Debug
 rem CI runs it as:  run-tests.cmd Release
+rem
+rem A part of the suite, for the minutes between two edits, never for a verdict:
+rem   QUICKSHELL_ONLY    assemblies to run, by name, separated by spaces (Quickshell.App.Tests ...)
+rem   QUICKSHELL_FILTER  handed to each of them as it is, e.g. --filter-class *MobaXtermImport*
+rem A run with either says so at its end and is not the suite's verdict: a commit still owes a whole one.
 
 set "CONFIG=%~1"
 if "%CONFIG%"=="" set "CONFIG=Debug"
@@ -55,15 +60,31 @@ set /a RAN=0
 set /a FAILED=0
 set "BROKEN="
 
+set "PART="
+if not "%QUICKSHELL_ONLY%%QUICKSHELL_FILTER%"=="" set "PART=1"
+
 for /d %%P in (tests\*) do (
     set "APP=%%P\bin\%CONFIG%\net10.0-windows\%%~nxP.exe"
-    if exist "!APP!" (
+    set "WANTED=1"
+    if not "%QUICKSHELL_ONLY%"=="" (
+        set "WANTED="
+        for %%O in (%QUICKSHELL_ONLY%) do if /i "%%O"=="%%~nxP" set "WANTED=1"
+    )
+    if not defined WANTED (
+        rem Not asked for this time.
+    ) else if exist "!APP!" (
         echo.
         echo === %%~nxP ===
         rem A mini dump, because a full one is gigabytes and the point is the name of the test,
         rem which the platform prints when it ends the process.
-        "!APP!" --results-directory "%REPORTS%" --report-xunit-trx --report-xunit-trx-filename %%~nxP.trx --hangdump --hangdump-timeout %QUICKSHELL_HANG% --hangdump-type Mini
-        if errorlevel 1 (
+        "!APP!" --results-directory "%REPORTS%" --report-xunit-trx --report-xunit-trx-filename %%~nxP.trx --hangdump --hangdump-timeout %QUICKSHELL_HANG% --hangdump-type Mini %QUICKSHELL_FILTER%
+        set "CODE=!ERRORLEVEL!"
+        rem 8 is the platform's "zero tests ran": a filter matching nothing in this assembly, and only
+        rem then not a failure - a whole run that ran nothing in an assembly is one.
+        set "COUNTED=1"
+        if "!CODE!"=="0" set "COUNTED="
+        if "!CODE!"=="8" if defined PART set "COUNTED="
+        if defined COUNTED (
             set /a FAILED+=1
             set "BROKEN=!BROKEN! %%~nxP"
         )
@@ -96,8 +117,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\count-the-run.ps
 set "OVER=%ERRORLEVEL%"
 echo.
 
+rem A part of the suite has no skip budget to be held to - the budget is the whole suite's.
+if defined PART set "OVER=0"
+
 if %FAILED%==0 if %OVER%==0 (
-    echo All %RAN% test assemblies passed.
+    if defined PART (
+        echo PART OF THE SUITE: %RAN% assemblies passed with ONLY=[%QUICKSHELL_ONLY%] FILTER=[%QUICKSHELL_FILTER%]. Not the suite's verdict.
+    ) else (
+        echo All %RAN% test assemblies passed.
+    )
     popd
     exit /b 0
 )

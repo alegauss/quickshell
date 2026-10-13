@@ -64,7 +64,15 @@ param(
 
     # How long the whole run may take before this stops waiting for it. A hung test is ended by
     # $Hang; this is for a guest that stopped answering altogether.
-    [int] $CeilingMinutes = 120
+    [int] $CeilingMinutes = 120,
+
+    # A part of the suite, for the minutes between two edits: the assemblies to run, by name
+    # (Quickshell.App.Tests, Quickshell.Cases, ...), and what each is handed to choose its tests,
+    # e.g. '--filter-class *MobaXtermImport*'. Such a run says so and is not the suite's verdict; a
+    # commit still owes a whole one. See run-tests.cmd.
+    [string[]] $Only,
+
+    [string] $Filter
 )
 
 Set-StrictMode -Version Latest
@@ -150,6 +158,8 @@ rem so a fixture somebody forgot to start is a run over its skip budget there.
 set "QUICKSHELL_NO_FIXTURE=1"
 $(if ($Hang) { "set `"QUICKSHELL_HANG=$Hang`"" } else { 'rem The hang timeout is run-tests.cmd''s own.' })
 $(if ($WriteGoldens) { 'set "QUICKSHELL_GOLDEN=write"' } else { 'rem References are only read.' })
+$(if ($Only) { "set `"QUICKSHELL_ONLY=$($Only -join ' ')`"" } else { 'rem Every assembly.' })
+$(if ($Filter) { "set `"QUICKSHELL_FILTER=$Filter`"" } else { 'rem Every test.' })
 
 cd /d "$script:GuestRepo"
 call "$script:GuestRepo\run-tests.cmd" $Configuration > "$script:GuestSync\vm-run.log" 2>&1
@@ -179,6 +189,9 @@ if (-not $sent.Ok) { Refuse "could not copy run.cmd into the guest: $($sent.Outp
 
 Write-Host ''
 Write-Host "  running the suite in the guest ($Configuration). The host is yours." -ForegroundColor Cyan
+if ($Only -or $Filter) {
+    Write-Host "  part only   $(if ($Only) { $Only -join ', ' } else { 'every assembly' }) $(if ($Filter) { "with $Filter" }) - not the suite's verdict" -ForegroundColor Yellow
+}
 
 # -interactive, because the render fixtures need a logged-in desktop session and refuse without one.
 # That refusal is the right answer: a suite drawing into a lock screen renders nothing while

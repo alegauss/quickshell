@@ -48,7 +48,7 @@ public sealed class PageantSessionTests
         string exe = Path.Combine(Folder, "pageant.exe");
         string ppk = Path.Combine(Folder, "probe.ppk");
 
-        Assert.SkipUnless(Listening(Port) && File.Exists(exe) && File.Exists(ppk),
+        Assert.SkipUnless(SshFixture.Listening(Port) && File.Exists(exe) && File.Exists(ppk),
             "no Pageant with the case key, or no server trusting it: run tools/provision-guest-sshd.ps1 and then tools/provision-guest-pageant.ps1, which set both up in the guest");
 
         Assert.SkipWhen(PageantOpen, "a Pageant this did not start is open, and would answer instead");
@@ -97,20 +97,6 @@ public sealed class PageantSessionTests
         {
             Children = [new SessionNode { Name = "unkeyed", Host = "host.example" }],
         }).Session("unkeyed")!;
-
-    private static bool Listening(int port)
-    {
-        try
-        {
-            using TcpClient probe = new();
-
-            return probe.ConnectAsync("127.0.0.1", port).Wait(TimeSpan.FromSeconds(2));
-        }
-        catch (Exception failure) when (failure is SocketException or AggregateException)
-        {
-            return false;
-        }
-    }
 
     private static bool PageantOpen => new SshAgent(SshAgent.PageantWindow).IsRunning;
 }

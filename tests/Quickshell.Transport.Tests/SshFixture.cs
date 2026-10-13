@@ -27,20 +27,44 @@ internal static class SshFixture
                                                         CancellationToken cancellationToken) =>
         ValueTask.FromResult(SshHostKeyVerdict.Accept);
 
-    /// <summary>Whether something accepts a connection on the port within two seconds.</summary>
+    /// <summary>The addresses found with nothing listening, which are not asked again in this run.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(string, int), bool> Absent = new();
+
+    /// <summary>
+    /// Whether something accepts a connection on the port within two seconds.
+    ///
+    /// <para><b>An absence is remembered for the run.</b> A refused connection on Windows' loopback
+    /// takes about two seconds to come back, and a guest with no Docker fixture asked it once per test:
+    /// a hundred and thirty-six times, four and a half minutes of the transport suite spent hearing
+    /// the same no. A server found up is asked again each time, since tests restart theirs.</para>
+    /// </summary>
     public static bool Listening(int port, string host = Host)
     {
+        if (Absent.ContainsKey((host, port)))
+        {
+            return false;
+        }
+
+        bool up;
+
         try
         {
             using TcpClient probe = new();
 
-            return probe.ConnectAsync(host, port).Wait(Answer);
+            up = probe.ConnectAsync(host, port).Wait(Answer);
         }
         catch (Exception)
         {
             // Refused, unreachable or reset: nothing there to test against, which the caller's
             // skip says in its own words.
-            return false;
+            up = false;
         }
+
+        if (!up)
+        {
+            Absent[(host, port)] = true;
+        }
+
+        return up;
     }
 }

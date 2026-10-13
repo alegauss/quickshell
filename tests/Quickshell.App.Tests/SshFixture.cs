@@ -26,22 +26,43 @@ internal static class SshFixture
     public const string Title = "qs-sshd-target";
 
     /// <summary>Skips the calling test where nothing is listening.</summary>
-    public static void SkipWithoutIt()
+    public static void SkipWithoutIt() =>
+        Assert.SkipUnless(Listening(Port), "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
+
+    /// <summary>The ports found with nothing listening, which are not asked again in this run.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, bool> Absent = new();
+
+    /// <summary>
+    /// Whether something accepts a connection on the loopback port within two seconds. An absence is
+    /// remembered for the run: a refused loopback connection takes about two seconds on Windows, and a
+    /// desk with no fixture paid that once per test. A server found up is asked again each time.
+    /// </summary>
+    public static bool Listening(int port)
     {
+        if (Absent.ContainsKey(port))
+        {
+            return false;
+        }
+
         bool up;
 
         try
         {
             using TcpClient probe = new();
 
-            up = probe.ConnectAsync(Host, Port).Wait(TimeSpan.FromSeconds(2));
+            up = probe.ConnectAsync(Host, port).Wait(TimeSpan.FromSeconds(2));
         }
         catch (Exception)
         {
             up = false;
         }
 
-        Assert.SkipUnless(up, "nothing is listening on 127.0.0.1:2222: run prototypes/SshProbe/fixture/up.sh");
+        if (!up)
+        {
+            Absent[port] = true;
+        }
+
+        return up;
     }
 
     /// <summary>A session to the target as the probe account, trusting its key.</summary>
