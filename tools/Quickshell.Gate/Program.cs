@@ -425,7 +425,8 @@ public static class Program
     {
         string startup = Path.Combine(root, "tools", "Quickshell.Startup", "bin", "Release", "net10.0-windows", "Quickshell.Startup.exe");
 
-        using JsonDocument timed = Measured(root, startup, "--launch", client,
+        // A shell start, which is what figure 5 times, whatever the desk's startWith says (QS272).
+        using JsonDocument timed = Measured(root, startup, "--launch", client, "--shell",
                                            "--runs", starts.ToString(CultureInfo.InvariantCulture), "--label", "gate");
 
         List<double> warm = [.. timed.RootElement.GetProperty("starts").EnumerateArray().Skip(1)

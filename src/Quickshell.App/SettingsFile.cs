@@ -85,11 +85,28 @@ public sealed record Settings
     public bool SessionsSidebar { get; init; } = true;
 
     /// <summary>
+    /// What a new window opens on (QS272): Home, which says this client connects to servers and offers
+    /// a way to one, or a local shell, as it did before Home existed. A window asked for tabs, panes or a
+    /// session on its command line opens on what it asked for either way.
+    /// </summary>
+    public StartWith StartWith { get; init; } = StartWith.Home;
+
+    /// <summary>
     /// Every key this build did not recognise, kept exactly as it was read so it can be written back
     /// unchanged.
     /// </summary>
     public IReadOnlyDictionary<string, JsonElement> Unrecognised { get; init; } =
         new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+}
+
+/// <summary>What a new window opens on (QS272).</summary>
+public enum StartWith
+{
+    /// <summary>Home: quick connect, the recent sessions and the ways to start.</summary>
+    Home,
+
+    /// <summary>A local shell in a tab, as before Home.</summary>
+    Shell,
 }
 
 /// <summary>
@@ -128,7 +145,7 @@ public static class SettingsFile
     public static readonly string[] Known =
     [
         Version, "theme", "fontFamily", "fontSize", "scrollback", "ligatures", "cursor",
-        "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar",
+        "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar", "startWith",
     ];
 
     /// <summary>
@@ -263,6 +280,12 @@ public static class SettingsFile
             said.Add($"\"theme\" is {theme.GetRawText()}, which is not System, Light or Dark, so System is in use.");
         }
 
+        if (root.TryGetProperty("startWith", out JsonElement start)
+            && !(start.ValueKind == JsonValueKind.String && Enum.TryParse(start.GetString(), ignoreCase: true, out StartWith _)))
+        {
+            said.Add($"\"startWith\" is {start.GetRawText()}, which is not Home or Shell, so Home is in use.");
+        }
+
         if (root.TryGetProperty("cursor", out JsonElement cursor) && Shape(root) is null)
         {
             said.Add($"\"cursor\" is {cursor.GetRawText()}, which is not Block, Underline or Bar, so Block is in use.");
@@ -395,6 +418,7 @@ public static class SettingsFile
             writer.WriteBoolean("warnOnPaste", settings.WarnOnPaste);
             writer.WriteString("colourScheme", settings.Scheme);
             writer.WriteBoolean("sessionsSidebar", settings.SessionsSidebar);
+            writer.WriteString("startWith", settings.StartWith.ToString());
 
             foreach ((string name, JsonElement value) in settings.Unrecognised)
             {
@@ -556,6 +580,7 @@ public static class SettingsFile
         ["warnOnPaste"] = settings.WarnOnPaste ? "true" : "false",
         ["colourScheme"] = Quoted(settings.Scheme),
         ["sessionsSidebar"] = settings.SessionsSidebar ? "true" : "false",
+        ["startWith"] = Quoted(settings.StartWith.ToString()),
     };
 
     /// <summary>The spaces and tabs in front of the key that starts at <paramref name="at"/>, back to its line's start.</summary>
@@ -605,6 +630,7 @@ public static class SettingsFile
             Scheme = named,
             Colours = Scheme(named, path),
             SessionsSidebar = Yes(root, "sessionsSidebar") ?? Settings.Default.SessionsSidebar,
+            StartWith = Text(root, "startWith") is { } start && Enum.TryParse(start, ignoreCase: true, out StartWith chosen) ? chosen : Settings.Default.StartWith,
             Unrecognised = unrecognised,
         };
     }

@@ -20,6 +20,7 @@
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
+- 📋 **QS288** (deps: —) **A shell start takes a third longer than at 40fb448, and the performance gate fails on start** — The sidebar and tab strip parse their templates as XAML in the window's constructor, which loads the XAML parser before the first paint. → §QS288
 
 ## Block I — An error a user can act on
 
@@ -110,9 +111,6 @@
 
 ## Done when — Block G
 
-- **A default installation shows no chrome beyond a title bar and a terminal** Settled
-  by a screenshot of a first run on a clean profile, placed beside the same screenshot
-  of the incumbent for comparison.
 - **Every action the client can perform is reachable from the palette** Settled by
   generating the action list from the actions themselves and asserting the palette
   enumerates all of it, which fails as a test.
@@ -122,6 +120,10 @@
 - **Sixteen open panes share one glyph atlas** Settled by reading atlas memory in use
   with one pane and with sixteen at the same font, which must not differ by more than
   the instance buffers.
+- **A default installation opens on Home, with no toolbar, menu or status bar** Restated
+  by the owner on 2026-10-13 (QS272). Settled by a first run on a clean profile: title
+  bar, tab strip, sessions sidebar and Home, nothing else, beside the incumbent's first
+  run; a shell start shows a terminal in Home's place.
 
 ## Done when — Block H
 
@@ -267,15 +269,6 @@
 - **An idle pane with blink off spends no measurable core time** Quickshell.Idle
   --frames on one local pane with cursorBlink false, ten minutes on a quiet reference
   desk, reads zero frames and under 0.1 % of a core.
-
-## Done when — QS272
-
-- **A new window with default settings opens on Home and starts no shell** Settled by
-  starting the client in the guest with no settings file and no arguments, reading
-  Home's address box through a UI case, and finding no cmd.exe child of the process.
-- **A Home start is timed, and figure 5 still times the local shell** Settled by
-  run-startup-vm.cmd before and after the switch, both numbers in the commit, and the
-  performance gate passing --tabs 1 so its baseline stays the shell's.
 
 ## Done when — QS273
 

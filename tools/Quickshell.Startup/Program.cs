@@ -30,7 +30,7 @@ public static class Startup
     /// "prepared" is the device, the atlas and the shaders opened ahead of the window (QS191), and a
     /// build that does not report it simply has no row for it.
     /// </remarks>
-    private static readonly string[] Milestones = ["main", "application", "constructed", "shown", "prepared", "shell", "device", "frame", "interactive"];
+    private static readonly string[] Milestones = ["main", "application", "constructed", "shown", "prepared", "shell", "device", "frame", "interactive", "home"];
 
     /// <summary>Runs the starts and prints the report.</summary>
     public static int Main(string[] arguments)
@@ -48,9 +48,11 @@ public static class Startup
                   --label <name>   what to call this build in the report
                   --out <file>     append the report here as well as printing it
                   --json <file>    write every start's milestones here, for a program to read
+                  --shell          start on a local shell (--tabs 1), which is figure 5, whatever
+                                   the desk's startWith says; without it, a default start, Home
 
                 Each start is timed by the client itself, from its creation to the first frame that
-                carries the shell's own output.
+                carries the shell's own output, or to Home's first frame where it opens on Home.
                 """);
 
             return 0;
@@ -73,11 +75,15 @@ public static class Startup
                                 CultureInfo.InvariantCulture, out int asked) && asked > 0 ? asked : 10;
         string label = Argument(arguments, "--label") ?? Path.GetFileNameWithoutExtension(launch);
 
+        // A shell start is figure 5 and what the gate times (QS272): asked for by --tabs 1, which opens on a
+        // shell whatever the desk's settings say. Without it the start is the one a user gets.
+        string[] asking = arguments.Contains("--shell", StringComparer.Ordinal) ? ["--tabs", "1"] : [];
+
         List<Dictionary<string, double>> starts = [];
 
         for (int run = 0; run < runs; run++)
         {
-            Dictionary<string, double>? timed = Once(launch);
+            Dictionary<string, double>? timed = Once(launch, asking);
 
             if (timed is null)
             {
@@ -89,7 +95,7 @@ public static class Startup
             starts.Add(timed);
 
             Console.Error.WriteLine(string.Create(CultureInfo.InvariantCulture,
-                $"start {run + 1}: interactive at {timed["interactive"]:0.0} ms"));
+                $"start {run + 1}: {Last(timed)} at {timed[Last(timed)]:0.0} ms"));
         }
 
         string report = Report(label, launch, starts);
@@ -117,15 +123,14 @@ public static class Startup
     }
 
     /// <summary>One start, timed by the client, and everything it started ended afterwards.</summary>
-    private static Dictionary<string, double>? Once(string launch)
+    private static Dictionary<string, double>? Once(string launch, string[] asking)
     {
         string report = Path.Combine(Path.GetTempPath(), $"quickshell-startup-{Guid.NewGuid():N}.json");
 
         using Process client = Process.Start(new ProcessStartInfo(launch)
         {
-            ArgumentList = { "--startup-report", report },
             UseShellExecute = false,
-        })!;
+        }.With(asking, report))!;
 
         try
         {
@@ -237,6 +242,23 @@ public static class Startup
         }
 
         return text.ToString();
+    }
+
+    /// <summary>Where a start ended: the shell's first frame, or Home's (QS272).</summary>
+    private static string Last(Dictionary<string, double> timed) => timed.ContainsKey("interactive") ? "interactive" : "home";
+
+    /// <summary>The client's arguments: what the start asks for, and the report it writes.</summary>
+    private static ProcessStartInfo With(this ProcessStartInfo start, string[] asking, string report)
+    {
+        foreach (string argument in asking)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        start.ArgumentList.Add("--startup-report");
+        start.ArgumentList.Add(report);
+
+        return start;
     }
 
     private static double Median(double[] sorted) =>

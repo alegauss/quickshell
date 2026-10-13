@@ -100,9 +100,18 @@ public static class Entry
         // pixel, so they start now, into a model of their own at the placeholder size every pane
         // starts at, and the first tab takes both. The pane's real grid is sent once it is laid out,
         // as it always was; the settings' scrollback depth goes through the shell's own pipeline.
+        //
+        // Not where the window opens on Home (QS272): a window asked for nothing on its command line reads
+        // `startWith` here, before any pseudo-console, and starts no shell at all for Home.
+        bool askedForTabs = arguments.Any(argument => argument is CommandLine.Tabs or CommandLine.Panes or CommandLine.Session or CommandLine.Broadcast);
         Emulator early = new(80, 25, Settings.Default.Scrollback);
-        Task<LocalSession> earlyShell = Task.Run(async () =>
+        Task<LocalSession?> earlyShell = Task.Run<LocalSession?>(async () =>
         {
+            if (!askedForTabs && SettingsFile.ReadFrom(Locations.Current.Settings).StartWith == StartWith.Home)
+            {
+                return null;
+            }
+
             LocalSession started = await LocalSession.OpenAsync(early, share.Damage, 80, 25).ConfigureAwait(false);
 
             // When it started, which is the milestone's meaning; the leaf marking it later changes nothing.
@@ -160,7 +169,25 @@ public static class Entry
         // two shaders and rasterising a font are the most expensive things this process does, and
         // none of them is between the user and their first sight of the window. The first tab is the
         // one whose shell started with the process.
-        Opened(window, settings, share, early, earlyShell);
+        //
+        // Or Home, with no tab and no shell (QS272), where the settings say so and the command line
+        // asked for nothing else. The early task decided the same from the same file; where the file
+        // changed between the two reads, a shell it started is ended and Home wins.
+        if (!askedForTabs && settings.StartWith == StartWith.Home)
+        {
+            _ = Task.Run(async () =>
+            {
+                if (await earlyShell.ConfigureAwait(false) is { } stray)
+                {
+                    await stray.DisposeAsync().ConfigureAwait(false);
+                }
+            });
+            window.Dispatcher.BeginInvoke(() => window.ShowHome());
+        }
+        else
+        {
+            Opened(window, settings, share, early, earlyShell);
+        }
 
         // `--tabs <n>` opens that many, which is what Ctrl+Shift+T opens n times. A real surface and
         // not a test hook, for the same reason `--import` is one: this client has no menu, so the
@@ -469,7 +496,7 @@ public static class Entry
     /// <param name="started">That shell, or null to start one now.</param>
     /// <param name="recording">Where to keep what the new shell sends, or null (QS134).</param>
     private static void Opened(MainWindow window, Settings settings, TerminalShare share,
-                               Emulator? model = null, Task<LocalSession>? started = null,
+                               Emulator? model = null, Task<LocalSession?>? started = null,
                                SessionRecording? recording = null)
     {
         string host = Path.GetFileName(LocalSession.Shell);
@@ -490,7 +517,11 @@ public static class Entry
 
         _ = started is null
             ? tab.ConnectAsync()
-            : tab.Focused.ConnectAsync(async (_, _, _, _, _) => await started.ConfigureAwait(false));
+            : tab.Focused.ConnectAsync(async (emulator, damage, columns, rows, token) =>
+                  // The early shell, or a new one where the early task started none (QS272: it read
+                  // Home in a file that said Shell by the time this window asked).
+                  await started.ConfigureAwait(false)
+                  ?? await LocalSession.OpenAsync(emulator, damage, columns, rows, null, token, null).ConfigureAwait(false));
     }
 
     /// <summary>

@@ -25,6 +25,40 @@ public sealed class SettingsFileTests : IDisposable
         }
     }
 
+    // ---- What a window opens on (QS272) ----
+
+    /// <summary>A new window opens on Home unless the file says Shell, and the choice round-trips.</summary>
+    [Fact]
+    public void StartWithIsHomeByDefaultAndRoundTrips()
+    {
+        string file = Path.Combine(_here, "settings.json");
+
+        Assert.Equal(StartWith.Home, Settings.Default.StartWith);
+
+        Written(file, """{ "schema": 1, "startWith": "shell" }""");
+
+        Settings read = SettingsFile.ReadFrom(file);
+
+        Assert.Equal(StartWith.Shell, read.StartWith);
+
+        SettingsFile.WriteTo(file, read with { StartWith = StartWith.Home });
+
+        Assert.Equal(StartWith.Home, SettingsFile.ReadFrom(file).StartWith);
+        Assert.Contains("\"startWith\": \"Home\"", File.ReadAllText(file), StringComparison.Ordinal);
+    }
+
+    /// <summary>A value that is neither is said, and Home is used.</summary>
+    [Fact]
+    public void AStartWithItCannotUseIsSaidAndHomeIsUsed()
+    {
+        string file = Path.Combine(_here, "settings.json");
+
+        Written(file, """{ "schema": 1, "startWith": "terminal" }""");
+
+        Assert.Equal(StartWith.Home, SettingsFile.ReadFrom(file).StartWith);
+        Assert.Contains(SettingsFile.Unused(file), said => said.StartsWith("\"startWith\" is \"terminal\"", StringComparison.Ordinal));
+    }
+
     // ---- The falsification ----
 
     /// <summary>

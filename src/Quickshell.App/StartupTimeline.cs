@@ -36,7 +36,7 @@ public static class StartupTimeline
     /// <summary>Whether a report was asked for and has not been written yet.</summary>
     public static bool Waiting => _report is not null && Volatile.Read(ref _written) == 0;
 
-    /// <summary>Asks for a report, written to <paramref name="report"/> once the shell is on screen.</summary>
+    /// <summary>Asks for a report, written to <paramref name="report"/> once the shell, or Home, is on screen.</summary>
     public static void Arm(string report)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(report);
@@ -62,14 +62,24 @@ public static class StartupTimeline
     /// The shell's output is on the glass: records that, and writes the report — once, however many
     /// frames call this.
     /// </summary>
-    public static void Interactive()
+    public static void Interactive() => Reached("interactive");
+
+    /// <summary>
+    /// Home is on the glass, which is where a start that opens on Home ends (QS272): no shell frame
+    /// ever comes, and a harness waiting for one would wait for ever. Written as <c>home</c> and never
+    /// as <c>interactive</c>, so a Home start can never be read as figure 5's shell start.
+    /// </summary>
+    public static void Home() => Reached("home");
+
+    /// <summary>The start's last milestone: records it, and writes the report, once.</summary>
+    private static void Reached(string last)
     {
         if (!Waiting)
         {
             return;
         }
 
-        Mark("interactive");
+        Mark(last);
 
         if (Interlocked.Exchange(ref _written, 1) != 0 || _report is not { } report)
         {

@@ -42,7 +42,8 @@ and the chord works whether the watch armed or not.
   "cursorBlink": true,
   "warnOnPaste": true,
   "colourScheme": "",
-  "sessionsSidebar": true
+  "sessionsSidebar": true,
+  "startWith": "Home"
 }
 ```
 
@@ -169,8 +170,17 @@ to start over one would be refusing at the worst possible moment.
 Whether the saved sessions are listed down the left of the window, or folded to a narrow rail.
 
 `true` by default. The fold at the top of the sidebar sets it, so a window opens the way the last
-one was left; every open window follows. Folded, the rail keeps **New**, **Import sessions** and
-**Settings** as buttons, and the terminal takes the width.
+one was left; every open window follows. Folded, the rail keeps **Show sessions**, **Files on this
+server** and **Tunnels** as buttons, and the terminal takes the width.
+
+### `startWith`
+
+What a new window opens on: Home, or a local shell.
+
+`Home` (the default) or `Shell`. `Home`: quick connect, the sessions you connected to last, and the ways to start, with
+the sessions sidebar beside them. No shell is started until you ask for one. `Shell` opens a local
+shell in a tab instead, as quickshell did before Home. A window started with `--session`, `--tabs`
+or `--panes` opens on what it asked for, whichever this says.
 
 ## What is deliberately not here
 

@@ -260,32 +260,6 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
-### §QS272 A Home tab
-
-Approved on 2026-10-11 (`docs/design/friendly-shell/`, `Main.dc.html`,
-`HomeDark.dc.html`). The Home page landed first (2026-10-12): `HomePage.cs`, shown by
-`MainWindow.ShowHome` from the palette's Home, `--home` and the strip's Home button,
-with quick connect, recent sessions as cards, and three ways to start. While it shows,
-`Current` is null, so no pane is drawn and nothing typed reaches a shell.
-
-What is left: Home as the screen a new window opens on. A setting, `startWith`: `home`
-by default, `shell` for a local shell as today, in `Settings`, `SettingsFile`,
-`docs/SETTINGS.md` and the settings window. A window started with `--session`, `--tabs`
-or `--panes` opens on what it asked for. With `home`, `Program.Main` must not start the
-early shell (QS191): read `startWith` inside the pool task that starts it, before the
-pseudo-console, and give the window a Home and no tab.
-
-Then the measurement. `StartupTimeline` reports at the first shell frame, which a Home
-start never reaches, so the startup tool, the gate and `install-vm.ps1` would wait
-forever. Mark `home` and write the report when Home is first rendered; keep figure 5
-timing the local shell by having the gate pass `--tabs 1`; and time a Home start with
-`run-startup-vm.cmd` before and after, the numbers in the commit. The block criterion "A
-default installation shows no chrome beyond a title bar and a terminal" is untrue once
-Home is the default, and is the owner's to restate.
-
-Falsified when a new window's first screen still gives no way to a server without the
-palette.
-
 ## Block H — The reason to leave the incumbent
 
 ### §QS77 Installing, signing, and updating without a service
@@ -417,6 +391,29 @@ shape of that fix, and QS260 carries it.
 
 Falsified when one local pane, blink off, reads zero frames and under 0.1 % of a core
 over ten idle minutes on a quiet desk.
+
+### §QS288 The window's templates, without a XAML parser
+
+Found 2026-10-13 by the performance gate on the reference desk (xps), run for QS272:
+start 1315 ms against 907 ms for the baseline's code (40fb448), 35.7 % worse where 32.4
+% is allowed. The gate times a shell start (--tabs 1), which QS272 leaves as it was, so
+the cost is from the window itself.
+
+The likeliest cause is QS277 and QS278, shipped 2026-10-12: the sessions sidebar and the
+tab strip build their ControlTemplates with XamlReader.Parse (Templates.cs,
+SessionsSidebar's row and bare text box), and both are built in MainWindow's
+constructor, between process start and the first paint. XamlReader loads WPF's XAML
+parser and its schema context on first use, which on a cold start is a large share of a
+second; nothing else in the client parsed XAML before.
+
+What to build: the same templates from FrameworkElementFactory and Triggers in code,
+with the DynamicResource setters as DynamicResourceExtension values, so no XAML parser
+is loaded on start. Measure first: run the startup harness on the reference desk with
+and without the templates, and if XamlReader is not the cost, find what is from the
+milestones (constructed and shown moved most in the guest's before-and-after for QS272)
+before changing anything.
+
+Falsified when the gate's start holds against 40fb448 on the reference desk.
 
 ## Block I — An error a user can act on
 

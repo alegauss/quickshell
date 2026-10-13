@@ -1,8 +1,8 @@
 {
   // QS147. The first case read through the accessibility tree instead of a screenshot.
   //
-  // What it asserts is thin, and the thinness is itself the finding: this window is a title bar, a
-  // terminal and nothing else, so there is very little in its tree to read. That is QS46's design
+  // What it asserts is thin, and the thinness is itself the finding: this window is a title bar, the
+  // sessions sidebar and Home or a terminal (QS272), so there is very little in its tree to read. That is QS46's design
   // working as intended, and it means the cases worth writing here are about the dialogs — which is
   // WW317 in the engine's roadmap, because every one of them is behind a keyboard chord `press`
   // cannot yet spell.
@@ -16,6 +16,12 @@
     {
       "name": "the window a default installation opens",
       "arguments": [],
+      "shareable": true
+    },
+    {
+      // A window asked for a tab, which opens on a local shell whatever startWith says (QS272).
+      "name": "a window started on a shell",
+      "arguments": ["--tabs", "1"],
       "shareable": true
     }
   ],
@@ -46,6 +52,34 @@
     },
 
     {
+      // QS272: a new window opens on Home, which says this client connects to servers and has a way
+      // to one on its first screen, and starts no shell until one is asked for. Read through the
+      // strip's Home tab and the address box, since Home itself is a Border and publishes nothing.
+      "name": "a default installation opens on Home, with a way to a server on it",
+      "catches": "a first screen that is a local shell again, or a Home with no address box on it",
+      "filed": "QS272",
+      "tags": ["smoke", "window", "sessions"],
+      "fixture": "the window a default installation opens",
+
+      "steps": [
+        {
+          "locator": "Button#HomeButton",
+          "act": "read",
+          "reads": "name",
+          "expect": "Home",
+          "named": "Home is on the strip"
+        },
+        {
+          "locator": "ComboBox#Address",
+          "act": "read",
+          "reads": "name",
+          "expect": "Address",
+          "named": "and the address box is on the first screen"
+        }
+      ]
+    },
+
+    {
       // QS116, and the only check of it that runs against the shipped client rather than against
       // its parts. The terminal is a texture, so there is nothing in this tree that could report a
       // pixel — but the element only exists at all once the pane has been given a buffer to
@@ -55,7 +89,7 @@
       "catches": "a client that opens a window and then fails to build a terminal in it — which is exactly what it did before the swapchain, and what it would look like again if the device failed to open",
       "filed": "QS116",
       "tags": ["smoke", "window", "terminal"],
-      "fixture": "the window a default installation opens",
+      "fixture": "a window started on a shell",
 
       "steps": [
         {

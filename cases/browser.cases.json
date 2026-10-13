@@ -11,7 +11,7 @@
   "fixtures": [
     {
       "name": "the file browser over a local tab",
-      "arguments": ["--browse"],
+      "arguments": ["--tabs", "1", "--browse"],
       "shareable": true
     }
   ],

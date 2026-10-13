@@ -21,6 +21,10 @@
 .PARAMETER Runs
   How many starts. The first is reported apart, as the harness always does.
 
+.PARAMETER Shell
+  Time a start on a local shell (the harness's --shell, the client's --tabs 1), which is figure 5,
+  rather than the default start, which opens on Home (QS272).
+
 .PARAMETER CommittedOnly
   Carry HEAD alone rather than the working tree: the "before" of a before-and-after.
 
@@ -33,6 +37,8 @@ param(
 
     [ValidateRange(2, 50)]
     [int] $Runs = 11,
+
+    [switch] $Shell,
 
     [switch] $CommittedOnly,
 
@@ -77,7 +83,7 @@ if errorlevel 1 goto done
 
 for %%E in ("%PUB%\*.exe") do if /i not "%%~nxE"=="createdump.exe" set "CLIENT=%%E"
 
-"$script:GuestRepo\tools\Quickshell.Startup\bin\Release\net10.0-windows\Quickshell.Startup.exe" --launch "%CLIENT%" --runs $Runs --label "$Label" --out "$script:GuestSync\startup.md" --json "$script:GuestSync\startup.json" >> "$script:GuestSync\startup.log" 2>&1
+"$script:GuestRepo\tools\Quickshell.Startup\bin\Release\net10.0-windows\Quickshell.Startup.exe" --launch "%CLIENT%" $(if ($Shell) { '--shell ' })--runs $Runs --label "$Label" --out "$script:GuestSync\startup.md" --json "$script:GuestSync\startup.json" >> "$script:GuestSync\startup.log" 2>&1
 
 :done
 set "RC=%ERRORLEVEL%"

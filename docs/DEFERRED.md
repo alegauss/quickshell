@@ -28,7 +28,6 @@
 ## Block G — The clean interface, defended
 
 - ⏸ **QS257** (deps: QS225 ✅) **There is no full-screen mode, the one window shape whose echoes reach the glass an interval sooner** — set aside (Its UI case waits for the guest to resume.): A monitor-covering chain echoes at 24 ms against 33 windowed, and no client window has that shape. → §QS257
-- ⏸ **QS272** (deps: QS268 ✅, QS271 ✅) **The window opens on a local Command Prompt, and nothing on screen says this client connects to servers** — set aside (Waits on the owner restating Block G's bare-window criterion and allowing a host gate run.): A new window still opens on a shell rather than on Home. → §QS272
 
 ## Block H — The reason to leave the incumbent
 

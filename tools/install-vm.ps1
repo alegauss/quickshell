@@ -118,7 +118,7 @@ try {
     $running = Start-Process -FilePath $program -ArgumentList '--startup-report', $report -PassThru
     $deadline = (Get-Date).AddSeconds(60)
     while (-not (Test-Path -LiteralPath $report) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 250 }
-    Check (Test-Path -LiteralPath $report) 'the installed copy started and reached its first interactive frame'
+    Check (Test-Path -LiteralPath $report) 'the installed copy started and drew its first screen, Home or a shell'
     if (Test-Path -LiteralPath $report) { Say "start $((Get-Content -LiteralPath $report -Raw).Trim())" }
     Stop-Process -Id $running.Id -Force -ErrorAction SilentlyContinue
     $running.WaitForExit()

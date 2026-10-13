@@ -40,6 +40,7 @@ public sealed class SettingsWindow : Window
         ("warnOnPaste", "Warn on paste", "Whether a paste carrying a newline is shown before any of it is sent."),
         ("colourScheme", "Colour scheme", "A path to a scheme file. Empty — the default — is the built-in scheme."),
         ("sessionsSidebar", "Sessions sidebar", "Whether the saved sessions are listed down the left of the window, or folded to a narrow rail."),
+        ("startWith", "Start with", "What a new window opens on: Home, or a local shell."),
     ];
 
     private readonly string _path;
@@ -127,6 +128,7 @@ public sealed class SettingsWindow : Window
             ((CheckBox)_controls["warnOnPaste"]).IsChecked = now.WarnOnPaste;
             ((TextBox)_controls["colourScheme"]).Text = now.Scheme;
             ((CheckBox)_controls["sessionsSidebar"]).IsChecked = now.SessionsSidebar;
+            ((ComboBox)_controls["startWith"]).SelectedItem = now.StartWith;
         }
         finally
         {
@@ -189,6 +191,8 @@ public sealed class SettingsWindow : Window
                           value => Change(now => now with { Theme = (ChromeTheme)value })),
         "cursor" => Choice([CursorShape.Block, CursorShape.Underline, CursorShape.Bar],
                            value => Change(now => now with { Cursor = (CursorShape)value })),
+        "startWith" => Choice(Enum.GetValues<StartWith>().Cast<object>(),
+                              value => Change(now => now with { StartWith = (StartWith)value })),
         "ligatures" => Toggle(on => Change(now => now with { Ligatures = on })),
         "cursorBlink" => Toggle(on => Change(now => now with { CursorBlink = on })),
         "warnOnPaste" => Toggle(on => Change(now => now with { WarnOnPaste = on })),

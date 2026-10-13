@@ -2650,6 +2650,18 @@ public sealed partial class MainWindow : Window
             button.ContextMenu = menu;
 
             _homeSlot.Content = button;
+
+            // A start that opens on Home ends when Home is first drawn (QS272), and is timed then.
+            if (StartupTimeline.Waiting)
+            {
+                void Drawn(object? sender, EventArgs drawn)
+                {
+                    System.Windows.Media.CompositionTarget.Rendering -= Drawn;
+                    StartupTimeline.Home();
+                }
+
+                System.Windows.Media.CompositionTarget.Rendering += Drawn;
+            }
         }
 
         _homeOpen = true;
