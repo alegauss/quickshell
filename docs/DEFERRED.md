@@ -46,3 +46,5 @@
 - ⏸ **QS285** (deps: —) **The repository declares no licence, so "free and open" cannot be said of it to anyone it is shown to** — set aside (The owner chooses the licence.): With no LICENSE file, all rights are reserved. → §QS285
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+- ⏸ **QS273** (deps: —) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — set aside (The owner chooses how the guest reaches the SSH fixture.): The connected case is yet to be seen green in the guest. → §QS273

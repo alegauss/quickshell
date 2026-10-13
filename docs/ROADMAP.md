@@ -29,8 +29,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- ⏳ **QS273** (deps: —) **No UI case reads the session bar's state or forward chips, since no case fixture reaches an SSH server** — The connected case seen green: a desk the guest run reaches the SSH fixture from, a container in the guest or the host's sshd. → §QS273
-
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a
