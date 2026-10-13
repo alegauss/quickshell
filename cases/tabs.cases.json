@@ -67,6 +67,23 @@
           "named": "a local tab is called by its shell, not by cmd.exe's path"
         },
         {
+          // QS278 with winwright WW523: each tab publishes its state as its item status, the word
+          // a screen reader says for the dot. Two local shells, so the leftmost and the rightmost
+          // of the tabs found by that state are the two tabs, the first behind and the second on screen.
+          "locator": "TabItem[status=\"Local\"][order=left]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "not selected",
+          "named": "a local shell's tab says it is one"
+        },
+        {
+          "locator": "TabItem[status=\"Local\"][order=right]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "and so does the other, the one on screen"
+        },
+        {
           // QS278: the strip carries New tab after the last tab and Commands at its right, as the
           // design draws it. Each tab's state is its ItemStatus, which no reading reaches yet
           // (winwright WW523); TabStripTests reads it in process until one does.

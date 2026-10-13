@@ -16,8 +16,6 @@
 
 ## Block G — The clean interface, defended
 
-- ⏳ **QS278** (deps: —) **The tab strip is the stock control: no Home tab, no status dot, no close or new-tab button, no accent underline** — tabs.cases.json reads each tab's state off its ItemStatus once a case can read one (winwright WW523). → §QS278
-
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
@@ -278,12 +276,6 @@
 - **A Home start is timed, and figure 5 still times the local shell** Settled by
   run-startup-vm.cmd before and after the switch, both numbers in the commit, and the
   performance gate passing --tabs 1 so its baseline stays the shell's.
-
-## Done when — QS278
-
-- **A UI case reads a tab's state from its ItemStatus** Settled when tabs.cases.json
-  carries a step reading a local tab's status as Local, run green in the guest, which
-  needs winwright's status reading (WW523).
 
 ## Done when — QS273
 

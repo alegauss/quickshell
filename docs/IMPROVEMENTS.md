@@ -286,32 +286,6 @@ Home is the default, and is the owner's to restate.
 Falsified when a new window's first screen still gives no way to a server without the
 palette.
 
-### §QS278 The tab strip the design draws
-
-Measured 2026-10-12 against `Main.dc.html` and `Connected.dc.html`. The strip today is
-WPF's stock TabControl, hidden with one tab, and Home is a separate button beside it
-(QS272's first part). The design draws one strip.
-
-The row: 42 high, padding 0 12, items aligned to the bottom, 2 apart, a 1px divider
-under it. Home is the first tab: 15px house glyph, the word Home, no close button. Each
-tab is 38 high, padding 0 12 0 16, gap 8: an 8px status dot (filled
-SystemFillColorSuccess while connected, caution while reconnecting, a 1.5px hollow
-TextFillColorTertiary ring for a local shell or one that ended), the title, and a 22x22
-ghost close button with an 8px cross. The selected tab is SemiBold,
-TextFillColorPrimary, with a 3px accent underline inset 10 each side at bottom -1 and
-radius 2; others are Regular, TextFillColorSecondary. Then a 30x28 ghost "+" (New tab,
-radius 6, 5 from the bottom). At the far right a ghost "Commands" button, 28 high, 14px
-magnifier, 12px text, and a keycap "Ctrl+Shift+P" (11px, 1px border, radius 4) that
-opens the palette.
-
-The strip shows whenever Home is open or two tabs are, which with Home the default is
-always. Drag to reorder (QS250), pull down to detach (QS160) and a click on the shown
-tab leaving Home (QS272) keep working.
-
-Evidence: tabs.cases.json reads the dot's state through each tab's ItemStatus and the
-Home tab's name; a WindowTests check reads the sizes; a run-app-vm.cmd picture for the
-owner.
-
 ## Block H — The reason to leave the incumbent
 
 ### §QS77 Installing, signing, and updating without a service
