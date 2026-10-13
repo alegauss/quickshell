@@ -106,6 +106,53 @@ public sealed class CompatibilityMatrixTests : IDisposable
     }
 
     /// <summary>
+    /// Windows OpenSSH (QS40), the guest's own sshd that tools/provision-guest-sshd.ps1 sets up:
+    /// negotiated and recorded as every row is, then the far side met as what it is — cmd under the
+    /// console host, where a line ends in a carriage return and the screen is redrawn by cursor
+    /// address whatever program is running. A clear arrives as addressing, and a command typed the
+    /// way a terminal types it comes back as cmd's own output.
+    /// </summary>
+    [Fact]
+    public async Task WindowsOpenSshNegotiatesAndItsConsoleDraws()
+    {
+        const int port = 2240;
+        SshCredential.PrivateKey key = new(@"C:\ProgramData\quickshell-cases\probe_ed25519");
+
+        Assert.SkipUnless(SshFixture.Listening(port) && File.Exists(key.Path),
+            $"Windows OpenSSH is not on {Host}:{port}: run tools/provision-guest-sshd.ps1 once, which sets it up in the guest");
+
+        await using SessionLog log = SessionLog.InFolder(_here, LogDetail.Trace);
+
+        await using SshNetTransport transport = new() { Log = log };
+
+        await transport.ConnectAsync(SshEndpoint.For(Host, "probe", port), [key], SshFixture.Trusting, Stop);
+
+        string agreed = await Agreed(log);
+
+        TestContext.Current.TestOutputHelper?.WriteLine($"Windows OpenSSH (guest)\n{agreed}");
+
+        foreach (string what in (string[])["kex", "host key", "cipher", "mac"])
+        {
+            Assert.Contains($"{what}: ", agreed, StringComparison.Ordinal);
+            Assert.DoesNotContain($"{what}: none", agreed, StringComparison.Ordinal);
+        }
+
+        await using IPtyChannel channel = await transport.OpenShellAsync(80, 25, Stop);
+
+        // A carriage return and not a line feed, which is what Enter is on a terminal and what cmd waits
+        // for; and the marker split so the echo of the command cannot satisfy the wait for its output.
+        await channel.WriteAsync("cls & echo windows-row-%COMPUTERNAME:~0,0%seen\r"u8.ToArray(), Stop);
+
+        string screen = await Until(channel, seen =>
+            seen.Contains("windows-row-seen", StringComparison.Ordinal)
+            && seen.Contains("\e[H", StringComparison.Ordinal));
+
+        await channel.WriteAsync("exit\r"u8.ToArray(), Stop);
+
+        Assert.Contains("windows-row-seen", screen, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The version string and the four agreements, one per line, from the trace the transport wrote.
     /// </summary>
     private static async Task<string> Agreed(SessionLog log)

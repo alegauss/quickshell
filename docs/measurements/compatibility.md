@@ -16,9 +16,16 @@ by name where its container is not up. Reference machine, 2026-10-06, SSH.NET 20
 | OpenSSH 7.2, Ubuntu 16.04 | `OpenSSH_7.2p2 Ubuntu-4ubuntu2.10` | curve25519-sha256 | ssh-ed25519 | aes128-ctr | hmac-sha2-256 | draws | accepted |
 | OpenSSH 6.6, Ubuntu 14.04 | `OpenSSH_6.6.1p1 Ubuntu-2ubuntu2.13` | curve25519-sha256 | ssh-ed25519 | aes128-ctr | hmac-sha2-256 | draws | accepted |
 | Dropbear 2024.85, Alpine 3.20 | `dropbear_2024.85` | curve25519-sha256 | ssh-ed25519 | aes128-ctr | hmac-sha2-256 | draws (BusyBox `top`) | accepted |
+| Windows OpenSSH 9.5, Windows 11 (guest) | `OpenSSH_for_Windows_9.5` | curve25519-sha256 | ssh-ed25519 | aes128-ctr | hmac-sha2-256 | draws (cmd under the console host) | — |
 
 "Draws" means the program's screen arrived as cursor addressing (`ESC [ H`) with its own text in
-it, through the same channel a session reads.
+it, through the same channel a session reads. Windows has no `top`: its row clears the screen and
+echoes a marker through `cmd`, typed with a carriage return as a terminal types Enter, and the console
+host redraws the screen by cursor address as it does for any program.
+
+The Windows row is the guest's own sshd (`tools/provision-guest-sshd.ps1`, QS40, 2026-10-13), measured
+in the guest by the same test class, with an ed25519 key; it has no RSA column because no RSA key is
+authorised there.
 
 ## Reading it
 
@@ -35,6 +42,5 @@ it, through the same channel a session reads.
 
 ## Not in the matrix yet
 
-The design names three rows that no container stands for: **Windows OpenSSH**, where the far side
-is `cmd` or PowerShell; **a network appliance** (Cisco IOS or similar: old algorithms, a shell that
-is not a shell); and **a commercial server**. They stay on QS40.
+The design names two rows that nothing here stands for: **a network appliance** (Cisco IOS or similar:
+old algorithms, a shell that is not a shell) and **a commercial server**. They stay on QS40.
