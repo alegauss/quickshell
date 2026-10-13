@@ -358,6 +358,59 @@ function Connect-Guest {
     return $vmxPath
 }
 
+function Stop-LeftOver {
+    <#
+    .SYNOPSIS
+      Ends what an earlier run left running in the guest, before this run replaces the tree (QS289).
+
+    .DESCRIPTION
+      A run cut off with the guest still testing (the host session that drove it ended, the watcher
+      gave up at its ceiling, the host restarted) leaves its test processes alive, and they hold their
+      own folders under the guest's tree: the next sync's Remove-Item was refused on a DLL, naming the
+      file and not the cause.
+
+      The batch first, then what it started. Ending only a test process let the cut-off run's own
+      run.cmd go on to the next assembly, which held the tree again. The guest's process list carries a
+      name and not a path or a command line, so the batch is found as cmd.exe: the guest is a desk this
+      project alone uses, and every cmd.exe on it is one of these scripts. Then this client's own
+      executables, quickshell.exe and every Quickshell.*.exe test or tool application. Listed again
+      until a pass finds nothing, since a batch ended mid-step can have started one more. Each is said
+      by name and pid, and one that will not end is a refusal naming it.
+    #>
+    for ($pass = 1; $pass -le 5; $pass++) {
+        $listed = Invoke-VmRun -Guest -Arguments @('listProcessesInGuest', $script:VmxPath)
+        if (-not $listed.Ok) { return }
+
+        $found = @(foreach ($line in ($listed.Output -split "`r?`n")) {
+            if ($line -notmatch 'pid=(\d+),.*cmd=(.+?)\s*$') { continue }
+
+            # Taken before the next -match, which replaces $Matches.
+            $id = $Matches[1]
+            $name = [IO.Path]::GetFileName(($Matches[2] -split '\s+')[0].Trim('"'))
+
+            if ($name -match '^(cmd|quickshell|Quickshell\..+)\.exe$') {
+                [pscustomobject]@{ Id = $id; Name = $name; Batch = $name -eq 'cmd.exe' }
+            }
+        })
+
+        if ($found.Count -eq 0) { return }
+
+        foreach ($left in @($found | Sort-Object { -not $_.Batch })) {
+            $ended = Invoke-VmRun -Guest -Arguments @('killProcessInGuest', $script:VmxPath, $left.Id)
+
+            # A process that ended on its own between the list and the kill is gone either way, and
+            # the next pass's list says so; only one still listed after five passes is refused.
+            if ($ended.Ok) {
+                Write-Host "  guest       ended $($left.Name) (pid $($left.Id)), left running by an earlier run"
+            }
+        }
+
+        Start-Sleep -Seconds 2
+    }
+
+    Refuse 'what an earlier run left running in the guest kept starting again' 'Restart the guest and run again.'
+}
+
 function Send-Tree {
     <#
     .SYNOPSIS
@@ -453,6 +506,9 @@ exit /b %ERRORLEVEL%
 "@ | Set-Content -LiteralPath (Join-Path $Stage 'sync.cmd') -Encoding ascii
 
     $null = Invoke-VmRun -Guest -Arguments @('createDirectoryInGuest', $script:VmxPath, $script:GuestSync)
+
+    # What an earlier run left running holds the tree this one is about to replace (QS289).
+    Stop-LeftOver
 
     foreach ($file in @('source.zip', 'sync.ps1', 'sync.cmd')) {
         $sent = Invoke-VmRun -Guest -Arguments @('copyFileFromHostToGuest', $script:VmxPath, (Join-Path $Stage $file), "$script:GuestSync\$file")

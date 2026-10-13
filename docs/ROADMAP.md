@@ -28,8 +28,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS289** (deps: —) **A guest run after one that was cut off cannot sync, because the old run's test processes still hold the tree** — Nothing ends what an interrupted run left running in the guest, and the refusal names a file it could not delete rather than the process. → §QS289
-
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a
