@@ -48,31 +48,6 @@ public sealed class SessionsSidebar : Border
     /// <summary>Segoe's icon faces, the newer first: what Windows itself draws its glyphs with.</summary>
     private static readonly FontFamily Glyphs = new("Segoe Fluent Icons, Segoe MDL2 Assets");
 
-    /// <summary>A row: rounded, a subtle fill under the pointer, and the accent at a tenth where selected.</summary>
-    private const string RowXaml = """
-        <ControlTemplate TargetType="ListBoxItem">
-          <Border x:Name="Ground" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
-            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-          </Border>
-          <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Ground" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
-            </Trigger>
-            <Trigger Property="IsSelected" Value="True">
-              <Setter TargetName="Ground" Property="Background" Value="{DynamicResource SessionsSelectionBrush}" />
-            </Trigger>
-          </ControlTemplate.Triggers>
-        </ControlTemplate>
-        """;
-
-    /// <summary>The search's text box with nothing of its own around it: the frame and the magnifier are the sidebar's.</summary>
-    private const string BareXaml = """
-        <ControlTemplate TargetType="TextBox">
-          <ScrollViewer x:Name="PART_ContentHost" Focusable="False" VerticalAlignment="Center"
-                        HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
-        </ControlTemplate>
-        """;
-
     /// <summary>The key a selected row's fill is found by, set on this sidebar from the theme's accent.</summary>
     private const string SelectionKey = "SessionsSelectionBrush";
 
@@ -82,8 +57,8 @@ public sealed class SessionsSidebar : Border
     // The templates are this sidebar's own and not shared: a template is sealed on the thread that first
     // uses it, and a second window on another thread would then be refused it.
     private readonly ControlTemplate _ghost = Templates.Ghost();
-    private readonly ControlTemplate _row = Template(RowXaml);
-    private readonly ControlTemplate _bare = Template(BareXaml);
+    private readonly ControlTemplate _row = Templates.Row(SelectionKey);
+    private readonly ControlTemplate _bare = Templates.Bare();
 
     private readonly MainWindow _window;
     private readonly ToggleButton _fold;
@@ -252,6 +227,22 @@ public sealed class SessionsSidebar : Border
 
         _list.KeyDown += Pressed;
 
+        // One menu for the list, made for the row it opens on (QS288): a menu built for every row up
+        // front was a cost every start paid for a gesture most starts never make.
+        _list.ContextMenu = new ContextMenu();
+        _list.ContextMenuOpening += (_, opening) =>
+        {
+            if (ItemsControl.ContainerFromElement(_list, (DependencyObject)opening.OriginalSource) is ListBoxItem { Tag: SessionRow row } item)
+            {
+                _list.SelectedItem = item;
+                _list.ContextMenu = Menu(row);
+            }
+            else
+            {
+                opening.Handled = true;
+            }
+        };
+
         _empty = new TextBlock
         {
             TextWrapping = TextWrapping.Wrap,
@@ -387,11 +378,21 @@ public sealed class SessionsSidebar : Border
 
         string? selected = Selected?.Path;
 
+        // A row that is the same as before keeps the item it had (QS288): a tab opening changes one
+        // row's Connected mark, and rebuilding every row for it cost a start a sizeable share of the
+        // time between the window appearing and its first pane.
+        Dictionary<SessionRow, ListBoxItem> had = [];
+
+        foreach (ListBoxItem kept in _list.Items.OfType<ListBoxItem>())
+        {
+            had.TryAdd((SessionRow)kept.Tag, kept);
+        }
+
         _list.Items.Clear();
 
         foreach (SessionRow row in rows)
         {
-            ListBoxItem item = Item(row);
+            ListBoxItem item = had.Remove(row, out ListBoxItem? same) ? same : Item(row);
 
             _list.Items.Add(item);
 
@@ -590,7 +591,6 @@ public sealed class SessionsSidebar : Border
             Height = RowHeight,
             Margin = new Thickness(0, 0, 0, 1),
             Padding = new Thickness(Indent + (row.Depth * Step), 0, 8, 0),
-            ContextMenu = Menu(row),
         };
 
         // The path is the name a screen reader says and a case finds it by: unique in the store, where
@@ -794,10 +794,5 @@ public sealed class SessionsSidebar : Border
         return brush;
     }
 
-    private static ControlTemplate Template(string xaml) =>
-        (ControlTemplate)XamlReader.Parse(xaml.Replace(
-            "<ControlTemplate ",
-            "<ControlTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" "
-            + "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" ",
-            StringComparison.Ordinal));
+
 }

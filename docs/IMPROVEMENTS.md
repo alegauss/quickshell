@@ -494,3 +494,26 @@ The automation ids are the ones `SessionBar.cs` and `ConnectionStatusBar.cs` set
 The guest needs the address to answer: either the sshd reached from the guest over the
 host's network, or a container in the guest. Which one is the open choice, and an absent
 server must read as not observed rather than as a pass.
+
+### §QS289 Leftover processes ended before a guest run syncs
+
+Found 2026-10-13: a guest run for QS288 was cut off when the session driving it ended,
+during Quickshell.Transport.Tests. The next run refused at once with "the guest tree
+would not sync": sync.ps1's Remove-Item of C:\src\quickshell was denied on
+tests\Quickshell.Transport.Tests\bin\Debug\...\Microsoft.Testing.Extensions.HangDump.resources.dll,
+because two Quickshell.Transport.Tests.exe processes from the cut-off run were still
+alive in the guest and held their own folder. vmrun listProcessesInGuest showed them,
+and killProcessInGuest ended them by hand before the next run could start.
+
+Any run that dies with the guest still running its tests leaves this behind (a host
+session that ends, a ceiling the watcher gives up at, a host restart), and the refusal
+names a file and not the cause.
+
+What to build: before the sync, run-tests-vm.ps1 (and run-startup-vm and run-app-vm,
+which share vm-guest.ps1's sync) lists the guest's processes and ends every one running
+from under C:\src\quickshell or the sync folder, saying each by name and pid ("ended a
+test process left by an earlier run: Quickshell.Transport.Tests.exe (pid 9416)"). A
+process it cannot end is a refusal that names it, and not a Remove-Item error.
+
+Falsified when a run started after a cut-off one syncs without anybody ending a process
+by hand.

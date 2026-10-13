@@ -3501,6 +3501,12 @@ public sealed partial class MainWindow : Window
         _sessionsRead = StoreWritten();
 
         ShowSessions();
+
+        // Home's cards are the store's too, and Home may have been drawn before the store was read.
+        if (_homeShowing)
+        {
+            ShowCards();
+        }
     }
 
     /// <summary>Lists the store as last read, with the search, the folds and the tabs as they are now.</summary>

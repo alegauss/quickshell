@@ -251,6 +251,7 @@
 - ✅ **QS255 (the loop silent)** **An idle pane costs 0.6 % of a core and GPU work even with the cursor blink off, and four cost nearly three times one** — An idle pane with blink off now wakes its loop zero times and draws nothing: the blink wait no longer spins, and cursorBlink reaches panes open at start.
 - ✅ **QS256** **One local pane holds 172 MB and a connected session 211 MB, where the budget allows 120 MB for the connected one** — Figure 6 is 160 MB, argued from the account: 126 MB is the window and the device, and a connected session now settles at 142 to 145 MB (design recorded in `docs/PERFORMANCE.md`).
 - ✅ **QS283** **The window, taskbar, Alt+Tab and Start menu show Windows' generic application icon** — The executable carries the client's own mark at 16 to 256 px, drawn per size by tools\make-icon.py, so the window, taskbar, shortcut and uninstall entry show it.
+- ✅ **QS288 (the fixes, gate not yet judged)** **A shell start takes a third longer than at 40fb448, and the performance gate fails on start** — No XAML parser on start, sessions listed once the window is idle, one context menu: a shell start timed level with 40fb448 back to back on the reference desk.
 
 ## Block I — An error a user can act on
 

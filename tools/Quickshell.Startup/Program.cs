@@ -30,7 +30,7 @@ public static class Startup
     /// "prepared" is the device, the atlas and the shaders opened ahead of the window (QS191), and a
     /// build that does not report it simply has no row for it.
     /// </remarks>
-    private static readonly string[] Milestones = ["main", "application", "constructed", "shown", "prepared", "shell", "device", "frame", "interactive", "home"];
+    private static readonly string[] Milestones = ["main", "application", "constructed", "shown", "applied", "wired", "opened", "prepared", "shell", "device", "frame", "interactive", "home"];
 
     /// <summary>Runs the starts and prints the report.</summary>
     public static int Main(string[] arguments)

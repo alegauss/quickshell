@@ -143,6 +143,10 @@ public static class Entry
         window.Apply(settings);
         window.PlaceAt(WindowPlacements.ReadFrom(Placements()).For(Screens()));
 
+        // Each step between the window on the desk and its first pane, which is where a start that
+        // got slower spent it (QS288).
+        StartupTimeline.Mark("applied");
+
         // And every time the file changes after this, in every window there is. The read happens on
         // a thread pool thread, so what it found is handed to each window's own - every pane it
         // touches is WPF's.
@@ -164,6 +168,8 @@ public static class Entry
             });
 
         Wire(window, share, watching);
+
+        StartupTimeline.Mark("wired");
 
         // The terminal itself, and it is deliberately the last thing: opening a device, compiling
         // two shaders and rasterising a font are the most expensive things this process does, and
@@ -188,6 +194,8 @@ public static class Entry
         {
             Opened(window, settings, share, early, earlyShell);
         }
+
+        StartupTimeline.Mark("opened");
 
         // `--tabs <n>` opens that many, which is what Ctrl+Shift+T opens n times. A real surface and
         // not a test hook, for the same reason `--import` is one: this client has no menu, so the
@@ -350,8 +358,10 @@ public static class Entry
                                   token, Logged.Value, window.AskSignIn,
                                   Locations.Current.Portable ? null : Quickshell.Transport.SecretStore.Installed());
 
-        // The sidebar's sessions, read now that the window is on the desk and not before (QS268).
-        window.RefreshSessions();
+        // The sidebar's sessions, read now that the window is on the desk and not before (QS268) — and
+        // listed once the window is idle, after its first pane, not on the way to it (QS288): a store of
+        // forty sessions laid out as rows was a sixth of a start. The sidebar says nothing until then.
+        window.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, window.RefreshSessions);
 
         // A session recorded from its first byte, local or saved (QS134).
         window.OpensRecorded = recording => Opened(window, window.Settings, share, recording: recording);

@@ -20,13 +20,15 @@
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
-- 📋 **QS288** (deps: —) **A shell start takes a third longer than at 40fb448, and the performance gate fails on start** — The sidebar and tab strip parse their templates as XAML in the window's constructor, which loads the XAML parser before the first paint. → §QS288
+- ⏳ **QS288** (deps: —) **A shell start takes a third longer than at 40fb448, and the performance gate fails on start** — The gate's start judged held against 40fb448 on a quiet reference desk; its last sitting was too noisy to judge. → §QS288
 
 ## Block I — An error a user can act on
 
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+- 📋 **QS289** (deps: —) **A guest run after one that was cut off cannot sync, because the old run's test processes still hold the tree** — Nothing ends what an interrupted run left running in the guest, and the refusal names a file it could not delete rather than the process. → §QS289
 
 ## Done when — Block A
 
@@ -275,6 +277,12 @@
 - **The connected case passes in a guest run** Settled when run-tests-vm's report shows
   EveryUiCaseOnAServerRuns passed rather than waived, with 127.0.0.1:2222 or its
   replacement answering inside the guest.
+
+## Done when — QS288
+
+- **The gate's start holds against 40fb448** Settled by run-perf-gate.cmd on the
+  reference desk with nothing else running, start judged and held rather than not judged
+  as too noisy.
 
 ## Non-goals
 
