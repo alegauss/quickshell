@@ -156,6 +156,10 @@ rem The guest has no docker, so the SSH fixture is never up here, and saying so 
 rem pass while printing every test that did not run as waived (QS136). A host run does not set it,
 rem so a fixture somebody forgot to start is a run over its skip budget there.
 set "QUICKSHELL_NO_FIXTURE=1"
+
+rem And this is the desk tools\provision-guest-*.ps1 sets up, so a test that skips naming one of them
+rem counts against the budget here, where everywhere else it is waived (QS291).
+set "QUICKSHELL_GUEST=1"
 $(if ($Hang) { "set `"QUICKSHELL_HANG=$Hang`"" } else { 'rem The hang timeout is run-tests.cmd''s own.' })
 $(if ($WriteGoldens) { 'set "QUICKSHELL_GOLDEN=write"' } else { 'rem References are only read.' })
 $(if ($Only) { "set `"QUICKSHELL_ONLY=$($Only -join ' ')`"" } else { 'rem Every assembly.' })

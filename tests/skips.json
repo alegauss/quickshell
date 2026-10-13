@@ -3,7 +3,9 @@
 // A skip past these numbers fails run-tests.cmd, so a new one is a decision written here with its
 // reason rather than weather nobody reads. The fixture's own skips are not counted against them
 // only where a run declares it has none (QUICKSHELL_NO_FIXTURE, which the guest runner sets); a
-// desk that forgot to start it is over budget.
+// desk that forgot to start it is over budget. A test only the guest can run, whose skip names a
+// tools/provision-guest-*.ps1 script, is waived off the guest and counted in it (QS291), so these
+// numbers do not carry the guest's provisioning.
 {
   // The PuTTY sessions and the MobaXterm.ini a real machine may hold: nothing to read on a clean desk.
   "Quickshell.App.Tests": 2,

@@ -399,27 +399,6 @@ both sides' algorithm lists.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS291 Skips that belong to the guest
-
-Found while adding QS114's real-Pageant tests (2026-10-13). Some tests can only run in
-the guest, because what they meet is provisioned there and nowhere else: Windows OpenSSH
-on 127.0.0.1:2240 (QS273's connected case, QS290's matrix row), Pageant 0.77 with the
-case key (QS114), an Explorer drop (QS188). On the host each of them skips, naming the
-tools/provision-guest-*.ps1 script.
-
-count-the-run.ps1 counts those skips against tests/skips.json, whose numbers are for a
-host desk with the SSH fixture up. Quickshell.Cases has no allowance at all, so a host
-run is over budget from QS273 on, and Transport's two are now five. Raising the numbers
-would hide a real new skip on the host behind the guest's ones.
-
-What to build: the skip whose reason names tools/provision-guest-*.ps1 is waived on a
-host run and printed as waived, as a missing Docker fixture is waived in the guest, and
-counted in the guest, where the provisioning is expected to have been done and its
-absence is a finding.
-
-Falsified when a host run with the SSH fixture up and nothing else changed is over the
-skip budget, or a guest run without the provisioning is not.
-
 ### §QS292 The drop as a case
 
 QS188's Explorer drop is proven by tests/Quickshell.Cases/ExplorerDropRun.cs

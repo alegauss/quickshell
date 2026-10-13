@@ -20,6 +20,10 @@
   - and are then printed as waived, by count and reason, rather than counted silently. A desk that
   forgot to start the fixture does not say so, and its skips are over budget.
 
+  The other kind is the test only the guest can run (QS291), whose skip names a
+  tools/provision-guest-*.ps1 script. It is waived, and printed as waived, everywhere but the guest
+  (QUICKSHELL_GUEST set), where the provisioning is expected and a skip of it counts.
+
   Exits 1 where a budget is exceeded and 0 otherwise; failed tests are run-tests.cmd's to judge.
 
 .PARAMETER From
@@ -43,6 +47,13 @@ $ErrorActionPreference = 'Stop'
 $fixtureAbsent = '127\.0\.0\.1:\d+: run prototypes/SshProbe/(fixture|matrix)/up\.sh'
 $waiving = -not [string]::IsNullOrEmpty($env:QUICKSHELL_NO_FIXTURE)
 
+# What a test only the guest can run says everywhere else (QS291): Windows OpenSSH on :2240, Pageant
+# with the case key, an Explorer drop - each skips naming the tools/provision-guest-*.ps1 script that
+# sets it up there. Off the guest that is not a skip anybody decided, so it is waived; in the guest
+# (QUICKSHELL_GUEST, which the guest runner sets) the provisioning is expected and its absence counts.
+$guestOnly = 'tools[/\\]provision-guest-[\w-]+\.ps1'
+$inGuest = -not [string]::IsNullOrEmpty($env:QUICKSHELL_GUEST)
+
 $allowed = @{}
 
 if ($Budget -and (Test-Path -LiteralPath $Budget)) {
@@ -64,10 +75,11 @@ if ($reports.Count -eq 0) {
     exit 1
 }
 
-$totals = @{ Total = 0; Passed = 0; Failed = 0; Skipped = 0; Waived = 0 }
+$totals = @{ Total = 0; Passed = 0; Failed = 0; Skipped = 0; Waived = 0; GuestOnly = 0 }
 $over = @()
 $reasons = @{}
 $waivedReasons = @{}
+$guestReasons = @{}
 
 Write-Host ''
 Write-Host ('  {0,-34} {1,6} {2,7} {3,7} {4,8}' -f 'assembly', 'tests', 'passed', 'failed', 'skipped')
@@ -108,6 +120,14 @@ foreach ($report in $reports) {
         if ($waiving -and $reason -match $fixtureAbsent) {
             $waived++
             $waivedReasons[$reason] = 1 + $(if ($waivedReasons.ContainsKey($reason)) { $waivedReasons[$reason] } else { 0 })
+            continue
+        }
+
+        if (-not $inGuest -and $reason -match $guestOnly) {
+            $waived++
+            $totals.GuestOnly++
+            $key = "$name  $reason"
+            $guestReasons[$key] = 1 + $(if ($guestReasons.ContainsKey($key)) { $guestReasons[$key] } else { 0 })
             continue
         }
 
@@ -160,9 +180,18 @@ if ($reasons.Count -gt 0) {
     }
 }
 
-if ($totals.Waived -gt 0) {
+if ($totals.GuestOnly -gt 0) {
     Write-Host ''
-    Write-Host "  WAIVED: $($totals.Waived) tests did not run because this desk declares no SSH fixture (QUICKSHELL_NO_FIXTURE)." -ForegroundColor Yellow
+    Write-Host "  WAIVED: $($totals.GuestOnly) tests did not run because only the guest is provisioned for them (run-tests-vm.cmd runs them)." -ForegroundColor Yellow
+
+    foreach ($entry in ($guestReasons.GetEnumerator() | Sort-Object Value -Descending)) {
+        Write-Host ('  {0,5}  {1}' -f $entry.Value, $entry.Key) -ForegroundColor Yellow
+    }
+}
+
+if ($totals.Waived - $totals.GuestOnly -gt 0) {
+    Write-Host ''
+    Write-Host "  WAIVED: $($totals.Waived - $totals.GuestOnly) tests did not run because this desk declares no SSH fixture (QUICKSHELL_NO_FIXTURE)." -ForegroundColor Yellow
 
     foreach ($entry in ($waivedReasons.GetEnumerator() | Sort-Object Value -Descending)) {
         Write-Host ('  {0,5}  {1}' -f $entry.Value, $entry.Key) -ForegroundColor Yellow
