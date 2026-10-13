@@ -164,6 +164,11 @@ else {
     Write-Host '  UNSIGNED   no certificate was given, and the archive is named for it' -ForegroundColor Yellow
 }
 
+# The licence and the bundled libraries' notices, which MIT and ISC ask to travel with every copy (QS285).
+foreach ($notice in @('LICENSE', 'THIRD-PARTY-NOTICES.md')) {
+    Copy-Item -LiteralPath (Join-Path $root $notice) -Destination $publish -Force
+}
+
 # The marker that makes an unzipped copy portable. Installing it leaves the marker behind.
 $null = New-Item -ItemType File -Path (Join-Path $publish 'quickshell.portable') -Force
 

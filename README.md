@@ -52,7 +52,7 @@ and what you give up if you used MobaXterm for more than SSH.
 | Saved sessions | Unlimited | 12 | Unlimited |
 | SSH tunnels | Unlimited | 2 | Unlimited |
 | Deploying it across a company | Allowed: `--install --all-users --quiet` | Not allowed by its licence | Allowed |
-| Source code | Public, on GitHub | Closed | Closed |
+| Source code | Public, on GitHub, MIT licence | Closed | Closed |
 
 MobaXterm limits are from [its download page](https://mobaxterm.mobatek.net/download.html)
 and [Home Edition licence](https://mobaxterm.mobatek.net/license.html), read 2026-10-12.
@@ -153,6 +153,11 @@ your machine, which is not much.
 `docs/PERFORMANCE.md` sets six figures before the code they bind, and `run-perf-gate.cmd` fails a
 release that regresses one. The roadmap, changelog and decision records are written by
 [roadkeep](https://github.com/alegauss/roadkeep), not by hand.
+
+## Licence
+
+MIT: see [LICENSE](LICENSE). The libraries the release carries beside it, each under MIT or ISC, are
+credited in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Sponsor
 

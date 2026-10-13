@@ -185,6 +185,11 @@ every project builds with nullable, warnings as errors and the allocation analyz
 - No telemetry, no account, no sign-in, and no check-in on launch.
 - Settings, the session store and `known_hosts` live under the user's own profile.
 
+## Licence
+
+MIT (<https://github.com/alegauss/quickshell/blob/main/LICENSE>). The libraries the release carries
+beside it are MIT or ISC, credited in `THIRD-PARTY-NOTICES.md`.
+
 ## Sponsor
 
 Sponsored by **Viglet** (https://www.viglet.org). Open source search and content tools for

@@ -272,6 +272,7 @@
 - ✅ **QS216** **Importing sessions writes over the whole session store, so sessions made since are lost without a word** — An import is added to the store under a dated folder of its own, the preview says the sessions already there stay, and a store that will not read is refused.
 - ✅ **QS276** **An imported key path keeps MobaXterm's _ProfileDir_ placeholder, so the key file is never found or offered** — MobaXterm's _ProfileDir_, _MyDocuments_, _AppDataDir_ and _CurrentDrive_ expand on import and when a key is offered, and a named key that is not there is said in the pane.
 - ✅ **QS286** **The site and llms.txt describe features as shipped that the client lacks, so a visitor arriving from a post is misled** — The site and llms.txt say what has shipped: pre-release 0.1.0, unsigned, no release yet, 160 MB, golden images on NVIDIA and WARP, no agent forwarding, reconnect as delivered.
+- ✅ **QS285** **The repository declares no licence, so "free and open" cannot be said of it to anyone it is shown to** — quickshell is MIT: LICENSE at the root, PackageLicenseExpression set, the README and site say so, and the bundled MIT and ISC libraries are credited in the archive.
 
 ## Block K — The build and the harness — what a green run is evidence of
 

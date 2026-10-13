@@ -39,6 +39,11 @@
          project. -->
     <Version>0.1.0</Version>
 
+    <!-- MIT (QS285), chosen by the owner; LICENSE at the root, the bundled libraries credited in
+         THIRD-PARTY-NOTICES.md, both carried in the release archive. -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright (c) 2026 Alexandre Oliveira</Copyright>
+
     <!-- Off, and QS154 is why: with it on, this client cannot show a text box.
 
          WPF builds a CultureInfo in two places a terminal cannot avoid. The font cache asks for

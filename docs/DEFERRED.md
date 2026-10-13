@@ -43,7 +43,6 @@
 ## Block J — Leaving MobaXterm, proven by the switch
 
 - ⏸ **QS81** (deps: QS80 ✅, QS116 ✅, QS126 ✅, QS217, QS218, QS219) **A user weighing the switch has nothing that says what they will and will not get** — set aside (Needs MobaXterm in the guest.): Its figures need MobaXterm measured where it may run, and the build it describes still lacks a password prompt. → §QS81
-- ⏸ **QS285** (deps: —) **The repository declares no licence, so "free and open" cannot be said of it to anyone it is shown to** — set aside (The owner chooses the licence.): With no LICENSE file, all rights are reserved. → §QS285
 
 ## Block K — The build and the harness — what a green run is evidence of
 

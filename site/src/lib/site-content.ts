@@ -67,7 +67,7 @@ export const footer = {
     { href: `${repoUrl}/blob/main/docs/CHANGELOG.md`, label: "Changelog" },
   ],
   disclaimer:
-    "Unofficial / community project, not affiliated with, endorsed by, or sponsored by Mobatek, Simon Tatham or the OpenSSH project. “MobaXterm” is a trademark of Mobatek; PuTTY and OpenSSH are named here only because Quickshell reads the files they write. The SSH protocol itself is not implemented in this repository: the transport sits behind a seam, and the client's own code is the terminal, the renderer and everything a person touches. © 2026 Alexandre Oliveira.",
+    "Unofficial / community project, not affiliated with, endorsed by, or sponsored by Mobatek, Simon Tatham or the OpenSSH project. “MobaXterm” is a trademark of Mobatek; PuTTY and OpenSSH are named here only because Quickshell reads the files they write. The SSH protocol itself is not implemented in this repository: the transport sits behind a seam, and the client's own code is the terminal, the renderer and everything a person touches. © 2026 Alexandre Oliveira, released under the MIT licence.",
 } as const;
 
 /* --------------------------------------------------------------- sponsor */

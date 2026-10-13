@@ -475,21 +475,6 @@ true of the shipped build and not of the plan.
 
 Falsified when a figure in it cannot be reproduced from a documented run.
 
-### §QS285 No licence is declared
-
-The README compares quickshell with MobaXterm and says the source is public on GitHub.
-That is true and incomplete: there is no LICENSE file at the root, and no licence
-property in Directory.Build.props, any .csproj or site/package.json. The Apache 2.0
-named in site/src/components/Footer.tsx is about the sponsor's products, not this
-client. Under default copyright, public source grants nobody the right to use, change or
-redistribute it, so promoting the project as a free alternative invites the first
-question a sysadmin or a company's legal review asks, and today it has no answer.
-Choosing the licence is the owner's decision, not an implementation detail. Once it is
-chosen: a LICENSE file at the root, PackageLicenseExpression in Directory.Build.props,
-the licence named in the README's comparison table and on the site, and a check that
-every bundled dependency (SSH.NET, Vortice, the .NET runtime in the archive) is
-compatible with it and credited where its own licence asks.
-
 ## Block K — The build and the harness — what a green run is evidence of
 
 ### §QS273 A case over a connected tab
