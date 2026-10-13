@@ -47,9 +47,14 @@ public sealed partial class ExplorerDropRun : IDisposable
 
     public void Dispose()
     {
+        // Closed by its handle: WindowPattern.Close answered and left Explorer's window on the guest's
+        // desk, where the next run found it.
         try
         {
-            (_explorer?.GetCurrentPattern(WindowPattern.Pattern) as WindowPattern)?.Close();
+            if (_explorer is { } open && open.Current.NativeWindowHandle is not 0 and var handle)
+            {
+                _ = PostMessageW(handle, 0x0010, 0, 0);
+            }
         }
         catch (ElementNotAvailableException)
         {
@@ -495,4 +500,8 @@ public sealed partial class ExplorerDropRun : IDisposable
 
     [LibraryImport("user32.dll")]
     private static partial int GetSystemMetrics(int index);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool PostMessageW(nint window, uint message, nint wParam, nint lParam);
 }
