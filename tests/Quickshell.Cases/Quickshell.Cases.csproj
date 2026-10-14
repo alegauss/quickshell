@@ -35,9 +35,12 @@
        1.0.1 for a fixture's own staged files (WW509) and working directory (WW508), QS217.
        1.0.2 for a fixture that reaches a server (WW522), a staged file filled with where it landed
        (WW527), a tab found by its item status (WW523), and a red case that collapses what it
-       expanded (WW525): QS273 and QS278. -->
+       expanded (WW525): QS273 and QS278.
+       1.1.0 for a survivor that names the case that launched it (WW531, from QS298), a drag that
+       drops onto another window (WW530), and one run at a time on the guest desk (WW534, from
+       QS302): QS303. -->
   <ItemGroup>
-    <PackageReference Include="Winwright" Version="1.0.2" />
+    <PackageReference Include="Winwright" Version="1.1.0" />
   </ItemGroup>
 
 </Project>
