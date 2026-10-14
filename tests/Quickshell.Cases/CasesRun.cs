@@ -111,8 +111,43 @@ public sealed class CasesRun
         Assert.True(verdict.Outcome == RunOutcome.Passed, Read(verdict));
         Assert.Equal(0, verdict.ExitCode);
 
-        // And nothing this run started is still on the desk.
-        Assert.Empty(register.StopAll());
+        // And nothing this run started is still on the desk, named by the case that started it
+        // (QS298): a pid alone is gone by the time anybody reads the red.
+        IReadOnlyList<Survivor> survivors = register.StopAll();
+
+        Assert.True(survivors.Count == 0, string.Join(Environment.NewLine,
+            survivors.Select(each => Launcher(each.Pid, register, verdict) is { } named
+                                         ? $"{each}, launched for '{named}'"
+                                         : $"{each}, launched for a case this run cannot name")));
+    }
+
+    /// <summary>
+    /// The case a launch was made for, or null where that cannot be said.
+    ///
+    /// <para><b>Paired by order, because winwright does not record it (WW531).</b> Nothing here
+    /// shares a fixture, so every case that ran launched one client, in the order it ran, and the
+    /// register lists its launches in the same order. A case whose server was unreachable launches
+    /// nothing, so where the two counts differ the pairing would name the wrong case, and it names
+    /// none. Drop this once a survivor carries its case.</para>
+    /// </summary>
+    private static string? Launcher(int pid, ProcessRegister register, SuiteVerdict verdict)
+    {
+        IReadOnlyList<LaunchedProcess> launched = register.Launched;
+
+        if (launched.Count != verdict.Ran.Count)
+        {
+            return null;
+        }
+
+        for (int index = 0; index < launched.Count; index++)
+        {
+            if (launched[index].Pid == pid)
+            {
+                return verdict.Ran[index].Declared.Name;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
