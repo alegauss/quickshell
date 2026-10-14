@@ -438,27 +438,3 @@ which fixture started it), and the client's own log of that run is kept beside t
 report, so the next one says what it was doing when it was asked to stop.
 
 Falsified when a case's client outlives it and the red does not name the case.
-
-### §QS299 The drop run's list that did not come
-
-Seen once in a guest run (2026-10-13, while validating QS298), on a tree whose last
-guest run had passed the same test: ExplorerDropRun failed with "the host's file list
-did not appear within 30s". The browser had opened and its host-side path box had been
-found, so the client was connected and the palette had worked; what never came was the
-list named "Files on <host>" after the path was set and Return was pressed.
-
-The wait that failed printed nothing of what the browser held, unlike the wait after it,
-so the red cannot tell a navigation that never happened (Return sent to a window that
-did not have the foreground, since SetFocus does not take it) from a listing that failed
-and said so in the browser's own words.
-
-First slice: that wait quotes the path box and the browser's words, as the next wait
-does. On the next red, what to build follows from what it says: a lost Return is
-answered by setting the foreground before the chord, and a listing that failed is a
-client defect for Block E.
-
-QS292 replaces this test with a UI case once WW530 lands; this line is about the red it
-gives until then, and closes with it if the case does not show it.
-
-Falsified when ExplorerDropRun goes red on this wait and its message does not say what
-the browser showed.
