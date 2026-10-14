@@ -2339,7 +2339,17 @@ public sealed partial class MainWindow : Window
     /// <summary>Puts the window where it was last time on this arrangement of screens.</summary>
     public void PlaceAt(Placement? placement)
     {
-        if (placement is not { } where)
+        // A maximised window with no rectangle remembered opens maximised where the window manager
+        // puts it, and keeps the size WPF gives it for when it is restored (QS301).
+        if (placement is { Maximised: true, Sized: false })
+        {
+            WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            WindowState = WindowState.Maximized;
+
+            return;
+        }
+
+        if (placement is not { Sized: true } where)
         {
             // Left to the window manager, which knows where a new window goes and puts it somewhere
             // a person can see. Any number invented here would be a worse guess.
@@ -4439,11 +4449,24 @@ public sealed partial class MainWindow : Window
         return palette.ShowDialog() == true ? palette.Chosen : null;
     }
 
-    /// <summary>Where this window is now, for remembering.</summary>
-    public Placement Where() => new(
-        (int)(WindowState == WindowState.Maximized ? RestoreBounds.Left : Left),
-        (int)(WindowState == WindowState.Maximized ? RestoreBounds.Top : Top),
-        (int)(WindowState == WindowState.Maximized ? RestoreBounds.Width : Width),
-        (int)(WindowState == WindowState.Maximized ? RestoreBounds.Height : Height),
-        WindowState == WindowState.Maximized);
+    /// <summary>
+    /// Where this window is now, for remembering.
+    ///
+    /// <para>A window maximised since its first paint has an empty RestoreBounds, whose sides are
+    /// infinite, so it is remembered as maximised with no rectangle rather than as the casts of
+    /// infinity (QS301).</para>
+    /// </summary>
+    public Placement Where()
+    {
+        bool maximised = WindowState == WindowState.Maximized;
+        Rect bounds = maximised ? RestoreBounds : new Rect(Left, Top, Width, Height);
+
+        bool real = !bounds.IsEmpty
+                    && double.IsFinite(bounds.Left) && double.IsFinite(bounds.Top)
+                    && double.IsFinite(bounds.Width) && double.IsFinite(bounds.Height);
+
+        return real
+            ? new Placement((int)bounds.Left, (int)bounds.Top, (int)bounds.Width, (int)bounds.Height, maximised)
+            : new Placement(0, 0, 0, 0, maximised);
+    }
 }

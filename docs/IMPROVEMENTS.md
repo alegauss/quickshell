@@ -212,27 +212,6 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
-### §QS301 A maximised window with no rectangle
-
-Reported by the user (2026-10-14): run.cmd stopped at once with "-2147483648 is not a
-valid value for Width", thrown from PlaceAt during Main. Their windows.json held, for
-the one screen, X and Y of 2147483647, Width and Height of -2147483648, and Maximised
-true.
-
-A window maximised since its first paint has never had a normal rectangle, so WPF's
-RestoreBounds is Rect.Empty, whose sides are infinite. Where() cast those to int and the
-exit path wrote them. On the next start, For() returned the placement because maximised
-skips the screen check, and PlaceAt set the width. Every start after that crashed,
-before a window.
-
-What is built: Placement says whether it is Sized. Where() remembers a maximised window
-with no rectangle as 0 by 0, never as the cast of infinity; PlaceAt opens an unsized
-maximised placement maximised where the window manager puts it; and For() refuses an
-unsized one that is not maximised. A file already written the bad way now opens
-maximised, so nobody has to delete it.
-
-Falsified when the windows.json above, read back, does not open a maximised window.
-
 ## Block H — The reason to leave the incumbent
 
 ### §QS77 Installing, signing, and updating without a service
@@ -439,3 +418,24 @@ project's WPF and unsafe settings go.
 
 Falsified when the case replaces the test and an Explorer drop that leaves a different
 file, or none, is not red.
+
+### §QS302 One run on the guest at a time
+
+Seen 2026-10-14 while validating QS301: three UI cases that type went Degraded, each
+waiting 5 s for a foreground held by "Winwright.Fixture" or Explorer's tray overflow. On
+the host, vmrun was running C:\winwright-sync\run.cmd in the same VM: winwright's own
+guest suite, started by another session, putting its fixture windows on the desk this
+suite drives.
+
+tools\vm-guest.ps1 never asks whether the guest is in use. Nothing marks a run, so two
+projects' runners interleave, and each reads the other's windows as its own red, with no
+hint of where they came from.
+
+What to build: a guest is claimed for the length of a run, by a marker both runners
+honour, such as a named mutex on the host (one machine drives the VM) or a file in the
+guest beside the sync folders. A runner that finds it held waits and says whose it is,
+rather than starting. The marker is winwright's as much as this repository's, so the
+shared half is filed in its roadmap.
+
+Falsified when a quickshell guest run starts while another runner's vmrun is driving the
+same VM.

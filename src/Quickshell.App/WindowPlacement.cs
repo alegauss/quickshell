@@ -13,7 +13,19 @@ namespace Quickshell.App;
 /// <param name="Width">How wide.</param>
 /// <param name="Height">How tall.</param>
 /// <param name="Maximised">Whether it was maximised, which is remembered apart from its size.</param>
-public readonly record struct Placement(int X, int Y, int Width, int Height, bool Maximised);
+public readonly record struct Placement(int X, int Y, int Width, int Height, bool Maximised)
+{
+    /// <summary>
+    /// Whether the rectangle is one a window can take.
+    ///
+    /// <para>A window that was maximised from its first paint has no restored rectangle — WPF's
+    /// RestoreBounds is empty, which is infinite — and that cast to int was written as a width of
+    /// -2147483648, which crashed every launch after it (QS301). A maximised placement without a
+    /// size is still a maximised window; it just has no rectangle to go back to.</para>
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool Sized => Width > 0 && Height > 0;
+}
 
 /// <summary>
 /// One screen, in the two facts that decide whether a window fits on it.
@@ -151,7 +163,8 @@ public sealed class WindowPlacements
 
         // Maximised is remembered on its own: a maximised window has no meaningful rectangle to
         // check, and it lands on a screen whatever happened to the others.
-        return remembered.Maximised || visible.Any(screen => screen.Holds(remembered))
+        // Unsized and not maximised is nothing to restore: a file written before QS301, or by hand.
+        return remembered.Maximised || (remembered.Sized && visible.Any(screen => screen.Holds(remembered)))
             ? remembered
             : null;
     }

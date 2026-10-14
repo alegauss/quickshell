@@ -330,6 +330,66 @@ public sealed class WindowTests : IDisposable
         Assert.Equal(maximised, placements.For([Laptop]));
     }
 
+    /// <summary>
+    /// QS301: the file a window maximised from its first paint wrote, byte for byte as a user's desk
+    /// held it, crashed every launch after it on a width of -2147483648. It now opens maximised.
+    /// </summary>
+    [Fact]
+    public void AMaximisedPlacementWithNoSizeOpensMaximisedInsteadOfCrashing()
+    {
+        Directory.CreateDirectory(_directory);
+
+        string file = Path.Combine(_directory, "windows.json");
+
+        File.WriteAllText(file, """{"0,0,1920,1080;":{"X":2147483647,"Y":2147483647,"Width":-2147483648,"Height":-2147483648,"Maximised":true}}""");
+
+        Placement? read = WindowPlacements.ReadFrom(file).For([Laptop]);
+
+        Assert.True(read is { Maximised: true, Sized: false });
+
+        // Derived, so never written: the file holds the rectangle and nothing computed from it.
+        WindowPlacements.ReadFrom(file).Remember([Laptop], new Placement(10, 10, 800, 600, false));
+        Assert.DoesNotContain("Sized", File.ReadAllText(file), StringComparison.Ordinal);
+
+        WindowState state = Sta.Run(() =>
+        {
+            MainWindow window = new();
+
+            window.PlaceAt(read);
+
+            return window.WindowState;
+        });
+
+        Assert.Equal(WindowState.Maximized, state);
+    }
+
+    /// <summary>And a window maximised before it ever had a size is remembered without one.</summary>
+    [Fact]
+    public void AWindowMaximisedBeforeItHadASizeIsRememberedWithoutOne()
+    {
+        Placement where = Sta.Run(() =>
+        {
+            MainWindow window = new() { WindowState = WindowState.Maximized };
+
+            return window.Where();
+        });
+
+        Assert.True(where.Maximised);
+        Assert.True(where.Sized || (where.Width, where.Height) == (0, 0),
+                    $"remembered as {where}, which no window can take");
+    }
+
+    /// <summary>Unsized and not maximised is nothing to restore, so the window places itself.</summary>
+    [Fact]
+    public void AnUnsizedPlacementThatIsNotMaximisedIsRefused()
+    {
+        WindowPlacements placements = WindowPlacements.Empty();
+
+        placements.Remember([Laptop], new Placement(0, 0, 0, 0, false));
+
+        Assert.Null(placements.For([Laptop]));
+    }
+
     /// <summary>The arrangement's name does not depend on the order Windows lists screens in.</summary>
     [Fact]
     public void TheArrangementIsTheSameWhicheverOrderScreensArrive()

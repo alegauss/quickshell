@@ -16,8 +16,6 @@
 
 ## Block G — The clean interface, defended
 
-- 🛠 **QS301** (deps: —) **The client crashes on every start after a window maximised from its first paint is closed** — Its empty RestoreBounds was saved as a width of -2147483648, and the next start set that as the window's width. → §QS301
-
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
@@ -30,6 +28,7 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS292** (deps: QS188 ✅, winwright WW530) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — ExplorerDropRun does the engine's work in C# because a case cannot release a drag over another window yet. → §QS292
+- 📋 **QS302** (deps: —) **A guest run starts while another project's run is driving the same VM, and its UI cases lose the foreground** — vm-guest.ps1 never asks whether the guest is in use, so winwright's fixture windows took the desk mid-run. → §QS302
 
 ## Done when — Block A
 
