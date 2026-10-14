@@ -277,6 +277,63 @@ function Read-ConsoleText {
     return [Text.Encoding]::UTF8.GetString($bytes)
 }
 
+function Get-DeskClaimName {
+    <#
+      The claim on the guest desk, named as winwright names it (WW534): the name is the protocol, so
+      this repository's runners and winwright's own take the same one and wait on each other.
+    #>
+    param([Parameter(Mandatory)] [string] $VmxPath)
+
+    $bytes = [Text.Encoding]::UTF8.GetBytes([IO.Path]::GetFullPath($VmxPath).ToLowerInvariant())
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { $hash = ($sha.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') }) -join '' }
+    finally { $sha.Dispose() }
+
+    return "winwright-guest-desk-$($hash.Substring(0, 16))"
+}
+
+function Enter-DeskClaim {
+    <#
+    .SYNOPSIS
+      Holds the guest desk for as long as this script runs, waiting for whoever holds it now.
+
+    .DESCRIPTION
+      QS302. This suite and winwright's ran in the same VM at once, started by two sessions, and each
+      took the other's foreground: three runs here went red in cases that had nothing wrong with them.
+      One host drives the VM, so a host-wide mutex is the whole claim. A run that finds it held says
+      whose it is, from the note beside it, and waits; past the wait it refuses rather than start
+      beside the other. Windows releases the mutex when this process ends, however it ends.
+    #>
+    param([Parameter(Mandatory)] [string] $VmxPath, [int] $WaitSeconds = 3600)
+
+    $name = Get-DeskClaimName -VmxPath $VmxPath
+    $note = Join-Path ([IO.Path]::GetTempPath()) "$name.holder"
+    $claim = New-Object Threading.Mutex($false, "Global\$name")
+
+    $held = $false
+    try { $held = $claim.WaitOne(0) }
+    catch [Threading.AbandonedMutexException] { $held = $true }
+
+    if (-not $held) {
+        $who = if (Test-Path -LiteralPath $note) { (Get-Content -LiteralPath $note -Raw).Trim() } else { 'a run that left no note' }
+        $span = if ($WaitSeconds -ge 60) { "$([int]($WaitSeconds / 60)) minute(s)" } else { "$WaitSeconds second(s)" }
+        Write-Host "  desk claim  held by $who; waiting up to $span for it" -ForegroundColor Yellow
+
+        try { $held = $claim.WaitOne($WaitSeconds * 1000) }
+        catch [Threading.AbandonedMutexException] { $held = $true }
+
+        if (-not $held) {
+            Refuse "another run held the guest desk for longer than ${span}: $who" 'Two runs on one guest desk take each other''s foreground, so this one does not start beside it. Let that run finish, or end it at its own console.'
+        }
+    }
+
+    Set-Content -LiteralPath $note -Encoding utf8 -Value "quickshell $($script:Tool) (pid $PID), since $(Get-Date -Format 'HH:mm:ss')"
+    Write-Host "  desk claim  this run holds the guest desk ($name)"
+
+    # Kept on the script, so the claim lives as long as this process does.
+    $script:DeskClaim = $claim
+}
+
 function Connect-Guest {
     <#
     .SYNOPSIS
@@ -317,6 +374,10 @@ function Connect-Guest {
 
     Write-Host "$($script:Tool)  $vmxPath" -ForegroundColor Cyan
     if ($envFile) { Write-Host "  settings    $envFile" }
+
+    # Before the first call that touches the VM: from here on this run's windows are on the guest
+    # desk, and a second runner beside it would take their foreground and lose its own (QS302).
+    Enter-DeskClaim -VmxPath $vmxPath
 
     # listSnapshots is the cheapest call that needs the VM actually opened, so it is what tells an
     # absent encryption password from a wrong one. The two messages differ, and matching only the

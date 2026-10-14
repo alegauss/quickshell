@@ -418,24 +418,3 @@ project's WPF and unsafe settings go.
 
 Falsified when the case replaces the test and an Explorer drop that leaves a different
 file, or none, is not red.
-
-### §QS302 One run on the guest at a time
-
-Seen 2026-10-14 while validating QS301: three UI cases that type went Degraded, each
-waiting 5 s for a foreground held by "Winwright.Fixture" or Explorer's tray overflow. On
-the host, vmrun was running C:\winwright-sync\run.cmd in the same VM: winwright's own
-guest suite, started by another session, putting its fixture windows on the desk this
-suite drives.
-
-tools\vm-guest.ps1 never asks whether the guest is in use. Nothing marks a run, so two
-projects' runners interleave, and each reads the other's windows as its own red, with no
-hint of where they came from.
-
-What to build: a guest is claimed for the length of a run, by a marker both runners
-honour, such as a named mutex on the host (one machine drives the VM) or a file in the
-guest beside the sync folders. A runner that finds it held waits and says whose it is,
-rather than starting. The marker is winwright's as much as this repository's, so the
-shared half is filed in its roadmap.
-
-Falsified when a quickshell guest run starts while another runner's vmrun is driving the
-same VM.
