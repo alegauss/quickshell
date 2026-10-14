@@ -40,3 +40,5 @@
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+- ⏸ **QS299** (deps: —) **The Explorer drop run sometimes goes red waiting for the host's file list, without saying what the browser showed** — set aside (Waits for the drop run's next red.): On the next red, its message says whether the Return was lost or the listing failed, and the fix follows from which. → §QS299

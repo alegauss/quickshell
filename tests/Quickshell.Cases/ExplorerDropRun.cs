@@ -145,16 +145,21 @@ public sealed partial class ExplorerDropRun : IDisposable
         path.SetFocus();
         Chord(VkReturn);
 
+        // Quoted by both waits below (QS299): one red here said only that the list never came, which
+        // cannot tell a Return that went to another window from a listing the browser refused.
+        string PathBox() => ((ValuePattern)path.GetCurrentPattern(ValuePattern.Pattern)).Current.Value;
+
+        string Words() => string.Join(" | ", browser.FindAll(TreeScope.Descendants,
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text)).Cast<AutomationElement>()
+            .Select(each => each.Current.Name).Where(name => name.Length > 12).Distinct());
+
         AutomationElement list = Until(() => browser.FindFirst(TreeScope.Descendants,
-            new PropertyCondition(AutomationElement.NameProperty, "Files on " + host)), "the host's file list");
+            new PropertyCondition(AutomationElement.NameProperty, "Files on " + host)), "the host's file list",
+            () => $"the path box holds '{PathBox()}'; the browser holds: {Names(browser, 20)}; the browser's words: {Words()}");
 
         AutomationElement row = Until(() => list.FindFirst(TreeScope.Descendants,
             new PropertyCondition(AutomationElement.NameProperty, "qs188.bin")), "qs188.bin listed on the host's side",
-            () => $"the path box holds '{((ValuePattern)path.GetCurrentPattern(ValuePattern.Pattern)).Current.Value}'; "
-                  + $"the host's list shows: {Names(list, 20)}; the browser's words: "
-                  + string.Join(" | ", browser.FindAll(TreeScope.Descendants,
-                        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text)).Cast<AutomationElement>()
-                        .Select(each => each.Current.Name).Where(name => name.Length > 12).Distinct()));
+            () => $"the path box holds '{PathBox()}'; the host's list shows: {Names(list, 20)}; the browser's words: {Words()}");
 
         // Explorer on the landing folder, beside the browser rather than under it.
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{_landing}\"") { UseShellExecute = true })?.Dispose();
