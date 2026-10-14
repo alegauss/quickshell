@@ -212,6 +212,27 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
+### §QS301 A maximised window with no rectangle
+
+Reported by the user (2026-10-14): run.cmd stopped at once with "-2147483648 is not a
+valid value for Width", thrown from PlaceAt during Main. Their windows.json held, for
+the one screen, X and Y of 2147483647, Width and Height of -2147483648, and Maximised
+true.
+
+A window maximised since its first paint has never had a normal rectangle, so WPF's
+RestoreBounds is Rect.Empty, whose sides are infinite. Where() cast those to int and the
+exit path wrote them. On the next start, For() returned the placement because maximised
+skips the screen check, and PlaceAt set the width. Every start after that crashed,
+before a window.
+
+What is built: Placement says whether it is Sized. Where() remembers a maximised window
+with no rectangle as 0 by 0, never as the cast of infinity; PlaceAt opens an unsized
+maximised placement maximised where the window manager puts it; and For() refuses an
+unsized one that is not maximised. A file already written the bad way now opens
+maximised, so nobody has to delete it.
+
+Falsified when the windows.json above, read back, does not open a maximised window.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS77 Installing, signing, and updating without a service

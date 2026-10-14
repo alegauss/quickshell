@@ -143,6 +143,7 @@
 - ✅ **QS270** **The session dialog decides how to sign in by which text box was filled, and cannot test a session** — The session dialog offers Sign in with as three segments over Key and Credential, folds the rest into summarised groups, and Test connection signs in and says why not, unsaved.
 - ✅ **QS271** **A host nobody has saved cannot be reached without filling and saving the session dialog first** — Connect to an address takes user@host[:port] or an ssh_config host, saves it as a session unless unticked, and opens it by the path a saved session takes.
 - ✅ **QS275** **A store whose root node has a name opens none of its sessions: every row says there is no such session** — A store whose root node has a name opens every session the sidebar lists: the root's name is kept in the file and is never part of a path.
+- ✅ **QS300** **A folder in the sessions sidebar opens or closes only on a double-click** — A folder in the sessions sidebar folds on one click, the second press of a double-click is ignored, and a session still connects on a double-click.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

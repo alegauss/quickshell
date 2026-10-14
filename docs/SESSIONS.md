@@ -12,7 +12,7 @@ the palette ([KEYS.md](KEYS.md)) are ways into it; editing it by hand is equally
 
 **The sessions sidebar** down the left of the window lists the store as its tree: a folder with what
 it hands down beside it, a session with its address, and **Connected** on each one a tab holds.
-Double-click or Enter connects; the arrows fold a folder; the search box finds a session by name,
+Double-click or Enter connects; one click, Enter or the arrows fold a folder; the search box finds a session by name,
 host or tag, as **Open session** does. Right-click a session to edit, duplicate, move or delete it,
 and a folder to make a session in it. The fold at its top narrows it to a rail
 ([SETTINGS.md](SETTINGS.md), `sessionsSidebar`). A hand edit shows the next time you come back to the

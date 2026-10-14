@@ -16,6 +16,8 @@
 
 ## Block G — The clean interface, defended
 
+- 🛠 **QS301** (deps: —) **The client crashes on every start after a window maximised from its first paint is closed** — Its empty RestoreBounds was saved as a width of -2147483648, and the next start set that as the window's width. → §QS301
+
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77

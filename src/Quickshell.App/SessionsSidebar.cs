@@ -445,7 +445,7 @@ public sealed class SessionsSidebar : Border
         }
     }
 
-    /// <summary>What a double-click or Enter does: a session connects, a folder folds or unfolds.</summary>
+    /// <summary>What Enter does, and a double-click on a session: a session connects, a folder folds or unfolds.</summary>
     private void Activate(SessionRow row)
     {
         if (row.IsFolder)
@@ -600,11 +600,28 @@ public sealed class SessionsSidebar : Border
         AutomationProperties.SetHelpText(item, row.Meta);
         AutomationProperties.SetItemStatus(item, row.Connected ? "Connected" : string.Empty);
 
-        item.MouseDoubleClick += (_, clicked) =>
+        if (row.IsFolder)
         {
-            Activate(row);
-            clicked.Handled = true;
-        };
+            // A folder folds on one click, as a tree in Explorer's pane does: a folder has nothing to
+            // connect, so the second click a double-click asks for was only a cost. The second press of
+            // a double-click is not another toggle, or a double-click out of habit would open the folder
+            // and shut it again. After the press, so the list selects the row before it is rebuilt.
+            item.PreviewMouseLeftButtonDown += (_, pressed) =>
+            {
+                if (pressed.ClickCount == 1)
+                {
+                    Dispatcher.BeginInvoke(() => _window.ToggleFolder(row.Path));
+                }
+            };
+        }
+        else
+        {
+            item.MouseDoubleClick += (_, clicked) =>
+            {
+                Activate(row);
+                clicked.Handled = true;
+            };
+        }
 
         return item;
     }

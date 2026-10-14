@@ -70,6 +70,39 @@
       ]
     },
     {
+      "name": "one click on a folder folds it",
+      "catches": "a folder that only folds on a double-click, the second click of which has nothing else to do",
+      "filed": "QS300",
+      "tags": ["sessions"],
+      "fixture": "a client with its sessions beside it",
+
+      "steps": [
+        {
+          // Home is the store's last folder, so the bottom row is its last session while it is open
+          // and the folder itself once it is folded.
+          "locator": "List#SessionsList > ListItem[order=bottom]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Home/nas",
+          "named": "the folder opens with its sessions under it"
+        },
+        {
+          // A real click, because the defect was in what the pointer does: Enter already folded it.
+          "locator": "List#SessionsList > ListItem[name=\"Home\"]",
+          "act": "click",
+          "with": "PointerIsTheAct",
+          "named": "the folder is clicked once"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[order=bottom]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Home",
+          "named": "and is folded, its session gone from under it"
+        }
+      ]
+    },
+    {
       "name": "the sidebar folds to a rail and opens again",
       "catches": "a fold that does nothing, or one that folds and leaves no way back",
       "filed": "QS268",
