@@ -16,7 +16,8 @@
     <RootNamespace>Quickshell.Cases</RootNamespace>
 
     <!-- For System.Windows.Automation in ExplorerDropRun alone, whose drop lands in another
-         process's window — a gesture no case can spell yet (winwright WW530). Not Quickshell.App:
+         process's window — which a case can drop since winwright 1.1.0 (WW530) but not yet open
+         the folder for (WW536) or check the file of (WW535); QS292. Not Quickshell.App:
          the rule above still holds. -->
     <UseWPF>true</UseWPF>
 

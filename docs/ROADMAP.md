@@ -27,7 +27,7 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS292** (deps: QS188 ✅, winwright WW530) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — ExplorerDropRun does the engine's work in C# because a case cannot release a drag over another window yet. → §QS292
+- 📋 **QS292** (deps: QS188 ✅, winwright WW535, winwright WW536) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — winwright 1.1.0 drops onto Explorer (WW530), but a case still cannot open that folder or read the file it lands as. → §QS292
 
 ## Done when — Block A
 

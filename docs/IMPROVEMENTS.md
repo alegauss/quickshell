@@ -410,7 +410,9 @@ tree, and moves the pointer itself with SendInput. That is about four hundred li
 doing what a case says in thirty, with its own waits, its own input and its own reading
 of a failure — which is exactly what QS147 adopted winwright to stop writing.
 
-What to build, once WW530 lets a `to` name another window's element: a case in
+winwright 1.1.0 shipped WW530 (`toDesktop`, a drop onto another window), and two gaps
+are left: a fixture cannot open the Explorer folder the drop lands in (WW536), and no
+step can read the file it lands as (WW535). What to build, once both ship: a case in
 browser.cases.json whose fixture reaches 127.0.0.1:2240 as connected.cases.json's does,
 dragging the served file onto an Explorer folder view, followed by the fixture's check
 that the file landed with the served bytes. Then ExplorerDropRun.cs and the Cases
