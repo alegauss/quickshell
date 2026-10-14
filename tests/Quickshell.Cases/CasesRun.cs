@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 
 using Winwright.Processes;
@@ -116,9 +117,57 @@ public sealed class CasesRun
         IReadOnlyList<Survivor> survivors = register.StopAll();
 
         Assert.True(survivors.Count == 0, string.Join(Environment.NewLine,
-            survivors.Select(each => Launcher(each.Pid, register, verdict) is { } named
-                                         ? $"{each}, launched for '{named}'"
-                                         : $"{each}, launched for a case this run cannot name")));
+            survivors.Select(each => (Launcher(each.Pid, register, verdict) is { } named
+                                          ? $"{each}, launched for '{named}'"
+                                          : $"{each}, launched for a case this run cannot name")
+                                     + Afterwards(each))));
+    }
+
+    /// <summary>How long past the stop the run waits to see a survivor go.</summary>
+    private static readonly TimeSpan Lingering = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// What became of a client that would not stop, after the register gave up on it (QS298).
+    ///
+    /// <para><b>Its own log would not say.</b> winwright asks the window to close and then kills
+    /// the process tree, so "would not stop" is a process that had not gone within half the stop
+    /// timeout of a kill. Nothing the client was doing can hold a kill, so the question is the
+    /// desk's: a guest too slow to tear the process down in time, which is gone a moment later, or
+    /// a process Windows cannot end, which is not. Waited for here and said either way.</para>
+    /// </summary>
+    private static string Afterwards(Survivor survivor)
+    {
+        if (survivor.Fate != SurvivorFate.WouldNotStop)
+        {
+            return string.Empty;
+        }
+
+        Process process;
+
+        try
+        {
+            process = Process.GetProcessById(survivor.Pid);
+        }
+        catch (ArgumentException)
+        {
+            return "; gone by the time the run looked again";
+        }
+
+        using (process)
+        {
+            Stopwatch waited = Stopwatch.StartNew();
+
+            try
+            {
+                return process.WaitForExit(Lingering)
+                    ? $"; gone {waited.ElapsedMilliseconds} ms after the run looked again, so the kill was slow rather than refused"
+                    : $"; still running {Lingering.TotalSeconds:0}s after the kill, so Windows could not end it";
+            }
+            catch (InvalidOperationException)
+            {
+                return "; gone by the time the run looked again";
+            }
+        }
     }
 
     /// <summary>

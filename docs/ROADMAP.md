@@ -28,7 +28,6 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS292** (deps: QS188 ✅, winwright WW530) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — ExplorerDropRun does the engine's work in C# because a case cannot release a drag over another window yet. → §QS292
-- 🛠 **QS298** (deps: —) **A UI case's client sometimes outlives its case and turns a green run red, without saying which case** — The client's own log of the run that would not stop is not kept beside the report, so the red says which case but not what it was doing. → §QS298
 
 ## Done when — Block A
 
@@ -264,8 +263,6 @@
 - **The gate's start holds against 40fb448** Settled by run-perf-gate.cmd on the
   reference desk with nothing else running, start judged and held rather than not judged
   as too noisy.
-
-## Done when — QS298
 
 ## Non-goals
 

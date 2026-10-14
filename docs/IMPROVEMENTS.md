@@ -418,23 +418,3 @@ project's WPF and unsafe settings go.
 
 Falsified when the case replaces the test and an Explorer drop that leaves a different
 file, or none, is not red.
-
-### §QS298 A client that would not stop, named
-
-Seen once in a guest run (2026-10-13), with all sixteen cases passed: CasesRun's last
-check, that nothing the run started is still on the desk, found a quickshell.exe that
-"outlived its case and would not stop", and the run went red. The same cases run alone
-straight afterwards passed, so it is intermittent, and the run said nothing of which
-case had started that client — the pid alone, and a pid is gone by the time anybody
-reads it.
-
-So two things are unknown that the next occurrence has to answer: which case, and why
-the client did not stop within winwright's five-second stop timeout — a modal dialog
-left up, a session still closing its connection, or the guest simply slow under the
-suite.
-
-What to build: the red names the case that launched the process (the register knows
-which fixture started it), and the client's own log of that run is kept beside the
-report, so the next one says what it was doing when it was asked to stop.
-
-Falsified when a case's client outlives it and the red does not name the case.
