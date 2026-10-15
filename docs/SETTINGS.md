@@ -213,7 +213,8 @@ Whether an agent such as Claude Code may run commands on your saved sessions thr
 With it on, an agent's host can start `quickshell --mcp` ([COMMAND-LINE.md](COMMAND-LINE.md#serving-an-agent))
 and call four tools: `hosts_list`, which names your saved sessions and never a password or a key;
 `exec`, which runs a program with its arguments on one of them over a connection the gateway keeps
-for the next call, and answers its exit code, output and errors apart; `read_file`, which reads a
+for the next call, and answers its exit code, output and errors apart, with nothing in it able to wait
+for a person, and a question it would have asked, such as sudo's password, named; `read_file`, which reads a
 text file there with its line numbers; and `edit_file`, which replaces one exact piece of a text
 file, keeps the original beside it as `<file>.qs-bak-<time>`, and answers the diff. It signs in with the session's
 key and your agents, never a typed password, and refuses a host whose key you have not already trusted

@@ -2,8 +2,10 @@
 # documentation. Ubuntu 24.04 carries OpenSSH 9.6, which is the "modern sshd" the line means.
 FROM ubuntu:24.04
 
+# sudo and less for QS327: a command that would stop at a password prompt or a pager is what the
+# agent gateway has to answer without hanging, and these are the two an agent meets first.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openssh-server coreutils putty-tools socat \
+ && apt-get install -y --no-install-recommends openssh-server coreutils putty-tools socat sudo less \
  && rm -rf /var/lib/apt/lists/*
 
 COPY sshd_config /etc/ssh/sshd_config

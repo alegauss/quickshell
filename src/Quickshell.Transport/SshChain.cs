@@ -199,6 +199,9 @@ public sealed class SshChain : ISshTransport, ICommandChannel
         Live().OpenFileTransferAsync(cancellationToken);
 
     /// <inheritdoc/>
+    public string? ServerVersion => _last?.ServerVersion;
+
+    /// <inheritdoc/>
     public ValueTask<CommandResult> RunAsync(string command, TimeSpan timeout, CancellationToken cancellationToken = default) =>
         Live().RunAsync(command, timeout, cancellationToken);
 

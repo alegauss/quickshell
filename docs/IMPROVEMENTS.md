@@ -549,27 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS327 A prompt is an error, not a two-minute hang
-
-An agent's command that stops to ask something has nobody to answer it. Today it hangs
-until the agent's own timeout, two minutes, and the transcript says only that it timed
-out.
-
-`exec` removes what it can before running: stdin closed, `PAGER=cat`, `SYSTEMD_PAGER=`
-and `GIT_PAGER=cat` set, `DEBIAN_FRONTEND=noninteractive` set, and no PTY unless the
-call asks for one. What it cannot remove it detects: output that stops on a known prompt
-shape (`[sudo] password for`, `Password:`, `(y/N)`, `--More--`) with the process still
-alive and no output for a short quiet window ends the command, and the answer names it,
-for example `prompt.sudo_password`.
-
-The agent then has something to act on: ask the person, use a sudoers rule the
-server-side line prepares, or rephrase with `-y`. A host key prompt never reaches this
-point, because the gateway checks the host key against `known_hosts` the way the client
-already does, and an unknown key is a refusal with the fingerprint in it.
-
-Proven against the test sshd with `sudo -k; sudo true`, `less` on a long file and `read
--p`, each ending inside five seconds with its named error.
-
 ### §QS328 Jobs that outlive a tool call
 
 A build, a migration or a backup takes longer than an agent's tool call is allowed to

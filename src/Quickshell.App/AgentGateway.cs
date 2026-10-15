@@ -330,7 +330,13 @@ public sealed class AgentGateway : IAsyncDisposable
             ?? throw new GatewayRefusal($"There is no saved session {path}. hosts_list names the ones there are.");
 
         IGatewayConnection connection = await ConnectionAsync(session, cancellationToken).ConfigureAwait(false);
-        CommandResult ran = await connection.RunAsync(Argv.ForPosix(argv, cwd), timeout, cancellationToken).ConfigureAwait(false);
+        // On a POSIX server, nothing in the command can wait for a person (QS327). A Windows server's
+        // shell is not POSIX, so it gets the line alone until QS356 quotes for it.
+        string line = Argv.ForPosix(argv, cwd);
+        string command = CommandPrompts.IsWindows(connection.ServerVersion) ? line : CommandPrompts.PosixPreamble + line;
+
+        CommandResult ran = await connection.RunAsync(command, timeout, cancellationToken).ConfigureAwait(false);
+        CommandPrompt? asked = CommandPrompts.Recognise(ran);
 
         return new JsonObject
         {
@@ -338,6 +344,8 @@ public sealed class AgentGateway : IAsyncDisposable
             ["stdout"] = ran.Output,
             ["stderr"] = ran.Error,
             ["timedOut"] = ran.TimedOut,
+            ["prompt"] = asked?.Name,
+            ["hint"] = asked?.Hint,
         };
     }
 
@@ -447,6 +455,8 @@ public sealed class AgentGateway : IAsyncDisposable
         private IFileTransferChannel? _files;
 
         public bool IsConnected => transport.IsConnected;
+
+        public string? ServerVersion => ((ICommandChannel)transport).ServerVersion;
 
         public ValueTask<CommandResult> RunAsync(string command, TimeSpan timeout, CancellationToken cancellationToken = default) =>
             ((ICommandChannel)transport).RunAsync(command, timeout, cancellationToken);

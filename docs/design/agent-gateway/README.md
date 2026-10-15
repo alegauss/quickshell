@@ -363,6 +363,17 @@ does not, which a later line has to settle before such a server is offered.
 with the session's key and the agents, never a typed password, and refuses a host key the user's
 known_hosts does not already hold, saying to connect once from the window.
 
+**A prompt is an answer, not a hang (QS327).** On a POSIX server `exec` puts
+`exec </dev/null; export PAGER=cat GIT_PAGER=cat SYSTEMD_PAGER= DEBIAN_FRONTEND=noninteractive;`
+before the command. With no terminal and nothing on standard input, nothing can wait for a person:
+sudo refuses at once, a `read` gets end-of-file, a pager prints and returns, apt asks nothing. What the
+command said on its way out is then matched against the shapes those questions take, and the answer
+carries `prompt` (`prompt.sudo_password`, `prompt.password`, `prompt.confirmation`, `prompt.pager`)
+and a `hint` saying what to do instead. The quiet-window detection the line proposed is not needed:
+measured against the fixture, nothing is left to hang. A Windows server is told apart by the version it
+sends (`OpenSSH_for_Windows`) and gets the command without the preamble. Code:
+`src/Quickshell.App/CommandPrompts.cs`.
+
 **Reading and editing a file (QS326).** `read_file` and `edit_file` use the same connection's SFTP
 channel, opened on first use. A file is read whole up to a megabyte and refused when it holds a NUL or
 is not UTF-8; lines come back numbered, a range on request. An edit is the contract an agent's own

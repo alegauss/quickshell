@@ -41,7 +41,6 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS327** (deps: QS325 ✅) **A sudo password, a pager or an apt dialog hangs an agent's command until its timeout, with no word of what it waited for** — exec runs with no stdin and a dumb pager, and a prompt it detects ends the command with a named error the agent can act on. → §QS327
 - 📋 **QS328** (deps: QS325 ✅) **A long remote command dies at the agent's timeout, or with its connection, and leaves no way to look back in on it** — job_start, job_status and job_output run it detached on the server and read its output by cursor, across a reconnect. → §QS328
 - 📋 **QS329** (deps: QS325 ✅) **A large command output lands whole in the agent's context, so one journalctl costs the rest of the session's room** — exec answers within a byte budget, head and tail kept with what was cut counted, and the rest paged by cursor or searched on the server. → §QS329
 - 📋 **QS330** (deps: QS325 ✅) **A secret printed by a remote command, an .env or a token, goes straight into the agent's transcript and its provider** — The client's log redactor runs over every answer the gateway returns, and each redaction is counted so the agent knows something was hidden. → §QS330

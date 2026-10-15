@@ -320,6 +320,9 @@ public sealed class SshNetTransport : ISshTransport, ICommandChannel
     }
 
     /// <inheritdoc/>
+    public string? ServerVersion => _client?.ConnectionInfo?.ServerVersion;
+
+    /// <inheritdoc/>
     public async ValueTask<CommandResult> RunAsync(string command, TimeSpan timeout,
                                                    CancellationToken cancellationToken = default)
     {

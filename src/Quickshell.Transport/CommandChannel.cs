@@ -25,6 +25,13 @@ public sealed record CommandResult(int? ExitCode, string Output, string Error, b
 public interface ICommandChannel
 {
     /// <summary>
+    /// What the server said it is in the version exchange, <c>SSH-2.0-OpenSSH_9.6p1 Ubuntu-3</c> and the
+    /// like, or null before a connection. A Windows server says so here, which is how a caller tells a
+    /// shell that is POSIX from one that is not (QS327).
+    /// </summary>
+    string? ServerVersion { get; }
+
+    /// <summary>
     /// Runs <paramref name="command"/> on this connection, in a channel of its own, and waits for it.
     /// </summary>
     /// <param name="command">The command line exactly as the server's shell should read it; see <see cref="Argv.ForPosix"/>.</param>

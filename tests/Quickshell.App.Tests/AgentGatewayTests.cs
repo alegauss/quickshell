@@ -83,7 +83,7 @@ public sealed class AgentGatewayTests
             ["cwd"] = "/srv/my app",
         }), Stop))!;
 
-        Assert.Equal("cd '/srv/my app' && printf %s 'it'\\''s $HOME\nand `this`'", connection.Commands[0]);
+        Assert.Equal(CommandPrompts.PosixPreamble + "cd '/srv/my app' && printf %s 'it'\\''s $HOME\nand `this`'", connection.Commands[0]);
 
         JsonNode result = answer["result"]!;
 
@@ -105,6 +105,51 @@ public sealed class AgentGatewayTests
         await gateway.AnswerAsync(Call(11, "exec", new JsonObject { ["host"] = "Work/db", ["argv"] = new JsonArray("true") }), Stop);
 
         Assert.Equal(2, gateway.Opened);
+    }
+
+    /// <summary>A Windows server's shell is not POSIX, so its command carries no POSIX preamble (QS327).</summary>
+    [Fact]
+    public async Task AWindowsServerGetsTheCommandAlone()
+    {
+        Recording connection = new() { ServerVersion = "SSH-2.0-OpenSSH_for_Windows_9.5" };
+
+        await using AgentGateway gateway = new(Store, (_, _) => ValueTask.FromResult<IGatewayConnection>(connection), "1.2.3");
+
+        await gateway.AnswerAsync(Call(1, "exec", new JsonObject { ["host"] = "Work/db", ["argv"] = new JsonArray("whoami") }), Stop);
+
+        Assert.Equal("whoami", connection.Commands[0]);
+    }
+
+    /// <summary>
+    /// Against the Linux fixture, which carries sudo and less for this: a password prompt, a question
+    /// and a pager each end in seconds, the first two named, rather than holding the call to its timeout.
+    /// </summary>
+    [Fact]
+    public async Task OnAPosixServerAPromptEndsTheCommandWithItsName()
+    {
+        SshFixture.SkipWithoutIt();
+
+        await using AgentGateway gateway = Real("probe", 2222,
+            Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
+
+        System.Diagnostics.Stopwatch took = System.Diagnostics.Stopwatch.StartNew();
+
+        JsonNode sudo = await ExecAsync(gateway, 1, "sh", "-c", "sudo -k; sudo true");
+        // Asked as apt and most tools ask, on their own output: bash's read -p prints its question only to
+        // a terminal, so it would be no question at all here.
+        JsonNode confirm = await ExecAsync(gateway, 2, "sh", "-c", "printf 'Remove everything? [y/N] '; read answer; [ \"$answer\" = y ]");
+        JsonNode read = await ExecAsync(gateway, 3, "bash", "-c", "read -p 'Name? ' name; echo \"[$name]\"");
+        JsonNode paged = await ExecAsync(gateway, 4, "less", "/etc/ssh/sshd_config");
+
+        Assert.Equal("prompt.sudo_password", sudo["prompt"]?.GetValue<string>());
+        Assert.NotEqual(0, sudo["exitCode"]!.GetValue<int>());
+        Assert.Equal("prompt.confirmation", confirm["prompt"]?.GetValue<string>());
+        Assert.Equal("[]\n", read["stdout"]!.GetValue<string>());
+        Assert.Equal(0, paged["exitCode"]!.GetValue<int>());
+        Assert.Contains("Port", paged["stdout"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Null(paged["prompt"]);
+        Assert.All((JsonNode[])[sudo, confirm, read, paged], each => Assert.False(each["timedOut"]!.GetValue<bool>()));
+        Assert.True(took.Elapsed < TimeSpan.FromSeconds(20), $"four commands that ask took {took.Elapsed.TotalSeconds:0} s");
     }
 
     /// <summary>A session nobody saved is a tool error that says where the names are, and connects nothing.</summary>
@@ -373,6 +418,8 @@ public sealed class AgentGatewayTests
         public bool Up { get; set; } = true;
 
         public bool IsConnected => Up;
+
+        public string? ServerVersion { get; set; } = "SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13";
 
         public ValueTask<CommandResult> RunAsync(string command, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
