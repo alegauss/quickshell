@@ -220,7 +220,9 @@ file, keeps the original beside it as `<file>.qs-bak-<time>`, and answers the di
 `job_status`, `job_output` and `job_cancel` run a long command detached on the server, kept under
 `~/.quickshell/jobs` there, so it outlives the call and the connection and can be read back later.
 A long output comes back as its first and last lines within a budget, and `output_page` and
-`output_grep` reach the rest without running the command again. It signs in with the session's
+`output_grep` reach the rest without running the command again. Passwords, tokens, keys and the like in
+anything a tool returns are replaced with `«redacted:…»` before the agent sees them; that guards against
+a slip, not a determined command, which can always encode a value past it. It signs in with the session's
 key and your agents, never a typed password, and refuses a host whose key you have not already trusted
 from the window. It is a separate process: the window, its start and its memory are the same with
 it on or off. **There is no policy yet**: an agent with this on can run anything your account on that

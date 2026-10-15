@@ -374,6 +374,17 @@ measured against the fixture, nothing is left to hang. A Windows server is told 
 sends (`OpenSSH_for_Windows`) and gets the command without the preamble. Code:
 `src/Quickshell.App/CommandPrompts.cs`.
 
+**Redaction on the way out (QS330).** Every tool's answer goes through `SecretRedactor` before it
+leaves the process: private key blocks (and half of one, where a budget cut the other half off),
+`password=`, `secret=`, `token=` and `api_key:` style assignments, bearer headers, the password in a
+URL, and the AWS, GitHub, Slack and JWT token shapes. Each becomes `«redacted:kind»` with the name
+around it kept, and the answer carries `redacted`, the count. The line assumed the client's log
+redactor could be reused; there is none to reuse, because the client keeps secrets out of its logs
+by construction, so this is its own. It is a guard against accidental spread, not a boundary: an
+encoded secret passes. A line holding a secret comes back redacted from `read_file`, so it cannot be
+quoted to `edit_file` as `old_string`; an agent edits around it or asks the person. Code:
+`src/Quickshell.App/SecretRedactor.cs`.
+
 **Output sized for a context window (QS329).** `exec` takes a `budget`, 16 KB per stream by default
 and 256 KB at most. Within it a stream comes back whole. Over it, the stream keeps whole lines from
 each end, half the budget each, with one line between them naming how many lines and bytes were cut

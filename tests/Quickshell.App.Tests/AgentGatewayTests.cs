@@ -296,6 +296,90 @@ public sealed class AgentGatewayTests
         Assert.Equal(1, gateway.Opened);
     }
 
+    /// <summary>
+    /// Against the Linux fixture: a file holding one secret of each kind, read through every tool that
+    /// returns text, and nothing of any value in any answer, each one counting what it hid (QS330).
+    /// </summary>
+    [Fact]
+    public async Task OnAPosixServerNoToolHandsASecretToTheAgent()
+    {
+        SshFixture.SkipWithoutIt();
+
+        await using AgentGateway gateway = Fixture();
+
+        // Placed through a connection of the test's own, as the edit test does.
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(Path.GetTempPath(), $"qs330-{Guid.NewGuid():N}")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        ResolvedSession session = SessionTree.Of(new SessionNode
+        {
+            Children = [new SessionNode { Name = "real", Host = "127.0.0.1", Settings = new SessionSettings { User = "probe", Port = 2222,
+                Key = Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519") } }],
+        }).Session("real")!;
+
+        await using IGatewayConnection setup = await AgentGateway.Connect(session, trust, Stop);
+        IFileTransferChannel files = await setup.FilesAsync(Stop);
+        string path = $"{files.WorkingDirectory.TrimEnd('/')}/qs330-{Guid.NewGuid():N}.env";
+
+        using (MemoryStream content = new(System.Text.Encoding.UTF8.GetBytes(SecretRedactorTests.Secrets)))
+        {
+            await files.UploadAsync(content, path, cancellationToken: Stop);
+        }
+
+        try
+        {
+            List<JsonObject> answers = [];
+
+            async Task<JsonObject> Answer(int id, string tool, JsonObject arguments)
+            {
+                JsonObject answer = (await gateway.AnswerAsync(Call(id, tool, arguments), Stop))!;
+
+                answers.Add(answer);
+
+                return answer;
+            }
+
+            JsonObject cat = await Answer(1, "exec", new JsonObject { ["host"] = "real", ["argv"] = new JsonArray("cat", path) });
+            await Answer(2, "read_file", new JsonObject { ["host"] = "real", ["path"] = path });
+
+            // Cut to a budget small enough that the key block is split, then paged and searched.
+            JsonObject cut = await Answer(3, "exec", new JsonObject { ["host"] = "real", ["argv"] = new JsonArray("cat", path), ["budget"] = 300 });
+            string output = cut["result"]!["structuredContent"]!["output"]!.GetValue<string>();
+            await Answer(4, "output_page", new JsonObject { ["output"] = output, ["from"] = 1, ["to"] = 20 });
+            await Answer(5, "output_grep", new JsonObject { ["output"] = output, ["pattern"] = "." });
+
+            string job = (await Answer(6, "job_start", new JsonObject { ["host"] = "real", ["argv"] = new JsonArray("cat", path) }))
+                ["result"]!["structuredContent"]!["job"]!.GetValue<string>();
+
+            for (int wait = 0; wait < 20; wait++)
+            {
+                JsonObject status = await Answer(7, "job_status", new JsonObject { ["host"] = "real", ["job"] = job });
+
+                if (status["result"]!["structuredContent"]!["state"]!.GetValue<string>() != "running")
+                {
+                    break;
+                }
+
+                await Task.Delay(250, Stop);
+            }
+
+            await Answer(8, "job_output", new JsonObject { ["host"] = "real", ["job"] = job });
+            await Answer(9, "edit_file", new JsonObject { ["host"] = "real", ["path"] = path, ["old_string"] = "listen = 80", ["new_string"] = "listen = 81" });
+
+            foreach (JsonObject answer in answers)
+            {
+                string sent = answer.ToJsonString();
+
+                Assert.All(SecretRedactorTests.Values, value => Assert.DoesNotContain(value, sent, StringComparison.Ordinal));
+            }
+
+            Assert.Equal(9, cat["result"]!["structuredContent"]!["redacted"]!.GetValue<int>());
+        }
+        finally
+        {
+            await setup.RunAsync($"rm -f {Argv.Word(path)} {Argv.Word(path)}.qs-bak-*", TimeSpan.FromSeconds(10), CancellationToken.None);
+        }
+    }
+
     private static AgentGateway Fixture() =>
         Real("probe", 2222, Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
 

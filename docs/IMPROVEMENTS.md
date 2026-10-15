@@ -549,27 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS330 Redaction on the way out to the agent
-
-`cat .env` is a reasonable thing for an agent to run while debugging, and its output
-then lives in a transcript, in the provider's request and possibly in a log nobody meant
-to keep. The client already redacts its own logs (Block I) so that one can be attached
-to a bug report; the same redactor belongs on this path.
-
-Every answer the gateway returns, from `exec`, `read_file`, a job's output or a page,
-goes through it before it leaves the process: private key blocks,
-`password=`/`secret=`/`token=` assignments, bearer headers, connection strings with
-credentials, and the known token shapes (AWS, GitHub, Slack, JWT). Each match becomes
-`«redacted:kind»`, and the answer carries a count, so the agent knows a value was hidden
-and can ask the person rather than guess.
-
-The redaction is a guard against accidental spread, not a boundary: a command can encode
-a secret past any pattern, which the threat model (QS320) says plainly. A policy can
-also refuse reading known secret paths outright.
-
-Proven by a fixture file holding one of each kind, read through every tool, with nothing
-of the original in any answer.
-
 ### §QS332 Closing the side doors
 
 A gateway the agent can step around is a suggestion. Claude Code can run `ssh`, `plink`,

@@ -305,6 +305,13 @@ public sealed class AgentGateway : IAsyncDisposable
                 _ => throw new GatewayRefusal($"There is no tool {name} here; tools/list names the ones there are."),
             };
 
+            // Every answer through the redactor before it leaves the process, and the count beside it,
+            // so the agent knows a value was hidden (QS330).
+            if (SecretRedactor.RedactAll(result) is var hidden and > 0)
+            {
+                result["redacted"] = hidden;
+            }
+
             return Content(result, isError: false);
         }
         catch (SshException failed)
