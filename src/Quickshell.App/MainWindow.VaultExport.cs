@@ -86,12 +86,18 @@ public sealed partial class MainWindow
             return null;
         }
 
-        using Secret passphrase = Secret.From(answer.Passphrase.AsSpan());
-        using VaultExport export = VaultExport.Gather(store, (OpensSecrets ?? (() => SecretStore.Installed()))());
+        using KdbxKey key = DeriveVaultKey(answer.Passphrase);
+        using VaultExport export = VaultExport.Gather(store, Secrets());
 
         try
         {
-            export.Write(answer.Path, passphrase);
+            export.Write(answer.Path, key);
+
+            if (answer.Keep)
+            {
+                VaultKeeper.Keep(VaultKeyFileOrDefault, answer.Path, key, key.Fingerprint(export.Root));
+                KeepVaultAt(Path.GetFullPath(answer.Path));
+            }
         }
         catch (Exception failed) when (failed is IOException or UnauthorizedAccessException)
         {
@@ -101,10 +107,127 @@ public sealed partial class MainWindow
         }
 
         Say($"{export.Sessions} sessions, {export.WithPassword} of them with a saved password, are in {answer.Path}. "
-            + "Open it in KeePassXC or any KeePass app with the passphrase.", "Export saved passwords");
+            + "Open it in KeePassXC or any KeePass app with the passphrase."
+            + (answer.Keep ? " It is written again whenever a saved password or a session changes." : string.Empty),
+            "Export saved passwords");
 
         return answer.Path;
     }
+
+    /// <summary>Where the kept vault's sealed key is: <see cref="Locations.VaultKey"/> unless a caller says otherwise.</summary>
+    public string? VaultKeyFile { get; set; }
+
+    /// <summary>
+    /// How strong a vault's key derivation is. <see cref="KdbxKdf.Default"/> unless a caller says
+    /// otherwise, which a test does so that many exports do not cost a quarter of a gigabyte each.
+    /// </summary>
+    public KdbxKdf? VaultKdf { get; set; }
+
+    private string VaultKeyFileOrDefault => VaultKeyFile ?? Locations.Current.VaultKey;
+
+    private KdbxKey DeriveVaultKey(string passphrase)
+    {
+        using Secret secret = Secret.From(passphrase.AsSpan());
+
+        return KdbxKey.Derive(secret, kdf: VaultKdf);
+    }
+
+    private SecretStore? Secrets() => (OpensSecrets ?? (() => SecretStore.Installed()))();
+
+    /// <summary>The sentence last said about keeping the vault, so a refusal is said once and not at every change.</summary>
+    private string _vaultSaid = string.Empty;
+
+    private bool _vaultWatched;
+
+    /// <summary>
+    /// Writes the kept vault again where the store's content changed, off the window's thread, and
+    /// says once why where it could not (QS307). Nothing at all while no vault is kept.
+    /// </summary>
+    /// <returns>What it came to, which a test waits on.</returns>
+    public async Task<VaultKeeping> KeepVaultAsync()
+    {
+        string configured = Settings.VaultFile;
+        string stateFile = VaultKeyFileOrDefault;
+
+        Watch(configured.Length > 0);
+
+        if (configured.Length == 0 && !File.Exists(stateFile))
+        {
+            return new VaultKeeping(VaultKept.Off, string.Empty);
+        }
+
+        string storeFile = StoreFile;
+        SecretStore? secrets = Secrets();
+
+        VaultKeeping kept = await Task.Run(() =>
+        {
+            try
+            {
+                return VaultKeeper.Refresh(stateFile, configured, SessionTree.ReadFrom(storeFile), secrets);
+            }
+            catch (SessionStoreException unreadable)
+            {
+                return new VaultKeeping(VaultKept.Failed, $"The vault was not written again: {unreadable.Message}");
+            }
+        }).ConfigureAwait(false);
+
+        // Back on the window's own thread to say anything, whichever thread the write finished on.
+        await Dispatcher.InvokeAsync(() =>
+        {
+            if (kept.Sentence.Length > 0 && kept.Sentence != _vaultSaid)
+            {
+                Say(kept.Sentence, "Vault");
+            }
+
+            _vaultSaid = kept.Sentence;
+        });
+
+        return kept;
+    }
+
+    /// <summary>Names the vault to keep in the settings file and this window, and starts keeping it.</summary>
+    private void KeepVaultAt(string vault)
+    {
+        string path = SettingsPath ?? Locations.Current.Settings;
+
+        if (SettingsFile.Readable(path))
+        {
+            SettingsFile.WriteTo(path, SettingsFile.ReadFrom(path) with { VaultFile = vault });
+        }
+
+        Settings = Settings with { VaultFile = vault };
+        _vaultSaid = string.Empty;
+
+        Watch(true);
+    }
+
+    /// <summary>Listens for saved passwords changing only while a vault is kept, so a window keeping none pays nothing.</summary>
+    private void Watch(bool on)
+    {
+        if (on == _vaultWatched)
+        {
+            return;
+        }
+
+        _vaultWatched = on;
+
+        if (on)
+        {
+            SecretStore.Changed += SecretChanged;
+            Closed += Unwatch;
+        }
+        else
+        {
+            SecretStore.Changed -= SecretChanged;
+            Closed -= Unwatch;
+        }
+    }
+
+    private void Unwatch(object? sender, EventArgs closed) => Watch(false);
+
+    /// <summary>A password saved or forgotten anywhere in the process, which may be on a connection's thread.</summary>
+    private void SecretChanged(object? sender, EventArgs changed) =>
+        Dispatcher.BeginInvoke(() => _ = KeepVaultAsync());
 
     private VaultExportAnswer? AskedVaultExport(string offered, int sessions)
     {

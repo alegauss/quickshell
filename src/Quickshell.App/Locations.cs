@@ -79,6 +79,11 @@ public sealed class Locations
     /// </summary>
     public string CloseSilently => Path.Combine(Root, "close-without-asking");
 
+    /// <summary>
+    /// The kept vault's key, sealed for this Windows account, and what was last written to it (QS307).
+    /// </summary>
+    public string VaultKey => Path.Combine(Root, "vault-key.json");
+
     /// <summary>The session log's folder.</summary>
     public string Logs => Path.Combine(Root, "logs");
 

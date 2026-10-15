@@ -1733,7 +1733,15 @@ public sealed partial class MainWindow : Window
     {
         ArgumentNullException.ThrowIfNull(settings);
 
+        bool vaultMoved = !string.Equals(settings.VaultFile, Settings.VaultFile, StringComparison.OrdinalIgnoreCase);
+
         Settings = settings;
+
+        // A vault named, renamed or emptied in the file: kept from now, or its key forgotten (QS307).
+        if (vaultMoved)
+        {
+            _ = KeepVaultAsync();
+        }
 
         ThemeMode = Theme.Mode(settings.Theme);
 
@@ -3603,6 +3611,12 @@ public sealed partial class MainWindow : Window
         if (_homeShowing)
         {
             ShowCards();
+        }
+
+        // A session added, renamed or removed is a vault to write again, where one is kept (QS307).
+        if (Settings.VaultFile.Length > 0)
+        {
+            _ = KeepVaultAsync();
         }
     }
 

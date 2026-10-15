@@ -71,6 +71,13 @@ public sealed class SecretStore
     public bool HasMasterPassword => _master is not null;
 
     /// <summary>
+    /// Raised after any store in this process saves or forgets a secret (QS307), on the thread that
+    /// did it: what keeps an exported vault current. Static, because every connection opens a store
+    /// of its own and the vault cares about all of them.
+    /// </summary>
+    public static event EventHandler? Changed;
+
+    /// <summary>
     /// The ordinary store: Credential Manager, with a master password if the user set one.
     /// </summary>
     public static SecretStore Installed(Secret? master = null) =>
@@ -150,6 +157,8 @@ public sealed class SecretStore
         {
             CryptographicOperations.ZeroMemory(sealedUp);
         }
+
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     private Secret? Load(string target)
@@ -184,19 +193,28 @@ public sealed class SecretStore
 
     private bool Forget(string target)
     {
+        bool forgot;
+
         if (Vault == SecretVault.CredentialManager)
         {
-            return CredentialManager.Delete(target);
+            forgot = CredentialManager.Delete(target);
         }
-
-        if (!File.Exists(FileFor(target)))
+        else if (File.Exists(FileFor(target)))
         {
-            return false;
+            File.Delete(FileFor(target));
+            forgot = true;
+        }
+        else
+        {
+            forgot = false;
         }
 
-        File.Delete(FileFor(target));
+        if (forgot)
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
 
-        return true;
+        return forgot;
     }
 
     /// <summary>

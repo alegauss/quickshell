@@ -44,9 +44,8 @@ public sealed class VaultExport : IDisposable
         return new VaultExport(store, secrets);
     }
 
-    /// <summary>Writes the vault under <paramref name="passphrase"/>.</summary>
-    public void Write(string path, Secret passphrase, KdbxKdf? kdf = null) =>
-        KdbxWriter.Write(path, Root, passphrase, kdf: kdf);
+    /// <summary>Writes the vault under a key derived from its passphrase.</summary>
+    public void Write(string path, KdbxKey key) => KdbxWriter.Write(path, Root, key);
 
     /// <summary>Erases every password read.</summary>
     public void Dispose()

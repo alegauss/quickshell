@@ -41,6 +41,7 @@ public sealed class SettingsWindow : Window
         ("colourScheme", "Colour scheme", "A path to a scheme file. Empty — the default — is the built-in scheme."),
         ("sessionsSidebar", "Sessions sidebar", "Whether the saved sessions are listed down the left of the window, or folded to a narrow rail."),
         ("startWith", "Start with", "What a new window opens on: Home, or a local shell."),
+        ("vaultFile", "Vault kept up to date", "The KeePass vault the saved passwords are written to again whenever one changes. Empty, the default, keeps none."),
     ];
 
     private readonly string _path;
@@ -129,6 +130,7 @@ public sealed class SettingsWindow : Window
             ((TextBox)_controls["colourScheme"]).Text = now.Scheme;
             ((CheckBox)_controls["sessionsSidebar"]).IsChecked = now.SessionsSidebar;
             ((ComboBox)_controls["startWith"]).SelectedItem = now.StartWith;
+            ((TextBox)_controls["vaultFile"]).Text = now.VaultFile;
         }
         finally
         {
@@ -203,6 +205,7 @@ public sealed class SettingsWindow : Window
         "scrollback" => Field(text => int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int lines)
                                       && lines >= 0 && Change(now => now with { Scrollback = lines })),
         "colourScheme" => Field(text => Change(now => now with { Scheme = text.Trim() })),
+        "vaultFile" => Field(text => Change(now => now with { VaultFile = text.Trim() })),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "no control for this key"),
     };
 

@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 using NSec.Cryptography;
+using IncrementalHash = System.Security.Cryptography.IncrementalHash;
 
 namespace Quickshell.Transport;
 
@@ -192,6 +193,164 @@ public static class KdbxKeyFile
 }
 
 /// <summary>
+/// A vault's key once derived: the Argon2id output and the salt and parameters it came from (QS307).
+///
+/// <para><b>Kept so a vault can be written again without its passphrase.</b> The passphrase itself is
+/// never kept: this is the transformed key, which opens this vault and no other, sealed under DPAPI
+/// for this Windows account by <see cref="Seal"/>. Anything running as the user can unseal it, which
+/// is DPAPI's whole bargain and the same one <see cref="SecretStore"/> makes for the passwords
+/// themselves.</para>
+/// </summary>
+public sealed class KdbxKey : IDisposable
+{
+    private const byte Format = 1;
+
+    private static ReadOnlySpan<byte> Purpose => "quickshell vault key"u8;
+
+    private KdbxKey(byte[] salt, KdbxKdf kdf, Secret transformed)
+    {
+        Salt = salt;
+        Kdf = kdf;
+        Transformed = transformed;
+    }
+
+    /// <summary>The Argon2id salt the key was derived with, which every file written under it carries.</summary>
+    internal byte[] Salt { get; }
+
+    /// <summary>The Argon2id parameters.</summary>
+    internal KdbxKdf Kdf { get; }
+
+    /// <summary>The transformed key.</summary>
+    internal Secret Transformed { get; }
+
+    /// <summary>Derives the key from a passphrase, and a key file where one is given, under a fresh salt.</summary>
+    public static KdbxKey Derive(Secret passphrase, string? keyFile = null, KdbxKdf? kdf = null)
+    {
+        ArgumentNullException.ThrowIfNull(passphrase);
+
+        kdf ??= KdbxKdf.Default;
+
+        byte[] salt = RandomNumberGenerator.GetBytes(16);
+
+        return new KdbxKey(salt, kdf, KdbxWriter.Transform(passphrase, keyFile, salt, kdf));
+    }
+
+    /// <summary>The key sealed under DPAPI for this Windows account, to be kept on disk.</summary>
+    public byte[] Seal()
+    {
+        byte[] plain = new byte[1 + 8 + Salt.Length + Transformed.Length];
+
+        try
+        {
+            plain[0] = Format;
+            BinaryPrimitives.WriteInt32LittleEndian(plain.AsSpan(1), Kdf.MemoryKibibytes);
+            BinaryPrimitives.WriteInt32LittleEndian(plain.AsSpan(5), Kdf.Passes);
+            Salt.CopyTo(plain, 9);
+            Transformed.Bytes.CopyTo(plain.AsSpan(9 + Salt.Length));
+
+            return ProtectedData.Protect(plain, Purpose.ToArray(), DataProtectionScope.CurrentUser);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plain);
+        }
+    }
+
+    /// <summary>A key <see cref="Seal"/> wrote, or null where it is not one, or was sealed for another account.</summary>
+    public static KdbxKey? Unseal(byte[] sealedUp)
+    {
+        ArgumentNullException.ThrowIfNull(sealedUp);
+
+        byte[] plain;
+
+        try
+        {
+            plain = ProtectedData.Unprotect(sealedUp, Purpose.ToArray(), DataProtectionScope.CurrentUser);
+        }
+        catch (CryptographicException)
+        {
+            return null;
+        }
+
+        try
+        {
+            if (plain.Length != 1 + 8 + 16 + 32 || plain[0] != Format)
+            {
+                return null;
+            }
+
+            KdbxKdf kdf = new(BinaryPrimitives.ReadInt32LittleEndian(plain.AsSpan(1)), BinaryPrimitives.ReadInt32LittleEndian(plain.AsSpan(5)));
+
+            return new KdbxKey(plain[9..25], kdf, Secret.From(plain.AsSpan(25)));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plain);
+        }
+    }
+
+    /// <summary>
+    /// What a vault written from <paramref name="root"/> would hold, as an HMAC under this key: equal
+    /// for equal content, so a rewrite that would change nothing is skipped, and meaningless to
+    /// anybody without the key, so it can rest beside the vault.
+    /// </summary>
+    public byte[] Fingerprint(KdbxGroup root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        using IncrementalHash hmac = IncrementalHash.CreateHMAC(HashAlgorithmName.SHA256, Transformed.Bytes);
+
+        Feed(hmac, root);
+
+        return hmac.GetHashAndReset();
+    }
+
+    /// <summary>Erases the transformed key.</summary>
+    public void Dispose() => Transformed.Dispose();
+
+    private static void Feed(IncrementalHash hmac, KdbxGroup group)
+    {
+        Field(hmac, "group"u8);
+        Field(hmac, Encoding.UTF8.GetBytes(group.Name));
+
+        foreach (KdbxEntry entry in group.Entries)
+        {
+            Field(hmac, "entry"u8);
+
+            foreach (string text in new[] { entry.Title, entry.UserName, entry.Url, entry.Notes })
+            {
+                Field(hmac, Encoding.UTF8.GetBytes(text));
+            }
+
+            Field(hmac, entry.Password is { } password ? password.Bytes : []);
+
+            foreach (KdbxAttachment attachment in entry.Attachments)
+            {
+                Field(hmac, Encoding.UTF8.GetBytes(attachment.Name));
+                Field(hmac, attachment.Content.Span);
+            }
+        }
+
+        foreach (KdbxGroup child in group.Groups)
+        {
+            Feed(hmac, child);
+        }
+
+        Field(hmac, "end"u8);
+    }
+
+    /// <summary>One field, its length first, so no two different contents feed the same bytes.</summary>
+    private static void Field(IncrementalHash hmac, ReadOnlySpan<byte> value)
+    {
+        Span<byte> length = stackalloc byte[4];
+
+        BinaryPrimitives.WriteInt32LittleEndian(length, value.Length);
+        hmac.AppendData(length);
+        hmac.AppendData(value);
+    }
+}
+
+/// <summary>
 /// Writes a KeePass KDBX 4 database (QS305): the open format for an offline vault, which
 /// KeePassXC, KeePass, Strongbox and KeePassDX all open, so a file written here outlives this
 /// client and this machine.
@@ -228,19 +387,30 @@ public static class KdbxWriter
     /// <param name="kdf">How expensive its key is; <see cref="KdbxKdf.Default"/> where null.</param>
     public static void Write(string path, KdbxGroup root, Secret passphrase, string? keyFile = null, KdbxKdf? kdf = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(passphrase);
 
-        kdf ??= KdbxKdf.Default;
+        using KdbxKey key = KdbxKey.Derive(passphrase, keyFile, kdf);
+
+        Write(path, root, key);
+    }
+
+    /// <summary>
+    /// Writes the database under a key already derived (QS307): what keeps a vault current without
+    /// asking for its passphrase again. Each write still takes a fresh master seed and IV, so no two
+    /// files share a cipher key; only the Argon2id derivation, and its salt, are reused.
+    /// </summary>
+    public static void Write(string path, KdbxGroup root, KdbxKey key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentNullException.ThrowIfNull(root);
+        ArgumentNullException.ThrowIfNull(key);
 
         byte[] masterSeed = RandomNumberGenerator.GetBytes(32);
         byte[] iv = RandomNumberGenerator.GetBytes(16);
-        byte[] salt = RandomNumberGenerator.GetBytes(16);
 
-        byte[] header = Header(masterSeed, iv, salt, kdf);
+        byte[] header = Header(masterSeed, iv, key.Salt, key.Kdf);
 
-        using Secret transformed = Transform(passphrase, keyFile, salt, kdf);
+        Secret transformed = key.Transformed;
 
         byte[] cipherKey = SHA256.HashData([.. masterSeed, .. transformed.Bytes]);
         byte[] hmacBase = SHA512.HashData([.. masterSeed, .. transformed.Bytes, 0x01]);
@@ -284,6 +454,14 @@ public static class KdbxWriter
             CryptographicOperations.ZeroMemory(payload);
             CryptographicOperations.ZeroMemory(masterSeed);
         }
+    }
+
+    /// <summary>The file's SHA-256, as lowercase hex: what tells a vault written here from one edited since.</summary>
+    public static string Hash(string path)
+    {
+        using FileStream file = new(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+
+        return Convert.ToHexStringLower(SHA256.HashData(file));
     }
 
     /// <summary>The outer header: version, cipher, seed, IV and the KDF's parameters, ending in its end field.</summary>
@@ -352,7 +530,7 @@ public static class KdbxWriter
     }
 
     /// <summary>The composite key through Argon2id: the transformed key everything else is derived from.</summary>
-    private static Secret Transform(Secret passphrase, string? keyFile, byte[] salt, KdbxKdf kdf)
+    internal static Secret Transform(Secret passphrase, string? keyFile, byte[] salt, KdbxKdf kdf)
     {
         byte[] composite = new byte[64];
         byte[] compositeHash = new byte[32];

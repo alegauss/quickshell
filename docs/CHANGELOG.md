@@ -30,6 +30,7 @@
 - ✅ **QS293** **A session never asks Pageant for a key, so a PuTTY or MobaXterm user's loaded keys are not offered** — A session offers Pageant through its window after the OpenSSH agent; in the guest a saved session with no key opens on the sshd with a key only Pageant 0.77 holds.
 - ✅ **QS305** **Nothing in the client can write a KeePass KDBX 4 file, so no saved secret can leave it in a form another tool opens** — KdbxWriter writes KDBX 4 vaults, key file and attachments included, that keepassxc-cli 2.7.12 opens field for field (design recorded in `src/Quickshell.Transport/Kdbx.cs`).
 - ✅ **QS306** **A forgotten password can be read only by connecting with this client on this machine, so there is nothing to consult** — Export saved passwords, in the palette, writes every session and its saved password to a KDBX 4 vault after Windows Hello (design recorded in `docs/SESSIONS.md`).
+- ✅ **QS307** **An exported vault goes stale the moment a password is saved or changed, so the file consulted is not the one in use** — With Keep this file up to date ticked, the vault is rewritten on every password or session change, from a DPAPI-kept key (design recorded in `docs/SETTINGS.md`).
 
 ## Block C — Emulation that does not lie about the remote
 

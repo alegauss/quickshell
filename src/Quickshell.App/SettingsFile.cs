@@ -92,6 +92,13 @@ public sealed record Settings
     public StartWith StartWith { get; init; } = StartWith.Home;
 
     /// <summary>
+    /// The KeePass vault kept current from the saved passwords (QS307), or empty where none is. Set by
+    /// an export that asked to keep its file up to date, which also keeps the vault's key; emptied, the
+    /// key is forgotten.
+    /// </summary>
+    public string VaultFile { get; init; } = string.Empty;
+
+    /// <summary>
     /// Every key this build did not recognise, kept exactly as it was read so it can be written back
     /// unchanged.
     /// </summary>
@@ -145,7 +152,7 @@ public static class SettingsFile
     public static readonly string[] Known =
     [
         Version, "theme", "fontFamily", "fontSize", "scrollback", "ligatures", "cursor",
-        "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar", "startWith",
+        "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar", "startWith", "vaultFile",
     ];
 
     /// <summary>
@@ -419,6 +426,7 @@ public static class SettingsFile
             writer.WriteString("colourScheme", settings.Scheme);
             writer.WriteBoolean("sessionsSidebar", settings.SessionsSidebar);
             writer.WriteString("startWith", settings.StartWith.ToString());
+            writer.WriteString("vaultFile", settings.VaultFile);
 
             foreach ((string name, JsonElement value) in settings.Unrecognised)
             {
@@ -564,7 +572,7 @@ public static class SettingsFile
     }
 
     /// <summary>The keys a gesture sets rather than a person types, which a write may add to a file that leaves them out.</summary>
-    private static readonly string[] Remembered = ["sessionsSidebar"];
+    private static readonly string[] Remembered = ["sessionsSidebar", "vaultFile"];
 
     /// <summary>Every key this build writes, as the JSON it writes it as.</summary>
     private static Dictionary<string, string> Written(Settings settings) => new(StringComparer.Ordinal)
@@ -581,6 +589,7 @@ public static class SettingsFile
         ["colourScheme"] = Quoted(settings.Scheme),
         ["sessionsSidebar"] = settings.SessionsSidebar ? "true" : "false",
         ["startWith"] = Quoted(settings.StartWith.ToString()),
+        ["vaultFile"] = Quoted(settings.VaultFile),
     };
 
     /// <summary>The spaces and tabs in front of the key that starts at <paramref name="at"/>, back to its line's start.</summary>
@@ -631,6 +640,7 @@ public static class SettingsFile
             Colours = Scheme(named, path),
             SessionsSidebar = Yes(root, "sessionsSidebar") ?? Settings.Default.SessionsSidebar,
             StartWith = Text(root, "startWith") is { } start && Enum.TryParse(start, ignoreCase: true, out StartWith chosen) ? chosen : Settings.Default.StartWith,
+            VaultFile = Text(root, "vaultFile") ?? Settings.Default.VaultFile,
             Unrecognised = unrecognised,
         };
     }

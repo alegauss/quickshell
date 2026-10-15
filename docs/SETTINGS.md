@@ -182,6 +182,20 @@ the sessions sidebar beside them. No shell is started until you ask for one. `Sh
 shell in a tab instead, as quickshell did before Home. A window started with `--session`, `--tabs`
 or `--panes` opens on what it asked for, whichever this says.
 
+### `vaultFile`
+
+The KeePass vault the saved passwords are written to again whenever one changes. Empty, the default, keeps none.
+
+*Export saved passwords to a KeePass vault* sets it when **Keep this file up to date** is ticked
+([SESSIONS.md](SESSIONS.md#exporting-saved-passwords)). From then on the vault is written again
+whenever a password is remembered, changed or forgotten, or a session is added, renamed or removed,
+without asking for the passphrase: the vault's derived key, never the passphrase, is kept sealed for
+your Windows account. Emptying this forgets that key. Typing a path here does not start keeping
+one, because the client has no key for it; export to it once instead.
+
+A vault changed outside the client since it was last written — an entry edited in KeePassXC — is
+not written over: the client says so, naming the file, and leaves it until you export again.
+
 ## What is deliberately not here
 
 - **Anything to reach parity with another client.** A feature comparison is not an argument; a user's

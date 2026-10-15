@@ -233,3 +233,8 @@ Hello set up for your account nothing is exported. The vault is protected by a p
 anyone who copies the file can guess at it for as long as it exists, so the dialog offers six random
 words to write down and refuses a passphrase whose estimated strength is below 64 bits, saying so.
 A portable copy remembers no passwords and has nothing to export.
+
+Tick **Keep this file up to date** and the vault is written again whenever a password is remembered,
+changed or forgotten, or a session changes, without asking for the passphrase again; the
+`vaultFile` setting in [SETTINGS.md](SETTINGS.md#vaultfile) names it, and emptying it stops this. A
+vault edited outside the client since it was last written is never written over.

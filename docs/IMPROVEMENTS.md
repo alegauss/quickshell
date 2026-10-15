@@ -57,28 +57,6 @@ to be worth it.
 
 Falsified when a token-backed key cannot authenticate a session.
 
-### §QS307 QS307 Keeping the exported vault current
-
-An export is a snapshot, and the user asked for a file that is easy to maintain. A vault
-written once and then forgotten is wrong by the next password change, and is then worse
-than none, because it is consulted and believed.
-
-A setting names a path, which may be a synced folder such as OneDrive since the file is
-encrypted, and the client rewrites the vault there whenever SecretStore saves, replaces
-or forgets a secret, or a session is added, renamed or removed. Rewriting must not ask
-for the passphrase each time, so the derived key, never the passphrase, is kept sealed
-under DPAPI for this account; turning the setting off forgets it. A rewrite that fails
-says so where the user will see it rather than leaving a stale file silently in place.
-
-A file a sync service may hand to another device makes the passphrase rule in QS306
-matter more, and the setting says that when it is turned on. A vault the user has edited
-in KeePassXC since the last write is not overwritten: the client notices the change and
-asks, since a merge is out of scope.
-
-Done when a test changes a saved password with the setting on and keepassxc-cli reads
-the new one from the file, and a second test edits the vault outside the client and
-finds the rewrite refused with a message naming the path.
-
 ### §QS308 QS308 Importing passwords from a vault
 
 The export closes half of the circle. The other half is a new machine, or a reinstall:
