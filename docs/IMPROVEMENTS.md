@@ -240,28 +240,22 @@ Falsified when a one-cell blink costs what a whole-grid one did on that desk. Th
 swap effect goes back to `FlipDiscard` unless photon says sequential costs nothing, and
 the per-frame cost is the wake and the present, which is a different line.
 
-### §QS316 A split that presses Enter
+### §QS350 QS350 Tracing the narrowed pane's prompt line
 
-Reported by the user (2026-10-15), with a picture: on a saved session (root on a Debian
-host), each press of Split leaves every pane already open with one more prompt line
-under the last, as if Enter had been pressed in it.
-
-A split narrows the panes beside the new one, and each pane's session is told its new
-size (SessionPipeline.Resize, an SSH window-change on a remote pane). Two explanations
-fit, and they call for different fixes:
-
-1. The client sends input on a resize. A trace of the session log shows channel data from the
-   client at the moment of the split; a defect here.
-2. The host's shell redraws on SIGWINCH: readline, told the width shrank, decides the prompt
-   wrapped and prints it again. Nothing is sent, and Windows Terminal over OpenSSH does the
-   same. What can be done here is one window-change per pane per split, with the final size,
-   and none where a pane's columns and rows did not change.
-
-Measure first: trace one split, counting window-changes and bytes sent per pane, then
-the same split in Windows Terminal. Build only what that points at.
-
-Falsified when a split adds a prompt line to a pane whose size it did not change, or
-sends any input byte to a pane nobody typed into.
+QS316 settled the client's half of the extra prompt line a split leaves:
+SessionPipelineTests prove a resize writes no input byte and a burst of resizes is one
+window-change at the final size, and a pane whose size did not change is now told
+nothing. The pane a split narrows is told, as it must be, and whether a real bash at its
+prompt then adds a line (readline redrawing on SIGWINCH, which Windows Terminal over
+OpenSSH would show too) or this client's reflow moves the cursor under it was never
+traced: neither the guest (Windows OpenSSH, cmd) nor the host has a bash over SSH. The
+Docker fixture's Debian sshd (prototypes/SshProbe/fixture) does. The trace: one split on
+a Debian session with a short prompt, the session log at trace level counting
+window-changes and bytes each way, the screen before and after; the same split in
+Windows Terminal over ssh. If the line appears in both, it is bash's and is recorded as
+such in docs/KEYS.md under Panes; if only here, the reflow on narrowing is the defect
+and gets a line of its own. Done when that trace is recorded in benchmarks/results and
+the conclusion is written where a user will look.
 
 ## Block D — The tree a user organises work in
 

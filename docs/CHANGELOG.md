@@ -129,6 +129,7 @@
 - ✅ **QS281** **The terminal's text touches the sidebar's divider and the window's top edge, with no inset around the grid** — The terminal sits 18 in from the sides and 14 from top and bottom, in the focused pane's own background, repainted with a new scheme or OSC 11, and the grid shrinks to fit inside.
 - ✅ **QS287** **The contrast test's Direct2D reference still draws blank in the guest after every redraw, and the run goes red** — A Direct2D reference still blank after its redraws is drawn on a device built from scratch, and where that is blank too the pass is a skip with its reason, not a failure.
 - ✅ **QS309** **Splitting a pane opened on a saved session opens a local Command Prompt instead of another shell on that server** — A split of a server's pane opens the same saved session in the new pane over a connection of its own, and a split of a local pane is still a local shell.
+- ✅ **QS316** **Each split prints a new prompt line in every pane already open, as if Enter had been pressed in it** — A resize to the size a pane already has tells the far end nothing, and none writes input, so a split no longer prompts a pane it did not resize.
 
 ## Block D — The tree a user organises work in
 

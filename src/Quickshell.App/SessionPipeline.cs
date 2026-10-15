@@ -108,6 +108,8 @@ public sealed class SessionPipeline : IAsyncDisposable
     private int _pendingColumns;
     private int _pendingRows;
     private long _told;
+    private int _toldColumns;
+    private int _toldRows;
     private bool _disposed;
 
     private SessionPipeline(IPtyChannel channel, Emulator emulator, int capacity,
@@ -115,6 +117,10 @@ public sealed class SessionPipeline : IAsyncDisposable
     {
         _channel = channel;
         _emulator = emulator;
+
+        // The size the far end was opened at, which a resize to the same size need not repeat (QS316).
+        _toldColumns = emulator.Buffer.Columns;
+        _toldRows = emulator.Buffer.Rows;
 
         Damage = damage;
         Recording = recording;
@@ -576,7 +582,20 @@ public sealed class SessionPipeline : IAsyncDisposable
 
                 // The latest, not the one that woke this: everything that arrived during the wait is
                 // superseded by it, and it is the one the program has to end up with.
-                _channel.Resize(Volatile.Read(ref _pendingColumns), Volatile.Read(ref _pendingRows));
+                int columns = Volatile.Read(ref _pendingColumns);
+                int rows = Volatile.Read(ref _pendingRows);
+
+                // Not where the far end already has this size (QS316): a split re-lays every pane, and a
+                // window-change that changes nothing still makes a shell at its prompt redraw it, which
+                // reads as Enter pressed in a pane nobody touched.
+                if (columns == _toldColumns && rows == _toldRows)
+                {
+                    continue;
+                }
+
+                _channel.Resize(columns, rows);
+                _toldColumns = columns;
+                _toldRows = rows;
 
                 Interlocked.Increment(ref _told);
             }

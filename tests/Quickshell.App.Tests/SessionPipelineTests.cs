@@ -367,6 +367,64 @@ public sealed class SessionPipelineTests
         }
     }
 
+    // ---- A resize tells the far end its size and nothing else (QS316) ----
+
+    /// <summary>
+    /// What a split does to the panes beside it, several sizes in a burst: the far end hears one
+    /// window-change, at the size the burst ended on, and receives no byte of input.
+    /// </summary>
+    [Fact]
+    public async Task ABurstOfResizesIsOneWindowChangeAndNoInput()
+    {
+        PtyStub far = new();
+        Emulator emulator = new(80, 24);
+        await using SessionPipeline pipeline = SessionPipeline.Start(far, emulator);
+
+        pipeline.Resize(60, 24);
+        pipeline.Resize(50, 24);
+        pipeline.Resize(40, 24);
+
+        await Until(() => far.Resizes > 0);
+        await Task.Delay(SessionPipeline.ResizeQuiet * 4, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, far.Resizes);
+        Assert.Equal((40, 24), far.Size);
+
+        lock (far.Written)
+        {
+            Assert.Empty(far.Written);
+        }
+    }
+
+    /// <summary>A resize to the size the far end already has tells it nothing, so a shell at its prompt does not redraw it.</summary>
+    [Fact]
+    public async Task AResizeToTheSameSizeTellsTheFarEndNothing()
+    {
+        PtyStub far = new();
+        Emulator emulator = new(80, 24);
+        await using SessionPipeline pipeline = SessionPipeline.Start(far, emulator);
+
+        pipeline.Resize(80, 24);
+        await Task.Delay(SessionPipeline.ResizeQuiet * 4, TestContext.Current.CancellationToken);
+
+        long afterSame = far.Resizes;
+
+        pipeline.Resize(100, 30);
+        await Until(() => far.Resizes > afterSame);
+
+        pipeline.Resize(100, 30);
+        await Task.Delay(SessionPipeline.ResizeQuiet * 4, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, afterSame);
+        Assert.Equal(1, far.Resizes);
+        Assert.Equal(1, pipeline.Resizes);
+
+        lock (far.Written)
+        {
+            Assert.Empty(far.Written);
+        }
+    }
+
     // ---- Closing ----
 
     [Fact]
