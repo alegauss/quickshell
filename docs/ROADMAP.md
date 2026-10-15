@@ -6,7 +6,7 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- 📋 **QS344** (deps: —) **The Windows Hello prompt before a vault export has never been seen to run, since no test desk has Hello set up** — Every test answers the gate through MainWindow.Verifies, so the COM interop call to UserConsentVerifier is proven by no run. → §QS344
+- ⏳ **QS344** (deps: a guest with a Windows Hello PIN) **The Windows Hello prompt before a vault export has never been seen to run, since no test desk has Hello set up** — Seeing the prompt over the client needs a PIN set in the guest, and one real verification by the owner with a real PIN. → §QS344
 - 📋 **QS345** (deps: QS306 ✅) **An exported vault restores the passwords but not the key files sessions name, so a new machine still lacks the keys** — QS306's design allowed key files as attachments asked for separately, and the export shipped without them. → §QS345
 - 📋 **QS346** (deps: —) **Reading a KDBX 4 vault encrypted with ChaCha20, or derived with AES-KDF, is proven by no vault** — keepassxc-cli makes only KDBX 3.1 and the client writes AES with Argon2id, so those two reader paths have never met a real file. → §QS346
 
@@ -314,6 +314,14 @@
   the test sshd set up by the guided setup, a command outside the agent account's
   sudoers list fails with the gateway's policy disabled, which is the run that proves
   the boundary is not the client.
+
+## Done when — QS344
+
+- **The prompt appears over the client in the guest** A guest run with a PIN provisioned
+  opens the export, reads a Windows Security window owned by the client, cancels it, and
+  finds nothing written.
+- **A real PIN once writes the vault** The owner verifies with a real PIN on the
+  reference desk and sees the vault written.
 
 ## Non-goals
 
