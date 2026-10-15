@@ -587,27 +587,6 @@ Done when that case runs green in the guest beside the others.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS320 A threat model before a single verb
-
-People already hand Claude Code an SSH key and let it work on servers. What it can harm
-is a production host it mistook for staging, a secret it read and carried into a
-transcript, a destructive command it was talked into by text on the server itself
-(prompt injection), and every other host the same key reaches.
-
-The design document is where this block matures, and it opens with the threat model
-because every later line is judged against it. It names three layers, each assuming the
-one above failed: hooks and a skill that steer the agent towards the gateway (they stop
-accidents, not intent); credentials held only by quickshell, so the agent has no way to
-authenticate around it (same Windows user, so this raises the cost and is not a wall);
-and the server itself, a restricted account and short-lived certificates, the one layer
-an agent on the client cannot route around.
-
-The document says plainly that a client-side policy without the third layer is advice,
-and every later section keeps that sentence true. It also lists the agent's own pains
-with SSH (quoting through four shells, a handshake per command, prompts that hang,
-output that floods context) because lowering friction is half the reason anyone would
-route through the gateway at all.
-
 ### §QS321 Whether this belongs in the client at all
 
 The README sells quickshell as the SSH part of MobaXterm without the suite around it,
