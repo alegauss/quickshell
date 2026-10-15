@@ -430,6 +430,53 @@ public sealed class TabStripTests : IDisposable
         Assert.Equal(Visibility.Collapsed, none);
     }
 
+    /// <summary>
+    /// The tags tagColours names show on a tab as chips beside prod, two in all and a count for the rest;
+    /// an entry naming no theme colour is said in the settings file's report (QS351).
+    /// </summary>
+    [Fact]
+    public void TheSettingsColourOtherTagsUpToTwoChips()
+    {
+        (bool prodShown, string[] withProd, string[] withoutProd) = Sta.Run(() =>
+        {
+            File.WriteAllText(Path.Combine(_directory, "sessions.json"), """
+                { "name": "", "children": [
+                    { "name": "Live", "tags": ["prod", "staging", "qa", "db"], "children": [ { "name": "api", "host": "api.example.invalid" } ] },
+                    { "name": "Test", "tags": ["staging", "qa"], "children": [ { "name": "web", "host": "web.example.invalid" } ] }
+                ] }
+                """);
+
+            MainWindow window = Window();
+            TerminalTab live = TerminalTab.Open(Settings.Default, Shared, "api.example.invalid");
+            TerminalTab test = TerminalTab.Open(Settings.Default, Shared, "web.example.invalid");
+
+            live.Saved = "Live/api";
+            test.Saved = "Test/web";
+            window.Add(live);
+            window.Add(test);
+            window.Apply(Settings.Default with { TagColours = "staging=caution, qa=accent, db=success" });
+            window.RefreshSessions();
+            window.Retitle();
+
+            TabItem[] items = [.. Under(window).OfType<TabItem>()];
+
+            static string[] Chips(TabItem item) =>
+                [.. Under(Find<StackPanel>(item, "TabTags")).OfType<TextBlock>().Select(text => text.Text)];
+
+            return (Find<Border>(items[0], "TabProd").Visibility == Visibility.Visible, Chips(items[0]), Chips(items[1]));
+        });
+
+        Assert.True(prodShown);
+        Assert.Equal(["staging", "+2"], withProd);
+        Assert.Equal(["staging", "qa"], withoutProd);
+
+        string settings = Path.Combine(_directory, "settings.json");
+
+        File.WriteAllText(settings, "{ \"tagColours\": \"staging=caution, qa=purple\" }");
+
+        Assert.Contains(SettingsFile.Unused(settings), said => said.Contains("qa=purple", StringComparison.Ordinal));
+    }
+
     /// <summary>A middle-button press and release on an element, as the pointer would send them.</summary>
     private static void MiddleClick(UIElement on)
     {

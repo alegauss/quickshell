@@ -99,6 +99,12 @@ public sealed record Settings
     public string VaultFile { get; init; } = string.Empty;
 
     /// <summary>
+    /// Which tags a tab shows besides prod, and in which theme brush (QS351), as <c>staging=caution, db=accent</c>.
+    /// Empty, the default, shows prod alone.
+    /// </summary>
+    public string TagColours { get; init; } = string.Empty;
+
+    /// <summary>
     /// Every key this build did not recognise, kept exactly as it was read so it can be written back
     /// unchanged.
     /// </summary>
@@ -152,7 +158,7 @@ public static class SettingsFile
     public static readonly string[] Known =
     [
         Version, "theme", "fontFamily", "fontSize", "scrollback", "ligatures", "cursor",
-        "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar", "startWith", "vaultFile",
+        "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar", "startWith", "vaultFile", "tagColours",
     ];
 
     /// <summary>
@@ -314,6 +320,18 @@ public static class SettingsFile
             }
         }
 
+        if (Text(root, "tagColours") is { Length: > 0 } colours)
+        {
+            List<string> refused = [];
+
+            TagColours.Parse(colours, refused);
+
+            foreach (string entry in refused)
+            {
+                said.Add($"\"tagColours\" has \"{entry}\", which is not a tag and one of critical, caution, success or accent, so that tag has no colour.");
+            }
+        }
+
         return said;
     }
 
@@ -427,6 +445,7 @@ public static class SettingsFile
             writer.WriteBoolean("sessionsSidebar", settings.SessionsSidebar);
             writer.WriteString("startWith", settings.StartWith.ToString());
             writer.WriteString("vaultFile", settings.VaultFile);
+            writer.WriteString("tagColours", settings.TagColours);
 
             foreach ((string name, JsonElement value) in settings.Unrecognised)
             {
@@ -590,6 +609,7 @@ public static class SettingsFile
         ["sessionsSidebar"] = settings.SessionsSidebar ? "true" : "false",
         ["startWith"] = Quoted(settings.StartWith.ToString()),
         ["vaultFile"] = Quoted(settings.VaultFile),
+        ["tagColours"] = Quoted(settings.TagColours),
     };
 
     /// <summary>The spaces and tabs in front of the key that starts at <paramref name="at"/>, back to its line's start.</summary>
@@ -641,6 +661,7 @@ public static class SettingsFile
             SessionsSidebar = Yes(root, "sessionsSidebar") ?? Settings.Default.SessionsSidebar,
             StartWith = Text(root, "startWith") is { } start && Enum.TryParse(start, ignoreCase: true, out StartWith chosen) ? chosen : Settings.Default.StartWith,
             VaultFile = Text(root, "vaultFile") ?? Settings.Default.VaultFile,
+            TagColours = Text(root, "tagColours") ?? Settings.Default.TagColours,
             Unrecognised = unrecognised,
         };
     }

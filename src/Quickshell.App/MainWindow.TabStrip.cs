@@ -31,7 +31,7 @@ public sealed partial class MainWindow
     private readonly Border _stripFrame = new() { Height = StripHeight, Padding = new Thickness(12, 0, 12, 0), BorderThickness = new Thickness(0, 0, 0, 1) };
 
     /// <summary>What each tab's header is made of, so a redraw changes the parts that changed and nothing else.</summary>
-    private sealed record TabLook(Ellipse Dot, TextBlock Number, TextBlock Title, Border Prod, Border Bar, Button Close);
+    private sealed record TabLook(Ellipse Dot, TextBlock Number, TextBlock Title, Border Prod, StackPanel Coloured, Border Bar, Button Close);
 
     /// <summary>Builds the row: frame, the strip's own template, New tab and Commands. Called once, from the constructor.</summary>
     private void BuildStrip()
@@ -216,6 +216,12 @@ public sealed partial class MainWindow
         row.Children.Add(number);
         row.Children.Add(title);
         row.Children.Add(prod);
+
+        // The other tags the settings give a colour (QS351), up to two with prod and a count for the rest.
+        StackPanel coloured = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
+        AutomationProperties.SetAutomationId(coloured, "TabTags");
+        row.Children.Add(coloured);
         row.Children.Add(close);
 
         Border line = Underlined();
@@ -225,7 +231,7 @@ public sealed partial class MainWindow
         header.Children.Add(line);
 
         item.Header = header;
-        item.Tag = new TabLook(dot, number, title, prod, line, close);
+        item.Tag = new TabLook(dot, number, title, prod, coloured, line, close);
 
         Dress(item, tab, selected: false);
 
@@ -269,7 +275,7 @@ public sealed partial class MainWindow
     /// local shell or one that ended), its title, and the underline and weight while it is on screen.
     /// The state is also its item status, which is how a case or a screen reader reads the dot.
     /// </summary>
-    private static void Dress(TabItem item, TerminalTab tab, bool selected, IReadOnlyList<string>? tags = null)
+    private static void Dress(TabItem item, TerminalTab tab, bool selected, IReadOnlyList<string>? tags = null, IReadOnlyDictionary<string, string>? colours = null)
     {
         if (item.Tag is not TabLook look)
         {
@@ -304,8 +310,9 @@ public sealed partial class MainWindow
         if (!string.Equals(AutomationProperties.GetItemType(item), tagged, StringComparison.Ordinal))
         {
             AutomationProperties.SetItemType(item, tagged);
-            look.Prod.Visibility = tags?.Contains("prod", StringComparer.OrdinalIgnoreCase) == true ? Visibility.Visible : Visibility.Collapsed;
         }
+
+        Colour(look, tags ?? [], colours ?? TagColours.Parse(string.Empty));
 
         look.Bar.Visibility = selected ? Visibility.Visible : Visibility.Hidden;
         look.Title.FontWeight = selected ? FontWeights.SemiBold : weight;
@@ -420,6 +427,69 @@ public sealed partial class MainWindow
         word.SetResourceReference(TextBlock.ForegroundProperty, _homeShowing ? PlainText : QuietText);
     }
 
+    /// <summary>
+    /// A tab's coloured tags (QS351): prod in its own chip, then the other tags the settings colour, up to
+    /// two chips in all and a count for the rest; rebuilt only when what they say changed.
+    /// </summary>
+    private static void Colour(TabLook look, IReadOnlyList<string> tags, IReadOnlyDictionary<string, string> colours)
+    {
+        string[] shown = [.. tags.Where(colours.ContainsKey).Distinct(StringComparer.OrdinalIgnoreCase)];
+        bool prod = shown.Contains("prod", StringComparer.OrdinalIgnoreCase);
+        string said = string.Join(' ', shown.Select(tag => tag + "=" + colours[tag]));
+
+        if (Equals(look.Coloured.Tag, said))
+        {
+            return;
+        }
+
+        look.Coloured.Tag = said;
+        look.Prod.Visibility = prod ? Visibility.Visible : Visibility.Collapsed;
+
+        if (prod)
+        {
+            ((TextBlock)look.Prod.Child).SetResourceReference(TextBlock.ForegroundProperty, colours["prod"]);
+            look.Prod.SetResourceReference(Border.BorderBrushProperty, colours["prod"]);
+        }
+
+        look.Coloured.Children.Clear();
+
+        string[] others = [.. shown.Where(tag => !string.Equals(tag, "prod", StringComparison.OrdinalIgnoreCase))];
+        int room = prod ? 1 : 2;
+
+        foreach (string tag in others.Take(room))
+        {
+            look.Coloured.Children.Add(Chip(tag, colours[tag]));
+        }
+
+        if (others.Length > room)
+        {
+            look.Coloured.Children.Add(Chip($"+{others.Length - room}", QuietText));
+        }
+    }
+
+    /// <summary>One tag's chip, as prod's: its word in the brush, a one-pixel border in the same.</summary>
+    private static Border Chip(string word, string brush)
+    {
+        TextBlock text = new() { Text = word, FontSize = 11, FontWeight = FontWeights.SemiBold };
+
+        text.SetResourceReference(TextBlock.ForegroundProperty, brush);
+        AutomationProperties.SetName(text, word);
+
+        Border chip = new()
+        {
+            Child = text,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(5, 0, 5, 0),
+            Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        chip.SetResourceReference(Border.BorderBrushProperty, brush);
+
+        return chip;
+    }
+
     /// <summary>The tags of the saved session a tab holds, its folders' included, or none for a local shell (QS331).</summary>
     private IReadOnlyList<string> TagsOf(TerminalTab tab) =>
         tab.Saved is { Length: > 0 } saved && _store?.Session(saved) is { } session ? session.Tags : [];
@@ -427,11 +497,13 @@ public sealed partial class MainWindow
     /// <summary>Every tab dressed for whether it is the one on screen, which no tab is while Home is.</summary>
     private void DressTabs()
     {
+        IReadOnlyDictionary<string, string> colours = TagColours.Parse(Settings.TagColours);
+
         for (int tab = 0; tab < _open.Count && tab < _tabs.Items.Count; tab++)
         {
             if (_tabs.Items[tab] is TabItem item)
             {
-                Dress(item, _open[tab], selected: !_homeShowing && tab == _active, TagsOf(_open[tab]));
+                Dress(item, _open[tab], selected: !_homeShowing && tab == _active, TagsOf(_open[tab]), colours);
             }
 
             // A saved session's first live connection in this tab is what puts it in the recent list

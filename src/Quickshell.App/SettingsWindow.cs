@@ -42,6 +42,7 @@ public sealed class SettingsWindow : Window
         ("sessionsSidebar", "Sessions sidebar", "Whether the saved sessions are listed down the left of the window, or folded to a narrow rail."),
         ("startWith", "Start with", "What a new window opens on: Home, or a local shell."),
         ("vaultFile", "Vault kept up to date", "The KeePass vault the saved passwords are written to again whenever one changes. Empty, the default, keeps none."),
+        ("tagColours", "Tag colours", "Which tags a tab shows besides prod, and in which colour, as staging=caution, db=accent. Empty, the default, shows prod alone."),
     ];
 
     private readonly string _path;
@@ -131,6 +132,7 @@ public sealed class SettingsWindow : Window
             ((CheckBox)_controls["sessionsSidebar"]).IsChecked = now.SessionsSidebar;
             ((ComboBox)_controls["startWith"]).SelectedItem = now.StartWith;
             ((TextBox)_controls["vaultFile"]).Text = now.VaultFile;
+            ((TextBox)_controls["tagColours"]).Text = now.TagColours;
         }
         finally
         {
@@ -206,6 +208,7 @@ public sealed class SettingsWindow : Window
                                       && lines >= 0 && Change(now => now with { Scrollback = lines })),
         "colourScheme" => Field(text => Change(now => now with { Scheme = text.Trim() })),
         "vaultFile" => Field(text => Change(now => now with { VaultFile = text.Trim() })),
+        "tagColours" => Field(text => Change(now => now with { TagColours = text.Trim() })),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "no control for this key"),
     };
 

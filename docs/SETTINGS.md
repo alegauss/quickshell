@@ -196,6 +196,16 @@ one, because the client has no key for it; export to it once instead.
 A vault changed outside the client since it was last written — an entry edited in KeePassXC — is
 not written over: the client says so, naming the file, and leaves it until you export again.
 
+### `tagColours`
+
+Which tags a tab shows besides prod, and in which colour, as staging=caution, db=accent. Empty, the default, shows prod alone.
+
+A tag is given one of the theme's own colours, `critical`, `caution`, `success` or `accent`, never a
+hex, so no scheme or theme can make it unreadable. A tab shows up to two coloured tags of its session,
+its folders' tags included, after its title, and a count for the rest. `prod` is `critical` without
+being named here; naming it gives it another colour. An entry that does not read is said in the
+settings window and ignored.
+
 ## What is deliberately not here
 
 - **Anything to reach parity with another client.** A feature comparison is not an argument; a user's
