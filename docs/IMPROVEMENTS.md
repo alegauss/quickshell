@@ -335,31 +335,6 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
-### §QS318 Which way Split splits
-
-Reported by the user (2026-10-15): the session bar's Split button cannot choose a
-direction; it always splits side by side. SessionBar's SessionSplit act calls
-SplitPane(Divide.Beside) and nothing else, while the keyboard has both (Ctrl+Shift+\
-beside, Ctrl+Shift+- below) and the palette has Split pane right and Split pane down. So
-somebody using the mouse can only ever make columns, and a tall terminal split twice is
-three slivers.
-
-What to build, keeping the bar as narrow as it is: Split stays one button whose click
-splits beside, as today, with a chevron beside it that opens a two-item menu, Split
-right and Split down, each naming its chord. Windows Terminal's new-tab button has the
-same shape, a default and a menu of the rest. The chevron is its own control, with the
-automation id SessionSplitMore, so a case can open it; each item carries an id as well
-(SessionSplitRight, SessionSplitDown).
-
-Not two separate buttons: the bar already holds Files, Split and the menu, and a second
-split icon is a choice a person has to read the tooltip of every time.
-
-KEYS.md and SESSIONS.md say Split has a menu for the direction. Proven by a UI case on
-the connected fixture that opens the chevron, picks Split down, and reads two panes one
-above the other.
-
-Falsified when the session bar can only split side by side.
-
 ### §QS319 Numbered tabs
 
 Asked for by the user (2026-10-15): every tab carries a number before its title, so two tabs

@@ -24,7 +24,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS318** (deps: —) **The session bar's Split button always splits side by side, with no way to split one above the other** — Its act calls SplitPane(Divide.Beside) alone, while the chords and the palette already offer both directions. → §QS318
 - 📋 **QS319** (deps: —) **Two tabs on the same host carry the same title, so the strip gives nothing to tell them apart by** — A tab is titled by user and host alone; its position, which Alt+1 to Alt+9 already reach, is shown nowhere on it. → §QS319
 
 ## Block H — The reason to leave the incumbent

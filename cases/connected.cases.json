@@ -187,6 +187,65 @@
           "named": "with the first still there behind it"
         }
       ]
+    },
+    {
+      "name": "the session bar's Split can split one pane above the other",
+      "catches": "a session bar whose Split only ever makes columns, so a mouse can never split a terminal top and bottom",
+      "filed": "QS318",
+      "tags": ["sessions", "connected", "panes"],
+      "fixture": "a client connected to the guest's server",
+
+      "steps": [
+        {
+          "locator": "Window#Choice > Button#once",
+          "act": "invoke",
+          "named": "the server's key is trusted for this connection only"
+        },
+        {
+          "locator": "Button#SessionSplitMore",
+          "act": "invoke",
+          "named": "the chevron beside Split is opened"
+        },
+        {
+          "locator": "MenuItem#SessionSplitDown",
+          "act": "read",
+          "reads": "name",
+          "expect": "Split down",
+          "named": "and offers to split down"
+        },
+        {
+          "locator": "MenuItem#SessionSplitDown",
+          "act": "invoke",
+          "named": "which is chosen"
+        },
+        {
+          // The new pane opens the same session (QS309), so its server's key is asked about too.
+          "locator": "Window#Choice > Button#once",
+          "act": "invoke",
+          "named": "the second connection's key is trusted for it only"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"][order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Terminal output",
+          "named": "there is a terminal at the top"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"][order=bottom]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Terminal output",
+          "named": "and one under it"
+        },
+        {
+          "locator": "Thumb#Divider",
+          "act": "read",
+          "reads": "name",
+          "expect": "Pane divider",
+          "named": "with a divider between them"
+        }
+      ]
     }
   ]
 }

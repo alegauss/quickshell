@@ -75,6 +75,55 @@ public sealed class ConnectionBarTests
 
     // ---- The bars ----
 
+    /// <summary>
+    /// Split has a chevron beside it whose menu offers both directions, each naming its chord, and
+    /// Split down makes two panes one above the other (QS318).
+    /// </summary>
+    [Fact]
+    public void SplitsChevronOffersBothDirections()
+    {
+        (bool chevron, string[] ids, string[] chords, int panes, Divide way) = Sta.Run(() =>
+        {
+            MainWindow window = new();
+            TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "local");
+
+            window.Add(tab);
+
+            SessionBar bar = new(window);
+            bool found = Under(bar).OfType<System.Windows.Controls.Button>()
+                                   .Any(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "SessionSplitMore");
+
+            System.Windows.Controls.MenuItem[] entries = [.. bar.SplitMenu().Items.OfType<System.Windows.Controls.MenuItem>()];
+
+            entries[1].RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+
+            return (found,
+                    entries.Select(System.Windows.Automation.AutomationProperties.GetAutomationId).ToArray(),
+                    entries.Select(entry => entry.InputGestureText).ToArray(),
+                    tab.Layout.Count,
+                    tab.Layout.Dividers.Single().How);
+        });
+
+        Assert.True(chevron, "the session bar has no chevron beside Split");
+        Assert.Equal(["SessionSplitRight", "SessionSplitDown"], ids);
+        Assert.Equal(["Ctrl+Shift+\\", "Ctrl+Shift+-"], chords);
+        Assert.Equal(2, panes);
+        Assert.Equal(Divide.Below, way);
+    }
+
+    private static IEnumerable<System.Windows.DependencyObject> Under(System.Windows.DependencyObject root)
+    {
+        yield return root;
+
+        foreach (System.Windows.DependencyObject child in System.Windows.LogicalTreeHelper.GetChildren(root).OfType<System.Windows.DependencyObject>())
+        {
+            foreach (System.Windows.DependencyObject below in Under(child))
+            {
+                yield return below;
+            }
+        }
+    }
+
     /// <summary>The chip says its word, and a forward's chip comes and goes with the forward.</summary>
     [Fact]
     public void TheSessionBarSaysTheStateAndAChipPerForward()

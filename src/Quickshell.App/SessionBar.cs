@@ -90,6 +90,7 @@ public sealed class SessionBar : Border
                               () => _window.BrowseFiles()));
         acts.Children.Add(Act("", "Split", "SessionSplit", "Split this pane, the new one beside it",
                               () => _window.SplitPane(Divide.Beside)));
+        acts.Children.Add(SplitMore());
         acts.Children.Add(More());
 
         DockPanel line = new() { LastChildFill = false };
@@ -208,6 +209,65 @@ public sealed class SessionBar : Border
         button.Click += (_, _) => run();
 
         return button;
+    }
+
+    /// <summary>
+    /// The chevron beside Split (QS318): Split's click is beside, as before, and this opens the two
+    /// directions, each naming its chord, as Windows Terminal's new-tab button offers a default and a
+    /// menu of the rest. One split button and not two, so nobody reads two tooltips to choose.
+    /// </summary>
+    private Button SplitMore()
+    {
+        Button more = new()
+        {
+            Content = Glyph(""),
+            Width = 22,
+            Height = 30,
+            Padding = new Thickness(0),
+            Margin = new Thickness(2, 0, 0, 0),
+            ToolTip = "Split which way",
+        };
+
+        ((TextBlock)more.Content).FontSize = 10;
+
+        AutomationProperties.SetAutomationId(more, "SessionSplitMore");
+        AutomationProperties.SetName(more, "Split which way");
+
+        more.Click += (_, _) =>
+        {
+            ContextMenu menu = SplitMenu();
+
+            menu.PlacementTarget = more;
+            menu.Placement = PlacementMode.Bottom;
+            menu.IsOpen = true;
+        };
+
+        return more;
+    }
+
+    /// <summary>The two directions, which the chevron opens and a test reads.</summary>
+    public ContextMenu SplitMenu()
+    {
+        ContextMenu menu = new();
+
+        AutomationProperties.SetAutomationId(menu, "SessionSplitMenu");
+
+        menu.Items.Add(SplitEntry("Split right", "SessionSplitRight", "Ctrl+Shift+\\", Divide.Beside));
+        menu.Items.Add(SplitEntry("Split down", "SessionSplitDown", "Ctrl+Shift+-", Divide.Below));
+
+        return menu;
+    }
+
+    private MenuItem SplitEntry(string header, string id, string chord, Divide how)
+    {
+        MenuItem entry = new() { Header = header, InputGestureText = chord };
+
+        AutomationProperties.SetAutomationId(entry, id);
+        AutomationProperties.SetName(entry, header);
+        AutomationProperties.SetAcceleratorKey(entry, chord);
+        entry.Click += (_, _) => _window.SplitPane(how);
+
+        return entry;
     }
 
     /// <summary>
