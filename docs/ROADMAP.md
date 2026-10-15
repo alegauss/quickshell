@@ -14,8 +14,6 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS315** (deps: QS314 ✅) **How a set of sessions is configured, with jump hosts, keys and forwards, can be documented only by copying it by hand** — A command writes a PDF of chosen sessions: resolved settings, origins, jump chain and forwards, never a secret. → §QS315
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox

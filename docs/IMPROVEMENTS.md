@@ -219,29 +219,6 @@ the conclusion is written where a user will look.
 
 ## Block D — The tree a user organises work in
 
-### §QS315 QS315 A PDF of the selected sessions
-
-The owner asked on 2026-10-15 for a way to document many sessions, with their proxies
-and keys, as a PDF of the ones selected. Today that is the sessions file read by hand,
-where an inherited value is not even on the node that uses it.
-
-Each session is one section: its name and folder path; host, port and user; how it signs
-in (key path and the key's SHA256 fingerprint, the agent, or a password, saying only
-whether one is saved and under which credential); its jump chain hop by hop; forwards as
-a table of kind, listen and target; reconnect, post-login commands, tags. Every value
-inherited from a folder says which. A cover page names the date, the client's version
-and the folders covered. No password, passphrase or private key is ever written, and a
-test asserts it against a store holding all three.
-
-The command is in the sidebar's menu for a selection and in the palette, and asks only
-where to save. The owner chose PDFsharp with MigraDoc (2026-10-15), MIT and pure
-managed; QuestPDF is nicer to write but free only under a revenue limit; printing
-through Microsoft Print to PDF needs a dialog and a printer.
-
-Done when a test documents a store with a folder default, a two-hop jump chain and three
-forwards, reads the PDF's text back, finds every field and its origin, and finds no
-secret.
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox

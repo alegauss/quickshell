@@ -17,7 +17,8 @@ click, Enter or the arrows open or fold a folder; the search box finds a session
 host or tag, as **Open session** does. Right-click a session to edit, duplicate, move or delete it,
 and a folder to make a session in it. Ctrl+click adds or removes a row, Shift+click takes the rows
 between, and Ctrl+A takes every row listed; a chosen folder stands for every session under it, at
-any depth, for anything that acts on a set of sessions. A plain click goes back to one row. The fold at its top narrows it to a rail
+any depth, for anything that acts on a set of sessions, such as **Document as PDF…** in the menu
+([below](#documenting-sessions)). A plain click goes back to one row. The fold at its top narrows it to a rail
 ([SETTINGS.md](SETTINGS.md), `sessionsSidebar`). A hand edit shows the next time you come back to the
 window.
 
@@ -259,6 +260,24 @@ Tick **Keep this file up to date** and the vault is written again whenever a pas
 changed or forgotten, or a session changes, without asking for the passphrase again; the
 `vaultFile` setting in [SETTINGS.md](SETTINGS.md#vaultfile) names it, and emptying it stops this. A
 vault edited outside the client since it was last written is never written over.
+
+## Documenting sessions
+
+**Document as PDF…**, in the sidebar's menu for a session, a folder or several selected rows, and
+*Document sessions as PDF* in the palette, write a PDF of those sessions: the ones selected, a folder
+counting as every session under it, or every saved session when nothing is selected. It asks only
+where to save.
+
+A cover page names the date, the client's version and the folders covered. Each session then has a
+page of its own: its folder, host, port and user; how it signs in, with the key file and its SHA256
+fingerprint as `ssh-keygen -l` prints it, or the credential a password is saved under and whether one
+is saved on this machine; its jump chain hop by hop, each with the account it signs in as; its
+forwards as a table; whether it reconnects after a drop; the commands typed after login; and its
+tags. Every value says where it comes from: the session itself, or the folder it inherits it from.
+
+No password, passphrase or private key is ever written into it. A key's fingerprint is read from the
+`.pub` beside it, or from the public half an OpenSSH or PuTTY key file carries unencrypted; a key in
+another format, with no `.pub`, is documented with the reason it has no fingerprint.
 
 ## Importing saved passwords
 

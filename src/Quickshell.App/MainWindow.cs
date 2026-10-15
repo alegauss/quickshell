@@ -445,6 +445,9 @@ public sealed partial class MainWindow : Window
         // And back from one, on a new machine (QS308).
         InputBindings.Add(new InputBinding(new ImportingVault(this), new PaletteOnly()));
 
+        // A PDF of the selected sessions, or of all of them where none is (QS315).
+        InputBindings.Add(new InputBinding(new DocumentingSessions(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();

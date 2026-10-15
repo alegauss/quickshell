@@ -342,16 +342,15 @@ public sealed class SessionsSidebar : Border
         }
     }
 
-    /// <summary>
-    /// The menu over a set of rows: only what takes a set, which is nothing yet but the count. The
-    /// document of chosen sessions (QS315) is the first thing that will.
-    /// </summary>
+    /// <summary>The menu over a set of rows: only what takes a set, which is the document of them (QS315).</summary>
     private ContextMenu SetMenu()
     {
         ContextMenu menu = new();
         int sessions = _window.SelectedSessions().Count;
 
         menu.Items.Add(new MenuItem { Header = $"{sessions} sessions selected", IsEnabled = false });
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Entry("Document as PDF…", () => _window.DocumentSessions()));
 
         return menu;
     }
@@ -693,6 +692,7 @@ public sealed class SessionsSidebar : Border
         if (row.IsFolder)
         {
             menu.Items.Add(Entry("New session here", () => _window.NewSessionOrSay(row.Path)));
+            menu.Items.Add(Entry("Document as PDF…", () => _window.DocumentSessionsAt(row.Path)));
 
             return menu;
         }
@@ -730,6 +730,7 @@ public sealed class SessionsSidebar : Border
         };
 
         menu.Items.Add(moving);
+        menu.Items.Add(Entry("Document as PDF…", () => _window.DocumentSessionsAt(row.Path)));
         menu.Items.Add(new Separator());
         menu.Items.Add(Entry("Delete…", () => _window.DeleteSessionOrSay(row.Path)));
 

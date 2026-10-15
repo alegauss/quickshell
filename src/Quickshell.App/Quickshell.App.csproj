@@ -38,6 +38,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- QS315: the PDF of chosen sessions. MIT and managed, the owner's choice on 2026-10-15; loaded
+         only when a document is written. Pinned exactly: 6.2.4 is the last MIT release, and 6.5.0 on
+         nuget.org declares AGPL-3.0-only, which would bind the whole client. A newer version is a
+         licence decision for the owner, not an update. -->
+    <PackageReference Include="PDFsharp-MigraDoc" Version="[6.2.4]" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Quickshell.Terminal\Quickshell.Terminal.csproj" />
     <ProjectReference Include="..\Quickshell.Transport\Quickshell.Transport.csproj" />
     <ProjectReference Include="..\Quickshell.Render\Quickshell.Render.csproj" />

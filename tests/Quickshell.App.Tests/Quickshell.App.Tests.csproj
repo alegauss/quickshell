@@ -14,6 +14,12 @@
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
   </PropertyGroup>
 
+  <!-- QS315: reads the session document's text back. Apache 2.0, and the tests' alone: nothing
+       the client ships reads a PDF. -->
+  <ItemGroup>
+    <PackageReference Include="PdfPig" Version="0.1.16" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\Quickshell.App\Quickshell.App.csproj" />
   </ItemGroup>

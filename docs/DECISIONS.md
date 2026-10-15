@@ -55,6 +55,7 @@
 - ✅ **QS254** **A session field written in the wrong place in the store is silently ignored, so the session connects with defaults** — An unknown field refuses the whole session store rather than being skipped, accepting that a store from a later client will not open here.
 - ✅ **QS268** **Saved sessions are reached only by typing in the palette, so nobody sees what is saved or what is connected** — A default window shows the sessions sidebar beside the terminal; a terminal-only first screen was rejected, since sessions behind a chord went unseen.
 - ✅ **QS275** **A store whose root node has a name opens none of its sessions: every row says there is no such session** — The root node's name is never part of a session path; a store that names its root keeps the name on write, and every reader starts paths below it.
+- ✅ **QS315** **How a set of sessions is configured, with jump hosts, keys and forwards, can be documented only by copying it by hand** — PDFsharp-MigraDoc is pinned at [6.2.4], the last MIT release: 6.5.0 declares AGPL-3.0-only, which would bind the whole client, so a newer one is the owner's licence decision.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

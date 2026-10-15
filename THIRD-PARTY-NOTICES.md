@@ -17,6 +17,7 @@ on the one installed on the machine.
 | [Microsoft.Extensions.Logging.Abstractions](https://github.com/dotnet/runtime) | 9.0.9 | MIT | © Microsoft Corporation |
 | [Microsoft.Extensions.DependencyInjection.Abstractions](https://github.com/dotnet/runtime) | 9.0.9 | MIT | © Microsoft Corporation |
 | [System.Security.Cryptography.ProtectedData](https://github.com/dotnet/runtime) | 9.0.6 | MIT | © Microsoft Corporation |
+| [PDFsharp and MigraDoc](https://github.com/empira/PDFsharp) (PDFsharp, MigraDoc) | 6.2.4 | MIT | © 2026 empira Software GmbH |
 
 The client also carries one list that is not a library: the [EFF large wordlist for
 passphrases](https://www.eff.org/dice) (2016), 7,776 words, built into `quickshell.exe` and used to
