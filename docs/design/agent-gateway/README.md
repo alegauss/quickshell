@@ -337,6 +337,32 @@ client decides.
 **What this does not decide.** It does not open the door to plugins, scripts or macros in the window:
 those remain non-goals, and the gateway's existence is not an argument for them.
 
+## The spike: hosts_list and exec (QS325)
+
+What shipped first, before any policy, and off unless the `agentGateway` setting is on.
+
+**The process.** `quickshell --mcp` is a Model Context Protocol server on standard input and output,
+one JSON-RPC message a line, started by the agent's host. It branches off before anything the window
+needs is made, so it costs the window nothing (QS321's second condition). With the setting off it
+writes why to standard error and exits with 2. Code: `src/Quickshell.App/AgentGateway.cs`.
+
+**Two tools.** `hosts_list` answers each saved session's path, host, port, user and tags, never a
+credential name or a key path. `exec` takes a session's path, an argument vector, an optional `cwd`
+and a timeout (60 seconds by default, ten minutes at most), and answers `exitCode`, `stdout`,
+`stderr` and `timedOut` apart. A connection that fails is a tool error the agent can read; a command
+that exits non-zero is a result.
+
+**Quoting once.** The vector is joined for a POSIX shell by `Argv.ForPosix` in the transport: a word
+of safe characters goes bare, any other is single-quoted. That is the only layer between the agent and
+the program, so a quote, a dollar sign or a newline arrives as itself (proven against the Linux
+fixture). A Windows server's shell is not POSIX; a bare word reaches it intact, and anything quoted
+does not, which a later line has to settle before such a server is offered.
+
+**One connection per session.** Kept between calls over an exec channel of its own
+(`ICommandChannel`, which stays off the `ISshTransport` seam), and replaced when it drops. It signs in
+with the session's key and the agents, never a typed password, and refuses a host key the user's
+known_hosts does not already hold, saying to connect once from the window.
+
 ## Sections to come
 
 Each is written by the line that owns it, into this document.

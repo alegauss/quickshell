@@ -105,6 +105,13 @@ public sealed record Settings
     public string TagColours { get; init; } = string.Empty;
 
     /// <summary>
+    /// Whether <c>quickshell --mcp</c> may serve the agent gateway (QS325). Off by default, and turning
+    /// it on is the user's deliberate act (QS321): an agent's host started with the flag while this is
+    /// off is refused, and the window is never affected either way.
+    /// </summary>
+    public bool AgentGateway { get; init; }
+
+    /// <summary>
     /// Every key this build did not recognise, kept exactly as it was read so it can be written back
     /// unchanged.
     /// </summary>
@@ -158,7 +165,7 @@ public static class SettingsFile
     public static readonly string[] Known =
     [
         Version, "theme", "fontFamily", "fontSize", "scrollback", "ligatures", "cursor",
-        "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar", "startWith", "vaultFile", "tagColours",
+        "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar", "startWith", "vaultFile", "tagColours", "agentGateway",
     ];
 
     /// <summary>
@@ -446,6 +453,7 @@ public static class SettingsFile
             writer.WriteString("startWith", settings.StartWith.ToString());
             writer.WriteString("vaultFile", settings.VaultFile);
             writer.WriteString("tagColours", settings.TagColours);
+            writer.WriteBoolean("agentGateway", settings.AgentGateway);
 
             foreach ((string name, JsonElement value) in settings.Unrecognised)
             {
@@ -610,6 +618,7 @@ public static class SettingsFile
         ["startWith"] = Quoted(settings.StartWith.ToString()),
         ["vaultFile"] = Quoted(settings.VaultFile),
         ["tagColours"] = Quoted(settings.TagColours),
+        ["agentGateway"] = settings.AgentGateway ? "true" : "false",
     };
 
     /// <summary>The spaces and tabs in front of the key that starts at <paramref name="at"/>, back to its line's start.</summary>
@@ -662,6 +671,7 @@ public static class SettingsFile
             StartWith = Text(root, "startWith") is { } start && Enum.TryParse(start, ignoreCase: true, out StartWith chosen) ? chosen : Settings.Default.StartWith,
             VaultFile = Text(root, "vaultFile") ?? Settings.Default.VaultFile,
             TagColours = Text(root, "tagColours") ?? Settings.Default.TagColours,
+            AgentGateway = Yes(root, "agentGateway") ?? Settings.Default.AgentGateway,
             Unrecognised = unrecognised,
         };
     }

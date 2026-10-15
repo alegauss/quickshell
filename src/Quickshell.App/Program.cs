@@ -52,6 +52,13 @@ public static class Entry
             return Setup.Run(arguments);
         }
 
+        // `--mcp` is the agent gateway (QS325): a process of its own, on the pipes an agent's host gave
+        // it, with no window, no device and nothing else this method sets up (QS321).
+        if (arguments.Contains(CommandLine.Mcp, StringComparer.Ordinal))
+        {
+            return ServeAgent();
+        }
+
         // `--startup-report <file>` times this start and writes the milestones there once the shell
         // is on screen — QS75's instrument, and first so that it sees everything after the runtime.
         if (Given(arguments, CommandLine.StartupReport) is { } report)
@@ -729,6 +736,42 @@ public static class Entry
     /// a session sitting beside the one they are looking at.</para>
     /// </summary>
     private static TerminalLeaf? Pane(MainWindow window) => window.Current?.Focused;
+
+    /// <summary>
+    /// Serves the agent gateway until its input ends (QS325), or refuses where the setting is off.
+    /// Standard output carries the protocol and nothing else, so anything said to a person goes to
+    /// standard error.
+    /// </summary>
+    /// <returns>Zero once the input ended; 2 where the gateway is not turned on.</returns>
+    private static int ServeAgent()
+    {
+        if (!SettingsFile.ReadFrom(Locations.Current.Settings).AgentGateway)
+        {
+            Console.Error.WriteLine("quickshell --mcp: the agent gateway is off. Turn on agentGateway in quickshell's "
+                                    + "settings to let an agent run commands on your saved sessions.");
+
+            return 2;
+        }
+
+        UTF8Encoding plain = new(encoderShouldEmitUTF8Identifier: false);
+        using StreamReader input = new(Console.OpenStandardInput(), plain);
+        using StreamWriter output = new(Console.OpenStandardOutput(), plain) { AutoFlush = false, NewLine = "\n" };
+
+        string store = Locations.Current.Sessions;
+
+        AgentGateway gateway = new(() => SessionTree.ReadFrom(store), AgentGateway.Connect, CrashContext.Build());
+
+        try
+        {
+            gateway.ServeAsync(input, output).GetAwaiter().GetResult();
+        }
+        finally
+        {
+            gateway.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+
+        return 0;
+    }
 
     /// <summary>The path a flag was given, or null where it was absent.</summary>
     private static string? Given(string[] arguments, string flag)

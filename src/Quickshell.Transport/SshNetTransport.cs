@@ -18,7 +18,7 @@ namespace Quickshell.Transport;
 /// deliberately coarse — QS39 is where a refused key stops reading like a refused port — but the
 /// translation happens at the seam, which is the part that cannot be added later.</para>
 /// </summary>
-public sealed class SshNetTransport : ISshTransport
+public sealed class SshNetTransport : ISshTransport, ICommandChannel
 {
     /// <summary>
     /// What this client tells a server it is.
@@ -317,6 +317,42 @@ public sealed class SshNetTransport : ISshTransport
         // A channel of this session and never a connection of its own: see SharedSftpSession for
         // why that takes doing, and SftpChannelTests for the server's own account of it.
         return SftpChannel.OpenAsync(_client!, Timeout, Log);
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask<CommandResult> RunAsync(string command, TimeSpan timeout,
+                                                   CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(command);
+
+        SshClient client = Live();
+
+        using SshCommand run = client.CreateCommand(command);
+        using CancellationTokenSource limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        limit.CancelAfter(timeout);
+        Log?.Channel(ChannelKind.Command, opened: true);
+
+        try
+        {
+            await run.ExecuteAsync(limit.Token).ConfigureAwait(false);
+
+            return new CommandResult(run.ExitStatus, run.Result, run.Error);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Its own time ran out, not the caller's: said as a result, with what it had written.
+            return new CommandResult(null, run.Result, run.Error, TimedOut: true);
+        }
+        catch (SshConnectionException dropped)
+        {
+            throw new SshException(SshFailureKind.Dropped,
+                                   $"The connection to {Endpoint} dropped while a command ran on it.", dropped.Message);
+        }
+        finally
+        {
+            Log?.Channel(ChannelKind.Command, opened: false);
+        }
     }
 
     /// <summary>

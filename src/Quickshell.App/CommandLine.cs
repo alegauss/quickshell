@@ -65,6 +65,9 @@ public static class CommandLine
     /// <summary>Writes what the render loop has done to a file, every few seconds (QS255).</summary>
     public const string FrameReport = "--frame-report";
 
+    /// <summary>Serves the agent gateway on standard input and output, with no window (QS325).</summary>
+    public const string Mcp = "--mcp";
+
     /// <summary>Every flag, in the order the reference lists them.</summary>
     public static readonly IReadOnlyList<Flag> All =
     [
@@ -83,5 +86,6 @@ public static class CommandLine
         new(Uninstall, "", "Removes an installed copy, and asks whether to keep the settings unless --quiet."),
         new(AllUsers, "", "With --install or --uninstall: for every user of the machine, which needs an administrator."),
         new(Quiet, "", "With --install or --uninstall: asks nothing and shows nothing; the exit code is the answer."),
+        new(Mcp, "", "Serves the agent gateway to an agent such as Claude Code on standard input and output, and opens no window. Refused unless the agentGateway setting is on, and unguarded: no policy limits what runs yet."),
     ];
 }

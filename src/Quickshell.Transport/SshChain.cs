@@ -44,7 +44,7 @@ public readonly record struct SshHop(SshEndpoint Endpoint, IReadOnlyList<SshCred
 /// least useful message a chain can produce, and a user with three bastions and one error has
 /// nothing to act on. Each attempt is wrapped with which hop it was and how many there are.</para>
 /// </summary>
-public sealed class SshChain : ISshTransport
+public sealed class SshChain : ISshTransport, ICommandChannel
 {
     private readonly List<SshClient> _bastions = [];
     private readonly List<ForwardedPortLocal> _channels = [];
@@ -197,6 +197,10 @@ public sealed class SshChain : ISshTransport
     public ValueTask<IFileTransferChannel> OpenFileTransferAsync(
         CancellationToken cancellationToken = default) =>
         Live().OpenFileTransferAsync(cancellationToken);
+
+    /// <inheritdoc/>
+    public ValueTask<CommandResult> RunAsync(string command, TimeSpan timeout, CancellationToken cancellationToken = default) =>
+        Live().RunAsync(command, timeout, cancellationToken);
 
     /// <inheritdoc cref="SshNetTransport.OpenFileCopyAsync"/>
     public ValueTask<IFileCopy> OpenFileCopyAsync(CancellationToken cancellationToken = default) =>

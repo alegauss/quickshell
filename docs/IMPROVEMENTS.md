@@ -525,29 +525,29 @@ range and a plain click that leaves one row follow. The set has no reading of it
 yet: the first action that takes one, QS315's document, is what the case then reads.
 Done when that case runs green in the guest beside the others.
 
+### §QS357 A slow producer is not a failing pipeline
+
+QS263 cut SessionPipelineTests.TheDelayBeforeAReadIsParsedDoesNotGrowWithTheFile to
+readings at 2 and 8 MB of a 48 MB `type` through cmd in a real ConPTY, inside a 30
+second patience. On 2026-10-15 it went red twice in the guest, both times "6 MB parsed
+after 30 s", then passed twice, once on HEAD and once on the same tree that had failed.
+No code on its path had changed. So the guest's ConPTY sometimes prints well under 300
+KB/s for half a minute, and the test reads that as the pipeline failing.
+
+What the test claims is a ratio: the mean wait before a read is parsed does not grow
+with the bytes. A slow producer does not falsify that, and neither does a fast one, so
+the test should not depend on how fast cmd prints. What to build: measure until a byte
+count or a time is reached, whichever comes first, and compare the two intervals by what
+each covered. If the second interval covered less than three times the first's bytes
+when time ran out, the test says the producer was too slow to judge and skips with the
+rate it measured, which the skip budget then counts, rather than going red. A producer
+the test controls, with no cmd, would lose what the test is for: a producer that does
+not wait.
+
+Done when ten guest runs in a row go green or skip with a rate named, and a parser made
+to wait on its renderer still fails it.
+
 ## Block L — An agent at the controls, held to a policy it cannot edit
-
-### §QS325 The spike: the gateway with nothing but exec
-
-From the agent's side, the dearest costs of SSH today are mechanical. A command goes
-PowerShell to `ssh` to bash to `sudo` to `sh -c`, and the quoting breaks somewhere in
-that chain more often than anything else goes wrong. Each call is a new connection, so
-the handshake is paid again and `cwd` and environment are lost; Windows OpenSSH has no
-ControlMaster to hide it.
-
-The spike is the smallest gateway that removes both: `quickshell.exe --mcp`, a stdio MCP
-server running headless on Quickshell.Transport, with two tools. `hosts_list` returns
-the saved sessions with their names (and their tags, once sessions carry them) and never
-a secret. `exec` takes a session name, an argv array, an optional cwd and a timeout,
-runs it on a connection the gateway keeps alive, and returns exit code, stdout and
-stderr as separate fields.
-
-No policy yet. That is why this line waits on the scope decision (QS321) and why the
-spike is opt-in and documented as unguarded.
-
-Proven by a run against the test sshd: a command whose argument holds quotes, a dollar
-sign and a newline arrives byte-exact, and the tenth call to the same session reuses one
-connection.
 
 ### §QS326 Remote edits an agent can make and a person can read
 
@@ -915,3 +915,27 @@ mismatched gateway refuses with a message rather than misbehaving.
 
 Proven by a clean guest: install the client, accept the offer, and an agent's first
 `exec` reaches the test sshd.
+
+### §QS356 Quoting for the server's own shell
+
+Found by QS325. `exec` joins the argument vector with `Argv.ForPosix`: a safe word bare,
+anything else in single quotes. Windows OpenSSH runs an exec request through the
+account's default shell, cmd.exe unless the server's DefaultShell says otherwise, and
+cmd gives a single quote no meaning. So on the guest's own server `whoami` and
+`hostname` work, and an argument holding a space or a quote arrives with the quotes in
+it or split in two. Nothing says so: the command runs, wrongly.
+
+What to build: the gateway learns the server's family once per connection and quotes for
+it. The cheapest reliable probe is the version string the handshake already carries
+(`OpenSSH_for_Windows_9.5`), with an `echo %OS%` exec as the check where the banner is
+silent. For a Windows server the vector is joined as `CommandLineToArgvW` reads a
+command line, the rules .NET's ProcessStartInfo.ArgumentList follows, and run through
+cmd with `^`-escaping of `& | < > ^ %` outside quotes, or through `powershell
+-EncodedCommand` with the vector as a literal array, which sidesteps cmd entirely and is
+the choice to try first. A `cwd` becomes `Set-Location -LiteralPath` there.
+
+Until it is built, `exec` refuses a vector with any non-bare word on a server it
+recognises as Windows, naming the word, rather than running something else.
+
+Done when the guest's server receives an argument holding a space, a double quote, a
+percent sign and an ampersand byte for byte, read back by the program it was given to.

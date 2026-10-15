@@ -43,6 +43,7 @@ public sealed class SettingsWindow : Window
         ("startWith", "Start with", "What a new window opens on: Home, or a local shell."),
         ("vaultFile", "Vault kept up to date", "The KeePass vault the saved passwords are written to again whenever one changes. Empty, the default, keeps none."),
         ("tagColours", "Tag colours", "Which tags a tab shows besides prod, and in which colour, as staging=caution, db=accent. Empty, the default, shows prod alone."),
+        ("agentGateway", "Agent gateway", "Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. Nothing yet limits what it runs."),
     ];
 
     private readonly string _path;
@@ -133,6 +134,7 @@ public sealed class SettingsWindow : Window
             ((ComboBox)_controls["startWith"]).SelectedItem = now.StartWith;
             ((TextBox)_controls["vaultFile"]).Text = now.VaultFile;
             ((TextBox)_controls["tagColours"]).Text = now.TagColours;
+            ((CheckBox)_controls["agentGateway"]).IsChecked = now.AgentGateway;
         }
         finally
         {
@@ -201,6 +203,7 @@ public sealed class SettingsWindow : Window
         "cursorBlink" => Toggle(on => Change(now => now with { CursorBlink = on })),
         "warnOnPaste" => Toggle(on => Change(now => now with { WarnOnPaste = on })),
         "sessionsSidebar" => Toggle(on => Change(now => now with { SessionsSidebar = on })),
+        "agentGateway" => Toggle(on => Change(now => now with { AgentGateway = on })),
         "fontFamily" => Field(text => text.Trim().Length > 0 && Change(now => now with { FontFamily = text.Trim() })),
         "fontSize" => Field(text => double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double size)
                                     && size > 0 && Change(now => now with { FontSize = size })),

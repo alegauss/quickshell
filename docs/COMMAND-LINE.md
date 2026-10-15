@@ -42,3 +42,13 @@ for needing an administrator, and one is anything else that did not happen.
 | `--uninstall` | | Removes an installed copy, and asks whether to keep the settings unless --quiet. |
 | `--all-users` | | With --install or --uninstall: for every user of the machine, which needs an administrator. |
 | `--quiet` | | With --install or --uninstall: asks nothing and shows nothing; the exit code is the answer. |
+
+## Serving an agent
+
+`--mcp` is how an agent's host starts the agent gateway: a Model Context Protocol server on standard
+input and output, with no window. It exits when its input ends. Without the `agentGateway` setting
+([SETTINGS.md](SETTINGS.md#agentgateway)) it writes why to standard error and exits with 2.
+
+| Flag | Takes | What it does |
+|---|---|---|
+| `--mcp` | | Serves the agent gateway to an agent such as Claude Code on standard input and output, and opens no window. Refused unless the agentGateway setting is on, and unguarded: no policy limits what runs yet. |
