@@ -283,26 +283,26 @@ Done when a test documents a store with a folder default, a two-hop jump chain a
 forwards, reads the PDF's text back, finds every field and its origin, and finds no
 secret.
 
-### §QS331 Tags that say which environment a session is
+### §QS351 QS351 Colours for other tags, and tags from imports
 
-Two sessions named `app-01` and `app-01-new` look the same in the tree, and the mistake
-that costs most is running a command on the one you did not mean. Nothing in the session
-store says which of them is production.
+QS331 made `prod` mean something: a tab holding a session tagged prod, its folders' tags
+included, says so after its title in the theme's danger colour, and every tag is the
+tab's item type. Two parts of its design were left out of that slice.
 
-A session gains a `tags` field: free words, lower case, with a folder's tags inherited
-by everything under it the way other defaults already are. `prod` is the one word the
-client gives a meaning to by default, drawing the tab and the pane border in the danger
-colour the theme already has, and settings can give other tags a colour.
+First, other tags have no look. A settings key, `tagColours`, would map a tag to one of
+the theme's named brushes (`critical`, `caution`, `success`, `accent`) rather than to a
+hex, so a scheme or a dark theme never makes a tag unreadable and Brand.cs stays the one
+place a colour is written; a tab then shows each coloured tag as prod's chip is shown,
+up to two, and a third as a count. It belongs in SETTINGS.md and the settings window,
+which the reference tests hold together.
 
-Tags are imported from MobaXterm and PuTTY where a folder name maps cleanly, and they
-round-trip through the session export.
+Second, no importer brings tags. MobaXterm's folder names and PuTTY's session names
+often carry the environment (`PROD`, `Production`, `prd-`); an import could map a folder
+whose name is exactly one of a short known list to the tag `prod`, shown in the import
+preview as a tag it will add, never guessed silently from a substring.
 
-The agent gateway (Block L) is the second reader: its policy is keyed on tags rather
-than host names, and `hosts_list` reports them, so an agent sees the same warning the
-person does.
-
-Proven by a UI case that tags a folder `prod`, opens a session beneath it and reads the
-tag back from the tab's automation properties.
+Done when a settings test gives `staging` the caution brush and a tab shows it, and an
+import of a MobaXterm folder named Production previews and writes the tag prod on it.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

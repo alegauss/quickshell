@@ -392,6 +392,44 @@ public sealed class TabStripTests : IDisposable
         Assert.Equal("Tab 1, Alt+1", help);
     }
 
+    /// <summary>
+    /// A session under a folder tagged prod carries the tag, its folder's included, in its tab's item
+    /// type, and shows prod on the strip; a local shell's tab carries neither (QS331).
+    /// </summary>
+    [Fact]
+    public void ATabSaysItsSessionsTagsAndShowsProd()
+    {
+        (string tagged, Visibility prod, string local, Visibility none) = Sta.Run(() =>
+        {
+            File.WriteAllText(Path.Combine(_directory, "sessions.json"), """
+                { "name": "", "children": [
+                    { "name": "Customer", "tags": ["prod"], "children": [
+                        { "name": "api", "host": "api.example.invalid", "tags": ["db"] }
+                    ] }
+                ] }
+                """);
+
+            MainWindow window = Window();
+            TerminalTab api = TerminalTab.Open(Settings.Default, Shared, "api.example.invalid");
+
+            api.Saved = "Customer/api";
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "local"));
+            window.Add(api);
+            window.RefreshSessions();
+            window.Retitle();
+
+            TabItem[] items = [.. Under(window).OfType<TabItem>()];
+
+            return (AutomationProperties.GetItemType(items[1]), Find<Border>(items[1], "TabProd").Visibility,
+                    AutomationProperties.GetItemType(items[0]), Find<Border>(items[0], "TabProd").Visibility);
+        });
+
+        Assert.Equal("prod db", tagged);
+        Assert.Equal(Visibility.Visible, prod);
+        Assert.Equal(string.Empty, local);
+        Assert.Equal(Visibility.Collapsed, none);
+    }
+
     /// <summary>A middle-button press and release on an element, as the pointer would send them.</summary>
     private static void MiddleClick(UIElement on)
     {

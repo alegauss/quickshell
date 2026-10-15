@@ -137,7 +137,11 @@ save the password as a credential instead.
 ### `Tags`
 
 Labels **Open session** finds a session by, beside its path and its host. A session is found by its
-folders' tags too.
+folders' tags too, and carries them: tag a folder `prod` and every session under it is production.
+`prod` is the one tag the client gives a meaning to: a tab holding such a session shows **prod** after
+its title in the theme's danger colour, so the session you are about to type into says which
+environment it is. Every tag of the session in a tab, its folders' included, is also published as the
+tab's item type, which a screen reader reads.
 
 ### `Forwards`
 

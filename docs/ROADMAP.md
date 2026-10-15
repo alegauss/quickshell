@@ -16,7 +16,7 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS331** (deps: —) **A saved session carries nothing that tells production from staging, to the person or to anything reading the store** — Sessions take free tags such as prod or db, inherited from their folder, shown on the tab, and read by the agent gateway's policy. → §QS331
+- 📋 **QS351** (deps: —) **Only the prod tag has a look on the strip, and no import brings tags in from MobaXterm or PuTTY** — QS331 gave prod its meaning and left a colour for other tags and tags from imported folder names to a later line. → §QS351
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -52,7 +52,7 @@
 - 📋 **QS333** (deps: QS325) **Nothing records what an agent ran on which server, who approved it, or what came back, once the session scrolls away** — An append-only audit log per gateway session keeps each call, its verdict, its approver and an output hash, readable as a change summary. → §QS333
 - 📋 **QS334** (deps: QS325) **A person who sees an agent going wrong on a server has no single act that stops it everywhere at once** — One keybinding and a tray command revoke every grant, cancel running jobs and close every gateway connection, and the agent is told why. → §QS334
 - 📋 **QS335** (deps: QS325) **What an agent runs on a server is invisible to the person until it reports back, if it reports at all** — Each gateway connection appears as a quickshell tab badged as the agent's, showing every command and its output live as it runs. → §QS335
-- 📋 **QS336** (deps: QS322 ✅, QS323 ✅, QS325, QS331) **Every call an agent makes through the gateway is allowed, whatever the host and whatever the command** — The gateway judges each call against the policy before it runs: allow, ask the person, or refuse with the rule named. → §QS336
+- 📋 **QS336** (deps: QS322 ✅, QS323 ✅, QS325, QS331 ✅) **Every call an agent makes through the gateway is allowed, whatever the host and whatever the command** — The gateway judges each call against the policy before it runs: allow, ask the person, or refuse with the rule named. → §QS336
 - 📋 **QS337** (deps: QS324 ✅, QS336) **A call the policy says to ask about has nowhere to be asked, so the gateway can only allow or refuse it** — A quickshell dialog shows the plan, its host, tag and diff, approves the exact batch by hash, and can turn it into a timed grant. → §QS337
 - 📋 **QS338** (deps: QS336) **Text an agent read from a server can steer its next command, and the policy treats that command as if nothing happened** — Reading untrusted content marks the gateway session, and from then on every mutation asks the person, even one a grant allowed. → §QS338
 - 📋 **QS339** (deps: QS322 ✅, QS332) **An agent able to write files can rewrite the very policy that limits it, and grant itself whatever it wants** — The plugin's hook denies writes to the policy path, and quickshell re-asks the person whenever the file changes outside its own UI. → §QS339

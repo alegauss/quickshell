@@ -152,6 +152,7 @@
 - ✅ **QS300** **A folder in the sessions sidebar opens or closes only on a double-click** — A folder in the sessions sidebar folds on one click, the second press of a double-click is ignored, and a session still connects on a double-click.
 - ✅ **QS304** **The sessions sidebar opens with every folder unfolded, so a large store is a long list before it is a tree** — The sessions sidebar opens with every folder folded, one click opens one, and a copy or a move opens the folder it put its session in.
 - ✅ **QS314** **The sidebar selects one row at a time, so nothing can act on several chosen sessions at once** — Ctrl+click, Shift+click and Ctrl+A choose several sidebar rows, and the window reports the set, a chosen folder standing for every session under it (design recorded in `docs/SESSIONS.md`).
+- ✅ **QS331** **A saved session carries nothing that tells production from staging, to the person or to anything reading the store** — A tab holding a session tagged prod, by its own tag or a folder's, shows prod in the danger colour, and every tag is the tab's item type (design recorded in `docs/SESSIONS.md`).
 
 ## Block E — SCP and SFTP as a thing a person operates
 

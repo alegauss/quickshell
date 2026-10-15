@@ -22,6 +22,16 @@
       "files": [
         { "from": "cases/fixtures/connected.json", "to": "sessions.json" }
       ]
+    },
+    {
+      // A session under a folder tagged prod (QS331), opened by its path.
+      "name": "a client connected to a session filed under prod",
+      "reaches": ["127.0.0.1:2240"],
+      "arguments": ["--session", "Customer/probe"],
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": [
+        { "from": "cases/fixtures/tagged.json", "to": "sessions.json" }
+      ]
     }
   ],
 
@@ -244,6 +254,36 @@
           "reads": "name",
           "expect": "Pane divider",
           "named": "with a divider between them"
+        }
+      ]
+    },
+    {
+      "name": "a session filed under a prod folder says prod on its tab",
+      "catches": "a store that knows a session is production while the strip shows it like any other",
+      "filed": "QS331",
+      "tags": ["sessions", "connected", "tabs"],
+      "fixture": "a client connected to a session filed under prod",
+
+      "steps": [
+        {
+          "locator": "Window#Choice > Button#once",
+          "act": "invoke",
+          "named": "the server's key is trusted for this connection only"
+        },
+        {
+          "locator": "TabItem[status=\"Connected\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "the session is connected in its tab"
+        },
+        {
+          // The tag is the folder's: the session names none of its own.
+          "locator": "Text#TabProdWord",
+          "act": "read",
+          "reads": "name",
+          "expect": "prod",
+          "named": "and its tab says prod, inherited from its folder"
         }
       ]
     }

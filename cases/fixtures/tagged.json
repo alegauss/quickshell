@@ -1,0 +1,19 @@
+// QS331: the guest sshd's probe account (tools\provision-guest-sshd.ps1) under a folder tagged prod,
+// for the case that reads the tag back off the tab. The folder's tag is the one being read, so the
+// session carries none of its own.
+{
+  "name": "",
+  "children": [
+    {
+      "name": "Customer",
+      "tags": ["prod"],
+      "children": [
+        {
+          "name": "probe",
+          "host": "127.0.0.1",
+          "settings": { "user": "probe", "port": 2240, "key": "C:\\ProgramData\\quickshell-cases\\probe_ed25519" }
+        }
+      ]
+    }
+  ]
+}
