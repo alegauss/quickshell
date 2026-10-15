@@ -57,6 +57,98 @@ to be worth it.
 
 Falsified when a token-backed key cannot authenticate a session.
 
+### §QS305 QS305 A KDBX 4 writer
+
+The export the user asked for (an encrypted file of host, port, login and password to
+consult when one is forgotten) needs a format before it needs a window, and the format
+is KeePass KDBX 4. It is the open standard for an offline vault: Argon2id for the key,
+AES-256 or ChaCha20 for the payload, HMAC-SHA256 over every block so an edited file
+refuses to open, and an inner stream protecting each password field again. What decides
+it is the reader: KeePassXC, KeePass, Strongbox and KeePassDX all open it, so the file
+outlives this client and this machine. A format of our own would be readable only here;
+age has to be decrypted to plain text to be read.
+
+The writer is ours rather than KeePassLib, which is GPL. Argon2id comes from NSec,
+already a dependency since QS115 (libsodium takes parallelism 1, which KDBX permits);
+AES-CBC and HMAC-SHA256 are in .NET; ChaCha20 for the inner stream is a few dozen lines.
+An optional key file, which KDBX defines, is in scope; YubiKey challenge-response is
+KeePassXC's extension and is not.
+
+Done when a test writes a database with groups, entries and an attachment, and
+keepassxc-cli opens it with the passphrase, with the key file where one was set, and
+lists every field as written. No plain text touches the disk: the file is written to a
+temporary name from encrypted buffers and renamed, and every decrypted buffer is zeroed
+as SecretStore does.
+
+### §QS306 QS306 Exporting saved passwords to a vault
+
+The user keeps a file of passwords because one is always forgotten, and today the client
+holds them where only it can read them: Credential Manager, under DPAPI, which does not
+travel to another machine. This is the command that turns QS305's writer into that file.
+
+Each session becomes one entry: the title is the session's name, the URL is
+ssh://user@host:port, then the login and the password SecretStore holds for its
+endpoint, or for its named credential (QS245). The sidebar's folders become groups. A
+session with nothing saved is still exported, with an empty password, so the vault is a
+complete list of where the user goes. A key file a session names may go in as an
+attachment, asked for separately.
+
+Opening every secret at once is when the store's weakness matters most, so the export is
+gated by Windows Hello or the account's PIN (UserConsentVerifier), not by a click. The
+vault is open to offline guessing for as long as it exists and Argon2id only slows that,
+so the passphrase is the protection: the dialog offers a generated six-word diceware
+phrase and refuses one whose estimated strength is low, saying why. A portable install,
+which saves nothing, exports nothing.
+
+Done when the command exists in the menu and the command palette, docs/SESSIONS.md names
+it, and a test exports a store with folders, a shared credential and a session with
+nothing saved, and keepassxc-cli lists each entry as the store held it.
+
+### §QS307 QS307 Keeping the exported vault current
+
+An export is a snapshot, and the user asked for a file that is easy to maintain. A vault
+written once and then forgotten is wrong by the next password change, and is then worse
+than none, because it is consulted and believed.
+
+A setting names a path, which may be a synced folder such as OneDrive since the file is
+encrypted, and the client rewrites the vault there whenever SecretStore saves, replaces
+or forgets a secret, or a session is added, renamed or removed. Rewriting must not ask
+for the passphrase each time, so the derived key, never the passphrase, is kept sealed
+under DPAPI for this account; turning the setting off forgets it. A rewrite that fails
+says so where the user will see it rather than leaving a stale file silently in place.
+
+A file a sync service may hand to another device makes the passphrase rule in QS306
+matter more, and the setting says that when it is turned on. A vault the user has edited
+in KeePassXC since the last write is not overwritten: the client notices the change and
+asks, since a merge is out of scope.
+
+Done when a test changes a saved password with the setting on and keepassxc-cli reads
+the new one from the file, and a second test edits the vault outside the client and
+finds the rewrite refused with a message naming the path.
+
+### §QS308 QS308 Importing passwords from a vault
+
+The export closes half of the circle. The other half is a new machine, or a reinstall:
+the sessions file moves with the user, but every remembered password stays behind in the
+old account's Credential Manager, because DPAPI binds it there. A vault already holds
+them, so the client should read one back.
+
+This needs a KDBX 4 reader beside QS305's writer, with the same key derivation and HMAC
+check, refusing a file whose blocks do not authenticate rather than reading what it can.
+Each entry whose ssh:// URL or host, port and login match a session has its password
+saved through SecretStore, under the session's named credential where it has one. An
+entry that matches nothing is listed and not saved, and a password that differs from one
+already saved is shown as a conflict for the user to settle, never overwritten without
+asking.
+
+The import also reads vaults the client did not write, since many users already keep
+their hosts in KeePass; the URL and the username field are what is matched, and nothing
+else in the entry is assumed.
+
+Done when a test round-trips QS306's export through an empty Credential Manager and
+every session connects without asking, a vault made by keepassxc-cli imports the same
+way, and an altered file is refused with a message that names it.
+
 ## Block C — Emulation that does not lie about the remote
 
 ### §QS92 The three environments this machine is not

@@ -70,24 +70,24 @@
       ]
     },
     {
-      "name": "one click on a folder folds it",
-      "catches": "a folder that only folds on a double-click, the second click of which has nothing else to do",
-      "filed": "QS300",
+      "name": "a folder starts folded, and one click opens it",
+      "catches": "a tree that opens every folder at once, or a folder that only opens on a double-click, the second click of which has nothing else to do",
+      "filed": "QS300, QS304",
       "tags": ["sessions"],
       "fixture": "a client with its sessions beside it",
 
       "steps": [
         {
-          // Home is the store's last folder, so the bottom row is its last session while it is open
-          // and the folder itself once it is folded.
+          // Home is the store's last folder, so the bottom row is the folder itself while it is
+          // folded and its last session once it is open.
           "locator": "List#SessionsList > ListItem[order=bottom]",
           "act": "read",
           "reads": "name",
-          "expect": "Home/nas",
-          "named": "the folder opens with its sessions under it"
+          "expect": "Home",
+          "named": "the folder starts folded, with nothing listed under it"
         },
         {
-          // A real click, because the defect was in what the pointer does: Enter already folded it.
+          // A real click, because the defect was in what the pointer does: Enter already opened it.
           "locator": "List#SessionsList > ListItem[name=\"Home\"]",
           "act": "click",
           "with": "PointerIsTheAct",
@@ -97,8 +97,8 @@
           "locator": "List#SessionsList > ListItem[order=bottom]",
           "act": "read",
           "reads": "name",
-          "expect": "Home",
-          "named": "and is folded, its session gone from under it"
+          "expect": "Home/nas",
+          "named": "and is open, its session under it"
         }
       ]
     },

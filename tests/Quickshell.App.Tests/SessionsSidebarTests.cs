@@ -59,7 +59,9 @@ public sealed class SessionsSidebarTests : IDisposable
         ],
     });
 
-    private static readonly HashSet<string> NoneFolded = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> AllOpened = new(StringComparer.OrdinalIgnoreCase) { "Work", "Home lab" };
+
+    private static readonly HashSet<string> NoneOpened = new(StringComparer.OrdinalIgnoreCase);
 
     // ---- The model ----
 
@@ -70,7 +72,7 @@ public sealed class SessionsSidebarTests : IDisposable
     [Fact]
     public void TheTreeListsFoldersWithWhatTheyHandDownAndSessionsWithTheirOwnAddress()
     {
-        IReadOnlyList<SessionRow> rows = SessionsView.Rows(Store(), string.Empty, NoneFolded, _ => false);
+        IReadOnlyList<SessionRow> rows = SessionsView.Rows(Store(), string.Empty, AllOpened, _ => false);
 
         Assert.Equal(
             [
@@ -90,13 +92,23 @@ public sealed class SessionsSidebarTests : IDisposable
     [Fact]
     public void AFoldedFolderHidesWhatIsInIt()
     {
-        HashSet<string> folded = new(StringComparer.OrdinalIgnoreCase) { "work" };
+        HashSet<string> opened = new(StringComparer.OrdinalIgnoreCase) { "home lab" };
 
-        IReadOnlyList<SessionRow> rows = SessionsView.Rows(Store(), string.Empty, folded, _ => false);
+        IReadOnlyList<SessionRow> rows = SessionsView.Rows(Store(), string.Empty, opened, _ => false);
 
         Assert.Equal(["Work", "Home lab", "Home lab/nas", "pi"], rows.Select(row => row.Path));
         Assert.False(rows[0].Expanded);
         Assert.True(rows[1].Expanded);
+    }
+
+    /// <summary>QS304: a folder nobody opened is folded, so the tree starts as its top level.</summary>
+    [Fact]
+    public void EveryFolderStartsFolded()
+    {
+        IReadOnlyList<SessionRow> rows = SessionsView.Rows(Store(), string.Empty, NoneOpened, _ => false);
+
+        Assert.Equal(["Work", "Home lab", "pi"], rows.Select(row => row.Path));
+        Assert.All(rows.Where(row => row.IsFolder), row => Assert.False(row.Expanded));
     }
 
     /// <summary>
@@ -106,25 +118,25 @@ public sealed class SessionsSidebarTests : IDisposable
     [Fact]
     public void ASearchIsAFlatListFoundAsOpenSessionFindsIt()
     {
-        IReadOnlyList<SessionRow> byName = SessionsView.Rows(Store(), "primary", NoneFolded, _ => false);
+        IReadOnlyList<SessionRow> byName = SessionsView.Rows(Store(), "primary", AllOpened, _ => false);
 
         Assert.Equal(["Work/db-primary"], byName.Select(row => row.Path));
         Assert.Equal(("db-primary", "Work · db1.example.com:2222", 0), (byName[0].Name, byName[0].Meta, byName[0].Depth));
 
-        Assert.Equal(["Work/db-primary"], SessionsView.Rows(Store(), "postgres", NoneFolded, _ => false).Select(row => row.Path));
-        Assert.Equal(["Home lab/nas"], SessionsView.Rows(Store(), "home.arpa", NoneFolded, _ => false).Select(row => row.Path));
-        Assert.Empty(SessionsView.Rows(Store(), "nothing-like-it", NoneFolded, _ => false));
+        Assert.Equal(["Work/db-primary"], SessionsView.Rows(Store(), "postgres", AllOpened, _ => false).Select(row => row.Path));
+        Assert.Equal(["Home lab/nas"], SessionsView.Rows(Store(), "home.arpa", AllOpened, _ => false).Select(row => row.Path));
+        Assert.Empty(SessionsView.Rows(Store(), "nothing-like-it", AllOpened, _ => false));
     }
 
     /// <summary>A session a tab holds is marked Connected, wherever it is listed; a folder never is.</summary>
     [Fact]
     public void ASessionATabHoldsIsMarkedConnected()
     {
-        IReadOnlyList<SessionRow> rows = SessionsView.Rows(Store(), string.Empty, NoneFolded,
+        IReadOnlyList<SessionRow> rows = SessionsView.Rows(Store(), string.Empty, AllOpened,
                                                            path => path is "Work/db-primary" or "Work");
 
         Assert.Equal(["Work/db-primary"], rows.Where(row => row.Connected).Select(row => row.Path));
-        Assert.True(SessionsView.Rows(Store(), "primary", NoneFolded, path => path == "Work/db-primary").Single().Connected);
+        Assert.True(SessionsView.Rows(Store(), "primary", AllOpened, path => path == "Work/db-primary").Single().Connected);
     }
 
     // ---- The window ----
@@ -144,25 +156,33 @@ public sealed class SessionsSidebarTests : IDisposable
         Assert.Equal(0, rows);
     }
 
-    /// <summary>Once read, the window's sidebar lists the store, and the search narrows it.</summary>
+    /// <summary>
+    /// Once read, the window's sidebar lists the store with its folders folded (QS304), a folder opens
+    /// on being toggled, and the search finds a session inside a folder nobody opened.
+    /// </summary>
     [Fact]
     public void TheWindowListsTheStoreAndTheSearchNarrowsIt()
     {
         string file = Stored();
 
-        (string[] all, string[] found) = Sta.Run(() =>
+        (string[] first, string[] opened, string[] found) = Sta.Run(() =>
         {
             MainWindow window = new() { SessionsFile = file };
 
             window.RefreshSessions();
             string[] listed = [.. window.Sidebar.Rows.Select(row => row.Path)];
 
+            window.ToggleFolder("Work");
+            string[] afterOpening = [.. window.Sidebar.Rows.Select(row => row.Path)];
+
+            window.ToggleFolder("Work");
             window.SearchSessions("nas");
 
-            return (listed, window.Sidebar.Rows.Select(row => row.Path).ToArray());
+            return (listed, afterOpening, window.Sidebar.Rows.Select(row => row.Path).ToArray());
         });
 
-        Assert.Equal(["Work", "Work/build-box", "Work/db-primary", "Home lab", "Home lab/nas", "pi"], all);
+        Assert.Equal(["Work", "Home lab", "pi"], first);
+        Assert.Equal(["Work", "Work/build-box", "Work/db-primary", "Home lab", "pi"], opened);
         Assert.Equal(["Home lab/nas"], found);
     }
 
@@ -181,6 +201,7 @@ public sealed class SessionsSidebarTests : IDisposable
             MainWindow window = new() { SessionsFile = file, OpensSession = asked.Add };
 
             window.RefreshSessions();
+            window.ToggleFolder("Work");
             Assert.True(window.Sidebar.Select("Work/db-primary"));
 
             window.ConnectSession(window.Sidebar.Selected!.Path);
@@ -202,6 +223,7 @@ public sealed class SessionsSidebarTests : IDisposable
             MainWindow window = new() { SessionsFile = file };
 
             window.RefreshSessions();
+            window.ToggleFolder("Work");
 
             TerminalTab tab = TerminalTab.Open(Settings.Default, Shared, "db1.example.com");
 
@@ -250,7 +272,10 @@ public sealed class SessionsSidebarTests : IDisposable
         Assert.Contains("\"theme\": \"Dark\"", File.ReadAllText(settings), StringComparison.Ordinal);
     }
 
-    /// <summary>Duplicating puts a copy beside the session, named for it, and selects it.</summary>
+    /// <summary>
+    /// Duplicating puts a copy beside the session, named for it, and selects it, opening the folder
+    /// it is in, which starts folded (QS304).
+    /// </summary>
     [Fact]
     public void DuplicatingPutsANamedCopyBesideIt()
     {
@@ -287,7 +312,7 @@ public sealed class SessionsSidebarTests : IDisposable
         // A second nas, at the top, for the refusal to be about.
         SessionTree.ReadFrom(file).With("nas", new SessionNode { Name = "nas", Host = "other.example" }).WriteTo(file);
 
-        (string[] offered, string? moved, string? refused, List<string> said) = Sta.Run(() =>
+        (string[] offered, string? moved, string? refused, List<string> said, string? selected) = Sta.Run(() =>
         {
             List<string> told = [];
             MainWindow window = new() { SessionsFile = file, Tells = told.Add };
@@ -296,14 +321,18 @@ public sealed class SessionsSidebarTests : IDisposable
 
             string[] folders = [.. window.FoldersBesides("pi")];
             string? to = window.MoveSession("pi", "Work");
+            string? shown = window.Sidebar.Selected?.Path;
 
-            return (folders, to, window.MoveSession("Home lab/nas", string.Empty), told);
+            return (folders, to, window.MoveSession("Home lab/nas", string.Empty), told, shown);
         });
 
         SessionTree store = SessionTree.ReadFrom(file);
 
         Assert.Equal(["Work", "Home lab"], offered);
         Assert.Equal("Work/pi", moved);
+
+        // Selected in a folder that started folded, which the move opened (QS304).
+        Assert.Equal("Work/pi", selected);
         Assert.Null(store.Session("pi"));
         Assert.Equal("deploy", store.Session("Work/pi")!.User!.Value.Value);
 
@@ -446,6 +475,7 @@ public sealed class SessionsSidebarTests : IDisposable
             MainWindow window = new() { SessionsFile = Stored() };
 
             window.RefreshSessions();
+            window.ToggleFolder("Work");
 
             return Find<ListBox>(window.Sidebar, "SessionsList").Items.OfType<ListBoxItem>()
                 .Select(item => (((SessionRow)item.Tag).Path,
@@ -476,6 +506,7 @@ public sealed class SessionsSidebarTests : IDisposable
             MainWindow window = new() { SessionsFile = Stored() };
 
             window.RefreshSessions();
+            window.ToggleFolder("Work");
             window.Sidebar.Select("Work/db-primary");
 
             ListBoxItem item = Find<ListBox>(window.Sidebar, "SessionsList").Items.OfType<ListBoxItem>().Single(each => each.IsSelected);

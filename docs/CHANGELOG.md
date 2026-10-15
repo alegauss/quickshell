@@ -144,6 +144,7 @@
 - ✅ **QS271** **A host nobody has saved cannot be reached without filling and saving the session dialog first** — Connect to an address takes user@host[:port] or an ssh_config host, saves it as a session unless unticked, and opens it by the path a saved session takes.
 - ✅ **QS275** **A store whose root node has a name opens none of its sessions: every row says there is no such session** — A store whose root node has a name opens every session the sidebar lists: the root's name is kept in the file and is never part of a path.
 - ✅ **QS300** **A folder in the sessions sidebar opens or closes only on a double-click** — A folder in the sessions sidebar folds on one click, the second press of a double-click is ignored, and a session still connects on a double-click.
+- ✅ **QS304** **The sessions sidebar opens with every folder unfolded, so a large store is a long list before it is a tree** — The sessions sidebar opens with every folder folded, one click opens one, and a copy or a move opens the folder it put its session in.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

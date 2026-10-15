@@ -476,7 +476,8 @@ public sealed class SessionTreeTests : IDisposable
 
         string[] listed =
         [
-            .. SessionsView.Rows(store, string.Empty, new HashSet<string>(), _ => false)
+            // Every folder opened, which is not where they start (QS304): the claim is about the rows listed.
+            .. SessionsView.Rows(store, string.Empty, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "prod" }, _ => false)
                            .Where(row => !row.IsFolder)
                            .Select(row => row.Path),
         ];

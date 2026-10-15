@@ -31,14 +31,18 @@ public static class SessionsView
     /// <summary>The rows, top to bottom.</summary>
     /// <param name="store">The session store as it is now.</param>
     /// <param name="query">What is typed in the search box. Empty is the whole tree.</param>
-    /// <param name="folded">The folders somebody folded, by path; every other folder is open.</param>
+    /// <param name="opened">
+    /// The folders somebody opened, by path; every other folder is folded. Folded is where a folder
+    /// starts (QS304): a store of a few hundred sessions listed whole is a list to scroll before it is a
+    /// tree to read, and its top level is what says what is in it.
+    /// </param>
     /// <param name="connected">Whether a session, by path, is open in a tab.</param>
-    public static IReadOnlyList<SessionRow> Rows(SessionTree store, string query, IReadOnlySet<string> folded,
+    public static IReadOnlyList<SessionRow> Rows(SessionTree store, string query, IReadOnlySet<string> opened,
                                                  Func<string, bool> connected)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(query);
-        ArgumentNullException.ThrowIfNull(folded);
+        ArgumentNullException.ThrowIfNull(opened);
         ArgumentNullException.ThrowIfNull(connected);
 
         if (query.Trim().Length > 0)
@@ -67,7 +71,7 @@ public static class SessionsView
                 return;
             }
 
-            bool open = !folded.Contains(path);
+            bool open = opened.Contains(path);
 
             rows.Add(new SessionRow(path, node.Name, HandsDown(node), depth, IsFolder: true, open, Connected: false));
 

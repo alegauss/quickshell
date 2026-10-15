@@ -3543,8 +3543,8 @@ public sealed partial class MainWindow : Window
 
     private string _sessionsQuery = string.Empty;
 
-    /// <summary>The folders somebody folded, for as long as this window is open; every other folder is open.</summary>
-    private readonly HashSet<string> _folded = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>The folders somebody opened, for as long as this window is open; every other folder starts folded (QS304).</summary>
+    private readonly HashSet<string> _opened = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The sessions sidebar, which a test reads rows and selections from.</summary>
     public SessionsSidebar Sidebar => _sidebar;
@@ -3606,7 +3606,7 @@ public sealed partial class MainWindow : Window
                                ? $"No saved session matches {typed}."
                                : "No saved sessions yet. New makes one, and Import sessions brings them in from MobaXterm.");
 
-        _sidebar.Show(SessionsView.Rows(store, _sessionsQuery, _folded, open.Contains), empty);
+        _sidebar.Show(SessionsView.Rows(store, _sessionsQuery, _opened, open.Contains), empty);
     }
 
     /// <summary>Filters the sidebar to the sessions a query finds, as <b>Open session</b> finds them.</summary>
@@ -3620,12 +3620,28 @@ public sealed partial class MainWindow : Window
     /// <summary>Folds a folder in the sidebar, or unfolds it.</summary>
     public void ToggleFolder(string path)
     {
-        if (!_folded.Remove(path))
+        if (!_opened.Remove(path))
         {
-            _folded.Add(path);
+            _opened.Add(path);
         }
 
         ShowSessions();
+    }
+
+    /// <summary>
+    /// Opens every folder above a path and selects it, so a session this window just put somewhere —
+    /// a copy, a move — is on screen and not inside a folder that starts folded (QS304).
+    /// </summary>
+    private void Reveal(string path)
+    {
+        for (int slash = path.IndexOf('/', StringComparison.Ordinal); slash > 0;
+             slash = path.IndexOf('/', slash + 1))
+        {
+            _opened.Add(path[..slash]);
+        }
+
+        ShowSessions();
+        _sidebar.Select(path);
     }
 
     /// <summary>
@@ -3732,7 +3748,7 @@ public sealed partial class MainWindow : Window
 
         store.With(at, node with { Name = copy }).WriteTo(StoreFile);
         RefreshSessions();
-        _sidebar.Select(at);
+        Reveal(at);
 
         return at;
     }
@@ -3791,7 +3807,7 @@ public sealed partial class MainWindow : Window
         store.Without(path).With(at, node).WriteTo(StoreFile);
         Recents().Moved(path, at);
         RefreshSessions();
-        _sidebar.Select(at);
+        Reveal(at);
 
         return at;
     }
