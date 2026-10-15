@@ -45,3 +45,4 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
+- ⏸ **QS321** (deps: QS320 ✅) **Nothing decides whether an agent gateway fits a client sold as "an SSH client, not a suite"** — set aside (Scope is the owner's to settle.): A decision record settles it against the plugin-host non-goal: off by default, its own process, nothing on the terminal's path. → §QS321
