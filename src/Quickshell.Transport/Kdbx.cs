@@ -61,7 +61,8 @@ public sealed class KdbxGroup
 /// <param name="Passes">Passes over that memory.</param>
 /// <param name="Lanes">The degree of parallelism the file declares.</param>
 /// <param name="Argon2d">Argon2d rather than Argon2id, which is KeePassXC's default.</param>
-public sealed record KdbxKdf(int MemoryKibibytes, int Passes, int Lanes = 1, bool Argon2d = false)
+/// <param name="AesRounds">Above zero, AES-KDF over this many rounds instead of Argon2, as KeePass writes it (QS346); never what this client writes for a person.</param>
+public sealed record KdbxKdf(int MemoryKibibytes, int Passes, int Lanes = 1, bool Argon2d = false, ulong AesRounds = 0)
 {
     /// <summary>
     /// 256 MiB and three passes. A vault is a file that leaves this machine, so it is the offline
@@ -232,7 +233,7 @@ public sealed class KdbxKey : IDisposable
 
         kdf ??= KdbxKdf.Default;
 
-        byte[] salt = RandomNumberGenerator.GetBytes(16);
+        byte[] salt = RandomNumberGenerator.GetBytes(kdf.AesRounds > 0 ? 32 : 16);
 
         return new KdbxKey(salt, kdf, KdbxWriter.Transform(passphrase, keyFile, salt, kdf));
     }
@@ -240,7 +241,7 @@ public sealed class KdbxKey : IDisposable
     /// <summary>The key sealed under DPAPI for this Windows account, to be kept on disk.</summary>
     public byte[] Seal()
     {
-        if (Kdf.Lanes != 1 || Kdf.Argon2d)
+        if (Kdf.Lanes != 1 || Kdf.Argon2d || Kdf.AesRounds > 0)
         {
             throw new InvalidOperationException("Only a key derived as this client derives one, Argon2id over one lane, is kept.");
         }
@@ -380,6 +381,12 @@ public static class KdbxWriter
     private static ReadOnlySpan<byte> AesCipher =>
         [0x31, 0xC1, 0xF2, 0xE6, 0xBF, 0x71, 0x43, 0x50, 0xBE, 0x58, 0x05, 0x21, 0x6A, 0xFC, 0x5A, 0xFF];
 
+    private static ReadOnlySpan<byte> ChaChaCipher =>
+        [0xD6, 0x03, 0x8A, 0x2B, 0x8B, 0x6F, 0x4C, 0xB5, 0xA5, 0x24, 0x33, 0x9A, 0x31, 0xDB, 0xB5, 0x9A];
+
+    private static ReadOnlySpan<byte> AesKdfKdbx4 =>
+        [0x7C, 0x02, 0xBB, 0x82, 0x79, 0xA7, 0x4A, 0xC0, 0x92, 0x7D, 0x11, 0x4A, 0x00, 0x64, 0x82, 0x38];
+
     internal static ReadOnlySpan<byte> Argon2dKdf =>
         [0xEF, 0x63, 0x6D, 0xDF, 0x8C, 0x29, 0x44, 0x4B, 0x91, 0xF7, 0xA9, 0xA4, 0x03, 0xE3, 0x0A, 0x0C];
 
@@ -409,16 +416,16 @@ public static class KdbxWriter
     /// asking for its passphrase again. Each write still takes a fresh master seed and IV, so no two
     /// files share a cipher key; only the Argon2id derivation, and its salt, are reused.
     /// </summary>
-    public static void Write(string path, KdbxGroup root, KdbxKey key)
+    public static void Write(string path, KdbxGroup root, KdbxKey key, KdbxCipher cipherChoice = KdbxCipher.Aes256)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(key);
 
         byte[] masterSeed = RandomNumberGenerator.GetBytes(32);
-        byte[] iv = RandomNumberGenerator.GetBytes(16);
+        byte[] iv = RandomNumberGenerator.GetBytes(cipherChoice == KdbxCipher.ChaCha20 ? 12 : 16);
 
-        byte[] header = Header(masterSeed, iv, key.Salt, key.Kdf);
+        byte[] header = Header(masterSeed, iv, key.Salt, key.Kdf, cipherChoice);
 
         Secret transformed = key.Transformed;
 
@@ -429,8 +436,18 @@ public static class KdbxWriter
 
         try
         {
-            using (Aes aes = Aes.Create())
+            if (cipherChoice == KdbxCipher.ChaCha20)
             {
+                cipher = (byte[])payload.Clone();
+
+                using ChaCha20 stream = new(cipherKey, iv);
+
+                stream.Xor(cipher);
+            }
+            else
+            {
+                using Aes aes = Aes.Create();
+
                 aes.Key = cipherKey;
                 cipher = aes.EncryptCbc(payload, iv, PaddingMode.PKCS7);
             }
@@ -475,7 +492,7 @@ public static class KdbxWriter
     }
 
     /// <summary>The outer header: version, cipher, seed, IV and the KDF's parameters, ending in its end field.</summary>
-    private static byte[] Header(byte[] masterSeed, byte[] iv, byte[] salt, KdbxKdf kdf)
+    private static byte[] Header(byte[] masterSeed, byte[] iv, byte[] salt, KdbxKdf kdf, KdbxCipher cipherChoice)
     {
         using MemoryStream header = new();
 
@@ -490,7 +507,7 @@ public static class KdbxWriter
 
         BinaryPrimitives.WriteUInt32LittleEndian(number, 0);
 
-        OuterField(header, 2, AesCipher);
+        OuterField(header, 2, cipherChoice == KdbxCipher.ChaCha20 ? ChaChaCipher : AesCipher);
         OuterField(header, 3, number[..4]);
         OuterField(header, 4, masterSeed);
         OuterField(header, 7, iv);
@@ -517,6 +534,17 @@ public static class KdbxWriter
         using MemoryStream dictionary = new();
 
         dictionary.Write([0x00, 0x01]);
+
+        if (kdf.AesRounds > 0)
+        {
+            Variant(dictionary, 0x42, "$UUID", AesKdfKdbx4);
+            Variant(dictionary, 0x42, "S", salt);
+            Variant(dictionary, 0x05, "R", BitConverter.GetBytes(kdf.AesRounds));
+            dictionary.WriteByte(0);
+
+            return dictionary.ToArray();
+        }
+
         Variant(dictionary, 0x42, "$UUID", kdf.Argon2d ? Argon2dKdf : Argon2idKdf);
         Variant(dictionary, 0x42, "S", salt);
         Variant(dictionary, 0x04, "P", BitConverter.GetBytes((uint)kdf.Lanes));
@@ -544,7 +572,7 @@ public static class KdbxWriter
     {
         using Secret composite = Composite(passphrase, keyFile);
 
-        return Argon(composite, salt, kdf);
+        return kdf.AesRounds > 0 ? KdbxReader.AesTransform(composite, salt, kdf.AesRounds) : Argon(composite, salt, kdf);
     }
 
     /// <summary>
@@ -942,4 +970,17 @@ internal sealed class ChaCha20 : IDisposable
         CryptographicOperations.ZeroMemory(System.Runtime.InteropServices.MemoryMarshal.AsBytes(_working.AsSpan()));
         CryptographicOperations.ZeroMemory(_block);
     }
+}
+
+/// <summary>
+/// The outer cipher a vault is written under (QS346). The export keeps AES-256; ChaCha20 is here so
+/// the reader's other path is proven against KeePassXC.
+/// </summary>
+public enum KdbxCipher
+{
+    /// <summary>AES-256 in CBC mode.</summary>
+    Aes256,
+
+    /// <summary>ChaCha20 with a 12-byte IV.</summary>
+    ChaCha20,
 }

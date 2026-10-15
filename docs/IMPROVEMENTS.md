@@ -78,25 +78,6 @@ Done when a guest run opens the export, sees the Windows Security prompt appear 
 client, cancels it, and reads that nothing was written; and the owner has once verified
 with a real PIN on the reference desk and seen the vault written.
 
-### §QS346 QS346 ChaCha20 and AES-KDF vaults, proven
-
-QS308's KdbxReader reads KDBX 4 vaults encrypted with ChaCha20 and derived with AES-KDF,
-two choices KeePassXC's database settings offer, but no test holds either:
-keepassxc-cli's db-create writes KDBX 3.1 with AES-KDF and AES, and the client's own
-writer writes AES and Argon2id. The tests that exist prove AES-256, Argon2d over two
-lanes, Argon2id, and KDBX 3.1 with AES-KDF and Salsa20.
-
-The cheapest proof is the writer's: KdbxWriter grows an internal option for the outer
-cipher (ChaCha20 with a 12-byte IV, the cipher UUID
-d6038a2b-8b6f-4cb5-a524-339a31dbb59a) and for AES-KDF in its KDBX 4 form (UUID
-7c02bb82-79a7-4ac0-927d-114a00648238, seed S and rounds R in the variant dictionary).
-keepassxc-cli then opens each file the writer made, which proves the writer agrees with
-KeePassXC, and KdbxReader reads it back, which proves the reader agrees with both.
-Neither option is offered to a person: the export keeps AES-256 and Argon2id.
-
-Done when two tests write a ChaCha20 vault and a KDBX 4 AES-KDF vault, keepassxc-cli
-shows each entry's password, and KdbxReader reads the same password back from each.
-
 ## Block C — Emulation that does not lie about the remote
 
 ### §QS92 The three environments this machine is not

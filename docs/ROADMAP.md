@@ -7,7 +7,6 @@
 ## Block B — Keys, agents, and the host you think you reached
 
 - ⏳ **QS344** (deps: a guest with a Windows Hello PIN) **The Windows Hello prompt before a vault export has never been seen to run, since no test desk has Hello set up** — Seeing the prompt over the client needs a PIN set in the guest, and one real verification by the owner with a real PIN. → §QS344
-- 📋 **QS346** (deps: —) **Reading a KDBX 4 vault encrypted with ChaCha20, or derived with AES-KDF, is proven by no vault** — keepassxc-cli makes only KDBX 3.1 and the client writes AES with Argon2id, so those two reader paths have never met a real file. → §QS346
 
 ## Block C — Emulation that does not lie about the remote
 

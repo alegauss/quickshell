@@ -119,6 +119,41 @@ public sealed class KdbxReaderTests : IDisposable
         Assert.Equal("s3cret-ção", Encoding.UTF8.GetString(read.Root.Groups[0].Entries[0].Password!.Bytes));
     }
 
+    /// <summary>
+    /// A KDBX 4 vault encrypted with ChaCha20, and one derived with AES-KDF: each written here, opened by
+    /// KeePassXC, which proves the writer agrees with it, and read back here, which proves the reader
+    /// agrees with both (QS346).
+    /// </summary>
+    [Theory]
+    [InlineData("chacha", false)]
+    [InlineData("aes-kdf", true)]
+    public void AChaChaOrAesKdfVaultIsOpenedByKeePassXcAndReadBack(string name, bool aesKdf)
+    {
+        string cli = Cli();
+        string vault = Path.Combine(_folder, name + ".kdbx");
+
+        using (Secret password = Secret.From("s3cret-ção".AsSpan()))
+        using (Secret passphrase = Secret.From(Passphrase.AsSpan()))
+        using (KdbxKey key = KdbxKey.Derive(passphrase, kdf: aesKdf ? new KdbxKdf(0, 0, AesRounds: 6000) : Quick))
+        {
+            KdbxWriter.Write(vault, new KdbxGroup
+            {
+                Name = "Sessions",
+                Groups = [new KdbxGroup { Name = "Work", Entries = [new KdbxEntry { Title = "web01", UserName = "deploy", Password = password }] }],
+            }, key, aesKdf ? KdbxCipher.Aes256 : KdbxCipher.ChaCha20);
+        }
+
+        (int code, string said) = Run(cli, ["show", "-q", "-s", "-a", "Password", vault, "Work/web01"], Passphrase + "\n");
+
+        Assert.True(code == 0, $"keepassxc-cli did not open the {name} vault (exit {code}): {said}");
+        Assert.Equal("s3cret-ção", said.Trim());
+
+        using Secret again = Secret.From(Passphrase.AsSpan());
+        using KdbxVault read = KdbxReader.Read(vault, again);
+
+        Assert.Equal("s3cret-ção", Encoding.UTF8.GetString(read.Root.Groups[0].Entries[0].Password!.Bytes));
+    }
+
     /// <summary>A vault keepassxc-cli made itself, KDBX 3.1 with AES-KDF and Salsa20, reads its entry.</summary>
     [Fact]
     public void AVaultKeePassXcMadeIsRead()

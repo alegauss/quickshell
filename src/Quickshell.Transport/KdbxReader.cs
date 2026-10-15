@@ -344,7 +344,7 @@ public static class KdbxReader
     }
 
     /// <summary>AES-KDF: the composite key encrypted with AES-ECB under the seed, round after round, then hashed.</summary>
-    private static Secret AesTransform(Secret composite, byte[] seed, ulong rounds)
+    internal static Secret AesTransform(Secret composite, byte[] seed, ulong rounds)
     {
         byte[] key = composite.Bytes.ToArray();
 
