@@ -22,6 +22,8 @@
 
 ## Block G — The clean interface, defended
 
+- 📋 **QS353** (deps: —) **A connected recent card on Home clips its New connection and Go to tab buttons when the window is not maximised** — Three equal columns leave a card narrower than its two buttons, which share one cell with the card's when text, so a label is cut. → §QS353
+
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
@@ -33,7 +35,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS292** (deps: QS188 ✅) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — winwright 1.1.0 drops onto Explorer (WW530), but a case still cannot open that folder or read the file it lands as. → §QS292
 - 📋 **QS347** (deps: —) **A middle click closing a tab is proven by routed events raised in a unit test, not by a UI case** — A case's click verb presses only the left button, so the gesture waits on winwright to name another. → §QS347
 - 📋 **QS348** (deps: winwright WW539) **That a tab's close cross is drawn inside its tab is proven by an in-process render, not by a UI case** — A case cannot claim one element sits within another, so the geometry QS312 fixed waits on winwright to name it. → §QS348
 - 📋 **QS349** (deps: winwright WW540) **Choosing several sidebar rows is proven by automation peers in a unit test, not by a UI case** — A case cannot add to a selection or Ctrl+click, so QS314's selection waits on winwright to name the act. → §QS349

@@ -353,6 +353,7 @@
 - ✅ **QS303** **The UI cases run on winwright 1.0.2, so CasesRun guesses a survivor's case that 1.1.0 names itself** — The UI cases run on winwright 1.1.0, and a survivor's red names its case from the engine instead of a pairing guessed by launch order.
 - ✅ **QS302** **A guest run starts while another project's run is driving the same VM, and its UI cases lose the foreground** — Every guest tool takes winwright's desk mutex before it touches the VM, and a second run waits naming the holder, so two suites never share the desk.
 - ✅ **QS352** **The recording test stops its recording on the first byte, ConPTY's mode sequences, before the line it reads back** — The recording test waits until the echoed line is on the pane's screen before stopping, so a fast run no longer records only ConPTY's escapes.
+- ✅ **QS292** **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — The Explorer drop is a UI case in browser.cases.json: a file dragged from the host's pane lands in an Explorer folder and is read back byte for byte, and the hand-driven test is gone.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

@@ -15,15 +15,6 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Quickshell.Cases</RootNamespace>
 
-    <!-- For System.Windows.Automation in ExplorerDropRun alone, whose drop lands in another
-         process's window — which a case can drop since winwright 1.1.0 (WW530) but not yet open
-         the folder for (WW536) or check the file of (WW535); QS292. Not Quickshell.App:
-         the rule above still holds. -->
-    <UseWPF>true</UseWPF>
-
-    <!-- LibraryImport's generated marshalling, for the same file's SendInput. -->
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-
     <!-- No RuntimeIdentifier, deliberately. It would put the executable under a win-x64 segment,
          and run-tests.cmd looks for tests\<Name>\bin\<Config>\net10.0-windows\<Name>.exe — so a RID
          here reads as "no test application" and counts as a failed assembly. The application under
@@ -39,9 +30,11 @@
        expanded (WW525): QS273 and QS278.
        1.1.0 for a survivor that names the case that launched it (WW531, from QS298), a drag that
        drops onto another window (WW530), and one run at a time on the guest desk (WW534, from
-       QS302): QS303. -->
+       QS302): QS303.
+       1.1.1 for a fixture that opens an Explorer folder beside the client (WW536) and a step that
+       reads the file a drop left there (WW535), so the Explorer drop is a case: QS292. -->
   <ItemGroup>
-    <PackageReference Include="Winwright" Version="1.1.0" />
+    <PackageReference Include="Winwright" Version="1.1.1" />
   </ItemGroup>
 
 </Project>

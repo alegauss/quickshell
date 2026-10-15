@@ -273,6 +273,28 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
+### §QS353 A recent card that fits its buttons
+
+Reported by the owner on 2026-10-15 with a picture of a restored window: the recent card
+of a connected session shows "onnection" cut on the left and "Go to tab" against the
+card's edge, with the card's "when" text showing through between them.
+
+Why, in HomePage.cs: the recent cards sit in a UniformGrid of three equal columns inside
+a body capped at 880 wide, so a card gets a third of what the window leaves after the
+sidebar. QS313's two buttons are one horizontal StackPanel aligned right, in the same
+Grid cell as the "when" TextBlock. The StackPanel is wider than the column, so it is
+clipped on the left, and the text sits under it.
+
+What to build: the "when" text gets a row of its own above the buttons, never the same
+cell; the buttons go in a right-aligned WrapPanel, so on a narrow card Go to tab moves
+under New connection instead of pushing it out. Go to tab stays the accent and the last
+one. Not a smaller font or an ellipsis: a button whose label is cut is the defect.
+
+Proven by a UI case on the connected fixture that narrows the window and reads both
+buttons inside the card. A case cannot claim geometry yet (winwright WW539), so until it
+can, a test in process lays the card out at the narrowest width Home allows and asserts
+each button's desired size fits what it was arranged into.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS77 Installing, signing, and updating without a service
@@ -459,28 +481,6 @@ both sides' algorithm lists.
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of
-
-### §QS292 The drop as a case
-
-QS188's Explorer drop is proven by tests/Quickshell.Cases/ExplorerDropRun.cs
-(2026-10-13), and not by a case file, because winwright's `drag` releases over an
-element of the window it started in (WW530). The test does the engine's work by hand: it
-launches the client on the guest's sshd, answers the host-key question, opens the
-browser through the palette with synthesised keys, finds everything in the accessibility
-tree, and moves the pointer itself with SendInput. That is about four hundred lines
-doing what a case says in thirty, with its own waits, its own input and its own reading
-of a failure — which is exactly what QS147 adopted winwright to stop writing.
-
-winwright 1.1.0 shipped WW530 (`toDesktop`, a drop onto another window), and two gaps
-are left: a fixture cannot open the Explorer folder the drop lands in (WW536), and no
-step can read the file it lands as (WW535). What to build, once both ship: a case in
-browser.cases.json whose fixture reaches 127.0.0.1:2240 as connected.cases.json's does,
-dragging the served file onto an Explorer folder view, followed by the fixture's check
-that the file landed with the served bytes. Then ExplorerDropRun.cs and the Cases
-project's WPF and unsafe settings go.
-
-Falsified when the case replaces the test and an Explorer drop that leaves a different
-file, or none, is not red.
 
 ### §QS347 QS347 UI cases for the middle click and the tab menu
 
