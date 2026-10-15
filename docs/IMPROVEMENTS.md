@@ -549,27 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS326 Remote edits an agent can make and a person can read
-
-Writing a config file through `ssh host "cat > file <<EOF"` breaks on the first quote,
-and `sed -i` with a regex changes lines nobody looked at. Both leave nothing to review
-and nothing to restore.
-
-The gateway already holds an SFTP channel on the same connection (Block E). Two tools
-use it. `read_file` takes a session, a path and an optional line range, and returns the
-text with line numbers, refusing a binary file. `edit_file` takes the path, an exact old
-string that must occur once, and its replacement, the same contract an agent's local
-edit tool has, so nothing new is learned. Before writing, it copies the original to
-`<file>.qs-bak-<timestamp>`; it writes to a temporary name and renames, so a dropped
-link never leaves half a file; and it keeps the owner, mode and timestamps the file had.
-
-The answer carries the unified diff, which the approval dialog shows once policy exists
-and the audit log keeps either way.
-
-Proven against the test sshd: a replacement with quotes and a trailing newline, a
-refusal when the old string occurs twice, and a file left intact when the link is cut
-mid-write.
-
 ### §QS327 A prompt is an error, not a two-minute hang
 
 An agent's command that stops to ask something has nobody to answer it. Today it hangs

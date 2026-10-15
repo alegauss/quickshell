@@ -134,7 +134,8 @@ public sealed class AgentGateway : IAsyncDisposable
         ["serverInfo"] = new JsonObject { ["name"] = "quickshell", ["version"] = _version },
         ["instructions"] =
             "Runs commands on the SSH sessions saved in quickshell. hosts_list names them; exec runs an argument "
-            + "vector on one and answers its exit code, stdout and stderr apart. No policy limits what runs yet.",
+            + "vector on one and answers its exit code, stdout and stderr apart. read_file and edit_file read a text "
+            + "file there and change one exact piece of it, keeping the original beside it. No policy limits any of it yet.",
     };
 
     private static JsonArray Tools() =>
@@ -175,6 +176,43 @@ public sealed class AgentGateway : IAsyncDisposable
                 ["required"] = new JsonArray("host", "argv"),
             },
         },
+        new JsonObject
+        {
+            ["name"] = "read_file",
+            ["description"] = "Reads a text file on a saved session over SFTP, each line led by its number and a tab. "
+                              + "Refuses a binary file and one over a megabyte; give from and to for a range of lines.",
+            ["inputSchema"] = new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["host"] = new JsonObject { ["type"] = "string", ["description"] = "The session's path, as hosts_list names it." },
+                    ["path"] = new JsonObject { ["type"] = "string", ["description"] = "The file's absolute path on the server." },
+                    ["from"] = new JsonObject { ["type"] = "integer", ["description"] = "The first line to return, from 1." },
+                    ["to"] = new JsonObject { ["type"] = "integer", ["description"] = "The last line to return." },
+                },
+                ["required"] = new JsonArray("host", "path"),
+            },
+        },
+        new JsonObject
+        {
+            ["name"] = "edit_file",
+            ["description"] = "Replaces the one occurrence of old_string in a text file on a saved session with new_string. "
+                              + "Nothing is written where old_string occurs nowhere or more than once. The original is kept "
+                              + "beside the file as <file>.qs-bak-<time>, and the answer carries the unified diff.",
+            ["inputSchema"] = new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["host"] = new JsonObject { ["type"] = "string", ["description"] = "The session's path, as hosts_list names it." },
+                    ["path"] = new JsonObject { ["type"] = "string", ["description"] = "The file's absolute path on the server." },
+                    ["old_string"] = new JsonObject { ["type"] = "string", ["description"] = "The exact text to replace, which must occur once." },
+                    ["new_string"] = new JsonObject { ["type"] = "string", ["description"] = "What replaces it." },
+                },
+                ["required"] = new JsonArray("host", "path", "old_string", "new_string"),
+            },
+        },
     ];
 
     private async Task<JsonObject> CallAsync(JsonObject? call, CancellationToken cancellationToken)
@@ -188,7 +226,9 @@ public sealed class AgentGateway : IAsyncDisposable
             {
                 "hosts_list" => HostsList(),
                 "exec" => await ExecAsync(arguments, cancellationToken).ConfigureAwait(false),
-                _ => throw new GatewayRefusal($"There is no tool {name} here; hosts_list and exec are."),
+                "read_file" => await ReadFileAsync(arguments, cancellationToken).ConfigureAwait(false),
+                "edit_file" => await EditFileAsync(arguments, cancellationToken).ConfigureAwait(false),
+                _ => throw new GatewayRefusal($"There is no tool {name} here; hosts_list, exec, read_file and edit_file are."),
             };
 
             return Content(result, isError: false);
@@ -198,10 +238,58 @@ public sealed class AgentGateway : IAsyncDisposable
             // The connection, not the call: said as a tool error the agent can read and report.
             return Content(new JsonObject { ["error"] = $"{failed.Message} {failed.Means}".Trim() }, isError: true);
         }
-        catch (GatewayRefusal refused) when (name is "exec")
+        catch (RemoteTextRefusal refused)
         {
             return Content(new JsonObject { ["error"] = refused.Message }, isError: true);
         }
+        catch (GatewayRefusal refused) when (name is "exec" or "read_file" or "edit_file")
+        {
+            return Content(new JsonObject { ["error"] = refused.Message }, isError: true);
+        }
+    }
+
+    private async Task<JsonObject> ReadFileAsync(JsonObject arguments, CancellationToken cancellationToken)
+    {
+        (IGatewayConnection connection, string path) = await FileAsync(arguments, cancellationToken).ConfigureAwait(false);
+        IFileTransferChannel files = await connection.FilesAsync(cancellationToken).ConfigureAwait(false);
+
+        RemoteRead read = await RemoteText.ReadAsync(files, path, arguments["from"]?.GetValue<int>(),
+                                                     arguments["to"]?.GetValue<int>(), cancellationToken).ConfigureAwait(false);
+
+        return new JsonObject { ["text"] = read.Text, ["lines"] = read.Lines };
+    }
+
+    private async Task<JsonObject> EditFileAsync(JsonObject arguments, CancellationToken cancellationToken)
+    {
+        (IGatewayConnection connection, string path) = await FileAsync(arguments, cancellationToken).ConfigureAwait(false);
+
+        string old = arguments["old_string"]?.GetValue<string>() is { Length: > 0 } given
+            ? given
+            : throw new GatewayRefusal("edit_file needs old_string, the exact text to replace.");
+        string replacement = arguments["new_string"]?.GetValue<string>()
+            ?? throw new GatewayRefusal("edit_file needs new_string, what replaces it; empty deletes old_string.");
+
+        IFileTransferChannel files = await connection.FilesAsync(cancellationToken).ConfigureAwait(false);
+        RemoteTextEdit edit = await RemoteText.EditAsync(files, path, old, replacement, DateTimeOffset.Now, cancellationToken)
+                                          .ConfigureAwait(false);
+
+        return new JsonObject { ["diff"] = edit.Diff, ["backup"] = edit.Backup };
+    }
+
+    /// <summary>The session's connection and the absolute path a file tool named.</summary>
+    private async Task<(IGatewayConnection Connection, string Path)> FileAsync(JsonObject arguments, CancellationToken cancellationToken)
+    {
+        string host = arguments["host"]?.GetValue<string>() is { Length: > 0 } named
+            ? named
+            : throw new GatewayRefusal("A file tool needs host, the session's path as hosts_list names it.");
+        string path = arguments["path"]?.GetValue<string>() is { Length: > 0 } file && file.StartsWith('/')
+            ? file
+            : throw new GatewayRefusal("A file tool needs path, the file's absolute path on the server, starting with /.");
+
+        ResolvedSession session = _store().Session(host)
+            ?? throw new GatewayRefusal($"There is no saved session {host}. hosts_list names the ones there are.");
+
+        return (await ConnectionAsync(session, cancellationToken).ConfigureAwait(false), path);
     }
 
     private JsonObject HostsList()
@@ -356,12 +444,25 @@ public sealed class AgentGateway : IAsyncDisposable
     /// <summary>A transport that can run a command, kept by the gateway between calls.</summary>
     private sealed class Kept(ISshTransport transport) : IGatewayConnection
     {
+        private IFileTransferChannel? _files;
+
         public bool IsConnected => transport.IsConnected;
 
         public ValueTask<CommandResult> RunAsync(string command, TimeSpan timeout, CancellationToken cancellationToken = default) =>
             ((ICommandChannel)transport).RunAsync(command, timeout, cancellationToken);
 
-        public ValueTask DisposeAsync() => transport.DisposeAsync();
+        public async ValueTask<IFileTransferChannel> FilesAsync(CancellationToken cancellationToken = default) =>
+            _files ??= await transport.OpenFileTransferAsync(cancellationToken).ConfigureAwait(false);
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_files is { } files)
+            {
+                await files.DisposeAsync().ConfigureAwait(false);
+            }
+
+            await transport.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     /// <summary>A call the gateway will not make, said in words the agent can act on.</summary>
@@ -373,4 +474,7 @@ public interface IGatewayConnection : ICommandChannel, IAsyncDisposable
 {
     /// <summary>Whether it is still up, so a dropped one is replaced rather than used.</summary>
     bool IsConnected { get; }
+
+    /// <summary>The connection's file channel, opened on first use and kept with it (QS326).</summary>
+    ValueTask<IFileTransferChannel> FilesAsync(CancellationToken cancellationToken = default);
 }

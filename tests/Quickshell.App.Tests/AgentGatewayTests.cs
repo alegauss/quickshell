@@ -36,7 +36,7 @@ public sealed class AgentGatewayTests
 
         JsonObject listed = (await gateway.AnswerAsync("""{"jsonrpc":"2.0","id":2,"method":"tools/list"}""", Stop))!;
 
-        Assert.Equal(["hosts_list", "exec"], listed["result"]!["tools"]!.AsArray().Select(tool => tool!["name"]!.GetValue<string>()));
+        Assert.Equal(["hosts_list", "exec", "read_file", "edit_file"], listed["result"]!["tools"]!.AsArray().Select(tool => tool!["name"]!.GetValue<string>()));
 
         JsonObject unknown = (await gateway.AnswerAsync("""{"jsonrpc":"2.0","id":"x","method":"resources/list"}""", Stop))!;
 
@@ -199,6 +199,113 @@ public sealed class AgentGatewayTests
         Assert.Equal(1, gateway.Opened);
     }
 
+    /// <summary>In the guest, against its Windows OpenSSH: a file read, edited, and its backup there.</summary>
+    [Fact]
+    public async Task OnTheGuestsServerAFileIsEditedWithItsBackupBeside()
+    {
+        Assert.SkipUnless(SshFixture.Listening(GuestPort) && File.Exists(GuestKey),
+            $"Windows OpenSSH is not on 127.0.0.1:{GuestPort}: run tools/provision-guest-sshd.ps1 once, which sets it up in the guest");
+
+        await EditsAFileAsync("probe", GuestPort, GuestKey);
+    }
+
+    /// <summary>Against the Linux fixture: the same, on the server an agent most often edits.</summary>
+    [Fact]
+    public async Task OnAPosixServerAFileIsEditedWithItsBackupBeside()
+    {
+        SshFixture.SkipWithoutIt();
+
+        await EditsAFileAsync("probe", 2222, Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
+    }
+
+    /// <summary>
+    /// A file put in the account's home is read with its numbers, edited by a replacement with quotes
+    /// and a trailing newline, refused an ambiguous edit, and read back with its backup beside it.
+    /// </summary>
+    private static async Task EditsAFileAsync(string user, int port, string key)
+    {
+        await using AgentGateway gateway = Real(user, port, key);
+
+        // Placed through a connection of the test's own, so the gateway's tools are what is proven.
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(Path.GetTempPath(), $"qs326-{Guid.NewGuid():N}")),
+                                    (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        ResolvedSession session = SessionTree.Of(new SessionNode
+        {
+            Children = [new SessionNode { Name = "real", Host = "127.0.0.1", Settings = new SessionSettings { User = user, Port = port, Key = key } }],
+        }).Session("real")!;
+
+        await using IGatewayConnection setup = await AgentGateway.Connect(session, trust, Stop);
+        IFileTransferChannel files = await setup.FilesAsync(Stop);
+
+        string home = files.WorkingDirectory.TrimEnd('/');
+        string path = $"{home}/qs326-{Guid.NewGuid():N}.conf";
+
+        using (MemoryStream content = new("listen = 80\nname = \"web\"\nport = 1\nport = 1\n"u8.ToArray()))
+        {
+            await files.UploadAsync(content, path, cancellationToken: Stop);
+        }
+
+        string? backup = null;
+
+        try
+        {
+            JsonNode read = await ToolAsync(gateway, 1, "read_file", new JsonObject { ["host"] = "real", ["path"] = path, ["from"] = 2, ["to"] = 2 });
+
+            Assert.Equal("2\tname = \"web\"\n", read["text"]!.GetValue<string>());
+            Assert.Equal(4, read["lines"]!.GetValue<int>());
+
+            JsonNode edited = await ToolAsync(gateway, 2, "edit_file", new JsonObject
+            {
+                ["host"] = "real", ["path"] = path, ["old_string"] = "name = \"web\"\n", ["new_string"] = "name = \"it's web\"\n",
+            });
+
+            backup = edited["backup"]!.GetValue<string>();
+
+            Assert.Contains("-name = \"web\"\n+name = \"it's web\"\n", edited["diff"]!.GetValue<string>(), StringComparison.Ordinal);
+
+            JsonObject twice = (await gateway.AnswerAsync(Call(3, "edit_file", new JsonObject
+            {
+                ["host"] = "real", ["path"] = path, ["old_string"] = "port = 1", ["new_string"] = "port = 2",
+            }), Stop))!;
+
+            Assert.True(twice["result"]!["isError"]!.GetValue<bool>());
+
+            JsonNode after = await ToolAsync(gateway, 4, "read_file", new JsonObject { ["host"] = "real", ["path"] = path });
+            JsonNode kept = await ToolAsync(gateway, 5, "read_file", new JsonObject { ["host"] = "real", ["path"] = backup });
+
+            Assert.Equal("1\tlisten = 80\n2\tname = \"it's web\"\n3\tport = 1\n4\tport = 1\n", after["text"]!.GetValue<string>());
+            Assert.Equal("1\tlisten = 80\n2\tname = \"web\"\n3\tport = 1\n4\tport = 1\n", kept["text"]!.GetValue<string>());
+            Assert.Equal(1, gateway.Opened);
+        }
+        finally
+        {
+            foreach (string? left in (string?[])[path, backup])
+            {
+                if (left is { } named)
+                {
+                    try
+                    {
+                        await files.DeleteAsync(named, CancellationToken.None);
+                    }
+                    catch (SshException)
+                    {
+                        // Gone already, or never made.
+                    }
+                }
+            }
+        }
+    }
+
+    private static async Task<JsonNode> ToolAsync(AgentGateway gateway, int id, string tool, JsonObject arguments)
+    {
+        JsonObject answer = (await gateway.AnswerAsync(Call(id, tool, arguments), Stop))!;
+        JsonNode result = answer["result"] ?? throw new Xunit.Sdk.XunitException(answer.ToJsonString());
+
+        Assert.False(result["isError"]!.GetValue<bool>(), result.ToJsonString());
+
+        return result["structuredContent"]!;
+    }
+
     /// <summary>A gateway over one real session, trusting that server's key for this test alone.</summary>
     private static AgentGateway Real(string user, int port, string key)
     {
@@ -273,6 +380,9 @@ public sealed class AgentGatewayTests
 
             return ValueTask.FromResult(new CommandResult(0, "out", "err"));
         }
+
+        public ValueTask<IFileTransferChannel> FilesAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("this connection only runs commands");
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

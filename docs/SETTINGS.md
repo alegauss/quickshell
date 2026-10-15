@@ -211,9 +211,11 @@ settings window and ignored.
 Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. Nothing yet limits what it runs.
 
 With it on, an agent's host can start `quickshell --mcp` ([COMMAND-LINE.md](COMMAND-LINE.md#serving-an-agent))
-and call two tools: `hosts_list`, which names your saved sessions and never a password or a key, and
+and call four tools: `hosts_list`, which names your saved sessions and never a password or a key;
 `exec`, which runs a program with its arguments on one of them over a connection the gateway keeps
-for the next call, and answers its exit code, output and errors apart. It signs in with the session's
+for the next call, and answers its exit code, output and errors apart; `read_file`, which reads a
+text file there with its line numbers; and `edit_file`, which replaces one exact piece of a text
+file, keeps the original beside it as `<file>.qs-bak-<time>`, and answers the diff. It signs in with the session's
 key and your agents, never a typed password, and refuses a host whose key you have not already trusted
 from the window. It is a separate process: the window, its start and its memory are the same with
 it on or off. **There is no policy yet**: an agent with this on can run anything your account on that

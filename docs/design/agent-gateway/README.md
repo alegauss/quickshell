@@ -363,6 +363,18 @@ does not, which a later line has to settle before such a server is offered.
 with the session's key and the agents, never a typed password, and refuses a host key the user's
 known_hosts does not already hold, saying to connect once from the window.
 
+**Reading and editing a file (QS326).** `read_file` and `edit_file` use the same connection's SFTP
+channel, opened on first use. A file is read whole up to a megabyte and refused when it holds a NUL or
+is not UTF-8; lines come back numbered, a range on request. An edit is the contract an agent's own
+edit tool has: `old_string` must occur exactly once, or nothing is written and the answer says how
+many times it occurred. The new text is written whole under `<file>.qs-new-<id>` and given the
+original's mode; the original is then renamed to `<file>.qs-bak-<time>` and the new one renamed into
+place. Two renames, because SFTP version 3 does not rename onto a file that exists; the backup is
+therefore the original itself, with its owner, mode and times, and the edited file has a new
+modification time, as any edit does. If the second rename fails the original is moved back, and if
+that fails too the error names both paths. The answer carries one `diff -u` hunk with three lines of
+context; the audit log that keeps it is QS333's. Code: `src/Quickshell.App/RemoteText.cs`.
+
 ## Sections to come
 
 Each is written by the line that owns it, into this document.
