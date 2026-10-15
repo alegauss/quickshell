@@ -16,7 +16,6 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS315** (deps: QS314 ✅) **How a set of sessions is configured, with jump hosts, keys and forwards, can be documented only by copying it by hand** — A command writes a PDF of the chosen sessions: each one's resolved settings and where each came from, its jump chain and forwards, never a secret. → §QS315
 - 📋 **QS331** (deps: —) **A saved session carries nothing that tells production from staging, to the person or to anything reading the store** — Sessions take free tags such as prod or db, inherited from their folder, shown on the tab, and read by the agent gateway's policy. → §QS331
 
 ## Block E — SCP and SFTP as a thing a person operates
