@@ -264,6 +264,44 @@ GTFOBins catalogue is the starting point). A build where any command in either i
 when it is not fails. False asks over the real corpus are reported as a number in the run, the one
 this section's later changes are argued with.
 
+## Approval that does not train a reflex (QS324)
+
+Approval fatigue defeats every permission prompt: forty identical requests teach a person to
+approve without reading, and the forty-first is the `DROP TABLE`. This section is written against
+that habit, and like the policy it is a client-side control (the server account is what bounds a
+mistaken yes).
+
+**By plan, not by command.** The agent proposes a batch: the sessions, and for each the argument
+vectors to run and the files to edit with their diffs. The person approves it once, and the
+gateway runs exactly that and nothing else. The approval is bound to a SHA-256 of the batch in a
+canonical form (session paths, then each argv as length-prefixed strings, then each edit's path and
+diff), so a batch that changes by one byte after it was shown is a new request, never a silent
+substitution. A batch is run in its order and stops at the first command that fails, saying which.
+
+**Shown where it cannot be faked.** In quickshell's own dialog, never in the agent's terminal, where
+the agent controls what is printed. The dialog shows each session by name and address with its tag,
+a `prod` tag in the colour the client already uses for danger; each command as parsed into its
+words, so quoting cannot hide a second command; each edit as a diff; and the batch's short hash,
+which the agent's request also carries, so the person can match the two. Three answers: run it,
+refuse it, or turn it into a grant (QS337), which asks for the grant's end before it is written.
+
+**Rare by construction.** Reads at `observe` and `operate` never ask (QS323 decides what a read
+is). A grant replaces a run of identical asks with one decision that ends. The target is at most
+four asks per hour of agent work on a `prod` session, measured from the audit log (QS333): asks,
+approvals, refusals and the seconds between showing and answering, per session tag. An answer in
+under two seconds, repeatedly, is what a reflex looks like, and the number the section is judged by.
+
+**Two answers the line left open.**
+
+1. *Approval from somewhere other than the desk:* not now. Approving from a phone moves the
+   decision away from the screen that shows the diff, and the dialog's whole value is that the
+   person sees exactly what runs. If it is ever wanted, it is a separate line with its own threat
+   model, not a setting.
+2. *What the agent sees while it waits:* the tool call blocks and its progress says "waiting for
+   approval in quickshell, plan `<short hash>`". After ten minutes with no answer it returns a named
+   error, `approval timed out`, which the agent can report or retry. Silence is never consent: a
+   batch nobody answered is a batch that did not run.
+
 ## Sections to come
 
 Each is written by the line that owns it, into this document.
@@ -271,5 +309,4 @@ Each is written by the line that owns it, into this document.
 | Line | Section |
 |---|---|
 | QS321 | Whether this belongs in a client sold as "an SSH client, not a suite" |
-| QS324 | Approval by plan, so a person reviews a batch once instead of clicking yes forty times |
 | QS340, QS341 | The server account and short-lived certificates |

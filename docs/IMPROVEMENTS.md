@@ -604,28 +604,6 @@ keystroke-to-pixel path.
 The outcome is a decision record in DECISIONS.md, and if the answer is no, a non-goal so
 the idea is not re-filed. Every other line in Block L waits on it.
 
-### §QS324 Approval that does not train a reflex
-
-Approval fatigue is the failure that defeats every permission prompt: forty identical
-requests teach a person to approve without reading, and the forty-first is the `DROP
-TABLE`. The approval section designs against that habit.
-
-By plan, not by command: the agent proposes a batch, the person approves it once, and
-quickshell runs exactly those argv on exactly those hosts. The approval is bound to a
-hash of the batch, so a changed command is a new request rather than a silent
-substitution.
-
-Shown where it matters: quickshell's own dialog, not the agent's terminal, with the
-session name, its tag (a `prod` tag in the colour the client already uses for danger),
-each command as parsed, and for a file edit the diff.
-
-Rare by construction: reads at `observe` never ask, and a time-boxed grant (QS322)
-replaces a run of identical asks. The section names the target, asks per hour of agent
-work on a `prod` session, and how it is measured from the audit log.
-
-Open questions: whether an approval can be given from the phone the desk is not at, and
-what the agent sees while it waits.
-
 ### §QS325 The spike: the gateway with nothing but exec
 
 From the agent's side, the dearest costs of SSH today are mechanical. A command goes
