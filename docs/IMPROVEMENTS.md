@@ -272,6 +272,31 @@ buttons inside the card. A case cannot claim geometry yet (winwright WW539), so 
 can, a test in process lays the card out at the narrowest width Home allows and asserts
 each button's desired size fits what it was arranged into.
 
+### §QS354 QS354 A menu bar with every action
+
+Asked by the owner on 2026-10-15: today every feature is reached by a hotkey or by
+typing in the palette, and there is no menu where a user can browse what the client
+does.
+
+The constraint it keeps: Block G's Done when says a default installation opens with no
+toolbar, menu or status bar (restated by the owner on 2026-10-13, QS272). So the menu is
+not visible by default. It follows the Windows convention: pressing and releasing Alt
+shows a menu bar under the title bar, access keys underlined, and Esc or a click
+elsewhere hides it. A setting (menuBar: hidden | alt | always, default alt) and a
+palette entry keep it on screen for good.
+
+What to build: the menu is generated from the same action registry the palette
+enumerates, grouped by category (File/Session, Edit, View, Terminal, Tab and Pane,
+Transfer, Forward, Help), each item showing its current keybinding, so a rebinding is
+reflected without a second list. No action is written into the menu by hand. Disabled
+state follows the action's own can-execute rule, for example Close pane with no pane
+focused.
+
+Done when: a test asserts that the menu and the palette enumerate the same action set,
+so an action added to one and not the other fails; a UI case presses Alt, finds the menu
+bar in the accessibility tree, opens a category and invokes an item; a first run on a
+clean profile still shows no menu bar until Alt is pressed.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS77 Installing, signing, and updating without a service

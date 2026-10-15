@@ -21,6 +21,7 @@
 ## Block G — The clean interface, defended
 
 - 📋 **QS353** (deps: —) **A connected recent card on Home clips its New connection and Go to tab buttons when the window is not maximised** — Three equal columns leave a card narrower than its two buttons, which share one cell with the card's when text, so a label is cut. → §QS353
+- 📋 **QS354** (deps: —) **Every action is reached only by a hotkey or the palette, so a user who has not learned them cannot find a feature** — A menu bar built from the palette's own action list, hidden by default and shown by Alt or a setting, lists every action with its shortcut. → §QS354
 
 ## Block H — The reason to leave the incumbent
 
@@ -39,7 +40,7 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS325** (deps: QS321 ✅) **An agent reaches a saved session only through raw ssh, quoting through four shells and paying a handshake per command** — A headless quickshell --mcp exposes hosts_list and exec(host, argv) over the client's own kept-alive connection, with exit code and stderr apart. → §QS325
+- 🛠 **QS325** (deps: QS321 ✅) **An agent reaches a saved session only through raw ssh, quoting through four shells and paying a handshake per command** — A headless quickshell --mcp exposes hosts_list and exec(host, argv) over the client's own kept-alive connection, with exit code and stderr apart. → §QS325
 - 📋 **QS326** (deps: QS325) **An agent edits a remote file by heredoc or sed -i, blind, with no diff for the person and no copy to go back to** — read_file and edit_file over SFTP, an exact and unique replacement, a backup beside the file and the diff returned and logged. → §QS326
 - 📋 **QS327** (deps: QS325) **A sudo password, a pager or an apt dialog hangs an agent's command until its timeout, with no word of what it waited for** — exec runs with no stdin and a dumb pager, and a prompt it detects ends the command with a named error the agent can act on. → §QS327
 - 📋 **QS328** (deps: QS325) **A long remote command dies at the agent's timeout, or with its connection, and leaves no way to look back in on it** — job_start, job_status and job_output run it detached on the server and read its output by cursor, across a reconnect. → §QS328
