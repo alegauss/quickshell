@@ -13,6 +13,12 @@
       "name": "a tab split in two",
       "arguments": ["--panes", "2"],
       "shareable": true
+    },
+    {
+      // Its own and not lent: the case closes one of the panes (QS317).
+      "name": "a tab split in two, to close a pane of",
+      "arguments": ["--panes", "2"],
+      "shareable": false
     }
   ],
 
@@ -50,6 +56,54 @@
           "reads": "name",
           "expect": "Pane divider",
           "named": "and between them is a divider a mouse can take hold of"
+        }
+      ]
+    },
+    {
+      "name": "a pane of a split tab closes by the cross above it, and the tab is one pane again",
+      "catches": "a pane opened by Split that can only be closed with its tab, or a cross that closes a pane other than its own",
+      "filed": "QS317",
+      "tags": ["window", "panes"],
+      "fixture": "a tab split in two, to close a pane of",
+
+      "steps": [
+        {
+          "locator": "Button#PaneClose[order=right]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Close pane",
+          "named": "the right pane carries a close button above it"
+        },
+        {
+          // `invoke`, so no foreground is needed: the pattern is the act.
+          "locator": "Button#PaneClose[order=right]",
+          "act": "invoke",
+          "named": "which is pressed"
+        },
+        {
+          // Its shell is live, so the closing question comes first, as it does for a tab.
+          "locator": "Window#Closing > Button#close",
+          "act": "invoke",
+          "named": "and closing its live shell is agreed to"
+        },
+        {
+          "locator": "Thumb#Divider",
+          "act": "read",
+          "absent": true,
+          "named": "one pane is left: there is no divider"
+        },
+        {
+          "locator": "Button#PaneClose",
+          "act": "read",
+          "absent": true,
+          "named": "and no close button, since a tab of one pane has no strip"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Terminal output",
+          "named": "and the pane that stayed is still a terminal"
         }
       ]
     }

@@ -235,6 +235,7 @@
 - ✅ **QS311** **A right click on a tab offers nothing, so closing every tab but one is a close per tab** — A tab's menu offers Close, Close other tabs and Close tabs to the right, asking once for every live session it would end; the last two are palette commands too (design recorded in `docs/KEYS.md`).
 - ✅ **QS312** **A tab's close button is in the tree but a user looking at the strip does not find it, so a tab seems unclosable** — A tab's close cross is drawn at 10 points after every title, inside its tab; the theme's button padding had left it no room to paint.
 - ✅ **QS313** **A recent card says Connected now and its Connect opens a second connection, with no way from Home to the open tab** — A card or sidebar row whose session is open offers Go to tab, which puts that tab on screen, and New connection beside it (design recorded in `docs/SESSIONS.md`).
+- ✅ **QS317** **A pane opened by Split has no button, chord or palette entry that closes it, only closing the whole tab** — A split tab's panes each carry a close cross above them, Ctrl+Shift+W closes the focused pane before the tab, and Close pane is in the palette (design recorded in `docs/KEYS.md`).
 
 ## Block H — The reason to leave the incumbent
 

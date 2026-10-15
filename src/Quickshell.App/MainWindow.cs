@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -300,8 +300,14 @@ public sealed partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(new Opening(this), Key.T,
                                          ModifierKeys.Control | ModifierKeys.Shift));
 
-        InputBindings.Add(new KeyBinding(new Shutting(this), Key.W,
+        // Ctrl+Shift+W closes the pane with the keyboard while the tab has several and the tab when it
+        // has one, as Windows Terminal's does (QS317), so on a tab of one pane it is the chord it was.
+        InputBindings.Add(new KeyBinding(new ClosingPaneOrTab(this), Key.W,
                                          ModifierKeys.Control | ModifierKeys.Shift));
+
+        // The tab whole, and the pane alone, from the palette.
+        InputBindings.Add(new InputBinding(new Shutting(this), new PaletteOnly()));
+        InputBindings.Add(new InputBinding(new ClosingPane(this), new PaletteOnly()));
 
         // Clearing the strip, from the palette as from a tab's menu (QS311). No chord: done a few
         // times a day at most, and a chord for it is one more taken from the far side.
@@ -586,6 +592,21 @@ public sealed partial class MainWindow : Window
                 double right = Math.Floor(at.Right * width) - (at.Right < 1 - Inside ? HalfDivider : 0);
                 double bottom = Math.Floor(at.Bottom * height) - (at.Bottom < 1 - Inside ? HalfDivider : 0);
 
+                // Several panes in the tab: each has a strip above it holding its close button (QS317),
+                // since nothing can be drawn over a pane. One pane, or one zoomed, has none.
+                bool closable = visible && tab.Layout.Count > 1 && tab.Zoomed < 0;
+                Button close = PaneClose(leaf);
+
+                close.Visibility = closable ? Visibility.Visible : Visibility.Collapsed;
+
+                if (closable)
+                {
+                    Canvas.SetLeft(close, Math.Max(left, right - PaneStrip));
+                    Canvas.SetTop(close, top);
+                    close.SetValue(Control.ForegroundProperty, PaneCloseInk());
+                    top += PaneStrip;
+                }
+
                 Canvas.SetLeft(leaf.Pane, left);
                 Canvas.SetTop(leaf.Pane, top);
 
@@ -595,6 +616,61 @@ public sealed partial class MainWindow : Window
         }
 
         Handles(width, height);
+
+        // A pane that has gone takes its close button with it.
+        foreach (TerminalLeaf gone in _paneCloses.Keys.Where(leaf => !_open.Any(tab => tab.Leaves.Contains(leaf))).ToArray())
+        {
+            _terminal.Children.Remove(_paneCloses[gone]);
+            _paneCloses.Remove(gone);
+        }
+    }
+
+    /// <summary>The height of the strip above each pane of a split tab, which its close button sits in (QS317).</summary>
+    public const double PaneStrip = 22;
+
+    /// <summary>Each pane's close button, made the first time its tab has two panes.</summary>
+    private readonly Dictionary<TerminalLeaf, Button> _paneCloses = [];
+
+    /// <summary>
+    /// A pane's close button (QS317): the cross a tab carries (QS312), 10 points with no padding so it
+    /// paints, closing this pane and not the one with the keyboard.
+    /// </summary>
+    private Button PaneClose(TerminalLeaf leaf)
+    {
+        if (_paneCloses.TryGetValue(leaf, out Button? made))
+        {
+            return made;
+        }
+
+        Button close = new()
+        {
+            Content = Glyphed("", 10),
+            Template = Templates.Ghost(),
+            Width = PaneStrip,
+            Height = PaneStrip,
+            Padding = new Thickness(0),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Focusable = false,
+            ToolTip = "Close this pane",
+            Visibility = Visibility.Collapsed,
+        };
+
+        System.Windows.Automation.AutomationProperties.SetAutomationId(close, "PaneClose");
+        System.Windows.Automation.AutomationProperties.SetName(close, "Close pane");
+        close.Click += (_, _) => ClosePane(leaf);
+
+        _paneCloses[leaf] = close;
+        _terminal.Children.Add(close);
+
+        return close;
+    }
+
+    /// <summary>The cross's colour: the terminal's own foreground, softened, since the strip is drawn on the terminal's background.</summary>
+    private System.Windows.Media.SolidColorBrush PaneCloseInk()
+    {
+        Quickshell.Terminal.Rgb ink = Current?.Focused.Emulator.Palette.Foreground ?? Settings.Colours.Foreground;
+
+        return new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(ink.Red, ink.Green, ink.Blue)) { Opacity = 0.75 };
     }
 
     /// <summary>Half a divider's width in pixels, given to the gap by each pane beside it.</summary>
@@ -1175,6 +1251,24 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
+
+        ClosePane(tab.Focused);
+    }
+
+    /// <summary>
+    /// Closes this pane of the tab on screen, asking first where its session is live (QS317): what its
+    /// close button does, which closes the pane it is on and not the one with the keyboard.
+    /// </summary>
+    public void ClosePane(TerminalLeaf leaf)
+    {
+        ArgumentNullException.ThrowIfNull(leaf);
+
+        if (Current is not { } tab || tab.PaneOf(leaf) is var pane && pane < 0)
+        {
+            return;
+        }
+
+        tab.Focus(pane);
 
         if (tab.Layout.Count <= 1)
         {
@@ -3134,6 +3228,29 @@ public sealed partial class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.CloseTab();
+    }
+
+    /// <summary>Ctrl+Shift+W: the pane with the keyboard where the tab has several, the tab where it has one (QS317).</summary>
+    private sealed class ClosingPaneOrTab(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Close pane or tab";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.ClosePane();
+    }
+
+    /// <summary>The pane with the keyboard, offered where its tab has another (QS317).</summary>
+    private sealed class ClosingPane(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Close pane";
+
+        /// <inheritdoc/>
+        public override bool CanExecute(object? parameter) => Window.Current is { Layout.Count: > 1 };
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.ClosePane();
     }
 
     /// <summary>Every tab but the one on screen, from the palette as from a tab's menu (QS311).</summary>
