@@ -215,6 +215,55 @@ does not admit `systemctl restart nginx; rm -rf /`, because the second is not th
    are reads, and harm 2 is about exactly them. The redaction QS330 adds narrows the harm but does
    not remove it.
 
+## Judging a command without pretending a regex is a firewall (QS323)
+
+A blocklist of strings holds nothing: `find / -delete`, `python3 -c`, `sed -i`, a script written over
+SFTP and then run, or a base64 blob piped to `sh` all do what `rm -rf` does. So the judgement starts
+from the other end. A command is a **read** only if it can be shown to be one; everything else is a
+**mutation**, and anything that cannot be settled with certainty asks the person. The two numbers
+that matter follow from that: false allows, which must be zero, and false asks, the friction to drive
+down.
+
+**The parser is small on purpose.** Not a port of bash, not tree-sitter-bash (a native dependency for
+a grammar far larger than the job), not `bash -n` (which checks syntax and returns no tree). A managed
+parser in the gateway accepts a deliberately narrow subset and calls everything outside it uncertain:
+
+- words: plain, single-quoted, and double-quoted with no `$(`, backtick or `${…}` inside;
+- `$NAME` only as a whole argument, never as the command;
+- pipelines, `&&`, `||` and `;` between simple commands;
+- one redirection, `2>/dev/null`, since it writes nothing a person would miss.
+
+A subshell, a brace group, a heredoc, process or command substitution, any other redirection, an
+assignment before a command, a glob in the command position: uncertain, so asked. A real shell
+accepts far more, and that is the point. The gateway does not have to understand every command an
+agent might write, only to recognise with certainty the ones that are harmless.
+
+**The allowlist is data, with arguments checked.** A JSON file shipped with the client and versioned
+with it names each read: the command, the subcommands that are reads (`systemctl status`,
+`is-active`, `show`, `list-units`; not `restart`), and the options that make it write (`find`:
+`-delete`, `-exec`, `-execdir`, `-ok`, `-fprint`, `-fls`; `sort`: `-o`; `journalctl`: `--vacuum-*`,
+`--rotate`, `--flush`). A simple command is a read when its name is listed, its subcommand is a
+listed read, and none of its arguments is a listed writing option. Interpreters (`sh`, `bash`,
+`python*`, `perl`, `awk`, `node`) and editors in the stream (`sed`, `tee`) are never reads, whatever
+their arguments: what they do is in their argument, and judging that is the problem this section
+refuses to pretend it has solved. A pipeline is a read only when every command in it is.
+
+**Wrappers are unwrapped, narrowly.** `sudo` with no option other than `-n` or `-u <user>` is judged
+by the command it runs; any other `sudo` option is uncertain. `env` followed only by `NAME=value`
+pairs is judged by its command, except that setting `PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH` or any
+`BASH_*` makes it uncertain. `timeout <duration>` and `nice` are unwrapped the same way; `nohup`,
+`setsid` and `xargs` are not, since each changes what runs or for how long.
+
+**Extended per tag, never globally by the agent.** The policy (QS322) may add reads for the sessions
+a rule names, in the same shape as the shipped list (a site's own `myapp-status`, say), written by
+the person as the rest of the policy is. Nothing the agent writes or says extends it.
+
+**Measured, and gated.** The test suite holds two corpora: commands from real agent sessions,
+labelled, and an adversarial set drawn from the ways tools are known to write or execute (the
+GTFOBins catalogue is the starting point). A build where any command in either is judged a read
+when it is not fails. False asks over the real corpus are reported as a number in the run, the one
+this section's later changes are argued with.
+
 ## Sections to come
 
 Each is written by the line that owns it, into this document.
@@ -222,6 +271,5 @@ Each is written by the line that owns it, into this document.
 | Line | Section |
 |---|---|
 | QS321 | Whether this belongs in a client sold as "an SSH client, not a suite" |
-| QS323 | How a remote command is judged read-only, and why not with a regex |
 | QS324 | Approval by plan, so a person reviews a batch once instead of clicking yes forty times |
 | QS340, QS341 | The server account and short-lived certificates |

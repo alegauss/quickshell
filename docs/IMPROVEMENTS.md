@@ -604,25 +604,6 @@ keystroke-to-pixel path.
 The outcome is a decision record in DECISIONS.md, and if the answer is no, a non-goal so
 the idea is not re-filed. Every other line in Block L waits on it.
 
-### §QS323 Judging a command without pretending a regex is a firewall
-
-A blocklist of strings does not hold an agent: `find / -delete`, `python3 -c`, `sed -i`,
-a script written over SFTP and then run, or a base64 blob piped to `sh` all do what `rm
--rf` does. So the classification section starts from the other end.
-
-A command is parsed into a bash AST. If every simple command in it is on an allowlist of
-reads (`ls`, `cat`, `df`, `systemctl status`, `journalctl` and so on) with arguments
-checked against what that tool can write (no `-o`, no `--output`, no redirection), it is
-a read and the policy's `observe` level applies. Everything else is a mutation. Anything
-the parser cannot settle with certainty, `eval`, command substitution, a pipe into an
-interpreter, an unknown binary, falls to asking the person and never to allowing.
-
-Open questions the section has to close: which parser (a managed port, tree-sitter-bash,
-or shelling out to a known one), how `sudo` and `env` wrappers are unwrapped, how the
-allowlist is versioned and extended per tag, and how to measure it. The proposed measure
-is a corpus of real agent sessions, scored for false allows, which must be zero, and for
-false asks, which is the friction number to drive down.
-
 ### §QS324 Approval that does not train a reflex
 
 Approval fatigue is the failure that defeats every permission prompt: forty identical
