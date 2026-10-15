@@ -374,6 +374,16 @@ measured against the fixture, nothing is left to hang. A Windows server is told 
 sends (`OpenSSH_for_Windows`) and gets the command without the preamble. Code:
 `src/Quickshell.App/CommandPrompts.cs`.
 
+**Output sized for a context window (QS329).** `exec` takes a `budget`, 16 KB per stream by default
+and 256 KB at most. Within it a stream comes back whole. Over it, the stream keeps whole lines from
+each end, half the budget each, with one line between them naming how many lines and bytes were cut
+and how to reach them, and the answer carries an `output` id and the counts under `cut`. The whole
+output is kept in the gateway, which already received every byte, so `output_page` (a line range,
+numbered, within a budget) and `output_grep` (a .NET regular expression, at most 200 numbered matches)
+send only what is asked and run nothing again on the server. The line proposed grepping on the server;
+the gateway's copy makes that a second round trip for nothing. The spool keeps 64 M characters and
+lets the oldest go first, and goes with the process. Code: `src/Quickshell.App/OutputSpool.cs`.
+
 **Jobs that outlive a call (QS328).** `job_start` runs an argument vector detached on a POSIX server
 and returns a twelve-hex-digit id at once; `job_status` says running, exited with its code,
 cancelled, or lost; `job_output` reads stdout or stderr from a byte cursor, 64 KB at a time cut at a

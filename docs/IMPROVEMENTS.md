@@ -549,24 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS329 Output sized for a context window
-
-An agent pays for every byte a command returns, and a log or a directory listing can be
-most of a session's context in one call. Truncating blindly is no better: the error is
-usually at the end.
-
-`exec` takes a byte budget (a default the design doc sets, overridable per call). Within
-it, output comes back whole. Over it, the answer keeps the head and the tail, says how
-many lines and bytes were cut between them, and returns a cursor; `output_page` reads
-the cut part by range, and `output_grep` runs a pattern over it on the server side
-without sending it back.
-
-The full output is kept in the gateway's spool for the life of the session, so nothing
-has to be run twice to see more of it, and the spool is wiped when the session ends.
-
-Proven by a run that prints two hundred thousand lines: the answer stays inside the
-budget, names the cut, and a grep for a line in the middle finds it.
-
 ### §QS330 Redaction on the way out to the agent
 
 `cat .env` is a reasonable thing for an agent to run while debugging, and its output

@@ -36,7 +36,7 @@ public sealed class AgentGatewayTests
 
         JsonObject listed = (await gateway.AnswerAsync("""{"jsonrpc":"2.0","id":2,"method":"tools/list"}""", Stop))!;
 
-        Assert.Equal(["hosts_list", "exec", "read_file", "edit_file", "job_start", "job_status", "job_output", "job_cancel"], listed["result"]!["tools"]!.AsArray().Select(tool => tool!["name"]!.GetValue<string>()));
+        Assert.Equal(["hosts_list", "exec", "read_file", "edit_file", "job_start", "job_status", "job_output", "job_cancel", "output_page", "output_grep"], listed["result"]!["tools"]!.AsArray().Select(tool => tool!["name"]!.GetValue<string>()));
 
         JsonObject unknown = (await gateway.AnswerAsync("""{"jsonrpc":"2.0","id":"x","method":"resources/list"}""", Stop))!;
 
@@ -255,6 +255,45 @@ public sealed class AgentGatewayTests
         JsonNode left = await ExecAsync(gateway, 3, "sh", "-c", "pgrep -u probe -f 'sleep 30[01]' | wc -l");
 
         Assert.Equal("0", left["stdout"]!.GetValue<string>().Trim());
+    }
+
+/// <summary>
+    /// Against the Linux fixture, two hundred thousand lines: the answer stays inside its budget, keeps
+    /// both ends and names the cut, and a line from the middle is found and paged without running
+    /// anything again (QS329).
+    /// </summary>
+    [Fact]
+    public async Task OnAPosixServerAHugeOutputFitsItsBudgetAndTheRestIsReachable()
+    {
+        SshFixture.SkipWithoutIt();
+
+        await using AgentGateway gateway = Fixture();
+
+        JsonObject answer = (await gateway.AnswerAsync(Call(1, "exec", new JsonObject
+        {
+            ["host"] = "real", ["argv"] = new JsonArray("seq", "1", "200000"), ["timeoutSeconds"] = 60,
+        }), Stop))!;
+
+        JsonNode result = answer["result"]!["structuredContent"]!;
+        string stdout = result["stdout"]!.GetValue<string>();
+
+        Assert.True(System.Text.Encoding.UTF8.GetByteCount(stdout) <= OutputSpool.DefaultBudget + 512,
+                    $"{System.Text.Encoding.UTF8.GetByteCount(stdout)} bytes came back");
+        Assert.StartsWith("1\n2\n3\n", stdout, StringComparison.Ordinal);
+        Assert.EndsWith("199999\n200000\n", stdout, StringComparison.Ordinal);
+        Assert.Equal(200000, result["cut"]!["stdout"]!["of"]!.GetValue<int>());
+        Assert.True(result["cut"]!["stdout"]!["lines"]!.GetValue<int>() > 190000);
+
+        string output = result["output"]!.GetValue<string>();
+        JsonNode found = await ToolAsync(gateway, 2, "output_grep", new JsonObject { ["output"] = output, ["pattern"] = "^100000$" });
+
+        Assert.Equal("100000\t100000\n", found["text"]!.GetValue<string>());
+        Assert.Equal(1, found["matches"]!.GetValue<int>());
+
+        JsonNode paged = await ToolAsync(gateway, 3, "output_page", new JsonObject { ["output"] = output, ["from"] = 100000, ["to"] = 100002 });
+
+        Assert.Equal("100000\t100000\n100001\t100001\n100002\t100002\n", paged["text"]!.GetValue<string>());
+        Assert.Equal(1, gateway.Opened);
     }
 
     private static AgentGateway Fixture() =>

@@ -41,7 +41,6 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS329** (deps: QS325 ✅) **A large command output lands whole in the agent's context, so one journalctl costs the rest of the session's room** — exec answers within a byte budget, head and tail kept with what was cut counted, and the rest paged by cursor or searched on the server. → §QS329
 - 📋 **QS330** (deps: QS325 ✅) **A secret printed by a remote command, an .env or a token, goes straight into the agent's transcript and its provider** — The client's log redactor runs over every answer the gateway returns, and each redaction is counted so the agent knows something was hidden. → §QS330
 - 📋 **QS332** (deps: QS325 ✅) **With the gateway installed an agent can still run ssh, plink, scp or paramiko from its own shell and skip every rule** — A PreToolUse hook steers those to the gateway's tools, and the agent's sandbox denies port 22, so the gateway is the only way out. → §QS332
 - 📋 **QS333** (deps: QS325 ✅) **Nothing records what an agent ran on which server, who approved it, or what came back, once the session scrolls away** — An append-only audit log per gateway session keeps each call, its verdict, its approver and an output hash, readable as a change summary. → §QS333

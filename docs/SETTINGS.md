@@ -218,7 +218,9 @@ for a person, and a question it would have asked, such as sudo's password, named
 text file there with its line numbers; and `edit_file`, which replaces one exact piece of a text
 file, keeps the original beside it as `<file>.qs-bak-<time>`, and answers the diff. `job_start`,
 `job_status`, `job_output` and `job_cancel` run a long command detached on the server, kept under
-`~/.quickshell/jobs` there, so it outlives the call and the connection and can be read back later. It signs in with the session's
+`~/.quickshell/jobs` there, so it outlives the call and the connection and can be read back later.
+A long output comes back as its first and last lines within a budget, and `output_page` and
+`output_grep` reach the rest without running the command again. It signs in with the session's
 key and your agents, never a typed password, and refuses a host whose key you have not already trusted
 from the window. It is a separate process: the window, its start and its memory are the same with
 it on or off. **There is no policy yet**: an agent with this on can run anything your account on that

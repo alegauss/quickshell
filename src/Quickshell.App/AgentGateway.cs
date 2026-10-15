@@ -43,6 +43,7 @@ public sealed class AgentGateway : IAsyncDisposable
     private readonly Func<ResolvedSession, CancellationToken, ValueTask<IGatewayConnection>> _connect;
     private readonly string _version;
     private readonly Dictionary<string, IGatewayConnection> _open = new(StringComparer.OrdinalIgnoreCase);
+    private readonly OutputSpool _spool = new();
 
     /// <summary>A gateway over a store, connecting through <paramref name="connect"/>.</summary>
     /// <param name="store">The saved sessions, read again at every call so an edit in the window is seen.</param>
@@ -172,6 +173,7 @@ public sealed class AgentGateway : IAsyncDisposable
                         ["description"] = string.Create(CultureInfo.InvariantCulture,
                             $"How long it may run, {DefaultTimeout.TotalSeconds:0} by default and {LongestTimeout.TotalSeconds:0} at most."),
                     },
+                    ["budget"] = BudgetProperty(),
                 },
                 ["required"] = new JsonArray("host", "argv"),
             },
@@ -235,7 +237,38 @@ public sealed class AgentGateway : IAsyncDisposable
              }, "host", "job"),
         Tool("job_cancel", "Ends a job: TERM to it and everything it started, then KILL after five seconds.",
              new JsonObject { ["host"] = HostProperty(), ["job"] = JobProperty() }, "host", "job"),
+        Tool("output_page", "Lines of an output exec cut to fit its budget, numbered, from the gateway's copy: nothing runs again.",
+             new JsonObject
+             {
+                 ["output"] = OutputProperty(),
+                 ["stream"] = StreamProperty(),
+                 ["from"] = new JsonObject { ["type"] = "integer", ["description"] = "The first line, from 1." },
+                 ["to"] = new JsonObject { ["type"] = "integer", ["description"] = "The last line; as many as fit the budget where absent." },
+                 ["budget"] = BudgetProperty(),
+             }, "output", "from"),
+        Tool("output_grep", "The lines of a cut output matching a .NET regular expression, numbered, at most 200, from the gateway's copy.",
+             new JsonObject
+             {
+                 ["output"] = OutputProperty(),
+                 ["stream"] = StreamProperty(),
+                 ["pattern"] = new JsonObject { ["type"] = "string", ["description"] = "What to look for." },
+             }, "output", "pattern"),
     ];
+
+    private static JsonObject BudgetProperty() => new()
+    {
+        ["type"] = "integer",
+        ["description"] = string.Create(CultureInfo.InvariantCulture,
+            $"The most bytes of each stream to return, {OutputSpool.DefaultBudget} by default and {OutputSpool.LargestBudget} at most. Over it, the head and the tail are kept and the cut is named."),
+    };
+
+    private static JsonObject OutputProperty() => new() { ["type"] = "string", ["description"] = "The output id an exec answer carried." };
+
+    private static JsonObject StreamProperty() =>
+        new() { ["type"] = "string", ["enum"] = new JsonArray("stdout", "stderr"), ["description"] = "stdout by default." };
+
+    private static int Budget(JsonObject arguments) =>
+        arguments["budget"]?.GetValue<int>() is { } asked and > 0 ? Math.Min(asked, OutputSpool.LargestBudget) : OutputSpool.DefaultBudget;
 
     private static JsonObject Tool(string name, string description, JsonObject properties, params string[] required) => new()
     {
@@ -267,6 +300,8 @@ public sealed class AgentGateway : IAsyncDisposable
                 "read_file" => await ReadFileAsync(arguments, cancellationToken).ConfigureAwait(false),
                 "edit_file" => await EditFileAsync(arguments, cancellationToken).ConfigureAwait(false),
                 "job_start" or "job_status" or "job_output" or "job_cancel" => await JobAsync(name, arguments, cancellationToken).ConfigureAwait(false),
+                "output_page" => OutputPage(arguments),
+                "output_grep" => OutputGrep(arguments),
                 _ => throw new GatewayRefusal($"There is no tool {name} here; tools/list names the ones there are."),
             };
 
@@ -278,6 +313,10 @@ public sealed class AgentGateway : IAsyncDisposable
             return Content(new JsonObject { ["error"] = $"{failed.Message} {failed.Means}".Trim() }, isError: true);
         }
         catch (RemoteTextRefusal refused)
+        {
+            return Content(new JsonObject { ["error"] = refused.Message }, isError: true);
+        }
+        catch (OutputRefusal refused)
         {
             return Content(new JsonObject { ["error"] = refused.Message }, isError: true);
         }
@@ -318,6 +357,33 @@ public sealed class AgentGateway : IAsyncDisposable
 
         return new JsonObject { ["diff"] = edit.Diff, ["backup"] = edit.Backup };
     }
+
+    private JsonObject OutputPage(JsonObject arguments)
+    {
+        (string id, string stream) = KeptOutput(arguments);
+        int from = arguments["from"]?.GetValue<int>() ?? 1;
+        int to = arguments["to"]?.GetValue<int>() ?? int.MaxValue;
+
+        (string text, int next, int lines) = _spool.Page(id, stream, from, to, Budget(arguments));
+
+        return new JsonObject { ["text"] = text, ["next"] = next == 0 ? null : next, ["lines"] = lines };
+    }
+
+    private JsonObject OutputGrep(JsonObject arguments)
+    {
+        (string id, string stream) = KeptOutput(arguments);
+        string pattern = arguments["pattern"]?.GetValue<string>() is { Length: > 0 } given
+            ? given
+            : throw new GatewayRefusal("output_grep needs pattern, what to look for.");
+
+        (string text, int matches, bool more) = _spool.Grep(id, stream, pattern);
+
+        return new JsonObject { ["text"] = text, ["matches"] = matches, ["more"] = more };
+    }
+
+    private static (string Id, string Stream) KeptOutput(JsonObject arguments) =>
+        (arguments["output"]?.GetValue<string>() ?? throw new GatewayRefusal("This needs output, the id an exec answer carried."),
+         arguments["stream"]?.GetValue<string>() ?? "stdout");
 
     private async Task<JsonObject> JobAsync(string tool, JsonObject arguments, CancellationToken cancellationToken)
     {
@@ -420,15 +486,35 @@ public sealed class AgentGateway : IAsyncDisposable
         CommandResult ran = await connection.RunAsync(command, timeout, cancellationToken).ConfigureAwait(false);
         CommandPrompt? asked = CommandPrompts.Recognise(ran);
 
-        return new JsonObject
+        // Within its budget the output comes back whole; over it, each stream keeps its two ends and
+        // the whole of it is kept here for output_page and output_grep (QS329).
+        int budget = Budget(arguments);
+        bool over = System.Text.Encoding.UTF8.GetByteCount(ran.Output) > budget || System.Text.Encoding.UTF8.GetByteCount(ran.Error) > budget;
+        string? kept = over ? _spool.Keep(ran.Output, ran.Error) : null;
+        Budgeted stdout = OutputSpool.Fit(ran.Output, budget, kept, "stdout");
+        Budgeted stderr = OutputSpool.Fit(ran.Error, budget, kept, "stderr");
+
+        JsonObject answer = new()
         {
             ["exitCode"] = ran.ExitCode,
-            ["stdout"] = ran.Output,
-            ["stderr"] = ran.Error,
+            ["stdout"] = stdout.Text,
+            ["stderr"] = stderr.Text,
             ["timedOut"] = ran.TimedOut,
             ["prompt"] = asked?.Name,
             ["hint"] = asked?.Hint,
         };
+
+        if (kept is not null)
+        {
+            answer["output"] = kept;
+            answer["cut"] = new JsonObject
+            {
+                ["stdout"] = new JsonObject { ["lines"] = stdout.CutLines, ["bytes"] = stdout.CutBytes, ["of"] = stdout.Lines },
+                ["stderr"] = new JsonObject { ["lines"] = stderr.CutLines, ["bytes"] = stderr.CutBytes, ["of"] = stderr.Lines },
+            };
+        }
+
+        return answer;
     }
 
     /// <summary>The session's kept connection, or a new one where there is none or it dropped.</summary>
