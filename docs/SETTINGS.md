@@ -216,7 +216,9 @@ and call four tools: `hosts_list`, which names your saved sessions and never a p
 for the next call, and answers its exit code, output and errors apart, with nothing in it able to wait
 for a person, and a question it would have asked, such as sudo's password, named; `read_file`, which reads a
 text file there with its line numbers; and `edit_file`, which replaces one exact piece of a text
-file, keeps the original beside it as `<file>.qs-bak-<time>`, and answers the diff. It signs in with the session's
+file, keeps the original beside it as `<file>.qs-bak-<time>`, and answers the diff. `job_start`,
+`job_status`, `job_output` and `job_cancel` run a long command detached on the server, kept under
+`~/.quickshell/jobs` there, so it outlives the call and the connection and can be read back later. It signs in with the session's
 key and your agents, never a typed password, and refuses a host whose key you have not already trusted
 from the window. It is a separate process: the window, its start and its memory are the same with
 it on or off. **There is no policy yet**: an agent with this on can run anything your account on that

@@ -36,7 +36,7 @@ public sealed class AgentGatewayTests
 
         JsonObject listed = (await gateway.AnswerAsync("""{"jsonrpc":"2.0","id":2,"method":"tools/list"}""", Stop))!;
 
-        Assert.Equal(["hosts_list", "exec", "read_file", "edit_file"], listed["result"]!["tools"]!.AsArray().Select(tool => tool!["name"]!.GetValue<string>()));
+        Assert.Equal(["hosts_list", "exec", "read_file", "edit_file", "job_start", "job_status", "job_output", "job_cancel"], listed["result"]!["tools"]!.AsArray().Select(tool => tool!["name"]!.GetValue<string>()));
 
         JsonObject unknown = (await gateway.AnswerAsync("""{"jsonrpc":"2.0","id":"x","method":"resources/list"}""", Stop))!;
 
@@ -151,6 +151,114 @@ public sealed class AgentGatewayTests
         Assert.All((JsonNode[])[sudo, confirm, read, paged], each => Assert.False(each["timedOut"]!.GetValue<bool>()));
         Assert.True(took.Elapsed < TimeSpan.FromSeconds(20), $"four commands that ask took {took.Elapsed.TotalSeconds:0} s");
     }
+
+    /// <summary>A job id is twelve hex digits and nothing else, so no call can name a path outside the jobs (QS328).</summary>
+    [Fact]
+    public async Task AJobIdThatIsAPathIsRefused()
+    {
+        Recording connection = new();
+
+        await using AgentGateway gateway = new(Store, (_, _) => ValueTask.FromResult<IGatewayConnection>(connection), "1.2.3");
+
+        JsonObject answer = (await gateway.AnswerAsync(Call(1, "job_status", new JsonObject { ["host"] = "Work/db", ["job"] = "../../etc" }), Stop))!;
+
+        Assert.True(answer["result"]!["isError"]!.GetValue<bool>());
+        Assert.Contains("not a job id", answer["result"]!["structuredContent"]!["error"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Empty(connection.Commands);
+    }
+
+    /// <summary>A Windows server has no POSIX shell to detach a job under, and says so (QS328).</summary>
+    [Fact]
+    public async Task AJobOnAWindowsServerIsRefused()
+    {
+        Recording connection = new() { ServerVersion = "SSH-2.0-OpenSSH_for_Windows_9.5" };
+
+        await using AgentGateway gateway = new(Store, (_, _) => ValueTask.FromResult<IGatewayConnection>(connection), "1.2.3");
+
+        JsonObject answer = (await gateway.AnswerAsync(Call(1, "job_start", new JsonObject { ["host"] = "Work/db", ["argv"] = new JsonArray("make") }), Stop))!;
+
+        Assert.True(answer["result"]!["isError"]!.GetValue<bool>());
+        Assert.Empty(connection.Commands);
+    }
+
+    /// <summary>
+    /// Against the Linux fixture: a job started, its gateway and connection gone, a new gateway looks
+    /// back in, and the output is read to its end by cursor with the exit code the job ended with.
+    /// </summary>
+    [Fact]
+    public async Task OnAPosixServerAJobOutlivesItsGatewayAndIsReadToTheEnd()
+    {
+        SshFixture.SkipWithoutIt();
+
+        string job;
+
+        await using (AgentGateway first = Fixture())
+        {
+            job = (await ToolAsync(first, 1, "job_start", new JsonObject
+            {
+                ["host"] = "real",
+                ["argv"] = new JsonArray("sh", "-c", "for i in 1 2 3 4 5 6; do echo line $i; sleep 1; done; echo bye >&2; exit 3"),
+            }))["job"]!.GetValue<string>();
+
+            Assert.Equal("running", (await ToolAsync(first, 2, "job_status", new JsonObject { ["host"] = "real", ["job"] = job }))["state"]!.GetValue<string>());
+        }
+
+        // A new gateway on a new connection, as after the agent's host restarted it.
+        await using AgentGateway second = Fixture();
+
+        JsonNode status = await ToolAsync(second, 3, "job_status", new JsonObject { ["host"] = "real", ["job"] = job });
+
+        for (int wait = 0; wait < 30 && status["state"]!.GetValue<string>() == "running"; wait++)
+        {
+            await Task.Delay(500, Stop);
+            status = await ToolAsync(second, 4, "job_status", new JsonObject { ["host"] = "real", ["job"] = job });
+        }
+
+        Assert.Equal("exited", status["state"]!.GetValue<string>());
+        Assert.Equal(3, status["exitCode"]!.GetValue<int>());
+
+        JsonNode output = await ToolAsync(second, 5, "job_output", new JsonObject { ["host"] = "real", ["job"] = job, ["cursor"] = 0 });
+
+        Assert.Equal("line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n", output["text"]!.GetValue<string>());
+        Assert.False(output["more"]!.GetValue<bool>());
+
+        // From the cursor on there is nothing new, and nothing is sent twice.
+        JsonNode again = await ToolAsync(second, 6, "job_output", new JsonObject
+        {
+            ["host"] = "real", ["job"] = job, ["cursor"] = output["cursor"]!.GetValue<long>(),
+        });
+
+        Assert.Equal(string.Empty, again["text"]!.GetValue<string>());
+
+        JsonNode errors = await ToolAsync(second, 7, "job_output", new JsonObject { ["host"] = "real", ["job"] = job, ["stream"] = "stderr" });
+
+        Assert.Equal("bye\n", errors["text"]!.GetValue<string>());
+    }
+
+    /// <summary>Against the Linux fixture: a job cancelled is ended, with everything it started, and says so.</summary>
+    [Fact]
+    public async Task OnAPosixServerACancelledJobEnds()
+    {
+        SshFixture.SkipWithoutIt();
+
+        await using AgentGateway gateway = Fixture();
+
+        string job = (await ToolAsync(gateway, 1, "job_start", new JsonObject
+        {
+            ["host"] = "real", ["argv"] = new JsonArray("sh", "-c", "sleep 300 & sleep 301; wait"),
+        }))["job"]!.GetValue<string>();
+
+        JsonNode cancelled = await ToolAsync(gateway, 2, "job_cancel", new JsonObject { ["host"] = "real", ["job"] = job });
+
+        Assert.Equal("cancelled", cancelled["state"]!.GetValue<string>());
+
+        JsonNode left = await ExecAsync(gateway, 3, "sh", "-c", "pgrep -u probe -f 'sleep 30[01]' | wc -l");
+
+        Assert.Equal("0", left["stdout"]!.GetValue<string>().Trim());
+    }
+
+    private static AgentGateway Fixture() =>
+        Real("probe", 2222, Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519"));
 
     /// <summary>A session nobody saved is a tool error that says where the names are, and connects nothing.</summary>
     [Fact]

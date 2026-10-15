@@ -213,7 +213,45 @@ public sealed class AgentGateway : IAsyncDisposable
                 ["required"] = new JsonArray("host", "path", "old_string", "new_string"),
             },
         },
+        Tool("job_start", "Starts a long command detached on a saved session and returns its job id at once. The job outlives "
+                          + "this call, the connection and the gateway; its state and output stay on the server under "
+                          + "~/.quickshell/jobs. POSIX servers only.",
+             new JsonObject
+             {
+                 ["host"] = HostProperty(),
+                 ["argv"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" }, ["minItems"] = 1,
+                                             ["description"] = "The program and its arguments, each exactly as the program should receive it." },
+                 ["cwd"] = new JsonObject { ["type"] = "string", ["description"] = "The directory to run it in; the account's home where absent." },
+             }, "host", "argv"),
+        Tool("job_status", "Whether a job is running, exited (with its exit code), cancelled, or lost.",
+             new JsonObject { ["host"] = HostProperty(), ["job"] = JobProperty() }, "host", "job"),
+        Tool("job_output", "A job's output from a cursor on, up to 64 KB, and the cursor to pass next time, so nothing is read twice.",
+             new JsonObject
+             {
+                 ["host"] = HostProperty(),
+                 ["job"] = JobProperty(),
+                 ["cursor"] = new JsonObject { ["type"] = "integer", ["description"] = "Where to start: 0 at first, then the cursor the last call returned." },
+                 ["stream"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("stdout", "stderr"), ["description"] = "stdout by default." },
+             }, "host", "job"),
+        Tool("job_cancel", "Ends a job: TERM to it and everything it started, then KILL after five seconds.",
+             new JsonObject { ["host"] = HostProperty(), ["job"] = JobProperty() }, "host", "job"),
     ];
+
+    private static JsonObject Tool(string name, string description, JsonObject properties, params string[] required) => new()
+    {
+        ["name"] = name,
+        ["description"] = description,
+        ["inputSchema"] = new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = properties,
+            ["required"] = new JsonArray([.. required.Select(each => (JsonNode?)JsonValue.Create(each))]),
+        },
+    };
+
+    private static JsonObject HostProperty() => new() { ["type"] = "string", ["description"] = "The session's path, as hosts_list names it." };
+
+    private static JsonObject JobProperty() => new() { ["type"] = "string", ["description"] = "The id job_start returned." };
 
     private async Task<JsonObject> CallAsync(JsonObject? call, CancellationToken cancellationToken)
     {
@@ -228,7 +266,8 @@ public sealed class AgentGateway : IAsyncDisposable
                 "exec" => await ExecAsync(arguments, cancellationToken).ConfigureAwait(false),
                 "read_file" => await ReadFileAsync(arguments, cancellationToken).ConfigureAwait(false),
                 "edit_file" => await EditFileAsync(arguments, cancellationToken).ConfigureAwait(false),
-                _ => throw new GatewayRefusal($"There is no tool {name} here; hosts_list, exec, read_file and edit_file are."),
+                "job_start" or "job_status" or "job_output" or "job_cancel" => await JobAsync(name, arguments, cancellationToken).ConfigureAwait(false),
+                _ => throw new GatewayRefusal($"There is no tool {name} here; tools/list names the ones there are."),
             };
 
             return Content(result, isError: false);
@@ -242,7 +281,11 @@ public sealed class AgentGateway : IAsyncDisposable
         {
             return Content(new JsonObject { ["error"] = refused.Message }, isError: true);
         }
-        catch (GatewayRefusal refused) when (name is "exec" or "read_file" or "edit_file")
+        catch (JobRefusal refused)
+        {
+            return Content(new JsonObject { ["error"] = refused.Message }, isError: true);
+        }
+        catch (GatewayRefusal refused) when (name is not "hosts_list")
         {
             return Content(new JsonObject { ["error"] = refused.Message }, isError: true);
         }
@@ -274,6 +317,45 @@ public sealed class AgentGateway : IAsyncDisposable
                                           .ConfigureAwait(false);
 
         return new JsonObject { ["diff"] = edit.Diff, ["backup"] = edit.Backup };
+    }
+
+    private async Task<JsonObject> JobAsync(string tool, JsonObject arguments, CancellationToken cancellationToken)
+    {
+        string host = arguments["host"]?.GetValue<string>() is { Length: > 0 } named
+            ? named
+            : throw new GatewayRefusal("A job tool needs host, the session's path as hosts_list names it.");
+
+        ResolvedSession session = _store().Session(host)
+            ?? throw new GatewayRefusal($"There is no saved session {host}. hosts_list names the ones there are.");
+
+        IGatewayConnection connection = await ConnectionAsync(session, cancellationToken).ConfigureAwait(false);
+
+        if (tool == "job_start")
+        {
+            string[] argv = arguments["argv"] is JsonArray words && words.Count > 0
+                ? [.. words.Select(word => word?.GetValue<string>() ?? throw new GatewayRefusal("Every word of argv must be a string."))]
+                : throw new GatewayRefusal("job_start needs argv, the program and its arguments as an array of strings.");
+
+            string id = await RemoteJobs.StartAsync(connection, argv, arguments["cwd"]?.GetValue<string>(), cancellationToken).ConfigureAwait(false);
+
+            return new JsonObject { ["job"] = id };
+        }
+
+        string job = arguments["job"]?.GetValue<string>() ?? throw new GatewayRefusal($"{tool} needs job, the id job_start returned.");
+
+        if (tool == "job_output")
+        {
+            JobOutput output = await RemoteJobs.OutputAsync(connection, job, arguments["stream"]?.GetValue<string>() ?? "stdout",
+                                                            arguments["cursor"]?.GetValue<long>() ?? 0, cancellationToken).ConfigureAwait(false);
+
+            return new JsonObject { ["text"] = output.Text, ["cursor"] = output.Cursor, ["more"] = output.More };
+        }
+
+        JobStatus status = tool == "job_cancel"
+            ? await RemoteJobs.CancelAsync(connection, job, cancellationToken).ConfigureAwait(false)
+            : await RemoteJobs.StatusAsync(connection, job, cancellationToken).ConfigureAwait(false);
+
+        return new JsonObject { ["state"] = status.State, ["exitCode"] = status.ExitCode };
     }
 
     /// <summary>The session's connection and the absolute path a file tool named.</summary>

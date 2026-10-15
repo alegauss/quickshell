@@ -374,6 +374,18 @@ measured against the fixture, nothing is left to hang. A Windows server is told 
 sends (`OpenSSH_for_Windows`) and gets the command without the preamble. Code:
 `src/Quickshell.App/CommandPrompts.cs`.
 
+**Jobs that outlive a call (QS328).** `job_start` runs an argument vector detached on a POSIX server
+and returns a twelve-hex-digit id at once; `job_status` says running, exited with its code,
+cancelled, or lost; `job_output` reads stdout or stderr from a byte cursor, 64 KB at a time cut at a
+whole character, and returns the next cursor; `job_cancel` sends TERM to the job's process group, then
+KILL after five seconds. The line proposed keeping job ids in the gateway's own state; everything is
+kept on the server instead, in `~/.quickshell/jobs/<id>/` (the pid, `out`, `err`, and an `exit` file
+the job writes by rename when it ends). A job therefore outlives the connection, the gateway and the
+agent's machine, and any later connection to the account can look back in, with nothing on this side
+to keep or lose. Detached under `setsid`, or `nohup` where there is none, with nothing on its input.
+An id is checked against its shape before it reaches a path. A Windows server is refused. Code:
+`src/Quickshell.App/RemoteJobs.cs`.
+
 **Reading and editing a file (QS326).** `read_file` and `edit_file` use the same connection's SFTP
 channel, opened on first use. A file is read whole up to a megabyte and refused when it holds a NUL or
 is not UTF-8; lines come back numbered, a range on request. An edit is the contract an agent's own

@@ -549,26 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS328 Jobs that outlive a tool call
-
-A build, a migration or a backup takes longer than an agent's tool call is allowed to
-wait, and if the connection drops, the process goes with it. The agent's workaround
-today is a hand-written `nohup … &` and a guessed log path, and then it forgets where it
-put it.
-
-Three tools replace that habit. `job_start` runs the argv detached on the server (under
-`setsid` with output to a file in a per-user directory the gateway owns, or under tmux
-where it exists) and returns a job id at once. `job_status` reports running or exited,
-with the exit code. `job_output` reads from a cursor the previous call returned, so the
-agent sees only what is new and a long log is never sent twice.
-
-The gateway keeps job ids in its own state, so a job survives the gateway restarting and
-the connection reconnecting (Block A already brings the session back). A `job_cancel`
-sends TERM, then KILL after a grace period.
-
-Proven against the test sshd: a ninety-second job started, the connection cut and
-restored, and the output read to the end with the right exit code.
-
 ### §QS329 Output sized for a context window
 
 An agent pays for every byte a command returns, and a log or a directory listing can be
