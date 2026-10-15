@@ -303,6 +303,11 @@ public sealed partial class MainWindow : Window
         InputBindings.Add(new KeyBinding(new Shutting(this), Key.W,
                                          ModifierKeys.Control | ModifierKeys.Shift));
 
+        // Clearing the strip, from the palette as from a tab's menu (QS311). No chord: done a few
+        // times a day at most, and a chord for it is one more taken from the far side.
+        InputBindings.Add(new InputBinding(new ClosingOthers(this), new PaletteOnly()));
+        InputBindings.Add(new InputBinding(new ClosingRight(this), new PaletteOnly()));
+
         // Next and previous. Ctrl+Tab is the one chord here that a full-screen program might
         // plausibly want, and it is taken anyway: a client where the user cannot leave the tab they
         // are in has no tabs. That cost is what the keybinding reference is for.
@@ -2572,6 +2577,12 @@ public sealed partial class MainWindow : Window
         // reading rather than answering.
         stay.IsDefault = true;
 
+        // Addressable from a UI case, which reads the question and answers it (QS311).
+        System.Windows.Automation.AutomationProperties.SetAutomationId(asking, "Closing");
+        System.Windows.Automation.AutomationProperties.SetAutomationId(stay, "stay");
+        System.Windows.Automation.AutomationProperties.SetAutomationId(close, "close");
+        System.Windows.Automation.AutomationProperties.SetAutomationId((TextBlock)body.Children[0], "Asking");
+
         bool closing = false;
 
         close.Click += (_, _) =>
@@ -2715,6 +2726,75 @@ public sealed partial class MainWindow : Window
         }
 
         if (staying is not null)
+        {
+            Active = _open.IndexOf(staying);
+        }
+
+        if (home)
+        {
+            ShowHome();
+        }
+
+        return true;
+    }
+
+    /// <summary>Closes every tab but the one at <paramref name="index"/>, which is left on screen (QS311).</summary>
+    /// <returns>Whether they went.</returns>
+    public bool CloseOtherTabs(int index) =>
+        index >= 0 && index < _open.Count && CloseTabs([.. _open.Where((_, at) => at != index)], _open[index]);
+
+    /// <summary>
+    /// Closes every tab to the right of the one at <paramref name="index"/>; that one is on screen
+    /// afterwards where the one that was is among them (QS311).
+    /// </summary>
+    /// <returns>Whether they went.</returns>
+    public bool CloseTabsToTheRight(int index) =>
+        index >= 0 && index < _open.Count - 1 && CloseTabs([.. _open.Skip(index + 1)], _active > index ? _open[index] : null);
+
+    /// <summary>
+    /// Closes several tabs, asking once about every live session among them and closing none of them
+    /// on No — one question for a morning's sessions rather than one each (QS311).
+    /// </summary>
+    /// <param name="going">The tabs to close.</param>
+    /// <param name="show">The tab to leave on screen, or null to keep the one that is.</param>
+    private bool CloseTabs(IReadOnlyList<TerminalTab> going, TerminalTab? show)
+    {
+        if (going.Count == 0)
+        {
+            return false;
+        }
+
+        string[] live = [.. going.Where(tab => tab.IsLive).Select(tab => tab.Title)];
+
+        if (Guard?.Ask(live) is { } question && !(AskingToClose ?? AskedToClose)(question).Close)
+        {
+            return false;
+        }
+
+        TerminalTab? staying = show ?? (_active >= 0 && _active < _open.Count && !going.Contains(_open[_active]) ? _open[_active] : null);
+        bool home = _homeShowing;
+
+        foreach (TerminalTab tab in going)
+        {
+            Ends?.Invoke(tab);
+            Remove(_open.IndexOf(tab));
+        }
+
+        if (_open.Count == 0)
+        {
+            if (_homeOpen)
+            {
+                ShowHome();
+            }
+            else
+            {
+                Close();
+            }
+
+            return true;
+        }
+
+        if (staying is not null && _open.Contains(staying))
         {
             Active = _open.IndexOf(staying);
         }
@@ -2991,6 +3071,32 @@ public sealed partial class MainWindow : Window
 
         /// <inheritdoc/>
         public override void Execute(object? parameter) => Window.CloseTab();
+    }
+
+    /// <summary>Every tab but the one on screen, from the palette as from a tab's menu (QS311).</summary>
+    private sealed class ClosingOthers(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Close other tabs";
+
+        /// <inheritdoc/>
+        public override bool CanExecute(object? parameter) => Window.Current is not null && Window._open.Count > 1;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.CloseOtherTabs(Window._active);
+    }
+
+    /// <summary>Every tab right of the one on screen, from the palette as from a tab's menu (QS311).</summary>
+    private sealed class ClosingRight(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Close tabs to the right";
+
+        /// <inheritdoc/>
+        public override bool CanExecute(object? parameter) => Window.Current is not null && Window._active < Window._open.Count - 1;
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.CloseTabsToTheRight(Window._active);
     }
 
     /// <summary>Next and previous, which wrap.</summary>

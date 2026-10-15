@@ -174,6 +174,11 @@ public sealed partial class MainWindow
 
         item.MouseLeave += (_, _) => middlePressed = false;
 
+        // A right click, or Shift+F10 on the tab, opens what a tab can do (QS311). Made as it opens,
+        // so the entries say what is possible for this tab among the tabs there are now.
+        item.ContextMenu = new ContextMenu();
+        item.ContextMenuOpening += (_, _) => item.ContextMenu = TabMenu(_tabs.Items.IndexOf(item));
+
         StackPanel row = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(16, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
 
         row.Children.Add(dot);
@@ -192,6 +197,38 @@ public sealed partial class MainWindow
         Dress(item, tab, selected: false);
 
         return item;
+    }
+
+    /// <summary>
+    /// A tab's menu: Close, Close other tabs and Close tabs to the right, each acting on this tab and not
+    /// the one on screen, the last two unavailable where there is nothing for them to close (QS311).
+    /// </summary>
+    public ContextMenu TabMenu(int index)
+    {
+        TerminalTab? tab = index >= 0 && index < _open.Count ? _open[index] : null;
+        ContextMenu menu = new();
+
+        AutomationProperties.SetAutomationId(menu, "TabMenu");
+
+        // Each entry finds its tab again when chosen, since the strip may have moved it meanwhile.
+        menu.Items.Add(TabMenuEntry("Close", "CloseThisTab", tab is not null, () => CloseTab(_open.IndexOf(tab!))));
+        menu.Items.Add(TabMenuEntry("Close other tabs", "CloseOtherTabs", tab is not null && _open.Count > 1,
+                                    () => CloseOtherTabs(_open.IndexOf(tab!))));
+        menu.Items.Add(TabMenuEntry("Close tabs to the right", "CloseTabsToTheRight", tab is not null && index < _open.Count - 1,
+                                    () => CloseTabsToTheRight(_open.IndexOf(tab!))));
+
+        return menu;
+    }
+
+    private static MenuItem TabMenuEntry(string header, string id, bool enabled, Action run)
+    {
+        MenuItem entry = new() { Header = header, IsEnabled = enabled };
+
+        AutomationProperties.SetAutomationId(entry, id);
+        AutomationProperties.SetName(entry, header);
+        entry.Click += (_, _) => run();
+
+        return entry;
     }
 
     /// <summary>

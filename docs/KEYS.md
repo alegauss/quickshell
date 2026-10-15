@@ -45,6 +45,7 @@ Nothing here is configurable yet. When it becomes configurable this page becomes
 | `Ctrl+Shift+T` | Opens a tab. |
 | `Ctrl+Shift+W` | Closes the tab. If sessions are still live in it you are asked first. |
 | Middle click on a tab | Closes that tab, not the one on screen, asking first in the same way. |
+| Right click on a tab, or Shift+F10 on it | Its menu: *Close*, *Close other tabs* and *Close tabs to the right*. Closing several asks once for all the live sessions among them. The last two are also in the palette, acting on the tab on screen. |
 | `Ctrl+Tab` | The next tab, wrapping past the last. |
 | `Ctrl+Shift+Tab` | The previous tab, wrapping past the first. |
 | `Ctrl+Shift+PageUp` | Moves the tab you are in one place left along the strip. It stops at the first place rather than wrapping. |

@@ -26,7 +26,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS311** (deps: QS310 ✅) **A right click on a tab offers nothing, so closing every tab but one is a close per tab** — A tab's context menu offers Close, Close other tabs and Close tabs to the right, each asking once for all the live sessions it would end. → §QS311
 - 📋 **QS312** (deps: —) **A tab's close button is in the tree but a user looking at the strip does not find it, so a tab seems unclosable** — The cross after each title is drawn large enough and in a colour that reads at rest, so the button QS278 placed is seen without hovering. → §QS312
 - 📋 **QS313** (deps: —) **A recent card says Connected now and its Connect opens a second connection, with no way from Home to the open tab** — A card whose session is open in a tab offers Go to tab as its button and New connection beside it, so the state it shows is the action it takes. → §QS313
 - 📋 **QS317** (deps: —) **A pane opened by Split has no button, chord or palette entry that closes it, only closing the whole tab** — MainWindow.ClosePane is written and asks first for a live session, but nothing on screen or on the keyboard calls it. → §QS317

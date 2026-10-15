@@ -150,6 +150,132 @@ public sealed class TabStripTests : IDisposable
         Assert.Equal(2, open);
     }
 
+    /// <summary>Close tabs to the right of the second of four leaves two, the second on screen where the one showing went (QS311).</summary>
+    [Fact]
+    public void ClosingTheTabsToTheRightLeavesTheTabItOpenedOn()
+    {
+        (string[] left, string? onScreen) = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "first"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "second"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "third"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "fourth"));
+
+            window.CloseTabsToTheRight(1);
+
+            return (window.Held.Select(tab => tab.Host).ToArray(), window.Current?.Host);
+        });
+
+        Assert.Equal(["first", "second"], left);
+        Assert.Equal("second", onScreen);
+    }
+
+    /// <summary>Closing the others with two live sessions among them asks once, naming both, and closes none on No.</summary>
+    [Fact]
+    public void ClosingTheOthersAsksOnceForEveryLiveSession()
+    {
+        (List<int> asked, int afterNo, string[] afterYes) = Sta.Run(() =>
+        {
+            List<int> questions = [];
+            bool answer = false;
+
+            MainWindow window = Window();
+
+            window.Guard = CloseGuard.Asking();
+            window.AskingToClose = question =>
+            {
+                questions.Add(question.Open.Count);
+
+                return new ClosingAnswer(Close: answer, NeverAgain: false);
+            };
+
+            TerminalTab[] live = [TerminalTab.Open(Settings.Default, Shared, "cmd.exe"), TerminalTab.Open(Settings.Default, Shared, "cmd.exe")];
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "kept"));
+            window.Add(live[0]);
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "ended"));
+            window.Add(live[1]);
+
+            foreach (TerminalTab tab in live)
+            {
+                tab.ConnectAsync("cmd.exe /d /k").GetAwaiter().GetResult();
+                Assert.True(tab.IsLive, "the shell this test needs did not start");
+            }
+
+            window.CloseOtherTabs(0);
+            int stillOpen = window.Held.Count;
+
+            answer = true;
+            window.CloseOtherTabs(0);
+
+            foreach (TerminalTab tab in live)
+            {
+                tab.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+
+            return (questions, stillOpen, window.Held.Select(tab => tab.Host).ToArray());
+        });
+
+        Assert.Equal([2, 2], asked);
+        Assert.Equal(4, afterNo);
+        Assert.Equal(["kept"], afterYes);
+    }
+
+    /// <summary>
+    /// A tab's menu names its three entries in order, says which can run for that tab, and choosing
+    /// Close tabs to the right on the second of four leaves two.
+    /// </summary>
+    [Fact]
+    public void ATabsMenuOffersWhatItsTabCanDo()
+    {
+        (string[] names, bool[] second, bool[] last, int left) = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "first"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "second"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "third"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "fourth"));
+
+            MenuItem[] onSecond = [.. window.TabMenu(1).Items.OfType<MenuItem>()];
+            MenuItem[] onLast = [.. window.TabMenu(3).Items.OfType<MenuItem>()];
+
+            onSecond[2].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            return (onSecond.Select(entry => (string)entry.Header).ToArray(),
+                    onSecond.Select(entry => entry.IsEnabled).ToArray(),
+                    onLast.Select(entry => entry.IsEnabled).ToArray(),
+                    window.Held.Count);
+        });
+
+        Assert.Equal(["Close", "Close other tabs", "Close tabs to the right"], names);
+        Assert.Equal([true, true, true], second);
+        Assert.Equal([true, true, false], last);
+        Assert.Equal(2, left);
+    }
+
+    /// <summary>Each of the menu's three is also in the palette, so the menu is never the only way to it.</summary>
+    [Fact]
+    public void TheMenusCommandsAreInThePalette()
+    {
+        string[] names = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "first"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "second"));
+            window.Active = 0;
+
+            return window.Actions.Select(one => one.Name).ToArray();
+        });
+
+        Assert.Contains("Close tab", names);
+        Assert.Contains("Close other tabs", names);
+        Assert.Contains("Close tabs to the right", names);
+    }
+
     /// <summary>A middle-button press and release on an element, as the pointer would send them.</summary>
     private static void MiddleClick(UIElement on)
     {

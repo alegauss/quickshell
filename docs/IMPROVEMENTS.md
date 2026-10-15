@@ -365,25 +365,6 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
-### §QS311 QS311 A tab's context menu
-
-A right click on a tab is where a user looks for anything a tab can do, and here there
-is no menu. The commonest thing wanted from one is clearing the strip after a morning of
-sessions, which today is one close per tab and one confirmation per live session.
-
-The menu offers Close, Close other tabs and Close tabs to the right, in that order, the
-last disabled on the rightmost tab and the second disabled when there is only one. A
-close of several tabs asks once, naming how many live sessions it would end, rather than
-once per session, and closes nothing if the user declines. Each entry is also a command
-in the palette, acting on the tab on screen, so the menu is never the only way to it.
-Duplicate tab and Rename tab are left for their own lines rather than grown into this
-one.
-
-Done when a UI case right clicks the second of four tabs, chooses Close tabs to the
-right and reads two TabItems left, a test closes others with two connected sessions
-among them and finds one confirmation naming two, and the palette lists the three
-commands.
-
 ### §QS312 QS312 A close button nobody sees
 
 The owner opened a tab on 2026-10-15 and reported that it has no button to close it. The
@@ -710,15 +691,23 @@ project's WPF and unsafe settings go.
 Falsified when the case replaces the test and an Explorer drop that leaves a different
 file, or none, is not red.
 
-### §QS347 QS347 A UI case for the middle click
+### §QS347 QS347 UI cases for the middle click and the tab menu
 
-QS310's middle click on a tab is proven by TabStripTests raising WPF's routed mouse
-events on the tab item, not by a UI case, because a case's click verb presses only the
-left button (winwright WW538). Once winwright spells the button, a case in
-cases/tabs.cases.json opens three tabs, middle-clicks the second by its TabItem, and
-reads that two are left with the first still selected; the unit tests stay, since they
-also hold the live-session question. Done when that case runs green in the guest beside
-the others.
+QS310's middle click on a tab and QS311's right-click menu on a tab are both proven in
+TabStripTests (routed mouse events raised on the tab item, the menu built by
+MainWindow.TabMenu and its entry clicked), not by UI cases, because a case's click verb
+presses only the left button (winwright WW538). Shift+F10 was tried for the menu on
+2026-10-15 and does not stand in for it: the press does not give the TabItem the
+keyboard, so another menu opens and MenuItem#CloseTabsToTheRight is never found.
+
+Once winwright spells the button, cases/tabs.cases.json gains two cases over a four-tab
+fixture: one middle-clicks TabItem[order=left][index=2] and reads that the first tab
+stays selected; one right-clicks the same tab, invokes MenuItem#CloseTabsToTheRight,
+reads Window#Closing > Text#Asking as "Close 2 sessions?" (the four tabs are live
+shells), invokes Button#close, and reads the second tab selected and the first behind
+it. The unit tests stay, since they hold the live-session questions without a desk.
+
+Done when both cases run green in the guest beside the others.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
