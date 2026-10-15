@@ -456,6 +456,30 @@ tab, invokes it and finds that tab selected with the tab count unchanged; invoke
 connection and finds one more tab; and closes both tabs and reads Connect again. The
 sidebar's menu is read by the same case.
 
+### §QS317 Closing a pane
+
+Reported by the user (2026-10-15): a pane opened by Split has no button to close it.
+Closing a pane is written already - MainWindow.ClosePane asks first where the pane's
+session is live, hands the space to its sibling, and closes the tab when it is the last
+pane - but nothing calls it except BroadcastTests: no button, no chord, no palette
+entry. So the only way out of a split is closing the whole tab, or typing exit in the
+pane.
+
+What to build, through that one ClosePane path:
+
+- A close button on each pane while its tab holds more than one: a small cross in the pane's
+  top-right corner, clear of the text, drawn at rest in a colour that reads (QS312), with the
+  automation id PaneClose. Pressed, it closes that pane, not the one with the keyboard.
+- A palette entry, Close pane, beside Split pane right and Split pane down.
+- A chord: Ctrl+Shift+W closes the pane with the keyboard while the tab has several, and the
+  tab when it has one, as Windows Terminal's does, so the chord that closes a tab today still
+  does on a tab of one pane. KEYS.md says so.
+
+Proven by a UI case that splits a tab, presses the second pane's PaneClose, and reads
+one pane left on the desk.
+
+Falsified when a pane opened by Split can only be closed with its tab.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS77 Installing, signing, and updating without a service
