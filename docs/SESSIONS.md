@@ -53,7 +53,10 @@ registry, and previews each before anything is written; where neither is found, 
 file, which a portable MobaXterm keeps beside `MobaXterm.exe`. SSH sessions come across with their
 host, port, user, key and jump host, in MobaXterm's folders, nested as they were, under a folder
 named for the client and the day. What a session carried that has nowhere to go here is listed in
-the preview and written as a comment above that session in this file.
+the preview and written as a comment above that session in this file. A MobaXterm folder named
+exactly `prod`, `production` or `prd` comes across tagged `prod`, which the preview says before
+anything is written; a name that only contains the word is left untagged. PuTTY keeps no folders,
+so its sessions bring no tags.
 It takes the terminal's place without closing anything; choose a tab to go back, and the **Home**
 button at the start of the tab strip to return. With Home open, closing the last tab goes back to
 Home instead of closing the window.

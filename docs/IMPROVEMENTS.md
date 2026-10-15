@@ -243,27 +243,6 @@ Done when a test documents a store with a folder default, a two-hop jump chain a
 forwards, reads the PDF's text back, finds every field and its origin, and finds no
 secret.
 
-### §QS351 QS351 Colours for other tags, and tags from imports
-
-QS331 made `prod` mean something: a tab holding a session tagged prod, its folders' tags
-included, says so after its title in the theme's danger colour, and every tag is the
-tab's item type. Two parts of its design were left out of that slice.
-
-First, other tags have no look. A settings key, `tagColours`, would map a tag to one of
-the theme's named brushes (`critical`, `caution`, `success`, `accent`) rather than to a
-hex, so a scheme or a dark theme never makes a tag unreadable and Brand.cs stays the one
-place a colour is written; a tab then shows each coloured tag as prod's chip is shown,
-up to two, and a third as a count. It belongs in SETTINGS.md and the settings window,
-which the reference tests hold together.
-
-Second, no importer brings tags. MobaXterm's folder names and PuTTY's session names
-often carry the environment (`PROD`, `Production`, `prd-`); an import could map a folder
-whose name is exactly one of a short known list to the tag `prod`, shown in the import
-preview as a tag it will add, never guessed silently from a substring.
-
-Done when a settings test gives `staging` the caution brush and a tab shows it, and an
-import of a MobaXterm folder named Production previews and writes the tag prod on it.
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox

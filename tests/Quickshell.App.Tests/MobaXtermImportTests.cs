@@ -191,6 +191,45 @@ public sealed class MobaXtermImportTests : IDisposable
         Assert.Equal("inside", Assert.Single(folder.Children).Name);
     }
 
+    /// <summary>
+    /// A folder named exactly for production is tagged prod, and the preview names it; a folder whose
+    /// name only contains the word, and one under the tagged folder, carry no tag of their own (QS351).
+    /// </summary>
+    [Fact]
+    public void AFolderNamedForProductionIsTaggedProd()
+    {
+        string ini = string.Join(Environment.NewLine,
+        [
+            "[Bookmarks_1]",
+            "SubRep=Production\\Europe",
+            "ImgNum=41",
+            Line("eu", 0, "eu.example", "22", "alex"),
+            "[Bookmarks_2]",
+            "SubRep=Staging",
+            "ImgNum=41",
+            Line("stage", 0, "stage.example", "22", "alex"),
+            "[Bookmarks_3]",
+            "SubRep=preprod-lab",
+            "ImgNum=41",
+            Line("lab", 0, "lab.example", "22", "alex"),
+        ]);
+
+        ImportPreview preview = MobaXtermImport.Preview(File(ini, whole: true));
+        SessionNode tree = preview.Tree();
+
+        SessionNode production = Assert.Single(tree.Children, child => child.Name == "Production");
+
+        Assert.Equal(["prod"], production.Tags);
+        Assert.Empty(Assert.Single(production.Children).Tags);
+        Assert.Empty(Assert.Single(tree.Children, child => child.Name == "Staging").Tags);
+        Assert.Empty(Assert.Single(tree.Children, child => child.Name == "preprod-lab").Tags);
+        Assert.Equal(["Production"], preview.TaggedProd);
+
+        // And every session under it is production, by inheritance, once written.
+        Assert.Contains("prod", SessionTree.Of(new SessionNode { Name = "", Children = [tree] }).Sessions()
+                                           .Single(session => session.Path.EndsWith("/eu", StringComparison.Ordinal)).Tags);
+    }
+
     /// <summary>A preview writes nothing: the folder it read from is all that is touched.</summary>
     [Fact]
     public void PreviewingWritesNothing()

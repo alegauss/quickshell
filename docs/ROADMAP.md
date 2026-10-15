@@ -14,8 +14,6 @@
 
 ## Block D — The tree a user organises work in
 
-- ⏳ **QS351** (deps: —) **Only the prod tag has a look on the strip, and no import brings tags in from MobaXterm or PuTTY** — No import brings tags: a MobaXterm or PuTTY folder named exactly prod or production could preview and write the tag prod. → §QS351
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox
@@ -320,11 +318,6 @@
   finds nothing written.
 - **A real PIN once writes the vault** The owner verifies with a real PIN on the
   reference desk and sees the vault written.
-
-## Done when — QS351
-
-- **An import brings the prod tag** Importing a MobaXterm folder named Production
-  previews the tag prod and writes it on the folder.
 
 ## Non-goals
 

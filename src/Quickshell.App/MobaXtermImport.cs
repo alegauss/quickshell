@@ -74,8 +74,31 @@ public sealed record ImportPreview(IReadOnlyList<ImportedSession> Sessions, stri
             children.Add(Built(folder.Key, [.. folder.Select(each => ((IReadOnlyList<string>)[.. each.Folder.Skip(1)], each.Node))]));
         }
 
-        return new SessionNode { Name = name, Children = children };
+        return new SessionNode { Name = name, Children = children, Tags = ProductionName(name) ? ["prod"] : [] };
     }
+
+    /// <summary>
+    /// The folder names taken to mean production, matched whole and ignoring case (QS351): a folder named
+    /// exactly one of these is tagged prod, and the preview says so. Never a substring, since a guess from
+    /// part of a name is a tag nobody asked for.
+    /// </summary>
+    public static readonly IReadOnlyList<string> ProductionNames = ["prod", "production", "prd"];
+
+    private static bool ProductionName(string name) =>
+        ProductionNames.Contains(name.Trim(), StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The source's folders that would be tagged prod, by the names leading to each (QS351).</summary>
+    public IReadOnlyList<string> TaggedProd =>
+        [.. Sessions.Where(session => session.Carried)
+                    .SelectMany(session =>
+                    {
+                        IReadOnlyList<string> path = FolderPath(session);
+
+                        return Enumerable.Range(1, path.Count)
+                                         .Where(depth => ProductionName(path[depth - 1]))
+                                         .Select(depth => string.Join('/', path.Take(depth)));
+                    })
+                    .Distinct(StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>
     /// What each carried session could not bring, as comments to write before it in the store, by

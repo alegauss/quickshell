@@ -156,7 +156,7 @@
 - ✅ **QS304** **The sessions sidebar opens with every folder unfolded, so a large store is a long list before it is a tree** — The sessions sidebar opens with every folder folded, one click opens one, and a copy or a move opens the folder it put its session in.
 - ✅ **QS314** **The sidebar selects one row at a time, so nothing can act on several chosen sessions at once** — Ctrl+click, Shift+click and Ctrl+A choose several sidebar rows, and the window reports the set, a chosen folder standing for every session under it (design recorded in `docs/SESSIONS.md`).
 - ✅ **QS331** **A saved session carries nothing that tells production from staging, to the person or to anything reading the store** — A tab holding a session tagged prod, by its own tag or a folder's, shows prod in the danger colour, and every tag is the tab's item type (design recorded in `docs/SESSIONS.md`).
-- ✅ **QS351 (tag colours)** **Only the prod tag has a look on the strip, and no import brings tags in from MobaXterm or PuTTY** — tagColours gives a tag one of the theme's brushes, and a tab shows prod and up to two chips in all, a count for the rest.
+- ✅ **QS351** **Only the prod tag has a look on the strip, and no import brings tags in from MobaXterm or PuTTY** — A MobaXterm folder named exactly prod, production or prd imports tagged prod, named in the preview first (design recorded in `docs/SESSIONS.md`).
 
 ## Block E — SCP and SFTP as a thing a person operates
 

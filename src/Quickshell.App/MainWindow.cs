@@ -2581,6 +2581,13 @@ public sealed partial class MainWindow : Window
             }
         }
 
+        // A folder named for production is tagged prod, and its tabs say so (QS351); said before it is written.
+        if (preview.TaggedProd is { Count: > 0 } tagged)
+        {
+            said.AppendLine()
+                .AppendLine($"Tagged prod, since their names say production, so their tabs say so: {string.Join(", ", tagged)}.");
+        }
+
         // Named, each with the sessions that had it (QS294); and written beside each of those
         // sessions in the store, as a comment, where the user will find it later.
         if (preview.LeftBehind() is { Count: > 0 } left)
