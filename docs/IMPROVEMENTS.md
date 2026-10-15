@@ -365,24 +365,6 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
-### §QS310 QS310 Middle click closes a tab
-
-Closing a tab with the middle button is a habit carried from every browser, Windows
-Terminal and MobaXterm, and here it does nothing, so a user who reaches for it concludes
-the tab cannot be closed that way and looks for the button QS312 is about.
-
-The click is taken on the TabItem, not the strip, so it closes the tab under the pointer
-and never the one on screen, and it goes through CloseTab exactly as the close button
-does: a live session still asks before it ends, and the last tab still leaves the window
-on Home. A middle click on Home, on New tab or on the empty strip does nothing. The drag
-that reorders (QS250) and the pull that detaches (QS160) are left button only and must
-not notice the middle one.
-
-Done when a test raises a middle-button press and release on the second of three tabs
-and finds two tabs left with the first still on screen, a second test does the same on a
-connected session and finds the confirmation asked, and docs/KEYS.md names the gesture
-beside Ctrl+Shift+W.
-
 ### §QS311 QS311 A tab's context menu
 
 A right click on a tab is where a user looks for anything a tab can do, and here there
@@ -727,6 +709,16 @@ project's WPF and unsafe settings go.
 
 Falsified when the case replaces the test and an Explorer drop that leaves a different
 file, or none, is not red.
+
+### §QS347 QS347 A UI case for the middle click
+
+QS310's middle click on a tab is proven by TabStripTests raising WPF's routed mouse
+events on the tab item, not by a UI case, because a case's click verb presses only the
+left button (winwright WW538). Once winwright spells the button, a case in
+cases/tabs.cases.json opens three tabs, middle-clicks the second by its TabItem, and
+reads that two are left with the first still selected; the unit tests stay, since they
+also hold the live-session question. Done when that case runs green in the guest beside
+the others.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

@@ -88,6 +88,82 @@ public sealed class TabStripTests : IDisposable
         Assert.Equal(["second"], left);
     }
 
+    /// <summary>A middle click on the second of three tabs closes it, and the first stays on screen (QS310).</summary>
+    [Fact]
+    public void AMiddleClickClosesTheTabUnderThePointerAndNotTheOneOnScreen()
+    {
+        (string[] left, string? onScreen) = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "first"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "second"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "third"));
+            window.Active = 0;
+
+            MiddleClick(Under(window).OfType<TabItem>().ElementAt(1));
+
+            return (window.Held.Select(tab => tab.Host).ToArray(), window.Current?.Host);
+        });
+
+        Assert.Equal(["first", "third"], left);
+        Assert.Equal("first", onScreen);
+    }
+
+    /// <summary>A middle click on a tab whose session is live asks first, as the close button does, and keeps it on No.</summary>
+    [Fact]
+    public void AMiddleClickOnALiveSessionAsksFirst()
+    {
+        (int asked, int open) = Sta.Run(() =>
+        {
+            int times = 0;
+
+            MainWindow window = Window();
+
+            window.Guard = CloseGuard.Asking();
+            window.AskingToClose = _ =>
+            {
+                times++;
+
+                return ClosingAnswer.Stay;
+            };
+
+            TerminalTab live = TerminalTab.Open(Settings.Default, Shared, "cmd.exe");
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "first"));
+            window.Add(live);
+            live.ConnectAsync("cmd.exe /d /k").GetAwaiter().GetResult();
+            Assert.True(live.IsLive, "the shell this test needs did not start");
+
+            window.Active = 0;
+
+            MiddleClick(Under(window).OfType<TabItem>().ElementAt(1));
+
+            int stillOpen = window.Held.Count;
+
+            live.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+            return (times, stillOpen);
+        });
+
+        Assert.Equal(1, asked);
+        Assert.Equal(2, open);
+    }
+
+    /// <summary>A middle-button press and release on an element, as the pointer would send them.</summary>
+    private static void MiddleClick(UIElement on)
+    {
+        on.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Middle)
+        {
+            RoutedEvent = UIElement.PreviewMouseDownEvent,
+        });
+
+        on.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Middle)
+        {
+            RoutedEvent = UIElement.PreviewMouseUpEvent,
+        });
+    }
+
     /// <summary>While Home is on screen it is the strip's underlined tab, and the tab the strip still has selected is not.</summary>
     [Fact]
     public void HomeIsUnderlinedWhileItShowsAndNoTabIs()

@@ -229,6 +229,7 @@
 - ✅ **QS280** **Home has the design's content in another layout: quick connect in three rows, other start-point copy and shape** — Home is the design's: the 26px heading and its line, quick connect in one row with a Sign in with drop-down that asks for a key file, and three start-point cards.
 - ✅ **QS282** **A local tab and the window are titled C:\WINDOWS\system32\cmd.exe instead of naming the shell** — A local tab whose shell wrote its own executable's path is named as the shell: Command Prompt, Windows PowerShell, PowerShell or WSL; any other title shows as written.
 - ✅ **QS301** **The client crashes on every start after a window maximised from its first paint is closed** — A window maximised from its first paint is remembered without a rectangle, and a file already holding -2147483648 opens maximised instead of crashing.
+- ✅ **QS310** **A middle click on a tab does nothing, where every browser and terminal on Windows closes it** — A middle click on a tab closes that tab, asking first for a live session, and leaves the tab on screen, or Home, where it was (design recorded in `docs/KEYS.md`).
 
 ## Block H — The reason to leave the incumbent
 

@@ -26,8 +26,7 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS310** (deps: —) **A middle click on a tab does nothing, where every browser and terminal on Windows closes it** — A middle click on a tab closes that tab and not the one on screen, through the same CloseTab path that asks before ending a live session. → §QS310
-- 📋 **QS311** (deps: QS310) **A right click on a tab offers nothing, so closing every tab but one is a close per tab** — A tab's context menu offers Close, Close other tabs and Close tabs to the right, each asking once for all the live sessions it would end. → §QS311
+- 📋 **QS311** (deps: QS310 ✅) **A right click on a tab offers nothing, so closing every tab but one is a close per tab** — A tab's context menu offers Close, Close other tabs and Close tabs to the right, each asking once for all the live sessions it would end. → §QS311
 - 📋 **QS312** (deps: —) **A tab's close button is in the tree but a user looking at the strip does not find it, so a tab seems unclosable** — The cross after each title is drawn large enough and in a colour that reads at rest, so the button QS278 placed is seen without hovering. → §QS312
 - 📋 **QS313** (deps: —) **A recent card says Connected now and its Connect opens a second connection, with no way from Home to the open tab** — A card whose session is open in a tab offers Go to tab as its button and New connection beside it, so the state it shows is the action it takes. → §QS313
 - 📋 **QS317** (deps: —) **A pane opened by Split has no button, chord or palette entry that closes it, only closing the whole tab** — MainWindow.ClosePane is written and asks first for a live session, but nothing on screen or on the keyboard calls it. → §QS317
@@ -46,6 +45,7 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS292** (deps: QS188 ✅, winwright WW535, winwright WW536) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — winwright 1.1.0 drops onto Explorer (WW530), but a case still cannot open that folder or read the file it lands as. → §QS292
+- 📋 **QS347** (deps: winwright WW538) **A middle click closing a tab is proven by routed events raised in a unit test, not by a UI case** — A case's click verb presses only the left button, so the gesture waits on winwright to name another. → §QS347
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

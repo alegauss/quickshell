@@ -2668,12 +2668,22 @@ public sealed partial class MainWindow : Window
     /// the window.</para>
     /// </summary>
     /// <returns>Whether the tab went.</returns>
-    public bool CloseTab()
+    public bool CloseTab() => Current is not null && CloseTab(_active);
+
+    /// <summary>
+    /// Closes the tab at <paramref name="index"/>, asking first where its session is still live, and
+    /// leaves on screen what was on screen: another tab, or Home (QS310). A middle click on a tab is
+    /// this, so it closes the tab under the pointer and never the one being looked at.
+    /// </summary>
+    /// <returns>Whether the tab went.</returns>
+    public bool CloseTab(int index)
     {
-        if (Current is not { } going)
+        if (index < 0 || index >= _open.Count)
         {
             return false;
         }
+
+        TerminalTab going = _open[index];
 
         if (going.IsLive
             && Guard?.Ask([going.Title]) is { } question
@@ -2682,8 +2692,11 @@ public sealed partial class MainWindow : Window
             return false;
         }
 
+        TerminalTab? staying = index != _active && _active >= 0 && _active < _open.Count ? _open[_active] : null;
+        bool home = _homeShowing;
+
         Ends?.Invoke(going);
-        Remove(_active);
+        Remove(index);
 
         // The last tab going closes the window, because a window with no terminal in it is not
         // something this client has a name for — unless Home is open, which is that name (QS272).
@@ -2697,6 +2710,18 @@ public sealed partial class MainWindow : Window
             {
                 Close();
             }
+
+            return true;
+        }
+
+        if (staying is not null)
+        {
+            Active = _open.IndexOf(staying);
+        }
+
+        if (home)
+        {
+            ShowHome();
         }
 
         return true;

@@ -141,6 +141,39 @@ public sealed partial class MainWindow
             }
         };
 
+        // A middle click closes this tab, as it does in every browser and terminal on Windows (QS310):
+        // pressed and released on the same tab, and taken before the strip's drag, which is the left
+        // button's alone.
+        bool middlePressed = false;
+
+        item.PreviewMouseDown += (_, pressed) =>
+        {
+            if (pressed.ChangedButton == System.Windows.Input.MouseButton.Middle)
+            {
+                middlePressed = true;
+                pressed.Handled = true;
+            }
+        };
+
+        item.PreviewMouseUp += (_, released) =>
+        {
+            if (released.ChangedButton != System.Windows.Input.MouseButton.Middle)
+            {
+                return;
+            }
+
+            released.Handled = true;
+
+            if (middlePressed && _tabs.Items.IndexOf(item) is var at and >= 0)
+            {
+                CloseTab(at);
+            }
+
+            middlePressed = false;
+        };
+
+        item.MouseLeave += (_, _) => middlePressed = false;
+
         StackPanel row = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(16, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
 
         row.Children.Add(dot);

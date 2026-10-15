@@ -44,6 +44,7 @@ Nothing here is configurable yet. When it becomes configurable this page becomes
 |---|---|
 | `Ctrl+Shift+T` | Opens a tab. |
 | `Ctrl+Shift+W` | Closes the tab. If sessions are still live in it you are asked first. |
+| Middle click on a tab | Closes that tab, not the one on screen, asking first in the same way. |
 | `Ctrl+Tab` | The next tab, wrapping past the last. |
 | `Ctrl+Shift+Tab` | The previous tab, wrapping past the first. |
 | `Ctrl+Shift+PageUp` | Moves the tab you are in one place left along the strip. It stops at the first place rather than wrapping. |
