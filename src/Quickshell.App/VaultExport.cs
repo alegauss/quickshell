@@ -1,3 +1,4 @@
+using System.IO;
 using Quickshell.Transport;
 
 namespace Quickshell.App;
@@ -19,10 +20,24 @@ public sealed class VaultExport : IDisposable
 
     private readonly List<Secret> _held = [];
 
-    private VaultExport(SessionTree store, SecretStore? secrets)
+    private readonly bool _keys;
+
+    /// <summary>Each key file attached so far, by its full path, and the entry it went on (QS345).</summary>
+    private readonly Dictionary<string, string> _attached = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly List<string> _missing = [];
+
+    private VaultExport(SessionTree store, SecretStore? secrets, bool keys)
     {
+        _keys = keys;
         Root = Group(store, store.Root, string.Empty, DatabaseName, secrets);
     }
+
+    /// <summary>How many key files went in as attachments (QS345).</summary>
+    public int KeyFiles => _attached.Count;
+
+    /// <summary>The key files sessions name that were not there to attach (QS345).</summary>
+    public IReadOnlyList<string> MissingKeys => _missing;
 
     /// <summary>The vault's root group, holding every folder and session.</summary>
     public KdbxGroup Root { get; }
@@ -37,11 +52,17 @@ public sealed class VaultExport : IDisposable
     /// Reads every session and every saved password, which the caller writes and then disposes, so
     /// the passwords are erased as soon as the vault is written.
     /// </summary>
-    public static VaultExport Gather(SessionTree store, SecretStore? secrets)
+    /// <param name="store">The saved sessions.</param>
+    /// <param name="secrets">Where their passwords are.</param>
+    /// <param name="keys">
+    /// Whether the key files sessions name go in as attachments (QS345): each file once, on the first
+    /// entry that names it, with its <c>.pub</c> beside it where there is one, and a note on the rest.
+    /// </param>
+    public static VaultExport Gather(SessionTree store, SecretStore? secrets, bool keys = false)
     {
         ArgumentNullException.ThrowIfNull(store);
 
-        return new VaultExport(store, secrets);
+        return new VaultExport(store, secrets, keys);
     }
 
     /// <summary>Writes the vault under a key derived from its passphrase.</summary>
@@ -95,15 +116,46 @@ public sealed class VaultExport : IDisposable
 
         Sessions++;
 
+        string notes = credential is { Length: > 0 }
+            ? $"{session.Path}. Its password is the saved credential \"{credential}\", which every session naming it shares."
+            : $"{session.Path}.";
+
+        List<KdbxAttachment> attachments = [];
+
+        if (_keys && session.Key?.Value is { Length: > 0 } named)
+        {
+            string key = Path.GetFullPath(RemoteShell.Expand(named));
+
+            if (_attached.TryGetValue(key, out string? first))
+            {
+                notes += $" Its key file, {Path.GetFileName(key)}, is attached to the entry {first}.";
+            }
+            else if (File.Exists(key))
+            {
+                attachments.Add(new KdbxAttachment(Path.GetFileName(key), File.ReadAllBytes(key)));
+
+                if (File.Exists(key + ".pub"))
+                {
+                    attachments.Add(new KdbxAttachment(Path.GetFileName(key) + ".pub", File.ReadAllBytes(key + ".pub")));
+                }
+
+                _attached[key] = session.Path;
+                notes += $" Its key file, {Path.GetFileName(key)}, is attached.";
+            }
+            else if (!_missing.Contains(key, StringComparer.OrdinalIgnoreCase))
+            {
+                _missing.Add(key);
+            }
+        }
+
         return new KdbxEntry
         {
             Title = name,
             UserName = user,
             Url = $"ssh://{user}@{session.Host}:{port}",
-            Notes = credential is { Length: > 0 }
-                ? $"{session.Path}. Its password is the saved credential \"{credential}\", which every session naming it shares."
-                : $"{session.Path}.",
+            Notes = notes,
             Password = password,
+            Attachments = attachments,
         };
     }
 }

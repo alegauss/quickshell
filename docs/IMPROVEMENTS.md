@@ -78,27 +78,6 @@ Done when a guest run opens the export, sees the Windows Security prompt appear 
 client, cancels it, and reads that nothing was written; and the owner has once verified
 with a real PIN on the reference desk and seen the vault written.
 
-### §QS345 QS345 Key files in the exported vault
-
-QS306's design allowed a session's key file to go into the exported vault as an
-attachment, asked for separately, and the export shipped without it: a vault restores
-the passwords and not the keys, so a person on a new machine still has to find each
-private key a session names.
-
-KdbxWriter already carries attachments (KdbxAttachment, proven by keepassxc-cli's
-attachment-export), so this is the export's half only. In VaultExportDialog, a check
-box, off by default, "Include the key files sessions name", with a sentence that a
-private key in the vault is then protected by the passphrase alone, which is weaker than
-an encrypted key file for a key without its own passphrase. VaultExport then reads each
-session's resolved `Key` path once (a folder's key shared by twenty sessions is one
-attachment on the first and a note on the rest), attaches the file and its `.pub` beside
-it where present, and names any key file that was not there in the closing sentence
-rather than failing the export.
-
-Done when a test exports a store whose folder names a key, keepassxc-cli's
-attachment-export returns its bytes unchanged, and an export with the box off carries no
-attachment.
-
 ### §QS346 QS346 ChaCha20 and AES-KDF vaults, proven
 
 QS308's KdbxReader reads KDBX 4 vaults encrypted with ChaCha20 and derived with AES-KDF,

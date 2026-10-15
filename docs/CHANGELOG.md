@@ -33,6 +33,7 @@
 - ✅ **QS307** **An exported vault goes stale the moment a password is saved or changed, so the file consulted is not the one in use** — With Keep this file up to date ticked, the vault is rewritten on every password or session change, from a DPAPI-kept key (design recorded in `docs/SETTINGS.md`).
 - ✅ **QS308** **A new machine starts with no remembered password, because DPAPI does not travel and nothing reads a vault back** — Import saved passwords reads a KDBX 4 or 3.1 vault, ours or KeePassXC's, and remembers each matching session's password, asking before replacing one (design recorded in `docs/SESSIONS.md`).
 - ✅ **QS344 (the interop runs)** **The Windows Hello prompt before a vault export has never been seen to run, since no test desk has Hello set up** — In the guest, which has no Hello, the real UserConsentVerifier interop answers Unavailable: factory, IID, call and status all run.
+- ✅ **QS345** **An exported vault restores the passwords but not the key files sessions name, so a new machine still lacks the keys** — An export can carry each key file sessions name, once with its .pub, read back unchanged by KeePassXC, and a kept vault keeps them (design recorded in `docs/SESSIONS.md`).
 
 ## Block C — Emulation that does not lie about the remote
 

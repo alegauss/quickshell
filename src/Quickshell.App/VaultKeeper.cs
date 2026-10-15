@@ -53,13 +53,13 @@ public static class VaultKeeper
     /// Records that the vault at <paramref name="vault"/> was just written under <paramref name="key"/>
     /// from content whose fingerprint is <paramref name="fingerprint"/>, so later changes keep it.
     /// </summary>
-    public static void Keep(string stateFile, string vault, KdbxKey key, byte[] fingerprint)
+    public static void Keep(string stateFile, string vault, KdbxKey key, byte[] fingerprint, bool keys = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(stateFile);
         ArgumentNullException.ThrowIfNull(key);
 
         Save(stateFile, new State(Path.GetFullPath(vault), Convert.ToBase64String(key.Seal()),
-                                  KdbxWriter.Hash(vault), Convert.ToBase64String(fingerprint)));
+                                  KdbxWriter.Hash(vault), Convert.ToBase64String(fingerprint), keys));
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ public static class VaultKeeper
                         + "and is no longer kept up to date. Export to it again to replace it, or empty vaultFile in the settings.");
                 }
 
-                using VaultExport export = VaultExport.Gather(store, secrets);
+                using VaultExport export = VaultExport.Gather(store, secrets, state.Keys);
 
                 byte[] fingerprint = key.Fingerprint(export.Root);
 
@@ -157,6 +157,6 @@ public static class VaultKeeper
         File.WriteAllBytes(stateFile, JsonSerializer.SerializeToUtf8Bytes(state, Indented));
     }
 
-    /// <summary>The vault kept, its key sealed under DPAPI, and the hash and fingerprint of its last write.</summary>
-    private sealed record State(string Path, string Key, string File, string Fingerprint);
+    /// <summary>The vault kept, its key sealed under DPAPI, the hash and fingerprint of its last write, and whether it carries key files (QS345).</summary>
+    private sealed record State(string Path, string Key, string File, string Fingerprint, bool Keys = false);
 }

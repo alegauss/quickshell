@@ -78,6 +78,66 @@ public sealed class VaultExportTests : IDisposable
         Assert.Equal(string.Empty, Value(nas, "Password"));
     }
 
+    /// <summary>
+    /// With the key files asked for, a key a folder names goes in once, on its first session, with its
+    /// .pub, and KeePassXC hands its bytes back unchanged; without, nothing is attached (QS345).
+    /// </summary>
+    [Fact]
+    public void TheKeyFilesSessionsNameGoInOnceWhenAskedFor()
+    {
+        string cli = Cli();
+        string key = Path.Combine(_here, "deploy_ed25519");
+        byte[] keyBytes = Encoding.ASCII.GetBytes("-----BEGIN OPENSSH PRIVATE KEY-----\nnot a real key\n-----END OPENSSH PRIVATE KEY-----\n");
+
+        File.WriteAllBytes(key, keyBytes);
+        File.WriteAllText(key + ".pub", "ssh-ed25519 AAAA deploy\n");
+
+        string store = Path.Combine(_here, "keyed-sessions.json");
+
+        File.WriteAllText(store, $$"""
+            { "name": "", "children": [
+                { "name": "Work", "settings": { "user": "deploy", "key": {{System.Text.Json.JsonSerializer.Serialize(key)}} }, "children": [
+                    { "name": "web01", "host": "web01.example.invalid" },
+                    { "name": "web02", "host": "web02.example.invalid" }
+                ] }
+            ] }
+            """);
+
+        string with = Path.Combine(_here, "with-keys.kdbx");
+        string without = Path.Combine(_here, "without-keys.kdbx");
+
+        Sta.Run(() =>
+        {
+            foreach ((string vault, bool keys) in new[] { (with, true), (without, false) })
+            {
+                MainWindow window = new()
+                {
+                    SessionsFile = store,
+                    Tells = _ => { },
+                    OpensSecrets = Store,
+                    AsksVaultExport = (_, _) => new VaultExportAnswer(vault, Strong, Keys: keys),
+                    Verifies = _ => Task.FromResult(HelloVerdict.Verified),
+                };
+
+                window.ExportVaultAsync().GetAwaiter().GetResult();
+            }
+
+            return 0;
+        });
+
+        string exported = Path.Combine(_here, "exported-key");
+
+        Run(cli, ["attachment-export", "-q", with, "Work/web01", "deploy_ed25519", exported]);
+        Assert.Equal(keyBytes, File.ReadAllBytes(exported));
+
+        XmlDocument keyed = Export(cli, with);
+        Assert.Equal(2, keyed.SelectNodes("//Entry[String[Key='Title']/Value='web01']/Binary")!.Count);
+        Assert.Equal(0, keyed.SelectNodes("//Entry[String[Key='Title']/Value='web02']/Binary")!.Count);
+        Assert.Contains("attached to the entry Work/web01", Value(Entry(keyed, "Work", "web02"), "Notes"), StringComparison.Ordinal);
+
+        Assert.Equal(0, Export(cli, without).SelectNodes("//Binary")!.Count);
+    }
+
     /// <summary>Without Windows Hello there is no way to confirm the person, so nothing is read and nothing written.</summary>
     [Fact]
     public void WithoutWindowsHelloNothingIsExportedAndThePersonIsToldWhy()
@@ -286,6 +346,34 @@ public sealed class VaultExportTests : IDisposable
         document.LoadXml(output.Result[output.Result.IndexOf('<', StringComparison.Ordinal)..]);
 
         return document;
+    }
+
+    private static void Run(string cli, IEnumerable<string> arguments)
+    {
+        ProcessStartInfo start = new(cli)
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardInputEncoding = new UTF8Encoding(false),
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        foreach (string argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        using Process process = Process.Start(start) ?? throw new InvalidOperationException($"{cli} did not start");
+
+        process.StandardInput.WriteLine(Strong);
+        process.StandardInput.Close();
+
+        string said = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+
+        Assert.True(process.WaitForExit(TimeSpan.FromSeconds(60)), "keepassxc-cli did not finish within a minute");
+        Assert.True(process.ExitCode == 0, $"keepassxc-cli {string.Join(' ', arguments)} failed: {said}");
     }
 
     /// <summary>The entry titled so, in the group at that path under the root.</summary>

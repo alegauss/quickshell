@@ -87,7 +87,7 @@ public sealed partial class MainWindow
         }
 
         using KdbxKey key = DeriveVaultKey(answer.Passphrase);
-        using VaultExport export = VaultExport.Gather(store, Secrets());
+        using VaultExport export = VaultExport.Gather(store, Secrets(), answer.Keys);
 
         try
         {
@@ -95,7 +95,7 @@ public sealed partial class MainWindow
 
             if (answer.Keep)
             {
-                VaultKeeper.Keep(VaultKeyFileOrDefault, answer.Path, key, key.Fingerprint(export.Root));
+                VaultKeeper.Keep(VaultKeyFileOrDefault, answer.Path, key, key.Fingerprint(export.Root), answer.Keys);
                 KeepVaultAt(Path.GetFullPath(answer.Path));
             }
         }
@@ -108,6 +108,8 @@ public sealed partial class MainWindow
 
         Say($"{export.Sessions} sessions, {export.WithPassword} of them with a saved password, are in {answer.Path}. "
             + "Open it in KeePassXC or any KeePass app with the passphrase."
+            + (answer.Keys ? $" {export.KeyFiles} key files are attached." : string.Empty)
+            + (export.MissingKeys.Count > 0 ? $" These key files were not there to attach: {string.Join(", ", export.MissingKeys)}." : string.Empty)
             + (answer.Keep ? " It is written again whenever a saved password or a session changes." : string.Empty),
             "Export saved passwords");
 

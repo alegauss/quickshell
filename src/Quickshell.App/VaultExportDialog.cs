@@ -9,7 +9,8 @@ namespace Quickshell.App;
 /// <param name="Path">The file to write.</param>
 /// <param name="Passphrase">The passphrase, which the caller turns into a <see cref="Quickshell.Transport.Secret"/> at once.</param>
 /// <param name="Keep">Whether the file is to be kept up to date from now on (QS307).</param>
-public sealed record VaultExportAnswer(string Path, string Passphrase, bool Keep = false);
+/// <param name="Keys">Whether the key files sessions name go in as attachments (QS345).</param>
+public sealed record VaultExportAnswer(string Path, string Passphrase, bool Keep = false, bool Keys = false);
 
 /// <summary>
 /// Where to write the vault of saved passwords, and the passphrase it is written under (QS306).
@@ -28,6 +29,12 @@ public sealed class VaultExportDialog : Window
     private readonly TextBlock _verdict = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), MaxWidth = 420 };
     private readonly Button _export = new() { Content = "Export", Padding = new Thickness(14, 4, 14, 4), IsDefault = true, IsEnabled = false };
     private readonly CheckBox _keep = new() { Content = "Keep this file up to date", Margin = new Thickness(0, 12, 0, 0) };
+    private readonly CheckBox _keys = new() { Content = "Include the key files sessions name", Margin = new Thickness(0, 12, 0, 0) };
+
+    /// <summary>What including the key files costs, said beside the box that turns it on (QS345).</summary>
+    public const string KeysTerms =
+        "Each private key a session names goes in once, with its .pub beside it. A key that has no passphrase of "
+        + "its own is then protected by the vault's passphrase alone.";
 
     /// <summary>What keeping the file up to date does, said beside the box that turns it on (QS307).</summary>
     public const string KeepTerms =
@@ -114,6 +121,18 @@ public sealed class VaultExportDialog : Window
         AutomationProperties.SetAutomationId(_verdict, "Verdict");
         body.Children.Add(_verdict);
 
+        AutomationProperties.SetAutomationId(_keys, "Keys");
+        body.Children.Add(_keys);
+        body.Children.Add(new TextBlock
+        {
+            Text = KeysTerms,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 400,
+            Margin = new Thickness(20, 4, 0, 0),
+            Opacity = 0.7,
+            FontSize = 11,
+        });
+
         AutomationProperties.SetAutomationId(_keep, "Keep");
         body.Children.Add(_keep);
         body.Children.Add(new TextBlock
@@ -148,7 +167,7 @@ public sealed class VaultExportDialog : Window
         {
             if (Chosen() is { } chosen && _path.Text.Trim() is { Length: > 0 } path)
             {
-                Answered = new VaultExportAnswer(path, chosen, _keep.IsChecked == true);
+                Answered = new VaultExportAnswer(path, chosen, _keep.IsChecked == true, _keys.IsChecked == true);
                 Close();
             }
         };

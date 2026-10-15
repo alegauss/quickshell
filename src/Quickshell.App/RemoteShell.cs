@@ -632,7 +632,7 @@ public sealed class RemoteShell : IShellSession
     /// A key path as it will be opened: a leading <c>~</c>, and MobaXterm's placeholders, which a
     /// store imported before QS276 still carries.
     /// </summary>
-    private static string Expand(string path) =>
+    internal static string Expand(string path) =>
         path.StartsWith('~')
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                            path[1..].TrimStart('/', '\\'))

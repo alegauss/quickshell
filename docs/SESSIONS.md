@@ -246,6 +246,12 @@ anyone who copies the file can guess at it for as long as it exists, so the dial
 words to write down and refuses a passphrase whose estimated strength is below 64 bits, saying so.
 A portable copy remembers no passwords and has nothing to export.
 
+Tick **Include the key files sessions name** and each private key a session's `Key` names goes into
+the vault as an attachment, with its `.pub` beside it: once, on the first session that names it, the
+others saying where it is. A key without a passphrase of its own is then protected by the vault's
+passphrase alone. A key file that is not there is named when the export finishes, and the export goes
+ahead without it.
+
 Tick **Keep this file up to date** and the vault is written again whenever a password is remembered,
 changed or forgotten, or a session changes, without asking for the passphrase again; the
 `vaultFile` setting in [SETTINGS.md](SETTINGS.md#vaultfile) names it, and emptying it stops this. A
