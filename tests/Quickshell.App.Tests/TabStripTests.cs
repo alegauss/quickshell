@@ -354,6 +354,44 @@ public sealed class TabStripTests : IDisposable
         return Enumerable.Range(0, pixels.Length / 4).Count(at => pixels[(at * 4) + 3] > 60);
     }
 
+    /// <summary>
+    /// Every tab carries its place on the strip before its title, which a close or a move renumbers at
+    /// once; its name stays the bare title, and its help names the Alt chord (QS319).
+    /// </summary>
+    [Fact]
+    public void EveryTabIsNumberedByItsPlaceOnTheStrip()
+    {
+        (string[] opened, string[] closed, string[] moved, string name, string help) = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "first"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "second"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "third"));
+
+            string[] Numbers() =>
+                [.. Under(window).OfType<TabItem>().Select(item => Find<TextBlock>(item, "TabNumber").Text + AutomationProperties.GetName(item))];
+
+            string[] three = Numbers();
+
+            window.CloseTab(1);
+            string[] two = Numbers();
+
+            window.Active = 1;
+            window.MoveTab(-1);
+
+            TabItem first = Under(window).OfType<TabItem>().First();
+
+            return (three, two, Numbers(), AutomationProperties.GetName(first), AutomationProperties.GetHelpText(first));
+        });
+
+        Assert.Equal(["1. first", "2. second", "3. third"], opened);
+        Assert.Equal(["1. first", "2. third"], closed);
+        Assert.Equal(["1. third", "2. first"], moved);
+        Assert.Equal("third", name);
+        Assert.Equal("Tab 1, Alt+1", help);
+    }
+
     /// <summary>A middle-button press and release on an element, as the pointer would send them.</summary>
     private static void MiddleClick(UIElement on)
     {

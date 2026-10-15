@@ -24,8 +24,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS319** (deps: —) **Two tabs on the same host carry the same title, so the strip gives nothing to tell them apart by** — A tab is titled by user and host alone; its position, which Alt+1 to Alt+9 already reach, is shown nowhere on it. → §QS319
-
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77

@@ -14,6 +14,12 @@
       // --tabs 1: a window asked for a tab opens on a shell, whatever startWith says (QS272).
       "arguments": ["--tabs", "1"],
       "shareable": false
+    },
+    {
+      // Three tabs, one of which the numbering case closes (QS319).
+      "name": "a window with three tabs to number",
+      "arguments": ["--tabs", "3"],
+      "shareable": false
     }
   ],
 
@@ -165,6 +171,55 @@
           "reads": "text",
           "matches": "title first-tab-marker",
           "named": "and its text is the first tab's, read the way a screen reader reads it"
+        }
+      ]
+    },
+    {
+      "name": "every tab carries its place on the strip, and closing one renumbers the rest",
+      "catches": "two tabs on one host the strip gives nothing to tell apart by, or a number that stops matching the Alt chord once a tab closes",
+      "filed": "QS319",
+      "tags": ["window", "tabs"],
+      "fixture": "a window with three tabs to number",
+
+      "steps": [
+        {
+          "locator": "Text#TabNumber[order=left]",
+          "act": "read",
+          "reads": "name",
+          "matches": "^1\\.",
+          "named": "the first tab is numbered 1"
+        },
+        {
+          "locator": "Text#TabNumber[order=left][index=2]",
+          "act": "read",
+          "reads": "name",
+          "matches": "^2\\.",
+          "named": "the second 2"
+        },
+        {
+          "locator": "Text#TabNumber[order=right]",
+          "act": "read",
+          "reads": "name",
+          "matches": "^3\\.",
+          "named": "and the third 3"
+        },
+        {
+          "locator": "Button#CloseTab[order=left][index=2]",
+          "act": "invoke",
+          "named": "the second tab is closed by its own cross"
+        },
+        {
+          // Its shell is live, so closing it is asked about first.
+          "locator": "Window#Closing > Button#close",
+          "act": "invoke",
+          "named": "and closing its live shell is agreed to"
+        },
+        {
+          "locator": "Text#TabNumber[order=right]",
+          "act": "read",
+          "reads": "name",
+          "matches": "^2\\.",
+          "named": "the tab that was third is now 2, the Alt chord that reaches it"
         }
       ]
     }

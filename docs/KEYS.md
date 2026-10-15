@@ -45,6 +45,7 @@ Nothing here is configurable yet. When it becomes configurable this page becomes
 | `Ctrl+Shift+T` | Opens a tab. |
 | `Ctrl+Shift+W` | Closes the pane with the keyboard while the tab has several, and the tab when it has one, as Windows Terminal's does. If its session is still live you are asked first. *Close tab*, in the palette, closes the whole tab. |
 | Middle click on a tab | Closes that tab, not the one on screen, asking first in the same way. |
+| (on every tab) | Each tab shows its place on the strip before its title, *1.*, *2.* and so on, which is the `Alt` digit that reaches it. Closing or moving a tab renumbers the rest. |
 | Right click on a tab, or Shift+F10 on it | Its menu: *Close*, *Close other tabs* and *Close tabs to the right*. Closing several asks once for all the live sessions among them. The last two are also in the palette, acting on the tab on screen. |
 | `Ctrl+Tab` | The next tab, wrapping past the last. |
 | `Ctrl+Shift+Tab` | The previous tab, wrapping past the first. |

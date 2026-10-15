@@ -31,7 +31,7 @@ public sealed partial class MainWindow
     private readonly Border _stripFrame = new() { Height = StripHeight, Padding = new Thickness(12, 0, 12, 0), BorderThickness = new Thickness(0, 0, 0, 1) };
 
     /// <summary>What each tab's header is made of, so a redraw changes the parts that changed and nothing else.</summary>
-    private sealed record TabLook(Ellipse Dot, TextBlock Title, Border Bar, Button Close);
+    private sealed record TabLook(Ellipse Dot, TextBlock Number, TextBlock Title, Border Bar, Button Close);
 
     /// <summary>Builds the row: frame, the strip's own template, New tab and Commands. Called once, from the constructor.</summary>
     private void BuildStrip()
@@ -109,7 +109,14 @@ public sealed partial class MainWindow
 
         AutomationProperties.SetAutomationId(dot, "TabState");
 
-        TextBlock title = new() { Text = tab.Title, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        // The tab's place on the strip, which is the Alt chord that reaches it (QS319), in the quieter colour
+        // so the title still reads first.
+        TextBlock number = new() { Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+
+        number.SetResourceReference(TextBlock.ForegroundProperty, QuietText);
+        AutomationProperties.SetAutomationId(number, "TabNumber");
+
+        TextBlock title = new() { Text = tab.Title, VerticalAlignment = VerticalAlignment.Center };
 
         TabItem item = new() { Template = Templates.Tab(), Height = TabHeight, Margin = new Thickness(0, 0, 2, 0), VerticalAlignment = VerticalAlignment.Bottom };
 
@@ -185,6 +192,7 @@ public sealed partial class MainWindow
         StackPanel row = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(16, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
 
         row.Children.Add(dot);
+        row.Children.Add(number);
         row.Children.Add(title);
         row.Children.Add(close);
 
@@ -195,7 +203,7 @@ public sealed partial class MainWindow
         header.Children.Add(line);
 
         item.Header = header;
-        item.Tag = new TabLook(dot, title, line, close);
+        item.Tag = new TabLook(dot, number, title, line, close);
 
         Dress(item, tab, selected: false);
 
@@ -342,6 +350,31 @@ public sealed partial class MainWindow
         return button;
     }
 
+    /// <summary>
+    /// Numbers every tab by its place on the strip (QS319): "1. " before the first title, and so on, so
+    /// two tabs on one host are told apart and the number is the Alt chord that reaches the tab. Run on
+    /// every change to the strip, so a close or a move renumbers the rest at once; a tenth tab has its
+    /// number too, with no chord behind it. The tab's name stays its bare title; the number is in its help.
+    /// </summary>
+    private void Number()
+    {
+        for (int at = 0; at < _tabs.Items.Count; at++)
+        {
+            if (_tabs.Items[at] is not TabItem { Tag: TabLook look } item)
+            {
+                continue;
+            }
+
+            string said = (at + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ". ";
+
+            if (!string.Equals(look.Number.Text, said, StringComparison.Ordinal))
+            {
+                look.Number.Text = said;
+                AutomationProperties.SetHelpText(item, at < 9 ? $"Tab {at + 1}, Alt+{at + 1}" : $"Tab {at + 1}");
+            }
+        }
+    }
+
     /// <summary>Home's tab, dressed as on screen or not, the way a tab is.</summary>
     private void DressHome()
     {
@@ -375,6 +408,7 @@ public sealed partial class MainWindow
             }
         }
 
+        Number();
         DressHome();
     }
 

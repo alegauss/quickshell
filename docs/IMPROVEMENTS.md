@@ -335,30 +335,6 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
-### §QS319 Numbered tabs
-
-Asked for by the user (2026-10-15): every tab carries a number before its title, so two tabs
-on the same host are told apart at a glance: 1. root@localhost, 2. root@localhost,
-3. opc@server1.
-
-The number is the tab's position on the strip, not the order tabs were opened in. Alt+1
-to Alt+9 already reach a tab by position (KEYS.md), so the number on a tab is the chord
-that takes you to it. A number fixed at creation would stop matching the chord the first
-time a tab is closed or moved, and two tabs could end up showing 2.
-
-What to build: the strip draws "N. " before each title, in the title's own secondary
-colour so the title still reads first. Closing, moving, detaching or dragging a tab
-renumbers the rest at once. A tenth tab and later still show their number, with no chord
-behind it. The window title and the session bar stay as they are; the number is a
-property of the strip. The automation name of a tab keeps the bare title, so a case
-still finds a tab by what it holds, and the number is in its help text.
-
-Proven by a UI case that opens three tabs, reads 1. 2. 3. on the strip, closes the
-second, and reads the third as 2.
-
-Falsified when two tabs on the strip show the same number, or a tab's number is not the
-Alt chord that reaches it.
-
 ## Block H — The reason to leave the incumbent
 
 ### §QS77 Installing, signing, and updating without a service

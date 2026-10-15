@@ -1457,6 +1457,9 @@ public sealed partial class MainWindow : Window
         _tabs.Items.Insert(to, header);
         _rearranging = false;
 
+        // A move changes every number between where it was and where it went (QS319).
+        Number();
+
         Active = to;
 
         return true;
@@ -1779,6 +1782,9 @@ public sealed partial class MainWindow : Window
         _stripFrame.Visibility = _tabs.Visibility == Visibility.Visible || _homeOpen
             ? Visibility.Visible
             : Visibility.Collapsed;
+
+        // And every tab's number, which a tab added, closed or moved changes (QS319).
+        Number();
     }
 
     /// <summary>
