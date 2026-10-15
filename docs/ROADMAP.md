@@ -26,7 +26,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS312** (deps: —) **A tab's close button is in the tree but a user looking at the strip does not find it, so a tab seems unclosable** — The cross after each title is drawn large enough and in a colour that reads at rest, so the button QS278 placed is seen without hovering. → §QS312
 - 📋 **QS313** (deps: —) **A recent card says Connected now and its Connect opens a second connection, with no way from Home to the open tab** — A card whose session is open in a tab offers Go to tab as its button and New connection beside it, so the state it shows is the action it takes. → §QS313
 - 📋 **QS317** (deps: —) **A pane opened by Split has no button, chord or palette entry that closes it, only closing the whole tab** — MainWindow.ClosePane is written and asks first for a live session, but nothing on screen or on the keyboard calls it. → §QS317
 - 📋 **QS318** (deps: —) **The session bar's Split button always splits side by side, with no way to split one above the other** — Its act calls SplitPane(Divide.Beside) alone, while the chords and the palette already offer both directions. → §QS318
@@ -45,6 +44,7 @@
 
 - 📋 **QS292** (deps: QS188 ✅, winwright WW535, winwright WW536) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — winwright 1.1.0 drops onto Explorer (WW530), but a case still cannot open that folder or read the file it lands as. → §QS292
 - 📋 **QS347** (deps: winwright WW538) **A middle click closing a tab is proven by routed events raised in a unit test, not by a UI case** — A case's click verb presses only the left button, so the gesture waits on winwright to name another. → §QS347
+- 📋 **QS348** (deps: winwright WW539) **That a tab's close cross is drawn inside its tab is proven by an in-process render, not by a UI case** — A case cannot claim one element sits within another, so the geometry QS312 fixed waits on winwright to name it. → §QS348
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

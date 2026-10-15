@@ -113,7 +113,9 @@ public sealed partial class MainWindow
 
         TabItem item = new() { Template = Templates.Tab(), Height = TabHeight, Margin = new Thickness(0, 0, 2, 0), VerticalAlignment = VerticalAlignment.Bottom };
 
-        TextBlock cross = Glyphed("", 8);
+        // 10 points, and no padding (QS312). The theme pads a button 11 a side, which on one 22 wide
+        // left the glyph no room at all: the button was in the tree, laid out, and drew nothing.
+        TextBlock cross = Glyphed("", 10);
 
         Button close = new()
         {
@@ -121,6 +123,7 @@ public sealed partial class MainWindow
             Template = Templates.Ghost(),
             Width = 22,
             Height = 22,
+            Padding = new Thickness(0),
             Margin = new Thickness(8, 0, 0, 0),
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,

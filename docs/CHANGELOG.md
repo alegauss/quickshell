@@ -231,6 +231,7 @@
 - ✅ **QS301** **The client crashes on every start after a window maximised from its first paint is closed** — A window maximised from its first paint is remembered without a rectangle, and a file already holding -2147483648 opens maximised instead of crashing.
 - ✅ **QS310** **A middle click on a tab does nothing, where every browser and terminal on Windows closes it** — A middle click on a tab closes that tab, asking first for a live session, and leaves the tab on screen, or Home, where it was (design recorded in `docs/KEYS.md`).
 - ✅ **QS311** **A right click on a tab offers nothing, so closing every tab but one is a close per tab** — A tab's menu offers Close, Close other tabs and Close tabs to the right, asking once for every live session it would end; the last two are palette commands too (design recorded in `docs/KEYS.md`).
+- ✅ **QS312** **A tab's close button is in the tree but a user looking at the strip does not find it, so a tab seems unclosable** — A tab's close cross is drawn at 10 points after every title, inside its tab; the theme's button padding had left it no room to paint.
 
 ## Block H — The reason to leave the incumbent
 

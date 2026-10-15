@@ -276,6 +276,84 @@ public sealed class TabStripTests : IDisposable
         Assert.Contains("Close tabs to the right", names);
     }
 
+    /// <summary>
+    /// A tab's close cross paints, at 10 points or more, inside its button and its tab, for a short
+    /// title and a long one; New tab's plus is drawn the same way and is the measure the probe is
+    /// checked against (QS312). The cross was in the tree, laid out, and painted nothing.
+    /// </summary>
+    [Fact]
+    public void ATabsCloseCrossPaintsInsideItsTab()
+    {
+        (int plus, (int Inked, double FontSize, bool InButton, bool InTab)[] tabs) = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "a"));
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "a-much-longer-host-name.example.invalid"));
+
+            // Shown, off the desk and without the focus, so the theme's styles reach it as they do a
+            // client's window.
+            window.WindowStartupLocation = WindowStartupLocation.Manual;
+            window.Left = -20000;
+            window.Top = -20000;
+            window.ShowActivated = false;
+            window.Show();
+            window.UpdateLayout();
+
+            int measure = Inked(Find<Button>(window, "NewTab"));
+
+            (int, double, bool, bool)[] laid = [.. Under(window).OfType<TabItem>().Select(item =>
+            {
+                Button close = Find<Button>(item, "CloseTab");
+                TextBlock glyph = Under(close).OfType<TextBlock>().Single();
+
+                Rect inItem = glyph.TransformToAncestor(item).TransformBounds(new Rect(glyph.RenderSize));
+                Rect inClose = glyph.TransformToAncestor(close).TransformBounds(new Rect(glyph.RenderSize));
+
+                return (Inked(close), glyph.FontSize, new Rect(close.RenderSize).Contains(inClose), new Rect(item.RenderSize).Contains(inItem));
+            })];
+
+            window.Close();
+
+            return (measure, laid);
+        });
+
+        Assert.True(plus > 6, $"the probe reads New tab's plus as {plus} pixels, so it reads nothing");
+        Assert.All(tabs, tab =>
+        {
+            Assert.True(tab.Inked > 6, $"the cross paints {tab.Inked} pixels");
+            Assert.True(tab.FontSize >= 10, $"the cross is {tab.FontSize} points");
+            Assert.True(tab.InButton, "the cross is outside its button");
+            Assert.True(tab.InTab, "the cross is outside its tab");
+        });
+    }
+
+    /// <summary>
+    /// How many pixels an element paints, drawn through a brush of itself so its place in its parent
+    /// does not push it outside the picture.
+    /// </summary>
+    private static int Inked(FrameworkElement element)
+    {
+        System.Windows.Media.DrawingVisual drawn = new();
+
+        using (System.Windows.Media.DrawingContext context = drawn.RenderOpen())
+        {
+            context.DrawRectangle(new System.Windows.Media.VisualBrush(element), null, new Rect(element.RenderSize));
+        }
+
+        System.Windows.Media.Imaging.RenderTargetBitmap shot = new(
+            (int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96,
+            System.Windows.Media.PixelFormats.Pbgra32);
+
+        shot.Render(drawn);
+
+        byte[] pixels = new byte[shot.PixelWidth * shot.PixelHeight * 4];
+
+        shot.CopyPixels(pixels, shot.PixelWidth * 4, 0);
+
+        return Enumerable.Range(0, pixels.Length / 4).Count(at => pixels[(at * 4) + 3] > 60);
+    }
+
     /// <summary>A middle-button press and release on an element, as the pointer would send them.</summary>
     private static void MiddleClick(UIElement on)
     {

@@ -365,27 +365,6 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
-### §QS312 QS312 A close button nobody sees
-
-The owner opened a tab on 2026-10-15 and reported that it has no button to close it. The
-code says otherwise: QS278 put a CloseTab button after every title, TabStripTests finds
-it at 22 by 22 and clicks it, and the build that was running carried it. A button a test
-can find and the user cannot is the defect, and the test that passes is the reason it
-went unnoticed: it asserts the element and its size, never that it reads.
-
-The likely causes are all in MainWindow.TabStrip.cs. The cross is the Cancel glyph at 8
-points in the secondary text colour, on a Ghost template with no fill until the pointer
-is over it, so at rest it is a faint mark at the far end of the title; it may also fall
-outside the tab where the strip narrows an item, or the icon face may not resolve where
-the guest renders it. Which one it is gets settled by looking, in the guest, not by
-guessing.
-
-Done when the cross is visible at rest in both themes, at least 10 points and in the
-primary text colour or of contrast at least 3:1 against the strip, the tab widens rather
-than clipping it, and a UI case reads CloseTab's bounding rectangle inside its tab's for
-a short and a long title. The guest's app-desk.png is attached for a human to look at;
-the evidence is the case.
-
 ### §QS313 QS313 A connected card goes to its tab
 
 The owner, on 2026-10-15, connected to a saved session, went back to Home and found its
@@ -708,6 +687,17 @@ shells), invokes Button#close, and reads the second tab selected and the first b
 it. The unit tests stay, since they hold the live-session questions without a desk.
 
 Done when both cases run green in the guest beside the others.
+
+### §QS348 QS348 A UI case for the close cross
+
+QS312 fixed a tab's close cross that painted nothing (the theme's 11-a-side padding on a
+22-wide button) and proved it in process: TabStripTests shows the window off the desk,
+renders the button through a VisualBrush, and counts painted pixels against New tab's
+plus. The design wanted a UI case reading CloseTab's bounding rectangle inside its
+tab's, which a case cannot claim yet (winwright WW539). Once it can,
+cases/tabs.cases.json asserts Button#CloseTab within its TabItem for the short and the
+long title, so a regression that clips or empties it fails in the guest too. Done when
+that case runs green beside the others.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
