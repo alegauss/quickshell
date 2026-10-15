@@ -66,9 +66,13 @@ public sealed class RecordingFromTheWindowTests : IDisposable
 
             window.Actions.Single(one => one.Name == "New tab, recorded").Run();
 
-            SessionRecording running = window.Current!.Focused.Recording!;
+            Assert.NotNull(window.Current!.Focused.Recording);
 
-            for (int wait = 0; wait < 200 && running.Bytes == 0; wait++)
+            // Until the shell's own output is on screen, and not merely the first bytes: ConPTY writes
+            // its mode sequences before cmd prints anything, and stopping on those recorded a file
+            // without the line this test reads back (QS352). The parser feeds the screen and the
+            // recording alike, so what is on one is in the other.
+            for (int wait = 0; wait < 200 && !Screen(window.Current!.Focused.Emulator).Contains("recorded-output", StringComparison.Ordinal); wait++)
             {
                 Thread.Sleep(50);
             }
@@ -126,6 +130,27 @@ public sealed class RecordingFromTheWindowTests : IDisposable
         Assert.Contains("nothing you type is", terms, StringComparison.Ordinal);
         Assert.Contains(@"C:\recordings", terms, StringComparison.Ordinal);
         Assert.Contains("256 MB compressed", terms, StringComparison.Ordinal);
+    }
+
+    /// <summary>What the pane shows, row after row.</summary>
+    private static string Screen(Emulator emulator)
+    {
+        StringBuilder text = new();
+
+        for (int row = 0; row < emulator.Buffer.Rows; row++)
+        {
+            foreach (Cell cell in emulator.Buffer.Screen(row))
+            {
+                if (cell.Width != 0)
+                {
+                    text.Append(emulator.Buffer.TextOf(cell));
+                }
+            }
+
+            text.Append('\n');
+        }
+
+        return text.ToString();
     }
 
     private static string Unpacked(string file)
