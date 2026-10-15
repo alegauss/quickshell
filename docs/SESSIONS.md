@@ -216,3 +216,20 @@ a type promising less than it does is safe and one promising more is not.
 
 How many lines of history this session's pane keeps, in place of the `scrollback` setting of
 [SETTINGS.md](SETTINGS.md).
+
+## Exporting saved passwords
+
+*Export saved passwords to a KeePass vault*, in the command palette (`Ctrl+Shift+P`, or **Commands**
+on the tab strip), writes every saved session to a KeePass database (`.kdbx`, KDBX 4) that KeePassXC,
+KeePass, Strongbox or KeePassDX opens: the file to consult when you forget a password, on any machine.
+
+Each session becomes one entry in a group named for its folder: the session's name as the title, the
+login and `ssh://user@host:port` it connects as, and the password remembered for it, under its
+`Credential` where it names one. A session with nothing remembered is exported too, with an empty
+password, so the vault lists every place you connect to.
+
+Windows Hello (your PIN, face or fingerprint) is asked before any password is read; without Windows
+Hello set up for your account nothing is exported. The vault is protected by a passphrase alone, and
+anyone who copies the file can guess at it for as long as it exists, so the dialog offers six random
+words to write down and refuses a passphrase whose estimated strength is below 64 bits, saying so.
+A portable copy remembers no passwords and has nothing to export.

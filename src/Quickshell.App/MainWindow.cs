@@ -428,6 +428,9 @@ public sealed partial class MainWindow : Window
         InputBindings.Add(new InputBinding(new RecordingSession(this), new PaletteOnly()));
         InputBindings.Add(new InputBinding(new StoppingRecording(this), new PaletteOnly()));
 
+        // Every saved password to a KeePass vault (QS306): done rarely and on purpose, so no chord.
+        InputBindings.Add(new InputBinding(new ExportingVault(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();
@@ -4060,7 +4063,7 @@ public sealed partial class MainWindow : Window
         return dialog.Named;
     }
 
-    private void Say(string sentence)
+    private void Say(string sentence, string caption = "Recording")
     {
         if (Tells is { } tell)
         {
@@ -4069,7 +4072,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        MessageBox.Show(this, sentence, "Recording", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(this, sentence, caption, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     /// <summary>

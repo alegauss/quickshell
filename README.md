@@ -122,7 +122,8 @@ sitting, the comparison holds better than either number on its own.
 - **Safety with a hostile host.** `OSC 52` clipboard access is off by default and write-only
   when on. The window title is never reported back to the host. A multi-line paste asks first.
 - **Secrets.** Passwords go to Windows Credential Manager. Logs are redacted and never contain a
-  secret, so you can attach one to a bug report.
+  secret, so you can attach one to a bug report. Every saved password can be exported, after
+  Windows Hello, to a KeePass vault you can open anywhere.
 - **Diagnostics.** Connection traces, a crash report that tells you where it is, and a
   diagnostics bundle for bug reports. Nothing leaves your machine on its own: no telemetry, no
   update check, no account.

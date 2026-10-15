@@ -32,6 +32,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- QS306: the EFF's large diceware list, 7,776 words, which a generated vault passphrase is drawn
+         from. Embedded and read only when one is generated, so a start never touches it. -->
+    <EmbeddedResource Include="eff-large-wordlist.txt" LogicalName="Quickshell.App.eff-large-wordlist.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Quickshell.Terminal\Quickshell.Terminal.csproj" />
     <ProjectReference Include="..\Quickshell.Transport\Quickshell.Transport.csproj" />
     <ProjectReference Include="..\Quickshell.Render\Quickshell.Render.csproj" />

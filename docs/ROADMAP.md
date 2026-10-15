@@ -6,9 +6,10 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- 📋 **QS306** (deps: QS305 ✅) **A forgotten password can be read only by connecting with this client on this machine, so there is nothing to consult** — An export writes every session's host, port, login and saved password to a KDBX 4 vault, after Windows Hello and behind a strong passphrase. → §QS306
-- 📋 **QS307** (deps: QS306) **An exported vault goes stale the moment a password is saved or changed, so the file consulted is not the one in use** — A setting keeps the vault at a chosen path rewritten whenever a remembered password changes, without asking the passphrase again each time. → §QS307
+- 📋 **QS307** (deps: QS306 ✅) **An exported vault goes stale the moment a password is saved or changed, so the file consulted is not the one in use** — A setting keeps the vault at a chosen path rewritten whenever a remembered password changes, without asking the passphrase again each time. → §QS307
 - 📋 **QS308** (deps: QS305 ✅) **A new machine starts with no remembered password, because DPAPI does not travel and nothing reads a vault back** — An import reads a KDBX 4 vault and saves each entry's password into Credential Manager for the session whose host, port and login match it. → §QS308
+- 📋 **QS344** (deps: —) **The Windows Hello prompt before a vault export has never been seen to run, since no test desk has Hello set up** — Every test answers the gate through MainWindow.Verifies, so the COM interop call to UserConsentVerifier is proven by no run. → §QS344
+- 📋 **QS345** (deps: QS306 ✅) **An exported vault restores the passwords but not the key files sessions name, so a new machine still lacks the keys** — QS306's design allowed key files as attachments asked for separately, and the export shipped without them. → §QS345
 
 ## Block C — Emulation that does not lie about the remote
 

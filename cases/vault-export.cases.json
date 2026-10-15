@@ -1,0 +1,80 @@
+{
+  // QS306. The export of every saved password is reached from the palette, and its dialog says what
+  // it does and will not export until a passphrase is good enough. Windows Hello comes after the
+  // dialog, at the moment the passwords would be read, and this case never gets that far: it
+  // generates a passphrase, reads what the dialog asks of the person, and declines.
+
+  "cases": [
+    {
+      "name": "the vault export asks for a passphrase it can stand behind, and can be refused",
+      "catches": "an export of every password reachable with no dialog in front of it, a dialog that offers no generated passphrase, or one with no way out",
+      "filed": "QS306",
+      "tags": ["palette", "sessions"],
+      // A store with sessions in it: over an empty one the export says there is nothing to export.
+      "fixture": "a client over a store of its own",
+
+      "steps": [
+        {
+          "locator": "TabItem[order=right]",
+          "act": "press",
+          "with": "Ctrl+Shift+P",
+          "named": "the palette is opened the way a user opens it"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "set value",
+          "with": "export saved passwords",
+          "expect": "export saved passwords",
+          "reads": "value",
+          "named": "the way to the vault"
+        },
+        {
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Export saved passwords to a KeePass vault",
+          "named": "is in the palette"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "press",
+          "with": "Enter",
+          "named": "and taken"
+        },
+        {
+          "locator": "Window#ExportVault",
+          "act": "read",
+          "reads": "name",
+          "expect": "Export saved passwords",
+          "named": "the dialog is up under its own caption"
+        },
+        {
+          // `invoke` and not `click`: the pattern is the act, and needs no foreground.
+          "locator": "Window#ExportVault > Button#generate",
+          "act": "invoke",
+          "named": "a passphrase is generated"
+        },
+        {
+          // The words themselves change every time; what the dialog asks of the person does not.
+          "locator": "Window#ExportVault > Text#Verdict",
+          "act": "read",
+          "reads": "name",
+          "expect": "Write these six words down before you export: they are the only way into the vault.",
+          "named": "and the dialog says the words are the only way in"
+        },
+        {
+          "locator": "Window#ExportVault > Button#decline",
+          "act": "read",
+          "reads": "name",
+          "expect": "Don't export",
+          "named": "refusing says what it does"
+        },
+        {
+          "locator": "Window#ExportVault > Button#decline",
+          "act": "invoke",
+          "named": "refusing it, which reads and writes nothing"
+        }
+      ]
+    }
+  ]
+}

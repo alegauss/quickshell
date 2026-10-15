@@ -28,7 +28,10 @@ new one, as after any reconnect, and the trace lasts until the client closes,
 *New tab, recorded* and *Open session, recorded* open a session that keeps everything its host sends
 in a file you name first — never what you type, up to 256 MB compressed, under `recordings` in
 the client's folder, with the title saying so while it runs — and *Stop recording* closes the
-file and says where it is, and
+file and says where it is,
+*Export saved passwords to a KeePass vault* writes every saved session and its remembered password
+to a KeePass file, after Windows Hello and under a passphrase you choose or generate
+([SESSIONS.md](SESSIONS.md#exporting-saved-passwords) says what goes in), and
 *Leave this pane out of broadcast typing* is described under [Panes](#panes).
 
 Nothing here is configurable yet. When it becomes configurable this page becomes the defaults.

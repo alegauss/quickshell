@@ -57,30 +57,6 @@ to be worth it.
 
 Falsified when a token-backed key cannot authenticate a session.
 
-### §QS306 QS306 Exporting saved passwords to a vault
-
-The user keeps a file of passwords because one is always forgotten, and today the client
-holds them where only it can read them: Credential Manager, under DPAPI, which does not
-travel to another machine. This is the command that turns QS305's writer into that file.
-
-Each session becomes one entry: the title is the session's name, the URL is
-ssh://user@host:port, then the login and the password SecretStore holds for its
-endpoint, or for its named credential (QS245). The sidebar's folders become groups. A
-session with nothing saved is still exported, with an empty password, so the vault is a
-complete list of where the user goes. A key file a session names may go in as an
-attachment, asked for separately.
-
-Opening every secret at once is when the store's weakness matters most, so the export is
-gated by Windows Hello or the account's PIN (UserConsentVerifier), not by a click. The
-vault is open to offline guessing for as long as it exists and Argon2id only slows that,
-so the passphrase is the protection: the dialog offers a generated six-word diceware
-phrase and refuses one whose estimated strength is low, saying why. A portable install,
-which saves nothing, exports nothing.
-
-Done when the command exists in the menu and the command palette, docs/SESSIONS.md names
-it, and a test exports a store with folders, a shared credential and a session with
-nothing saved, and keepassxc-cli lists each entry as the store held it.
-
 ### §QS307 QS307 Keeping the exported vault current
 
 An export is a snapshot, and the user asked for a file that is easy to maintain. A vault
@@ -125,6 +101,48 @@ else in the entry is assumed.
 Done when a test round-trips QS306's export through an empty Credential Manager and
 every session connects without asking, a vault made by keepassxc-cli imports the same
 way, and an altered file is refused with a message that names it.
+
+### §QS344 QS344 The Windows Hello gate, run for real
+
+QS306 gates the vault export on Windows Hello through `WindowsHello.VerifyAsync`, which
+calls UserConsentVerifier by its COM interop interface (`IUserConsentVerifierInterop`)
+rather than a WinRT projection. Every test answers the gate through
+`MainWindow.Verifies`, so the interop itself, the activation factory, the parameterised
+IID of the operation and the polled status, has never run against a real prompt. What is
+proven is only the IID derivation, against two identifiers Windows publishes.
+
+The guest has no Windows Hello: its account is local and has no PIN. A PIN can be set
+for a local account without a TPM, by policy, and a provisioning script beside the
+others (`tools/provision-guest-hello.ps1`) could set one. The prompt still needs a
+person to answer it, so the run that settles this is not an unattended one: what can run
+unattended is the call up to the prompt, read through the accessibility tree as a
+Windows Security window owned by the client, then cancelled, which proves the interface,
+the IID and the HWND owner and answers Declined.
+
+Done when a guest run opens the export, sees the Windows Security prompt appear over the
+client, cancels it, and reads that nothing was written; and the owner has once verified
+with a real PIN on the reference desk and seen the vault written.
+
+### §QS345 QS345 Key files in the exported vault
+
+QS306's design allowed a session's key file to go into the exported vault as an
+attachment, asked for separately, and the export shipped without it: a vault restores
+the passwords and not the keys, so a person on a new machine still has to find each
+private key a session names.
+
+KdbxWriter already carries attachments (KdbxAttachment, proven by keepassxc-cli's
+attachment-export), so this is the export's half only. In VaultExportDialog, a check
+box, off by default, "Include the key files sessions name", with a sentence that a
+private key in the vault is then protected by the passphrase alone, which is weaker than
+an encrypted key file for a key without its own passphrase. VaultExport then reads each
+session's resolved `Key` path once (a folder's key shared by twenty sessions is one
+attachment on the first and a note on the rest), attaches the file and its `.pub` beside
+it where present, and names any key file that was not there in the closing sentence
+rather than failing the export.
+
+Done when a test exports a store whose folder names a key, keepassxc-cli's
+attachment-export returns its bytes unchanged, and an export with the box off carries no
+attachment.
 
 ## Block C — Emulation that does not lie about the remote
 
