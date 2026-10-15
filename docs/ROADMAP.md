@@ -16,8 +16,7 @@
 
 ## Block D — The tree a user organises work in
 
-- 📋 **QS314** (deps: —) **The sidebar selects one row at a time, so nothing can act on several chosen sessions at once** — Ctrl+click and Shift+click select several rows in the sidebar, and a selected folder stands for every session under it, for actions that take a set. → §QS314
-- 📋 **QS315** (deps: QS314) **How a set of sessions is configured, with jump hosts, keys and forwards, can be documented only by copying it by hand** — A command writes a PDF of the selected sessions: each one's resolved settings, where each was inherited from, its jump chain and forwards, and never a secret. → §QS315
+- 📋 **QS315** (deps: QS314 ✅) **How a set of sessions is configured, with jump hosts, keys and forwards, can be documented only by copying it by hand** — A command writes a PDF of the chosen sessions: each one's resolved settings and where each came from, its jump chain and forwards, never a secret. → §QS315
 - 📋 **QS331** (deps: —) **A saved session carries nothing that tells production from staging, to the person or to anything reading the store** — Sessions take free tags such as prod or db, inherited from their folder, shown on the tab, and read by the agent gateway's policy. → §QS331
 
 ## Block E — SCP and SFTP as a thing a person operates
@@ -44,6 +43,7 @@
 - 📋 **QS292** (deps: QS188 ✅, winwright WW535, winwright WW536) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — winwright 1.1.0 drops onto Explorer (WW530), but a case still cannot open that folder or read the file it lands as. → §QS292
 - 📋 **QS347** (deps: winwright WW538) **A middle click closing a tab is proven by routed events raised in a unit test, not by a UI case** — A case's click verb presses only the left button, so the gesture waits on winwright to name another. → §QS347
 - 📋 **QS348** (deps: winwright WW539) **That a tab's close cross is drawn inside its tab is proven by an in-process render, not by a UI case** — A case cannot claim one element sits within another, so the geometry QS312 fixed waits on winwright to name it. → §QS348
+- 📋 **QS349** (deps: winwright WW540) **Choosing several sidebar rows is proven by automation peers in a unit test, not by a UI case** — A case cannot add to a selection or Ctrl+click, so QS314's selection waits on winwright to name the act. → §QS349
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

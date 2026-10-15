@@ -265,30 +265,6 @@ sends any input byte to a pane nobody typed into.
 
 ## Block D — The tree a user organises work in
 
-### §QS314 QS314 Selecting several sessions
-
-The owner asked on 2026-10-15 for a PDF documenting chosen sessions, and the first thing
-that needs is a way to choose them. The sidebar is a tree that holds one selection,
-which is also what connects, edits and folds, so a set of sessions has nowhere to be
-said.
-
-Ctrl+click adds or removes a row, Shift+click takes the range between the last row
-clicked and this one in the order the tree shows, and Ctrl+A in the sidebar takes every
-visible row. A selected folder stands for every session beneath it, at any depth, so
-documenting a customer is one click on its folder. A plain click goes back to one row,
-and what acts on one row today (Enter connects, F2 renames, QS300's one-click fold)
-keeps acting on the focused row. The accessibility tree reports each row's IsSelected,
-so a case and a screen reader both read it.
-
-The context menu on a set offers only what takes a set: the document, and later anything
-else that does. Connect on several rows is QS179's group and stays a folder's, not a
-selection's, until a line argues otherwise.
-
-Done when a UI case Ctrl+clicks two sessions and a folder, reads IsSelected on each row,
-and finds the set the window reports holds the two sessions and every session in the
-folder exactly once; a Shift+click range is read the same way; and a plain click leaves
-one.
-
 ### §QS315 QS315 A PDF of the selected sessions
 
 The owner asked on 2026-10-15 for a way to document many sessions, with their proxies
@@ -675,6 +651,18 @@ tab's, which a case cannot claim yet (winwright WW539). Once it can,
 cases/tabs.cases.json asserts Button#CloseTab within its TabItem for the short and the
 long title, so a regression that clips or empties it fails in the guest too. Done when
 that case runs green beside the others.
+
+### §QS349 QS349 A UI case for the sidebar's selection
+
+QS314's several-row selection in the sidebar is proven in process (SessionSelectionTests
+reads each row's IsSelected through ListBoxItemAutomationPeer and the set the window
+reports), not by the UI case its design asked for, because a case cannot add to a
+selection or click with Ctrl or Shift held (winwright WW540). Once it can,
+cases/sessions.cases.json, over a store of its own, adds two sessions and a folder to
+the selection, reads each row selected, and reads the set the window reports; a Shift
+range and a plain click that leaves one row follow. The set has no reading of its own
+yet: the first action that takes one, QS315's document, is what the case then reads.
+Done when that case runs green in the guest beside the others.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

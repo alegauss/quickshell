@@ -3032,6 +3032,33 @@ public sealed partial class MainWindow : Window
     /// <summary>Whether a tab in this window holds a saved session.</summary>
     private bool Holds(string path) => TabsHolding(path) > 0;
 
+    /// <summary>
+    /// The sessions the sidebar's selection stands for (QS314): each selected session, and every
+    /// session under a selected folder at any depth, each once, in the store's own order.
+    /// </summary>
+    public IReadOnlyList<ResolvedSession> SelectedSessions()
+    {
+        SessionTree store = _store ?? SessionTree.Empty();
+        HashSet<string> chosen = new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (SessionRow row in _sidebar.SelectedRows)
+        {
+            if (row.IsFolder)
+            {
+                chosen.UnionWith(store.Group(row.Path).Select(session => session.Path));
+            }
+            else
+            {
+                chosen.Add(row.Path);
+            }
+        }
+
+        return [.. store.Sessions().Where(session => chosen.Contains(session.Path))];
+    }
+
+    /// <summary>Chooses these sidebar rows and no others, as Ctrl+clicks would (QS314).</summary>
+    public void SelectSessionRows(IEnumerable<string> paths) => _sidebar.SelectRows(paths);
+
     /// <summary>How many tabs hold the saved session at <paramref name="path"/> (QS313).</summary>
     public int TabsHolding(string path) =>
         _open.Count(tab => string.Equals(tab.Saved, path, StringComparison.OrdinalIgnoreCase));

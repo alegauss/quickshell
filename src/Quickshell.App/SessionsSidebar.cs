@@ -221,6 +221,10 @@ public sealed class SessionsSidebar : Border
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
         };
 
+        // Several rows at once (QS314): Ctrl+click adds or removes one, Shift+click takes a range in the
+        // order shown, and Ctrl+A every row listed, which is the list's own extended selection.
+        _list.SelectionMode = SelectionMode.Extended;
+
         ScrollViewer.SetHorizontalScrollBarVisibility(_list, ScrollBarVisibility.Disabled);
         AutomationProperties.SetAutomationId(_list, "SessionsList");
         AutomationProperties.SetName(_list, "Saved sessions");
@@ -234,6 +238,14 @@ public sealed class SessionsSidebar : Border
         {
             if (ItemsControl.ContainerFromElement(_list, (DependencyObject)opening.OriginalSource) is ListBoxItem { Tag: SessionRow row } item)
             {
+                // A right click inside a set keeps the set (QS314); anywhere else it is one row.
+                if (item.IsSelected && _list.SelectedItems.Count > 1)
+                {
+                    _list.ContextMenu = SetMenu();
+
+                    return;
+                }
+
                 _list.SelectedItem = item;
                 _list.ContextMenu = Menu(row);
             }
@@ -301,8 +313,48 @@ public sealed class SessionsSidebar : Border
     /// <summary>The rows on screen, top to bottom, which is what a test reads.</summary>
     public IReadOnlyList<SessionRow> Rows => [.. _list.Items.OfType<ListBoxItem>().Select(item => (SessionRow)item.Tag)];
 
-    /// <summary>The row selected in the list, or null.</summary>
-    public SessionRow? Selected => (_list.SelectedItem as ListBoxItem)?.Tag as SessionRow;
+    /// <summary>The row selected in the list, or null; the one focused where several are (QS314).</summary>
+    public SessionRow? Selected =>
+        (Keyboard.FocusedElement is ListBoxItem { IsSelected: true, Tag: SessionRow focused } && _list.Items.Contains(Keyboard.FocusedElement)
+            ? focused
+            : null)
+        ?? (_list.SelectedItem as ListBoxItem)?.Tag as SessionRow;
+
+    /// <summary>Every row selected, in the order the list shows them (QS314).</summary>
+    public IReadOnlyList<SessionRow> SelectedRows =>
+        [.. _list.Items.OfType<ListBoxItem>().Where(item => item.IsSelected).Select(item => (SessionRow)item.Tag)];
+
+    /// <summary>Selects the rows at these paths and no others, as clicks would; what a test does (QS314).</summary>
+    public void SelectRows(IEnumerable<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+
+        HashSet<string> wanted = new(paths, StringComparer.OrdinalIgnoreCase);
+
+        _list.SelectedItems.Clear();
+
+        foreach (ListBoxItem item in _list.Items.OfType<ListBoxItem>())
+        {
+            if (item.Tag is SessionRow row && wanted.Contains(row.Path))
+            {
+                _list.SelectedItems.Add(item);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The menu over a set of rows: only what takes a set, which is nothing yet but the count. The
+    /// document of chosen sessions (QS315) is the first thing that will.
+    /// </summary>
+    private ContextMenu SetMenu()
+    {
+        ContextMenu menu = new();
+        int sessions = _window.SelectedSessions().Count;
+
+        menu.Items.Add(new MenuItem { Header = $"{sessions} sessions selected", IsEnabled = false });
+
+        return menu;
+    }
 
     /// <summary>Puts the keyboard in the search box, as Home's Show all sessions does (QS279).</summary>
     public void FocusSearch() => _query.Focus();
@@ -376,7 +428,7 @@ public sealed class SessionsSidebar : Border
     {
         ArgumentNullException.ThrowIfNull(rows);
 
-        string? selected = Selected?.Path;
+        HashSet<string> selected = new(SelectedRows.Select(row => row.Path), StringComparer.OrdinalIgnoreCase);
 
         // A row that is the same as before keeps the item it had (QS288): a tab opening changes one
         // row's Connected mark, and rebuilding every row for it cost a start a sizeable share of the
@@ -396,9 +448,9 @@ public sealed class SessionsSidebar : Border
 
             _list.Items.Add(item);
 
-            if (string.Equals(row.Path, selected, StringComparison.OrdinalIgnoreCase))
+            if (selected.Contains(row.Path))
             {
-                _list.SelectedItem = item;
+                _list.SelectedItems.Add(item);
             }
         }
 
@@ -609,7 +661,8 @@ public sealed class SessionsSidebar : Border
             // and shut it again. After the press, so the list selects the row before it is rebuilt.
             item.PreviewMouseLeftButtonDown += (_, pressed) =>
             {
-                if (pressed.ClickCount == 1)
+                // Ctrl or Shift is choosing the folder for a set (QS314), not folding it.
+                if (pressed.ClickCount == 1 && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == 0)
                 {
                     Dispatcher.BeginInvoke(() => _window.ToggleFolder(row.Path));
                 }

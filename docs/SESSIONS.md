@@ -15,7 +15,9 @@ it hands down beside it, a session with its address, and **Connected** on each o
 Folders start folded, so the tree opens on its top level. Double-click or Enter connects; one
 click, Enter or the arrows open or fold a folder; the search box finds a session by name,
 host or tag, as **Open session** does. Right-click a session to edit, duplicate, move or delete it,
-and a folder to make a session in it. The fold at its top narrows it to a rail
+and a folder to make a session in it. Ctrl+click adds or removes a row, Shift+click takes the rows
+between, and Ctrl+A takes every row listed; a chosen folder stands for every session under it, at
+any depth, for anything that acts on a set of sessions. A plain click goes back to one row. The fold at its top narrows it to a rail
 ([SETTINGS.md](SETTINGS.md), `sessionsSidebar`). A hand edit shows the next time you come back to the
 window.
 
