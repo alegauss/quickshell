@@ -502,23 +502,6 @@ Done when that case runs green in the guest beside the others.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS321 Whether this belongs in the client at all
-
-The README sells quickshell as the SSH part of MobaXterm without the suite around it,
-and the non-goals refuse a plugin host and a scripting engine in the MVP. An agent
-gateway is new scope, so it has to be argued from a user's task and not from novelty.
-
-The argument to test: the gateway is not a plugin host inside quickshell, it is
-quickshell offered as a tool to an agent that already exists, and the user's task (let
-an agent work on a server without handing it the keys to everything) is real and
-growing. The conditions it must meet to stay inside the project: off unless the user
-turns it on, a separate process (`quickshell --mcp`) so the window's memory and start-up
-budgets in PERFORMANCE.md do not move, no network of its own, and nothing on the
-keystroke-to-pixel path.
-
-The outcome is a decision record in DECISIONS.md, and if the answer is no, a non-goal so
-the idea is not re-filed. Every other line in Block L waits on it.
-
 ### §QS325 The spike: the gateway with nothing but exec
 
 From the agent's side, the dearest costs of SSH today are mechanical. A command goes

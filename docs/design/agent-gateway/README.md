@@ -302,11 +302,45 @@ under two seconds, repeatedly, is what a reflex looks like, and the number the s
    error, `approval timed out`, which the agent can report or retry. Silence is never consent: a
    batch nobody answered is a batch that did not run.
 
+## Whether this belongs in the client (QS321)
+
+**Yes, on four conditions, decided by the owner on 2026-10-15.** The README sells quickshell as the
+SSH part of MobaXterm without the suite around it, and the non-goals refuse a plugin host and a
+scripting engine in the MVP. The gateway is neither, and the conditions below are what keep it
+that way. A change that breaks one of them reopens this decision; it does not get argued past it.
+
+**Why it is in scope.** The gateway is not something quickshell hosts. It is quickshell offered as
+a tool to an agent that already exists on the machine, for a task people already do badly: letting
+an agent work on a server by handing it an SSH key that opens everything the key opens. The task is
+the user's, and the client that already holds their sessions, their keys and their known hosts is
+the place that can narrow it. No code from outside runs inside quickshell, and nothing the agent
+sends extends what the client can do: it asks for the operations listed in the policy, and the
+client decides.
+
+**The conditions.**
+
+1. **Off until the user turns it on.** A default installation exposes nothing, starts nothing and
+   listens on nothing for an agent. Turning it on is a deliberate act in the settings, and turning
+   it off again stops it.
+2. **Its own process.** The gateway runs as `quickshell --mcp`, started by the agent's host over
+   standard input and output, never inside the window's process. The window's start time, memory
+   and idle figures in [PERFORMANCE.md](../../PERFORMANCE.md) are measured with it off and must not
+   move with it on; Block L's criteria hold that figure.
+3. **No network of its own.** It opens no listening port and reaches no service other than the SSH
+   servers a session names. Its channels are the pipe the agent's host started it with, those
+   connections, and the user's own desk, where an approval is shown (QS324); nothing else can reach
+   it.
+4. **Nothing on the terminal's path.** No code it adds runs between a keystroke and a pixel, or
+   between bytes from a server and the emulator. A pane an agent drives is drawn by the same path as
+   any other, and a pane it does not drive pays nothing for it.
+
+**What this does not decide.** It does not open the door to plugins, scripts or macros in the window:
+those remain non-goals, and the gateway's existence is not an argument for them.
+
 ## Sections to come
 
 Each is written by the line that owns it, into this document.
 
 | Line | Section |
 |---|---|
-| QS321 | Whether this belongs in a client sold as "an SSH client, not a suite" |
 | QS340, QS341 | The server account and short-lived certificates |

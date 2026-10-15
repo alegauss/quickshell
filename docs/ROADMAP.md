@@ -39,7 +39,7 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS325** (deps: QS321 📋) **An agent reaches a saved session only through raw ssh, quoting through four shells and paying a handshake per command** — A headless quickshell --mcp exposes hosts_list and exec(host, argv) over the client's own kept-alive connection, with exit code and stderr apart. → §QS325
+- 📋 **QS325** (deps: QS321 ✅) **An agent reaches a saved session only through raw ssh, quoting through four shells and paying a handshake per command** — A headless quickshell --mcp exposes hosts_list and exec(host, argv) over the client's own kept-alive connection, with exit code and stderr apart. → §QS325
 - 📋 **QS326** (deps: QS325) **An agent edits a remote file by heredoc or sed -i, blind, with no diff for the person and no copy to go back to** — read_file and edit_file over SFTP, an exact and unique replacement, a backup beside the file and the diff returned and logged. → §QS326
 - 📋 **QS327** (deps: QS325) **A sudo password, a pager or an apt dialog hangs an agent's command until its timeout, with no word of what it waited for** — exec runs with no stdin and a dumb pager, and a prompt it detects ends the command with a named error the agent can act on. → §QS327
 - 📋 **QS328** (deps: QS325) **A long remote command dies at the agent's timeout, or with its connection, and leaves no way to look back in on it** — job_start, job_status and job_output run it detached on the server and read its output by cursor, across a reconnect. → §QS328
@@ -53,11 +53,10 @@
 - 📋 **QS337** (deps: QS324 ✅, QS336) **A call the policy says to ask about has nowhere to be asked, so the gateway can only allow or refuse it** — A quickshell dialog shows the plan, its host, tag and diff, approves the exact batch by hash, and can turn it into a timed grant. → §QS337
 - 📋 **QS338** (deps: QS336) **Text an agent read from a server can steer its next command, and the policy treats that command as if nothing happened** — Reading untrusted content marks the gateway session, and from then on every mutation asks the person, even one a grant allowed. → §QS338
 - 📋 **QS339** (deps: QS322 ✅, QS332) **An agent able to write files can rewrite the very policy that limits it, and grant itself whatever it wants** — The plugin's hook denies writes to the policy path, and quickshell re-asks the person whenever the file changes outside its own UI. → §QS339
-- 📋 **QS340** (deps: QS320 ✅, QS321 📋) **A client-side policy is advice the server never hears, and nothing helps set up an account that limits an agent there** — A guided setup writes an agent account, a sudoers allowlist and key restrictions, shown first. → §QS340
+- 📋 **QS340** (deps: QS320 ✅, QS321 ✅) **A client-side policy is advice the server never hears, and nothing helps set up an account that limits an agent there** — A guided setup writes an agent account, a sudoers allowlist and key restrictions, shown first. → §QS340
 - 📋 **QS341** (deps: QS340) **An agent's key on a server is valid until someone removes it, so a key that leaks works for months** — quickshell acts as a small SSH CA and signs the agent a certificate for minutes, bound to its principal, source address and options. → §QS341
-- 📋 **QS342** (deps: QS321 📋) **Asking a local Claude Code about what a pane shows means copying the scrollback by hand into another window** — A local pane runs claude with the gateway configured, and a palette command sends a pane's selection or recent scrollback to it. → §QS342
+- 📋 **QS342** (deps: QS321 ✅) **Asking a local Claude Code about what a pane shows means copying the scrollback by hand into another window** — A local pane runs claude with the gateway configured, and a palette command sends a pane's selection or recent scrollback to it. → §QS342
 - 📋 **QS343** (deps: QS325, QS332) **Wiring the gateway into Claude Code means hand-editing MCP config, hooks and sandbox rules, so few will** — A Claude Code plugin installs the MCP server, the hooks and a skill in one step, and quickshell offers to install it when it finds claude. → §QS343
-- 📋 **QS321** (deps: QS320 ✅) **Nothing decides whether an agent gateway fits a client sold as "an SSH client, not a suite"** — A decision record settles it against the plugin-host non-goal: off by default, its own process, nothing on the terminal's path. → §QS321
 
 ## Done when — Block A
 
