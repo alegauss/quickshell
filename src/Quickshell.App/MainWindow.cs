@@ -2962,7 +2962,9 @@ public sealed partial class MainWindow : Window
                         .Select(each => (Session: store.Session(each.Path), each.At))
                         .Where(each => each.Session is not null)
                         .Take(3)
-                        .Select(each => Card(each.Session!, RecentSessions.When(each.At, now, Holds(each.Session!.Path)))),
+                        .Select(each => Card(each.Session!, TabsHolding(each.Session!.Path) is > 1 and var tabs
+                                                                 ? $"Connected in {tabs} tabs"
+                                                                 : RecentSessions.When(each.At, now, Holds(each.Session!.Path)))),
         ];
 
         bool connected = cards.Count > 0;
@@ -2974,7 +2976,7 @@ public sealed partial class MainWindow : Window
 
         _home.Show(cards, connected);
 
-        static SessionCard Card(ResolvedSession session, string when)
+        SessionCard Card(ResolvedSession session, string when)
         {
             int slash = session.Path.LastIndexOf('/');
 
@@ -2983,6 +2985,7 @@ public sealed partial class MainWindow : Window
                                    slash > 0 ? session.Path[..slash] : string.Empty, session.Tags)
             {
                 When = when,
+                Tabs = TabsHolding(session.Path),
             };
         }
     }
@@ -3027,8 +3030,41 @@ public sealed partial class MainWindow : Window
         _terminalInset.Background is System.Windows.Media.SolidColorBrush brush ? brush.Color : System.Windows.Media.Colors.Transparent;
 
     /// <summary>Whether a tab in this window holds a saved session.</summary>
-    private bool Holds(string path) =>
-        _open.Any(tab => string.Equals(tab.Saved, path, StringComparison.OrdinalIgnoreCase));
+    private bool Holds(string path) => TabsHolding(path) > 0;
+
+    /// <summary>How many tabs hold the saved session at <paramref name="path"/> (QS313).</summary>
+    public int TabsHolding(string path) =>
+        _open.Count(tab => string.Equals(tab.Saved, path, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Puts the tab holding the saved session at <paramref name="path"/> on screen, the one last on
+    /// screen where several do (QS313): what a card or a row that says Connected promises.
+    /// </summary>
+    /// <returns>Whether a tab held it.</returns>
+    public bool GoToSession(string path)
+    {
+        TerminalTab? holding = _recentTabs.Concat(_open)
+                                          .FirstOrDefault(tab => string.Equals(tab.Saved, path, StringComparison.OrdinalIgnoreCase));
+
+        if (holding is null)
+        {
+            return false;
+        }
+
+        Active = _open.IndexOf(holding);
+        Focus();
+
+        return true;
+    }
+
+    /// <summary>Goes to the tab holding a saved session, or connects it where none does (QS313).</summary>
+    public void GoToOrConnect(string path)
+    {
+        if (!GoToSession(path))
+        {
+            ConnectSession(path);
+        }
+    }
 
     /// <summary>The palette's Home (QS272).</summary>
     private sealed class GoingHome(MainWindow window) : Doing(window)

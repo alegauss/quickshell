@@ -365,29 +365,6 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
-### §QS313 QS313 A connected card goes to its tab
-
-The owner, on 2026-10-15, connected to a saved session, went back to Home and found its
-card under Recent reading Connected now with a Connect button. The button opened a
-second connection in a new tab, and nothing on Home led to the one already open. A card
-that says connected promises the session it names, and the click broke that promise.
-
-When a tab holds a live or reconnecting connection to the card's session, the card's
-button reads Go to tab, in the accent style, and selects that tab. Where several tabs
-hold it, it goes to the one last on screen, and the status says how many (Connected in 2
-tabs). A quieter New connection button beside it keeps today's behaviour for a second
-shell on the same host. A card with no live tab is unchanged. A double click on the card
-does what its main button does.
-
-The sidebar has the same gap, since its Connect entry and double click always open a new
-tab, and its row should take the same choice: Go to tab first where one exists, New
-connection beside it.
-
-Done when a UI case connects a session, shows Home, reads the card's button as Go to
-tab, invokes it and finds that tab selected with the tab count unchanged; invokes New
-connection and finds one more tab; and closes both tabs and reads Connect again. The
-sidebar's menu is read by the same case.
-
 ### §QS317 Closing a pane
 
 Reported by the user (2026-10-15): a pane opened by Split has no button to close it.

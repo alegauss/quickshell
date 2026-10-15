@@ -455,7 +455,8 @@ public sealed class SessionsSidebar : Border
             return;
         }
 
-        _window.ConnectSession(row.Path);
+        // To the tab already holding it, where one does, as the row's Connected chip promises (QS313).
+        _window.GoToOrConnect(row.Path);
     }
 
     /// <summary>
@@ -630,8 +631,10 @@ public sealed class SessionsSidebar : Border
     /// What a right-click offers. A session connects, is edited, duplicated, moved to another folder or
     /// deleted; a folder takes a new session.
     /// </summary>
-    private ContextMenu Menu(SessionRow row)
+    public ContextMenu Menu(SessionRow row)
     {
+        ArgumentNullException.ThrowIfNull(row);
+
         ContextMenu menu = new();
 
         if (row.IsFolder)
@@ -641,7 +644,17 @@ public sealed class SessionsSidebar : Border
             return menu;
         }
 
-        menu.Items.Add(Entry("Connect", () => _window.ConnectSession(row.Path)));
+        // Go to tab first where a tab holds it, and a second connection beside it (QS313).
+        if (_window.TabsHolding(row.Path) > 0)
+        {
+            menu.Items.Add(Entry("Go to tab", () => _window.GoToSession(row.Path)));
+            menu.Items.Add(Entry("New connection", () => _window.ConnectSession(row.Path)));
+        }
+        else
+        {
+            menu.Items.Add(Entry("Connect", () => _window.ConnectSession(row.Path)));
+        }
+
         menu.Items.Add(new Separator());
         menu.Items.Add(Entry("Edit…", () => _window.EditSessionOrSay(row.Path)));
         menu.Items.Add(Entry("Duplicate", () => _window.DuplicateSessionOrSay(row.Path)));
@@ -673,6 +686,8 @@ public sealed class SessionsSidebar : Border
     private static MenuItem Entry(string header, Action run)
     {
         MenuItem entry = new() { Header = header };
+
+        AutomationProperties.SetName(entry, header);
 
         entry.Click += (_, _) => run();
 

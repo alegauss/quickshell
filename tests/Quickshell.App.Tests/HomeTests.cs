@@ -207,6 +207,93 @@ public sealed class HomeTests : IDisposable
         Assert.Equal(28, connect);
     }
 
+    /// <summary>
+    /// A card whose session a tab holds offers Go to tab, which puts that tab on screen and opens
+    /// nothing, and New connection beside it, which opens another; with no tab, Connect again (QS313).
+    /// </summary>
+    [Fact]
+    public void ACardWhoseSessionIsOpenGoesToItsTab()
+    {
+        (string[] heldButtons, string? onScreen, bool homeAfter, int tabsAfter, int opened, string[] freeButtons) = Sta.Run(() =>
+        {
+            int opens = 0;
+            MainWindow window = Window();
+
+            window.OpensSession = _ => opens++;
+
+            TerminalTab db = TerminalTab.Open(Settings.Default, Shared, "db1");
+
+            db.Saved = "Work/db-primary";
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "local"));
+            window.Add(db);
+            window.Active = 0;
+            window.SessionWentLive("Work/db-primary");
+
+            HomePage home = window.ShowHome();
+            System.Windows.Controls.Border card = Card(home, "Work/db-primary");
+            string[] held = [.. Buttons(card)];
+
+            Find<System.Windows.Controls.Button>(card, "CardGoTo")
+                .RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+            string? current = window.Current?.Host;
+            bool homeShowing = window.HomeShowing;
+            int count = window.Held.Count;
+
+            home = window.ShowHome();
+            Find<System.Windows.Controls.Button>(Card(home, "Work/db-primary"), "CardNewConnection")
+                .RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+            window.CloseTab(1);
+            home = window.ShowHome();
+
+            return (held, current, homeShowing, count, opens, Buttons(Card(home, "Work/db-primary")).ToArray());
+        });
+
+        Assert.Equal(["CardNewConnection", "CardGoTo"], heldButtons);
+        Assert.Equal("db1", onScreen);
+        Assert.False(homeAfter, "Go to tab left Home on screen");
+        Assert.Equal(2, tabsAfter);
+        Assert.Equal(1, opened);
+        Assert.Equal(["CardConnect"], freeButtons);
+    }
+
+    /// <summary>The sidebar's menu for a session a tab holds leads with Go to tab and New connection, and with Connect otherwise.</summary>
+    [Fact]
+    public void TheSidebarsMenuGoesToTheTabWhereOneHoldsIt()
+    {
+        (string[] held, string[] free) = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+            TerminalTab db = TerminalTab.Open(Settings.Default, Shared, "db1");
+
+            db.Saved = "Work/db-primary";
+            window.Add(db);
+            window.RefreshSessions();
+
+            // Folders start folded (QS304), so the folder is opened for its session to be listed.
+            window.ToggleFolder("Work");
+
+            SessionRow primary = window.Sidebar.Rows.Single(row => row.Path == "Work/db-primary");
+            SessionRow other = window.Sidebar.Rows.Single(row => row.Path == "nas");
+
+            static string[] Headers(System.Windows.Controls.ContextMenu menu) =>
+                [.. menu.Items.OfType<System.Windows.Controls.MenuItem>().Take(2).Select(entry => (string)entry.Header)];
+
+            return (Headers(window.Sidebar.Menu(primary)), Headers(window.Sidebar.Menu(other)));
+        });
+
+        Assert.Equal(["Go to tab", "New connection"], held);
+        Assert.Equal(["Connect", "Edit…"], free);
+    }
+
+    private static System.Windows.Controls.Border Card(HomePage home, string path) =>
+        Find<System.Windows.Controls.Primitives.UniformGrid>(home, "HomeSessions").Children.OfType<System.Windows.Controls.Border>()
+            .Single(card => System.Windows.Automation.AutomationProperties.GetName(card) == path);
+
+    private static IEnumerable<string> Buttons(System.Windows.DependencyObject card) =>
+        Under(card).OfType<System.Windows.Controls.Button>().Select(System.Windows.Automation.AutomationProperties.GetAutomationId);
+
     /// <summary>Show all sessions opens a folded sidebar, where the rest of the sessions are.</summary>
     [Fact]
     public void ShowAllSessionsOpensTheSidebar()

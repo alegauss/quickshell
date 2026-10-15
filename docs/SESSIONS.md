@@ -38,7 +38,12 @@ nothing is written. An address that does not parse says why under the box.
 
 **Home** — *Home* in the palette — puts quick connect on the screen, with the three sessions you
 opened last in this window as cards (the store's first three before you have opened any), each with
-**Connect**, and three ways to start: import from MobaXterm, a local shell, and the file browser.
+**Connect**, and three ways to start: import from MobaXterm, a local shell, and the file browser. A
+card whose session is already open in a tab offers **Go to tab** instead, which puts that tab on
+screen (the one you looked at last, where several hold it, and the card says how many), with
+**New connection** beside it for a second shell on the same host; a double click on a card does what
+its main button does. The sidebar does the same: double-clicking a session that is open goes to its
+tab, and its menu offers **Go to tab** and **New connection** in place of **Connect**.
 
 **Importing** — Ctrl+Shift+I, *Import sessions from another client* in the palette, or the card on
 Home — reads MobaXterm's `MobaXterm.ini` from where MobaXterm keeps it and PuTTY's sessions from the

@@ -80,6 +80,113 @@
           "named": "the connected tab is found by its state"
         }
       ]
+    },
+    {
+      "name": "a connected session's card on Home goes to its tab, and offers a new connection beside it",
+      "catches": "a card that says Connected now and opens a second connection, with no way from Home to the tab already open",
+      "filed": "QS313",
+      "tags": ["sessions", "connected", "home"],
+      "fixture": "a client connected to the guest's server",
+
+      "steps": [
+        {
+          "locator": "Window#Choice > Button#once",
+          "act": "invoke",
+          "named": "the server's key is trusted for this connection only"
+        },
+        {
+          "locator": "TabItem[status=\"Connected\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "the session is connected in its tab"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "press",
+          "with": "Ctrl+Shift+P",
+          "named": "the palette is opened"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "set value",
+          "with": "home",
+          "expect": "home",
+          "reads": "value",
+          "named": "for Home"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "press",
+          "with": "Enter",
+          "named": "and Home is shown"
+        },
+        {
+          // The card's main button is the tab's, not another connection's.
+          "locator": "Button#CardGoTo",
+          "act": "read",
+          "reads": "name",
+          "expect": "Go to tab probe",
+          "named": "the card of the connected session offers to go to its tab"
+        },
+        {
+          "locator": "Button#CardGoTo",
+          "act": "invoke",
+          "named": "which is taken"
+        },
+        {
+          "locator": "TabItem[status=\"Connected\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "and the connected tab is on screen again, with no second one opened"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "press",
+          "with": "Ctrl+Shift+P",
+          "named": "the palette is opened again"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "set value",
+          "with": "home",
+          "expect": "home",
+          "reads": "value",
+          "named": "for Home"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "press",
+          "with": "Enter",
+          "named": "and Home is shown"
+        },
+        {
+          "locator": "Button#CardNewConnection",
+          "act": "invoke",
+          "named": "this time a new connection is asked for"
+        },
+        {
+          // A second connection meets the host-key question again, trusted once as the first was.
+          "locator": "Window#Choice > Button#once",
+          "act": "invoke",
+          "named": "its server's key is trusted for this connection only"
+        },
+        {
+          "locator": "TabItem[order=right]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "and a second tab is open and on screen"
+        },
+        {
+          "locator": "TabItem[order=left]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "not selected",
+          "named": "with the first still there behind it"
+        }
+      ]
     }
   ]
 }

@@ -16,6 +16,9 @@ public sealed record SessionCard(string Path, string Name, string Address, strin
 {
     /// <summary>When it last connected, in words ("Connected now", "Yesterday"), or empty where it is not a recent one (QS279).</summary>
     public string When { get; init; } = string.Empty;
+
+    /// <summary>How many tabs hold it now; above none, the card goes to one rather than opening another (QS313).</summary>
+    public int Tabs { get; init; }
 }
 
 /// <summary>
@@ -206,23 +209,43 @@ public sealed class HomePage : Border
             bottom.Children.Add(when);
         }
 
-        Button connect = new()
-        {
-            Content = "Connect",
-            Height = 28,
-            Padding = new Thickness(12, 0, 12, 0),
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold,
-            HorizontalAlignment = HorizontalAlignment.Right,
-        };
+        // A card whose session a tab holds goes to that tab, which is what Connected promises (QS313);
+        // a second shell on the host is the quieter New connection beside it.
+        StackPanel actions = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        Action main;
 
-        AutomationProperties.SetAutomationId(connect, "CardConnect");
-        AutomationProperties.SetName(connect, $"Connect {card.Path}");
-        connect.Click += (_, _) => _window.ConnectSession(card.Path);
-        bottom.Children.Add(connect);
+        if (card.Tabs > 0)
+        {
+            Button another = CardButton("New connection", "CardNewConnection", $"New connection to {card.Path}",
+                                        () => _window.ConnectSession(card.Path));
+            Button go = CardButton("Go to tab", "CardGoTo", $"Go to tab {card.Path}", () => _window.GoToSession(card.Path));
+
+            another.Margin = new Thickness(0, 0, 6, 0);
+            go.SetResourceReference(StyleProperty, "AccentButtonStyle");
+            actions.Children.Add(another);
+            actions.Children.Add(go);
+            main = () => _window.GoToSession(card.Path);
+        }
+        else
+        {
+            actions.Children.Add(CardButton("Connect", "CardConnect", $"Connect {card.Path}", () => _window.ConnectSession(card.Path)));
+            main = () => _window.ConnectSession(card.Path);
+        }
+
+        bottom.Children.Add(actions);
         inside.Children.Add(bottom);
 
         Border made = Card(inside, new Thickness(16));
+
+        // A double click on the card does what its main button does.
+        made.MouseLeftButtonDown += (_, pressed) =>
+        {
+            if (pressed.ClickCount == 2)
+            {
+                main();
+                pressed.Handled = true;
+            }
+        };
 
         made.Margin = new Thickness(0, 0, 12, 0);
         AutomationProperties.SetName(made, card.Path);
@@ -233,6 +256,25 @@ public sealed class HomePage : Border
         made.MouseLeave += (_, _) => made.SetResourceReference(BorderBrushProperty, "CardStrokeColorDefaultBrush");
 
         return made;
+    }
+
+    /// <summary>One of a card's buttons: 28 high, 12-pixel SemiBold words, 12 either side.</summary>
+    private static Button CardButton(string words, string id, string name, Action run)
+    {
+        Button button = new()
+        {
+            Content = words,
+            Height = 28,
+            Padding = new Thickness(12, 0, 12, 0),
+            FontSize = 12,
+            FontWeight = FontWeights.SemiBold,
+        };
+
+        AutomationProperties.SetAutomationId(button, id);
+        AutomationProperties.SetName(button, name);
+        button.Click += (_, _) => run();
+
+        return button;
     }
 
     /// <summary>The 34-pixel tile, radius 8, on the layer fill, holding the server glyph at 17 in the accent.</summary>
