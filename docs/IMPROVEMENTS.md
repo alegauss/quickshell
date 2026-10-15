@@ -304,6 +304,87 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
+### §QS310 QS310 Middle click closes a tab
+
+Closing a tab with the middle button is a habit carried from every browser, Windows
+Terminal and MobaXterm, and here it does nothing, so a user who reaches for it concludes
+the tab cannot be closed that way and looks for the button QS312 is about.
+
+The click is taken on the TabItem, not the strip, so it closes the tab under the pointer
+and never the one on screen, and it goes through CloseTab exactly as the close button
+does: a live session still asks before it ends, and the last tab still leaves the window
+on Home. A middle click on Home, on New tab or on the empty strip does nothing. The drag
+that reorders (QS250) and the pull that detaches (QS160) are left button only and must
+not notice the middle one.
+
+Done when a test raises a middle-button press and release on the second of three tabs
+and finds two tabs left with the first still on screen, a second test does the same on a
+connected session and finds the confirmation asked, and docs/KEYS.md names the gesture
+beside Ctrl+Shift+W.
+
+### §QS311 QS311 A tab's context menu
+
+A right click on a tab is where a user looks for anything a tab can do, and here there
+is no menu. The commonest thing wanted from one is clearing the strip after a morning of
+sessions, which today is one close per tab and one confirmation per live session.
+
+The menu offers Close, Close other tabs and Close tabs to the right, in that order, the
+last disabled on the rightmost tab and the second disabled when there is only one. A
+close of several tabs asks once, naming how many live sessions it would end, rather than
+once per session, and closes nothing if the user declines. Each entry is also a command
+in the palette, acting on the tab on screen, so the menu is never the only way to it.
+Duplicate tab and Rename tab are left for their own lines rather than grown into this
+one.
+
+Done when a UI case right clicks the second of four tabs, chooses Close tabs to the
+right and reads two TabItems left, a test closes others with two connected sessions
+among them and finds one confirmation naming two, and the palette lists the three
+commands.
+
+### §QS312 QS312 A close button nobody sees
+
+The owner opened a tab on 2026-10-15 and reported that it has no button to close it. The
+code says otherwise: QS278 put a CloseTab button after every title, TabStripTests finds
+it at 22 by 22 and clicks it, and the build that was running carried it. A button a test
+can find and the user cannot is the defect, and the test that passes is the reason it
+went unnoticed: it asserts the element and its size, never that it reads.
+
+The likely causes are all in MainWindow.TabStrip.cs. The cross is the Cancel glyph at 8
+points in the secondary text colour, on a Ghost template with no fill until the pointer
+is over it, so at rest it is a faint mark at the far end of the title; it may also fall
+outside the tab where the strip narrows an item, or the icon face may not resolve where
+the guest renders it. Which one it is gets settled by looking, in the guest, not by
+guessing.
+
+Done when the cross is visible at rest in both themes, at least 10 points and in the
+primary text colour or of contrast at least 3:1 against the strip, the tab widens rather
+than clipping it, and a UI case reads CloseTab's bounding rectangle inside its tab's for
+a short and a long title. The guest's app-desk.png is attached for a human to look at;
+the evidence is the case.
+
+### §QS313 QS313 A connected card goes to its tab
+
+The owner, on 2026-10-15, connected to a saved session, went back to Home and found its
+card under Recent reading Connected now with a Connect button. The button opened a
+second connection in a new tab, and nothing on Home led to the one already open. A card
+that says connected promises the session it names, and the click broke that promise.
+
+When a tab holds a live or reconnecting connection to the card's session, the card's
+button reads Go to tab, in the accent style, and selects that tab. Where several tabs
+hold it, it goes to the one last on screen, and the status says how many (Connected in 2
+tabs). A quieter New connection button beside it keeps today's behaviour for a second
+shell on the same host. A card with no live tab is unchanged. A double click on the card
+does what its main button does.
+
+The sidebar has the same gap, since its Connect entry and double click always open a new
+tab, and its row should take the same choice: Go to tab first where one exists, New
+connection beside it.
+
+Done when a UI case connects a session, shows Home, reads the card's button as Go to
+tab, invokes it and finds that tab selected with the tab count unchanged; invokes New
+connection and finds one more tab; and closes both tabs and reads Connect again. The
+sidebar's menu is read by the same case.
+
 ## Block H — The reason to leave the incumbent
 
 ### §QS77 Installing, signing, and updating without a service

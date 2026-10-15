@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -1097,8 +1097,11 @@ public sealed partial class MainWindow : Window
         return said;
     }
 
-    /// <summary>Who gives a freshly split pane a session, or null while nothing can.</summary>
-    public Action<TerminalLeaf>? Connects { get; set; }
+    /// <summary>
+    /// Who gives a freshly split pane a session, or null while nothing can. Handed the new pane and
+    /// the pane it was split from, whose session it opens too (QS309).
+    /// </summary>
+    public Action<TerminalLeaf, TerminalLeaf?>? Connects { get; set; }
 
     /// <summary>
     /// The most panes one tab holds (QS164): sixteen, which is what the block's own criterion is
@@ -1125,6 +1128,9 @@ public sealed partial class MainWindow : Window
             return false;
         }
 
+        // Read before the split, which moves the keyboard to the new pane.
+        TerminalLeaf? from = Current?.Focused;
+
         if (Current?.Split(how, host) is not { } made)
         {
             return false;
@@ -1134,7 +1140,14 @@ public sealed partial class MainWindow : Window
         Arrange();
         Retitle();
 
-        (connect ?? Connects)?.Invoke(made);
+        if (connect is not null)
+        {
+            connect(made);
+        }
+        else
+        {
+            Connects?.Invoke(made, from);
+        }
 
         return true;
     }

@@ -56,7 +56,7 @@ by when you used it rather than where it sits, so pressing it twice brings you b
 
 | Chord | What it does |
 |---|---|
-| `Ctrl+Shift+\` | Splits the focused pane side by side. |
+| `Ctrl+Shift+\` | Splits the focused pane side by side. The new pane runs what the focused one does: the same saved session, or a local shell. |
 | `Ctrl+Shift+-` | Splits it one above the other. |
 | `Alt+Shift+Left` `Alt+Shift+Right` `Alt+Shift+Up` `Alt+Shift+Down` | Moves the focus to the pane that way on screen. Nothing that way leaves the focus where it is. |
 | `Ctrl+Alt+Shift+Left` `Ctrl+Alt+Shift+Right` `Ctrl+Alt+Shift+Up` `Ctrl+Alt+Shift+Down` | Moves the divider beside the focused pane a step that way. A divider can also be dragged with the mouse. |

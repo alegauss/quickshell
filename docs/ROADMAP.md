@@ -21,6 +21,11 @@
 
 ## Block G — The clean interface, defended
 
+- 📋 **QS310** (deps: —) **A middle click on a tab does nothing, where every browser and terminal on Windows closes it** — A middle click on a tab closes that tab and not the one on screen, through the same CloseTab path that asks before ending a live session. → §QS310
+- 📋 **QS311** (deps: QS310) **A right click on a tab offers nothing, so closing every tab but one is a close per tab** — A tab's context menu offers Close, Close other tabs and Close tabs to the right, each asking once for all the live sessions it would end. → §QS311
+- 📋 **QS312** (deps: —) **A tab's close button is in the tree but a user looking at the strip does not find it, so a tab seems unclosable** — The cross after each title is drawn large enough and in a colour that reads at rest, so the button QS278 placed is seen without hovering. → §QS312
+- 📋 **QS313** (deps: —) **A recent card says Connected now and its Connect opens a second connection, with no way from Home to the open tab** — A card whose session is open in a tab offers Go to tab as its button and New connection beside it, so the state it shows is the action it takes. → §QS313
+
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77

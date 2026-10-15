@@ -212,6 +212,39 @@ public sealed class SessionsSidebarTests : IDisposable
         Assert.Equal(["Work/db-primary"], opened);
     }
 
+    /// <summary>
+    /// QS309: a pane split from one opened on a saved session is handed that session to open, and a
+    /// pane split from a local shell is handed none — which is the local shell it always was.
+    /// </summary>
+    [Fact]
+    public void ASplitOfAServersPaneIsHandedThatServersSession()
+    {
+        string file = Stored();
+
+        (string? fromSaved, bool fromLocal, string? newPaneWears) = Sta.Run(() =>
+        {
+            List<(TerminalLeaf made, TerminalLeaf? from)> handed = [];
+            MainWindow window = new() { SessionsFile = file, Connects = (made, from) => handed.Add((made, from)) };
+
+            TerminalTab remote = TerminalTab.Open(Settings.Default, Shared, "db1.example.com");
+
+            remote.Focused.Wear(SessionTree.ReadFrom(file).Session("Work/db-primary")!, Settings.Default, file);
+            window.Add(remote);
+            window.SplitPane(Divide.Beside);
+
+            window.Add(TerminalTab.Open(Settings.Default, Shared, "local"));
+            window.SplitPane(Divide.Below);
+
+            return (handed[0].from?.Worn?.Path, handed[1].from is { Worn: null }, handed[0].made.Worn?.Path);
+        });
+
+        Assert.Equal("Work/db-primary", fromSaved);
+        Assert.True(fromLocal, "a split of a local pane was handed a session to open");
+
+        // Handed, not yet worn: the program opens it, and wearing it is part of that.
+        Assert.Null(newPaneWears);
+    }
+
     /// <summary>A tab opened from a saved session marks its row Connected, and closing it takes the mark away.</summary>
     [Fact]
     public void ATabOpenFromASessionMarksItsRowAndClosingItClearsTheMark()

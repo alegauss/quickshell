@@ -1,4 +1,4 @@
-using System.Windows.Automation;
+﻿using System.Windows.Automation;
 using Quickshell.Terminal;
 using Quickshell.Transport;
 
@@ -451,6 +451,13 @@ public sealed class TerminalLeaf : IAsyncDisposable
     public int? OwnScrollback { get; private set; }
 
     /// <summary>
+    /// The session this pane was opened on, or null for a local shell: what a pane split from it
+    /// opens too, so splitting a server's pane is a second shell on that server and not a Command
+    /// Prompt (QS309).
+    /// </summary>
+    public ResolvedSession? Worn { get; private set; }
+
+    /// <summary>
     /// Takes on what a saved session says about its own pane - its colour scheme and its scrollback -
     /// and applies them at once (QS245). A scheme is a file named relative to the sessions file, as a
     /// settings file's is to the settings; one that does not read leaves the window's scheme.
@@ -466,6 +473,7 @@ public sealed class TerminalLeaf : IAsyncDisposable
                                       : System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(sessionsFile)) ?? ".", named))
             : null;
         OwnScrollback = session.Scrollback?.Value is >= 0 and var depth ? depth : null;
+        Worn = session;
 
         Apply(settings);
     }

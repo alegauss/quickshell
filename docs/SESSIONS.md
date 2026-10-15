@@ -55,7 +55,7 @@ Home instead of closing the window.
 a bar over the terminal names the session, its `user@host:port` and the jump host it goes through,
 and a chip saying **Connected**, **Reconnecting** or **Disconnected**. Each running forward has a chip
 of its own, which opens **Show forwards**; **Files** browses the server, **Split** opens a pane beside
-it, and **…** holds the rest of what the palette offers for a session. A bar along the bottom says
+it on the same server, over a connection of its own, and **…** holds the rest of what the palette offers for a session. A bar along the bottom says
 the same connection in a line, whether it reconnects after a drop, and the encoding, terminal type
 and grid size. A local shell has neither bar.
 

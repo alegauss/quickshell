@@ -1,4 +1,4 @@
-// System.IO is not in a WPF project's implicit usings, and turning WPF on is what made this
+﻿// System.IO is not in a WPF project's implicit usings, and turning WPF on is what made this
 // file name it.
 using System.Diagnostics;
 using System.IO;
@@ -344,7 +344,7 @@ public static class Entry
         window.Reloads = () => watching.Reload();
 
         window.Opens = () => Opened(window, window.Settings, share);
-        window.Connects = leaf => _ = leaf.ConnectAsync();
+        window.Connects = (leaf, from) => ConnectSplit(window, leaf, from);
         window.OpensSession = path => OpenedSession(window, window.Settings, share, path, trace: false);
 
         // An address typed into quick connect and not saved (QS271): the same path a saved one takes.
@@ -659,6 +659,41 @@ public static class Entry
         _ = tab.Focused.ConnectAsync(async (emulator, damage, columns, rows, token) =>
             await RemoteShell.OpenAsync(session, trusting, emulator, damage, columns, rows, token, log,
                                         window.AskSignIn, secrets, recording)
+                             .ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// What a split pane runs: another shell on the server of the pane it was split from (QS309), or
+    /// a local shell where that pane was local or remembers no session.
+    /// </summary>
+    private static void ConnectSplit(MainWindow window, TerminalLeaf leaf, TerminalLeaf? from)
+    {
+        if (from?.Worn is { } session)
+        {
+            ConnectRemote(window, window.Settings, leaf, session);
+
+            return;
+        }
+
+        _ = leaf.ConnectAsync();
+    }
+
+    /// <summary>
+    /// Opens a session into a pane that is already there: a split of a server's pane, which is a
+    /// second shell on that server, over a connection of its own (QS309). Nothing is recorded, since
+    /// a recording belongs to the pane it was started in.
+    /// </summary>
+    private static void ConnectRemote(MainWindow window, Settings settings, TerminalLeaf leaf, ResolvedSession session)
+    {
+        Quickshell.Transport.TrustOnFirstUse trusting = new(Quickshell.Transport.KnownHosts.ReadFrom(), window.AskHostKey);
+        Quickshell.Transport.SecretStore? secrets = Locations.Current.Portable ? null : Quickshell.Transport.SecretStore.Installed();
+
+        window.Sessions.Open(session.Host, another: true);
+        leaf.Wear(session, settings, window.SessionsFile ?? Locations.Current.Sessions);
+
+        _ = leaf.ConnectAsync(async (emulator, damage, columns, rows, token) =>
+            await RemoteShell.OpenAsync(session, trusting, emulator, damage, columns, rows, token, Logged.Value,
+                                        window.AskSignIn, secrets)
                              .ConfigureAwait(false));
     }
 
