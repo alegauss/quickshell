@@ -351,3 +351,4 @@
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 - ✅ **QS320** **Nothing written says what an agent driving SSH from this desk can harm, nor which layer stops which harm** — docs/design/agent-gateway/README.md opens with the threat model: six harms, who causes them, three layers and what each honestly stops (design recorded in `docs/design/agent-gateway/README.md`).
+- ✅ **QS322** **No policy format exists to say what an agent may do on which host, for how long, or who may change it** — The policy section fixes tags, three levels, grants that must end, a file only the person writes, an example and three open questions (design recorded in `docs/design/agent-gateway/README.md`).

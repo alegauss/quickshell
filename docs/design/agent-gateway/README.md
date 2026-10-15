@@ -140,6 +140,81 @@ path the easier one.
 - **Replace the server's own controls.** The gateway helps set them up (QS340); it does not stand
   in for them.
 
+## The policy an agent is held to (QS322)
+
+A client-side control, so everything here is bounded by the sentence above: it stops the agent's
+own mistakes before they reach a server, and the server's account is what makes it hold.
+
+**Keyed on tags.** A rule names session tags (`prod`, `db`, `staging`, QS331), because the mistake
+worth preventing is confusing two environments, and a tag is how a person already names one. A tag a
+folder carries is carried by every session under it, as the store's other settings are. A glob over
+session paths (`Work/web-*`) is the fallback for a store nobody has tagged.
+
+**Three levels.**
+
+| Level | A read | A mutation |
+|---|---|---|
+| `observe` | runs without asking | refused, with the rule named |
+| `operate` | runs without asking | asks the person (QS324) |
+| `break-glass` | runs without asking | runs without asking, and every call is badged and audited loudly |
+
+What counts as a read is QS323's to say; whatever cannot be judged a read with certainty is a
+mutation. A session no rule matches takes the policy's `default`, which is `deny` unless the person
+wrote otherwise, and a session tagged `prod` that no rule names is `deny` whatever the default says.
+Where several rules match, the narrowest level wins: a session tagged both `prod` and `db` gets the
+stricter of the two.
+
+**Every widening ends.** A grant lets named commands run without asking on named sessions, until a
+time, for example restarting nginx on `Work/web-*` for thirty minutes. A grant with no `until`, or one
+further away than four hours, is refused when it is written. `break-glass` is a grant in this sense
+too: it cannot be a standing level. An expired grant is ignored, not deleted, so the audit (QS333)
+can still say what it allowed.
+
+**Only the person writes it.** The policy is `agent-policy.json` in quickshell's own folder
+(`%AppData%\quickshell`, or `data\` in a portable copy), outside any repository the agent works in,
+and is edited through quickshell's own window. The plugin's hook denies a write to that path
+(QS339). quickshell watches the file as it watches its settings: a change it did not make suspends
+the policy (every call asks) until the person confirms the change in a dialog that shows it. So an
+agent that does write the file gains nothing: its edit makes the gateway stricter until somebody
+looks.
+
+**A worked example.**
+
+```json
+{
+  "schema": 1,
+  "default": "deny",
+  "rules": [
+    { "tags": ["staging"], "level": "operate" },
+    { "tags": ["prod"], "level": "observe" },
+    { "sessions": ["Work/scratch-*"], "level": "operate" }
+  ],
+  "grants": [
+    {
+      "sessions": ["Work/web-*"],
+      "commands": [["systemctl", "restart", "nginx"]],
+      "until": "2026-10-15T15:30:00-03:00",
+      "why": "rolling the config change from ticket 4411"
+    }
+  ]
+}
+```
+
+Here staging asks before anything changes, production can be read and nothing else, the scratch
+boxes ask, and for half an hour nginx may be restarted on the web servers without asking. A grant's
+commands are argument vectors, matched whole, never strings or patterns: `systemctl restart nginx`
+does not admit `systemctl restart nginx; rm -rf /`, because the second is not that vector (QS323).
+
+**Three questions this section cannot answer yet.**
+
+1. Does a grant belong to the person or to one agent session? Two agents running at once would
+   otherwise share a grant only one of them was given.
+2. Does a jump host's tag constrain what is reached through it? A `prod` bastion in front of a
+   `staging` host is a real arrangement, and either answer surprises somebody.
+3. Should `observe` refuse reads of files that hold secrets (`/etc/shadow`, `~/.ssh`, `.env`)? Those
+   are reads, and harm 2 is about exactly them. The redaction QS330 adds narrows the harm but does
+   not remove it.
+
 ## Sections to come
 
 Each is written by the line that owns it, into this document.
@@ -147,7 +222,6 @@ Each is written by the line that owns it, into this document.
 | Line | Section |
 |---|---|
 | QS321 | Whether this belongs in a client sold as "an SSH client, not a suite" |
-| QS322 | The policy format: levels per session tag, grants that expire, where the file lives |
 | QS323 | How a remote command is judged read-only, and why not with a regex |
 | QS324 | Approval by plan, so a person reviews a batch once instead of clicking yes forty times |
 | QS340, QS341 | The server account and short-lived certificates |

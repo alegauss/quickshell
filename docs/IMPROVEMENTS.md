@@ -604,30 +604,6 @@ keystroke-to-pixel path.
 The outcome is a decision record in DECISIONS.md, and if the answer is no, a non-goal so
 the idea is not re-filed. Every other line in Block L waits on it.
 
-### §QS322 The policy an agent is held to
-
-The design document's policy section answers four questions before any engine is
-written.
-
-What is a policy keyed on? Session tags (`prod`, `db`, `staging`), not hostnames,
-because the mistake worth preventing is confusing two environments and a tag is how a
-person already thinks of them. Glob patterns over session names are the fallback.
-
-What are the levels? Three to start: `observe` (reads approved without asking),
-`operate` (a mutation asks the person), `break-glass` (wide, time-boxed, loudly
-audited). Unknown on a `prod` tag means deny, never allow.
-
-How does a grant end? Every widening carries an expiry, e.g. restarting nginx on `web-*`
-for thirty minutes, and a grant with no end is refused at write time.
-
-Who writes it? Only the person, through quickshell's own UI. The file lives in
-quickshell's settings directory, outside any repository the agent works in; the plugin's
-hook denies an edit to that path, and quickshell asks the person to confirm when the
-file changes on disk, so an agent cannot approve its own permission.
-
-The section ends with a worked example file and the three questions it could not answer
-yet.
-
 ### §QS323 Judging a command without pretending a regex is a firewall
 
 A blocklist of strings does not hold an agent: `find / -delete`, `python3 -c`, `sed -i`,
