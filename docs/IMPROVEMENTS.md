@@ -234,10 +234,9 @@ and the folders covered. No password, passphrase or private key is ever written,
 test asserts it against a store holding all three.
 
 The command is in the sidebar's menu for a selection and in the palette, and asks only
-where to save. PDF needs a library, as Argon2id did in QS115, so the owner decides it:
-PDFsharp with MigraDoc is MIT and pure managed; QuestPDF is nicer to write but free only
-under a revenue limit; printing through Microsoft Print to PDF needs a dialog and a
-printer.
+where to save. The owner chose PDFsharp with MigraDoc (2026-10-15), MIT and pure
+managed; QuestPDF is nicer to write but free only under a revenue limit; printing
+through Microsoft Print to PDF needs a dialog and a printer.
 
 Done when a test documents a store with a folder default, a two-hop jump chain and three
 forwards, reads the PDF's text back, finds every field and its origin, and finds no

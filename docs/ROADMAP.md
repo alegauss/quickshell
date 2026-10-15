@@ -6,13 +6,15 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- ⏳ **QS344** (deps: a guest with a Windows Hello PIN) **The Windows Hello prompt before a vault export has never been seen to run, since no test desk has Hello set up** — Seeing the prompt over the client needs a PIN set in the guest, and one real verification by the owner with a real PIN. → §QS344
+- ⏳ **QS344** (deps: —) **The Windows Hello prompt before a vault export has never been seen to run, since no test desk has Hello set up** — Seeing the prompt over the client needs a PIN set in the guest, and one real verification by the owner with a real PIN. → §QS344
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS350** (deps: a desk with the Docker SSH fixture) **Whether a narrowed bash pane's extra prompt line on a split is bash's or this client's reflow was never traced** — No desk here has a bash over SSH, so QS316 fixed the client's half and left the narrowed pane's half unmeasured. → §QS350
+- 📋 **QS350** (deps: —) **Whether a narrowed bash pane's extra prompt line on a split is bash's or this client's reflow was never traced** — No desk here has a bash over SSH, so QS316 fixed the client's half and left the narrowed pane's half unmeasured. → §QS350
 
 ## Block D — The tree a user organises work in
+
+- 📋 **QS315** (deps: QS314 ✅) **How a set of sessions is configured, with jump hosts, keys and forwards, can be documented only by copying it by hand** — A command writes a PDF of chosen sessions: resolved settings, origins, jump chain and forwards, never a secret. → §QS315
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -31,14 +33,14 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS292** (deps: QS188 ✅, winwright WW535, winwright WW536) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — winwright 1.1.0 drops onto Explorer (WW530), but a case still cannot open that folder or read the file it lands as. → §QS292
-- 📋 **QS347** (deps: winwright WW538) **A middle click closing a tab is proven by routed events raised in a unit test, not by a UI case** — A case's click verb presses only the left button, so the gesture waits on winwright to name another. → §QS347
+- 📋 **QS292** (deps: QS188 ✅) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — winwright 1.1.0 drops onto Explorer (WW530), but a case still cannot open that folder or read the file it lands as. → §QS292
+- 📋 **QS347** (deps: —) **A middle click closing a tab is proven by routed events raised in a unit test, not by a UI case** — A case's click verb presses only the left button, so the gesture waits on winwright to name another. → §QS347
 - 📋 **QS348** (deps: winwright WW539) **That a tab's close cross is drawn inside its tab is proven by an in-process render, not by a UI case** — A case cannot claim one element sits within another, so the geometry QS312 fixed waits on winwright to name it. → §QS348
 - 📋 **QS349** (deps: winwright WW540) **Choosing several sidebar rows is proven by automation peers in a unit test, not by a UI case** — A case cannot add to a selection or Ctrl+click, so QS314's selection waits on winwright to name the act. → §QS349
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS325** (deps: QS321 ⏸) **An agent reaches a saved session only through raw ssh, quoting through four shells and paying a handshake per command** — A headless quickshell --mcp exposes hosts_list and exec(host, argv) over the client's own kept-alive connection, with exit code and stderr apart. → §QS325
+- 📋 **QS325** (deps: QS321 📋) **An agent reaches a saved session only through raw ssh, quoting through four shells and paying a handshake per command** — A headless quickshell --mcp exposes hosts_list and exec(host, argv) over the client's own kept-alive connection, with exit code and stderr apart. → §QS325
 - 📋 **QS326** (deps: QS325) **An agent edits a remote file by heredoc or sed -i, blind, with no diff for the person and no copy to go back to** — read_file and edit_file over SFTP, an exact and unique replacement, a backup beside the file and the diff returned and logged. → §QS326
 - 📋 **QS327** (deps: QS325) **A sudo password, a pager or an apt dialog hangs an agent's command until its timeout, with no word of what it waited for** — exec runs with no stdin and a dumb pager, and a prompt it detects ends the command with a named error the agent can act on. → §QS327
 - 📋 **QS328** (deps: QS325) **A long remote command dies at the agent's timeout, or with its connection, and leaves no way to look back in on it** — job_start, job_status and job_output run it detached on the server and read its output by cursor, across a reconnect. → §QS328
@@ -52,10 +54,11 @@
 - 📋 **QS337** (deps: QS324 ✅, QS336) **A call the policy says to ask about has nowhere to be asked, so the gateway can only allow or refuse it** — A quickshell dialog shows the plan, its host, tag and diff, approves the exact batch by hash, and can turn it into a timed grant. → §QS337
 - 📋 **QS338** (deps: QS336) **Text an agent read from a server can steer its next command, and the policy treats that command as if nothing happened** — Reading untrusted content marks the gateway session, and from then on every mutation asks the person, even one a grant allowed. → §QS338
 - 📋 **QS339** (deps: QS322 ✅, QS332) **An agent able to write files can rewrite the very policy that limits it, and grant itself whatever it wants** — The plugin's hook denies writes to the policy path, and quickshell re-asks the person whenever the file changes outside its own UI. → §QS339
-- 📋 **QS340** (deps: QS320 ✅, QS321 ⏸, the Docker SSH fixture) **A client-side policy is advice the server never hears, and nothing helps set up an account that limits an agent there** — A guided setup writes an agent account, a sudoers allowlist and key restrictions, shown first. → §QS340
+- 📋 **QS340** (deps: QS320 ✅, QS321 📋) **A client-side policy is advice the server never hears, and nothing helps set up an account that limits an agent there** — A guided setup writes an agent account, a sudoers allowlist and key restrictions, shown first. → §QS340
 - 📋 **QS341** (deps: QS340) **An agent's key on a server is valid until someone removes it, so a key that leaks works for months** — quickshell acts as a small SSH CA and signs the agent a certificate for minutes, bound to its principal, source address and options. → §QS341
-- 📋 **QS342** (deps: QS321 ⏸) **Asking a local Claude Code about what a pane shows means copying the scrollback by hand into another window** — A local pane runs claude with the gateway configured, and a palette command sends a pane's selection or recent scrollback to it. → §QS342
+- 📋 **QS342** (deps: QS321 📋) **Asking a local Claude Code about what a pane shows means copying the scrollback by hand into another window** — A local pane runs claude with the gateway configured, and a palette command sends a pane's selection or recent scrollback to it. → §QS342
 - 📋 **QS343** (deps: QS325, QS332) **Wiring the gateway into Claude Code means hand-editing MCP config, hooks and sandbox rules, so few will** — A Claude Code plugin installs the MCP server, the hooks and a skill in one step, and quickshell offers to install it when it finds claude. → §QS343
+- 📋 **QS321** (deps: QS320 ✅) **Nothing decides whether an agent gateway fits a client sold as "an SSH client, not a suite"** — A decision record settles it against the plugin-host non-goal: off by default, its own process, nothing on the terminal's path. → §QS321
 
 ## Done when — Block A
 

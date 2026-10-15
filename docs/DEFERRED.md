@@ -18,8 +18,6 @@
 
 ## Block D — The tree a user organises work in
 
-- ⏸ **QS315** (deps: QS314 ✅) **How a set of sessions is configured, with jump hosts, keys and forwards, can be documented only by copying it by hand** — set aside (The owner picks the PDF library.): A command writes a PDF of chosen sessions: resolved settings, origins, jump chain and forwards, never a secret. → §QS315
-
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox
@@ -44,5 +42,3 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
-
-- ⏸ **QS321** (deps: QS320 ✅) **Nothing decides whether an agent gateway fits a client sold as "an SSH client, not a suite"** — set aside (Scope is the owner's to settle.): A decision record settles it against the plugin-host non-goal: off by default, its own process, nothing on the terminal's path. → §QS321
