@@ -8,7 +8,8 @@
 // numbers do not carry the guest's provisioning.
 {
   // The PuTTY sessions and the MobaXterm.ini a real machine may hold: nothing to read on a clean desk.
-  "Quickshell.App.Tests": 2,
+  // Three since QS297 put a second test on the real MobaXterm.ini (QS355): one for PuTTY, two for it.
+  "Quickshell.App.Tests": 3,
 
   // run-fuzz.cmd's findings, which a desk that never fuzzed does not have.
   "Quickshell.Terminal.Tests": 1,
