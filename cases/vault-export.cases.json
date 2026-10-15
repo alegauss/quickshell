@@ -75,6 +75,64 @@
           "named": "refusing it, which reads and writes nothing"
         }
       ]
+    },
+    {
+      // QS308. The way back, on a new machine: the palette reaches it, and its dialog asks for the vault
+      // and how to open it before anything is read, with a way out.
+      "name": "the vault import asks which vault and how to open it, and can be refused",
+      "catches": "an import with no way in from the running client, or a dialog that saves before it says what it will do",
+      "filed": "QS308",
+      "tags": ["palette", "sessions"],
+      "fixture": "a client over a store of its own",
+
+      "steps": [
+        {
+          "locator": "TabItem[order=right]",
+          "act": "press",
+          "with": "Ctrl+Shift+P",
+          "named": "the palette is opened the way a user opens it"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "set value",
+          "with": "import saved passwords",
+          "expect": "import saved passwords",
+          "reads": "value",
+          "named": "the way back from a vault"
+        },
+        {
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Import saved passwords from a KeePass vault",
+          "named": "is in the palette"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "press",
+          "with": "Enter",
+          "named": "and taken"
+        },
+        {
+          "locator": "Window#ImportVault",
+          "act": "read",
+          "reads": "name",
+          "expect": "Import saved passwords",
+          "named": "the dialog is up under its own caption"
+        },
+        {
+          "locator": "Window#ImportVault > Button#decline",
+          "act": "read",
+          "reads": "name",
+          "expect": "Don't import",
+          "named": "refusing says what it does"
+        },
+        {
+          "locator": "Window#ImportVault > Button#decline",
+          "act": "invoke",
+          "named": "refusing it, which reads and saves nothing"
+        }
+      ]
     }
   ]
 }

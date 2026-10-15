@@ -238,3 +238,17 @@ Tick **Keep this file up to date** and the vault is written again whenever a pas
 changed or forgotten, or a session changes, without asking for the passphrase again; the
 `vaultFile` setting in [SETTINGS.md](SETTINGS.md#vaultfile) names it, and emptying it stops this. A
 vault edited outside the client since it was last written is never written over.
+
+## Importing saved passwords
+
+*Import saved passwords from a KeePass vault*, in the palette, is the way back on a new machine or
+after a reinstall, where Credential Manager starts empty. It reads a KeePass database, KDBX 4 or 3.1,
+with its passphrase and key file if it has one, from this client or from KeePassXC or KeePass. Each
+entry whose URL is `ssh://user@host:port`, or a bare `host` or `host:port` with the user in its
+user name field, is matched to the saved sessions that connect to that host, port and login. Its
+password is then remembered for them, under their `Credential` where they name one.
+
+Before anything is saved you see how many passwords are new, how many are already remembered as
+they are, and each one that differs from what is remembered, which stays as it is unless you tick
+it. Entries that match no session are listed and left alone. A vault that was changed or damaged
+after it was written is refused whole, naming the file.

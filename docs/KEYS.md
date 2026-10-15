@@ -31,7 +31,9 @@ the client's folder, with the title saying so while it runs — and *Stop record
 file and says where it is,
 *Export saved passwords to a KeePass vault* writes every saved session and its remembered password
 to a KeePass file, after Windows Hello and under a passphrase you choose or generate
-([SESSIONS.md](SESSIONS.md#exporting-saved-passwords) says what goes in), and
+([SESSIONS.md](SESSIONS.md#exporting-saved-passwords) says what goes in),
+*Import saved passwords from a KeePass vault* remembers the passwords a vault holds for the sessions
+they belong to, showing what would change first ([SESSIONS.md](SESSIONS.md#importing-saved-passwords)), and
 *Leave this pane out of broadcast typing* is described under [Panes](#panes).
 
 Nothing here is configurable yet. When it becomes configurable this page becomes the defaults.

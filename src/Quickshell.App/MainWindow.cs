@@ -431,6 +431,9 @@ public sealed partial class MainWindow : Window
         // Every saved password to a KeePass vault (QS306): done rarely and on purpose, so no chord.
         InputBindings.Add(new InputBinding(new ExportingVault(this), new PaletteOnly()));
 
+        // And back from one, on a new machine (QS308).
+        InputBindings.Add(new InputBinding(new ImportingVault(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();

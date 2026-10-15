@@ -57,29 +57,6 @@ to be worth it.
 
 Falsified when a token-backed key cannot authenticate a session.
 
-### §QS308 QS308 Importing passwords from a vault
-
-The export closes half of the circle. The other half is a new machine, or a reinstall:
-the sessions file moves with the user, but every remembered password stays behind in the
-old account's Credential Manager, because DPAPI binds it there. A vault already holds
-them, so the client should read one back.
-
-This needs a KDBX 4 reader beside QS305's writer, with the same key derivation and HMAC
-check, refusing a file whose blocks do not authenticate rather than reading what it can.
-Each entry whose ssh:// URL or host, port and login match a session has its password
-saved through SecretStore, under the session's named credential where it has one. An
-entry that matches nothing is listed and not saved, and a password that differs from one
-already saved is shown as a conflict for the user to settle, never overwritten without
-asking.
-
-The import also reads vaults the client did not write, since many users already keep
-their hosts in KeePass; the URL and the username field are what is matched, and nothing
-else in the entry is assumed.
-
-Done when a test round-trips QS306's export through an empty Credential Manager and
-every session connects without asking, a vault made by keepassxc-cli imports the same
-way, and an altered file is refused with a message that names it.
-
 ### §QS344 QS344 The Windows Hello gate, run for real
 
 QS306 gates the vault export on Windows Hello through `WindowsHello.VerifyAsync`, which
@@ -121,6 +98,25 @@ rather than failing the export.
 Done when a test exports a store whose folder names a key, keepassxc-cli's
 attachment-export returns its bytes unchanged, and an export with the box off carries no
 attachment.
+
+### §QS346 QS346 ChaCha20 and AES-KDF vaults, proven
+
+QS308's KdbxReader reads KDBX 4 vaults encrypted with ChaCha20 and derived with AES-KDF,
+two choices KeePassXC's database settings offer, but no test holds either:
+keepassxc-cli's db-create writes KDBX 3.1 with AES-KDF and AES, and the client's own
+writer writes AES and Argon2id. The tests that exist prove AES-256, Argon2d over two
+lanes, Argon2id, and KDBX 3.1 with AES-KDF and Salsa20.
+
+The cheapest proof is the writer's: KdbxWriter grows an internal option for the outer
+cipher (ChaCha20 with a 12-byte IV, the cipher UUID
+d6038a2b-8b6f-4cb5-a524-339a31dbb59a) and for AES-KDF in its KDBX 4 form (UUID
+7c02bb82-79a7-4ac0-927d-114a00648238, seed S and rounds R in the variant dictionary).
+keepassxc-cli then opens each file the writer made, which proves the writer agrees with
+KeePassXC, and KdbxReader reads it back, which proves the reader agrees with both.
+Neither option is offered to a person: the export keeps AES-256 and Argon2id.
+
+Done when two tests write a ChaCha20 vault and a KDBX 4 AES-KDF vault, keepassxc-cli
+shows each entry's password, and KdbxReader reads the same password back from each.
 
 ## Block C — Emulation that does not lie about the remote
 

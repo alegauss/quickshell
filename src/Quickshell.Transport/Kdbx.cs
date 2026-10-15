@@ -52,14 +52,16 @@ public sealed class KdbxGroup
 }
 
 /// <summary>
-/// How expensive the vault's key is to derive: Argon2id's memory and passes, through libsodium.
+/// How expensive the vault's key is to derive: Argon2's memory, passes, lanes and variant.
 ///
-/// <para><b>Parallelism is always one.</b> libsodium computes a single lane, and KDBX lets the file
-/// say so, so a reader derives exactly what was derived here.</para>
+/// <para><b>This client writes Argon2id over one lane</b>, which libsodium computes; the other shapes
+/// are what a vault from KeePassXC carries (QS308), read through the managed <see cref="Argon2"/>.</para>
 /// </summary>
 /// <param name="MemoryKibibytes">Memory per derivation, in KiB.</param>
 /// <param name="Passes">Passes over that memory.</param>
-public sealed record KdbxKdf(int MemoryKibibytes, int Passes)
+/// <param name="Lanes">The degree of parallelism the file declares.</param>
+/// <param name="Argon2d">Argon2d rather than Argon2id, which is KeePassXC's default.</param>
+public sealed record KdbxKdf(int MemoryKibibytes, int Passes, int Lanes = 1, bool Argon2d = false)
 {
     /// <summary>
     /// 256 MiB and three passes. A vault is a file that leaves this machine, so it is the offline
@@ -238,6 +240,11 @@ public sealed class KdbxKey : IDisposable
     /// <summary>The key sealed under DPAPI for this Windows account, to be kept on disk.</summary>
     public byte[] Seal()
     {
+        if (Kdf.Lanes != 1 || Kdf.Argon2d)
+        {
+            throw new InvalidOperationException("Only a key derived as this client derives one, Argon2id over one lane, is kept.");
+        }
+
         byte[] plain = new byte[1 + 8 + Salt.Length + Transformed.Length];
 
         try
@@ -373,7 +380,10 @@ public static class KdbxWriter
     private static ReadOnlySpan<byte> AesCipher =>
         [0x31, 0xC1, 0xF2, 0xE6, 0xBF, 0x71, 0x43, 0x50, 0xBE, 0x58, 0x05, 0x21, 0x6A, 0xFC, 0x5A, 0xFF];
 
-    private static ReadOnlySpan<byte> Argon2idKdf =>
+    internal static ReadOnlySpan<byte> Argon2dKdf =>
+        [0xEF, 0x63, 0x6D, 0xDF, 0x8C, 0x29, 0x44, 0x4B, 0x91, 0xF7, 0xA9, 0xA4, 0x03, 0xE3, 0x0A, 0x0C];
+
+    internal static ReadOnlySpan<byte> Argon2idKdf =>
         [0x9E, 0x29, 0x8B, 0x19, 0x56, 0xDB, 0x47, 0x73, 0xB2, 0x3D, 0xFC, 0x3E, 0xC6, 0xF0, 0xA1, 0xE6];
 
     /// <summary>
@@ -507,9 +517,9 @@ public static class KdbxWriter
         using MemoryStream dictionary = new();
 
         dictionary.Write([0x00, 0x01]);
-        Variant(dictionary, 0x42, "$UUID", Argon2idKdf);
+        Variant(dictionary, 0x42, "$UUID", kdf.Argon2d ? Argon2dKdf : Argon2idKdf);
         Variant(dictionary, 0x42, "S", salt);
-        Variant(dictionary, 0x04, "P", BitConverter.GetBytes(1u));
+        Variant(dictionary, 0x04, "P", BitConverter.GetBytes((uint)kdf.Lanes));
         Variant(dictionary, 0x05, "M", BitConverter.GetBytes((ulong)kdf.MemoryKibibytes * 1024));
         Variant(dictionary, 0x05, "I", BitConverter.GetBytes((ulong)kdf.Passes));
         Variant(dictionary, 0x04, "V", BitConverter.GetBytes(0x13u));
@@ -529,12 +539,22 @@ public static class KdbxWriter
         dictionary.Write(value);
     }
 
-    /// <summary>The composite key through Argon2id: the transformed key everything else is derived from.</summary>
+    /// <summary>The composite key through Argon2: the transformed key everything else is derived from.</summary>
     internal static Secret Transform(Secret passphrase, string? keyFile, byte[] salt, KdbxKdf kdf)
+    {
+        using Secret composite = Composite(passphrase, keyFile);
+
+        return Argon(composite, salt, kdf);
+    }
+
+    /// <summary>
+    /// KDBX's composite key: SHA-256 over the passphrase's SHA-256, then the key file's 32 bytes where
+    /// there is one. Every KDBX version and every KDF starts from it.
+    /// </summary>
+    internal static Secret Composite(Secret passphrase, string? keyFile)
     {
         byte[] composite = new byte[64];
         byte[] compositeHash = new byte[32];
-        byte[] derived = new byte[32];
 
         try
         {
@@ -552,21 +572,45 @@ public static class KdbxWriter
 
             SHA256.HashData(composite.AsSpan(0, length), compositeHash);
 
-            Argon2id argon = PasswordBasedKeyDerivationAlgorithm.Argon2id(new Argon2Parameters
-            {
-                DegreeOfParallelism = 1,
-                MemorySize = kdf.MemoryKibibytes,
-                NumberOfPasses = kdf.Passes,
-            });
-
-            argon.DeriveBytes(compositeHash, salt, derived);
-
-            return Secret.From(derived);
+            return Secret.From(compositeHash);
         }
         finally
         {
             CryptographicOperations.ZeroMemory(composite);
             CryptographicOperations.ZeroMemory(compositeHash);
+        }
+    }
+
+    /// <summary>
+    /// Argon2 over the composite key: libsodium where it can (Argon2id, one lane, a 16-byte salt, what
+    /// this client writes), the managed <see cref="Argon2"/> for everything else KDBX allows.
+    /// </summary>
+    internal static Secret Argon(Secret composite, ReadOnlySpan<byte> salt, KdbxKdf kdf,
+                                 ReadOnlySpan<byte> secret = default, ReadOnlySpan<byte> associated = default)
+    {
+        byte[] derived = new byte[32];
+
+        try
+        {
+            if (!kdf.Argon2d && kdf.Lanes == 1 && salt.Length == 16 && secret.IsEmpty && associated.IsEmpty)
+            {
+                PasswordBasedKeyDerivationAlgorithm.Argon2id(new Argon2Parameters
+                {
+                    DegreeOfParallelism = 1,
+                    MemorySize = kdf.MemoryKibibytes,
+                    NumberOfPasses = kdf.Passes,
+                }).DeriveBytes(composite.Bytes, salt, derived);
+            }
+            else
+            {
+                Argon2.Derive(kdf.Argon2d ? Argon2.Variant.D : Argon2.Variant.Id, composite.Bytes, salt, kdf.Lanes,
+                              kdf.MemoryKibibytes, kdf.Passes, derived, secret, associated);
+            }
+
+            return Secret.From(derived);
+        }
+        finally
+        {
             CryptographicOperations.ZeroMemory(derived);
         }
     }

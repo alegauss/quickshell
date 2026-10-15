@@ -6,9 +6,9 @@
 
 ## Block B — Keys, agents, and the host you think you reached
 
-- 📋 **QS308** (deps: QS305 ✅) **A new machine starts with no remembered password, because DPAPI does not travel and nothing reads a vault back** — An import reads a KDBX 4 vault and saves each entry's password into Credential Manager for the session whose host, port and login match it. → §QS308
 - 📋 **QS344** (deps: —) **The Windows Hello prompt before a vault export has never been seen to run, since no test desk has Hello set up** — Every test answers the gate through MainWindow.Verifies, so the COM interop call to UserConsentVerifier is proven by no run. → §QS344
 - 📋 **QS345** (deps: QS306 ✅) **An exported vault restores the passwords but not the key files sessions name, so a new machine still lacks the keys** — QS306's design allowed key files as attachments asked for separately, and the export shipped without them. → §QS345
+- 📋 **QS346** (deps: —) **Reading a KDBX 4 vault encrypted with ChaCha20, or derived with AES-KDF, is proven by no vault** — keepassxc-cli makes only KDBX 3.1 and the client writes AES with Argon2id, so those two reader paths have never met a real file. → §QS346
 
 ## Block C — Emulation that does not lie about the remote
 
