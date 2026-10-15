@@ -111,6 +111,7 @@ question is *which theme is this*, never *which letter is next*.
 | **I** | Diagnostics — an error a user can act on | logs and their level, the transport trace, redaction of secrets in output, the crash path, reproducing a report without telemetry |
 | **J** | Leaving MobaXterm — the proof is the switch | importing its sessions and keys, the migration path, and the checklist naming what quickshell deliberately does not carry over |
 | **K** | The build and the harness — what a green run is evidence of | the one command that builds and runs everything, the output tree, exit codes that mean what they say, the CI matrix, determinism of the build itself |
+| **L** | An agent at the controls — held to a policy it cannot edit | the agent gateway (`quickshell --mcp`) and its tools, the policy and its classifier, approval, audit and the kill switch, the hooks and plugin that wire it into Claude Code, and the server-side account and certificates that make the boundary real; design matures in `docs/design/agent-gateway/` |
 
 **Only `## Block A` is declared in the governed files today.** The table above is the intended map,
 not the current state: `roadkeep block add B --title "…"` writes the heading into every governed file

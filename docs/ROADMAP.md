@@ -18,6 +18,7 @@
 
 - 📋 **QS314** (deps: —) **The sidebar selects one row at a time, so nothing can act on several chosen sessions at once** — Ctrl+click and Shift+click select several rows in the sidebar, and a selected folder stands for every session under it, for actions that take a set. → §QS314
 - 📋 **QS315** (deps: QS314) **How a set of sessions is configured, with jump hosts, keys and forwards, can be documented only by copying it by hand** — A command writes a PDF of the selected sessions: each one's resolved settings, where each was inherited from, its jump chain and forwards, and never a secret. → §QS315
+- 📋 **QS331** (deps: —) **A saved session carries nothing that tells production from staging, to the person or to anything reading the store** — Sessions take free tags such as prod or db, inherited from their folder, shown on the tab, and read by the agent gateway's policy. → §QS331
 
 ## Block E — SCP and SFTP as a thing a person operates
 
@@ -45,6 +46,32 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 - 📋 **QS292** (deps: QS188 ✅, winwright WW535, winwright WW536) **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — winwright 1.1.0 drops onto Explorer (WW530), but a case still cannot open that folder or read the file it lands as. → §QS292
+
+## Block L — An agent at the controls, held to a policy it cannot edit
+
+- 📋 **QS320** (deps: —) **Nothing written says what an agent driving SSH from this desk can harm, nor which layer stops which harm** — A threat model opens docs/design/agent-gateway/README.md and names the three layers, hooks, credential isolation and the server, and what each honestly stops. → §QS320
+- 📋 **QS321** (deps: QS320) **Nothing decides whether an agent gateway fits a client sold as "an SSH client, not a suite"** — A decision record settles it against the plugin-host non-goal: off by default, its own process, nothing on the terminal's path. → §QS321
+- 📋 **QS322** (deps: QS320) **No policy format exists to say what an agent may do on which host, for how long, or who may change it** — The design doc fixes it: levels per session tag, grants that expire, and a file held outside any workspace the agent can write. → §QS322
+- 📋 **QS323** (deps: QS320) **Nothing says how a remote command is judged read-only, so a regex blocklist is the only idea on the table** — The design doc picks a bash parser, an argument-checked allowlist for reads, and the rule that what cannot be parsed with certainty asks. → §QS323
+- 📋 **QS324** (deps: QS320) **Approving an agent's commands one prompt at a time trains the person to click yes, the 41st one included** — The design doc settles approval by plan: one review of an exact batch bound to its hash, shown with host, tag and diff in quickshell. → §QS324
+- 📋 **QS325** (deps: QS321) **An agent reaches a saved session only through raw ssh, quoting through four shells and paying a handshake per command** — A headless quickshell --mcp exposes hosts_list and exec(host, argv) over the client's own kept-alive connection, with exit code and stderr apart. → §QS325
+- 📋 **QS326** (deps: QS325) **An agent edits a remote file by heredoc or sed -i, blind, with no diff for the person and no copy to go back to** — read_file and edit_file over SFTP, an exact and unique replacement, a backup beside the file and the diff returned and logged. → §QS326
+- 📋 **QS327** (deps: QS325) **A sudo password, a pager or an apt dialog hangs an agent's command until its timeout, with no word of what it waited for** — exec runs with no stdin and a dumb pager, and a prompt it detects ends the command with a named error the agent can act on. → §QS327
+- 📋 **QS328** (deps: QS325) **A long remote command dies at the agent's timeout, or with its connection, and leaves no way to look back in on it** — job_start, job_status and job_output run it detached on the server and read its output by cursor, across a reconnect. → §QS328
+- 📋 **QS329** (deps: QS325) **A large command output lands whole in the agent's context, so one journalctl costs the rest of the session's room** — exec answers within a byte budget, head and tail kept with what was cut counted, and the rest paged by cursor or searched on the server. → §QS329
+- 📋 **QS330** (deps: QS325) **A secret printed by a remote command, an .env or a token, goes straight into the agent's transcript and its provider** — The client's log redactor runs over every answer the gateway returns, and each redaction is counted so the agent knows something was hidden. → §QS330
+- 📋 **QS332** (deps: QS325) **With the gateway installed an agent can still run ssh, plink, scp or paramiko from its own shell and skip every rule** — A PreToolUse hook steers those to the gateway's tools, and the agent's sandbox denies port 22, so the gateway is the only way out. → §QS332
+- 📋 **QS333** (deps: QS325) **Nothing records what an agent ran on which server, who approved it, or what came back, once the session scrolls away** — An append-only audit log per gateway session keeps each call, its verdict, its approver and an output hash, readable as a change summary. → §QS333
+- 📋 **QS334** (deps: QS325) **A person who sees an agent going wrong on a server has no single act that stops it everywhere at once** — One keybinding and a tray command revoke every grant, cancel running jobs and close every gateway connection, and the agent is told why. → §QS334
+- 📋 **QS335** (deps: QS325) **What an agent runs on a server is invisible to the person until it reports back, if it reports at all** — Each gateway connection appears as a quickshell tab badged as the agent's, showing every command and its output live as it runs. → §QS335
+- 📋 **QS336** (deps: QS322, QS323, QS325, QS331) **Every call an agent makes through the gateway is allowed, whatever the host and whatever the command** — The gateway judges each call against the policy before it runs: allow, ask the person, or refuse with the rule named. → §QS336
+- 📋 **QS337** (deps: QS324, QS336) **A call the policy says to ask about has nowhere to be asked, so the gateway can only allow or refuse it** — A quickshell dialog shows the plan, its host, tag and diff, approves the exact batch by hash, and can turn it into a timed grant. → §QS337
+- 📋 **QS338** (deps: QS336) **Text an agent read from a server can steer its next command, and the policy treats that command as if nothing happened** — Reading untrusted content marks the gateway session, and from then on every mutation asks the person, even one a grant allowed. → §QS338
+- 📋 **QS339** (deps: QS322, QS332) **An agent able to write files can rewrite the very policy that limits it, and grant itself whatever it wants** — The plugin's hook denies writes to the policy path, and quickshell re-asks the person whenever the file changes outside its own UI. → §QS339
+- 📋 **QS340** (deps: QS320) **A client-side policy is advice the server never hears, and nothing helps set up an account that limits an agent there** — A guided setup writes a dedicated agent account, a sudoers allowlist and authorized_keys restrictions, shown for review before it runs. → §QS340
+- 📋 **QS341** (deps: QS340) **An agent's key on a server is valid until someone removes it, so a key that leaks works for months** — quickshell acts as a small SSH CA and signs the agent a certificate for minutes, bound to its principal, source address and options. → §QS341
+- 📋 **QS342** (deps: QS321) **Asking a local Claude Code about what a pane shows means copying the scrollback by hand into another window** — A local pane runs claude with the gateway configured, and a palette command sends a pane's selection or recent scrollback to it. → §QS342
+- 📋 **QS343** (deps: QS325, QS332) **Wiring the gateway into Claude Code means hand-editing MCP config, hooks and sandbox rules, so few will** — A Claude Code plugin installs the MCP server, the hooks and a skill in one step, and quickshell offers to install it when it finds claude. → §QS343
 
 ## Done when — Block A
 
@@ -280,6 +307,25 @@
 - **The gate's start holds against 40fb448** Settled by run-perf-gate.cmd on the
   reference desk with nothing else running, start judged and held rather than not judged
   as too noisy.
+
+## Done when — Block L
+
+- **The design document describes what shipped, not what was planned**
+  docs/design/agent-gateway/README.md is updated in the same commit as every Block L
+  line that ships, and a read of it against the shipped tools, the policy format and the
+  audit log finds no section describing behaviour the gateway does not have.
+- **No command the classifier allows can change a server** The classifier corpus, real
+  agent sessions plus the known bypass shapes (find -delete, interpreter one-liners,
+  base64 into sh), scores zero false allows on every run, and the false-ask rate is
+  reported beside it as the friction figure.
+- **The gateway moves none of the window's performance figures** With the gateway
+  installed and an agent working, run-perf-gate.cmd passes against the reference
+  baseline with no Performance-Moved trailer, because the gateway is its own process and
+  nothing on the keystroke-to-pixel path.
+- **With the client-side policy off, the server still refuses what it should** Against
+  the test sshd set up by the guided setup, a command outside the agent account's
+  sudoers list fails with the gateway's policy disabled, which is the run that proves
+  the boundary is not the client.
 
 ## Non-goals
 

@@ -321,6 +321,27 @@ Done when a test documents a store with a folder default, a two-hop jump chain a
 forwards, reads the PDF's text back, finds every field and its origin, and finds no
 secret.
 
+### §QS331 Tags that say which environment a session is
+
+Two sessions named `app-01` and `app-01-new` look the same in the tree, and the mistake
+that costs most is running a command on the one you did not mean. Nothing in the session
+store says which of them is production.
+
+A session gains a `tags` field: free words, lower case, with a folder's tags inherited
+by everything under it the way other defaults already are. `prod` is the one word the
+client gives a meaning to by default, drawing the tab and the pane border in the danger
+colour the theme already has, and settings can give other tags a colour.
+
+Tags are imported from MobaXterm and PuTTY where a folder name maps cleanly, and they
+round-trip through the session export.
+
+The agent gateway (Block L) is the second reader: its policy is keyed on tags rather
+than host names, and `hosts_list` reports them, so an agent sees the same warning the
+person does.
+
+Proven by a UI case that tags a folder `prod`, opens a session beneath it and reads the
+tag back from the tab's automation properties.
+
 ## Block E — SCP and SFTP as a thing a person operates
 
 ## Block F — A forward is a lifecycle, not a checkbox
@@ -714,3 +735,497 @@ project's WPF and unsafe settings go.
 
 Falsified when the case replaces the test and an Explorer drop that leaves a different
 file, or none, is not red.
+
+## Block L — An agent at the controls, held to a policy it cannot edit
+
+### §QS320 A threat model before a single verb
+
+People already hand Claude Code an SSH key and let it work on servers. What it can harm
+is a production host it mistook for staging, a secret it read and carried into a
+transcript, a destructive command it was talked into by text on the server itself
+(prompt injection), and every other host the same key reaches.
+
+The design document is where this block matures, and it opens with the threat model
+because every later line is judged against it. It names three layers, each assuming the
+one above failed: hooks and a skill that steer the agent towards the gateway (they stop
+accidents, not intent); credentials held only by quickshell, so the agent has no way to
+authenticate around it (same Windows user, so this raises the cost and is not a wall);
+and the server itself, a restricted account and short-lived certificates, the one layer
+an agent on the client cannot route around.
+
+The document says plainly that a client-side policy without the third layer is advice,
+and every later section keeps that sentence true. It also lists the agent's own pains
+with SSH (quoting through four shells, a handshake per command, prompts that hang,
+output that floods context) because lowering friction is half the reason anyone would
+route through the gateway at all.
+
+### §QS321 Whether this belongs in the client at all
+
+The README sells quickshell as the SSH part of MobaXterm without the suite around it,
+and the non-goals refuse a plugin host and a scripting engine in the MVP. An agent
+gateway is new scope, so it has to be argued from a user's task and not from novelty.
+
+The argument to test: the gateway is not a plugin host inside quickshell, it is
+quickshell offered as a tool to an agent that already exists, and the user's task (let
+an agent work on a server without handing it the keys to everything) is real and
+growing. The conditions it must meet to stay inside the project: off unless the user
+turns it on, a separate process (`quickshell --mcp`) so the window's memory and start-up
+budgets in PERFORMANCE.md do not move, no network of its own, and nothing on the
+keystroke-to-pixel path.
+
+The outcome is a decision record in DECISIONS.md, and if the answer is no, a non-goal so
+the idea is not re-filed. Every other line in Block L waits on it.
+
+### §QS322 The policy an agent is held to
+
+The design document's policy section answers four questions before any engine is
+written.
+
+What is a policy keyed on? Session tags (`prod`, `db`, `staging`), not hostnames,
+because the mistake worth preventing is confusing two environments and a tag is how a
+person already thinks of them. Glob patterns over session names are the fallback.
+
+What are the levels? Three to start: `observe` (reads approved without asking),
+`operate` (a mutation asks the person), `break-glass` (wide, time-boxed, loudly
+audited). Unknown on a `prod` tag means deny, never allow.
+
+How does a grant end? Every widening carries an expiry, e.g. restarting nginx on `web-*`
+for thirty minutes, and a grant with no end is refused at write time.
+
+Who writes it? Only the person, through quickshell's own UI. The file lives in
+quickshell's settings directory, outside any repository the agent works in; the plugin's
+hook denies an edit to that path, and quickshell asks the person to confirm when the
+file changes on disk, so an agent cannot approve its own permission.
+
+The section ends with a worked example file and the three questions it could not answer
+yet.
+
+### §QS323 Judging a command without pretending a regex is a firewall
+
+A blocklist of strings does not hold an agent: `find / -delete`, `python3 -c`, `sed -i`,
+a script written over SFTP and then run, or a base64 blob piped to `sh` all do what `rm
+-rf` does. So the classification section starts from the other end.
+
+A command is parsed into a bash AST. If every simple command in it is on an allowlist of
+reads (`ls`, `cat`, `df`, `systemctl status`, `journalctl` and so on) with arguments
+checked against what that tool can write (no `-o`, no `--output`, no redirection), it is
+a read and the policy's `observe` level applies. Everything else is a mutation. Anything
+the parser cannot settle with certainty, `eval`, command substitution, a pipe into an
+interpreter, an unknown binary, falls to asking the person and never to allowing.
+
+Open questions the section has to close: which parser (a managed port, tree-sitter-bash,
+or shelling out to a known one), how `sudo` and `env` wrappers are unwrapped, how the
+allowlist is versioned and extended per tag, and how to measure it. The proposed measure
+is a corpus of real agent sessions, scored for false allows, which must be zero, and for
+false asks, which is the friction number to drive down.
+
+### §QS324 Approval that does not train a reflex
+
+Approval fatigue is the failure that defeats every permission prompt: forty identical
+requests teach a person to approve without reading, and the forty-first is the `DROP
+TABLE`. The approval section designs against that habit.
+
+By plan, not by command: the agent proposes a batch, the person approves it once, and
+quickshell runs exactly those argv on exactly those hosts. The approval is bound to a
+hash of the batch, so a changed command is a new request rather than a silent
+substitution.
+
+Shown where it matters: quickshell's own dialog, not the agent's terminal, with the
+session name, its tag (a `prod` tag in the colour the client already uses for danger),
+each command as parsed, and for a file edit the diff.
+
+Rare by construction: reads at `observe` never ask, and a time-boxed grant (QS322)
+replaces a run of identical asks. The section names the target, asks per hour of agent
+work on a `prod` session, and how it is measured from the audit log.
+
+Open questions: whether an approval can be given from the phone the desk is not at, and
+what the agent sees while it waits.
+
+### §QS325 The spike: the gateway with nothing but exec
+
+From the agent's side, the dearest costs of SSH today are mechanical. A command goes
+PowerShell to `ssh` to bash to `sudo` to `sh -c`, and the quoting breaks somewhere in
+that chain more often than anything else goes wrong. Each call is a new connection, so
+the handshake is paid again and `cwd` and environment are lost; Windows OpenSSH has no
+ControlMaster to hide it.
+
+The spike is the smallest gateway that removes both: `quickshell.exe --mcp`, a stdio MCP
+server running headless on Quickshell.Transport, with two tools. `hosts_list` returns
+the saved sessions with their names (and their tags, once sessions carry them) and never
+a secret. `exec` takes a session name, an argv array, an optional cwd and a timeout,
+runs it on a connection the gateway keeps alive, and returns exit code, stdout and
+stderr as separate fields.
+
+No policy yet. That is why this line waits on the scope decision (QS321) and why the
+spike is opt-in and documented as unguarded.
+
+Proven by a run against the test sshd: a command whose argument holds quotes, a dollar
+sign and a newline arrives byte-exact, and the tenth call to the same session reuses one
+connection.
+
+### §QS326 Remote edits an agent can make and a person can read
+
+Writing a config file through `ssh host "cat > file <<EOF"` breaks on the first quote,
+and `sed -i` with a regex changes lines nobody looked at. Both leave nothing to review
+and nothing to restore.
+
+The gateway already holds an SFTP channel on the same connection (Block E). Two tools
+use it. `read_file` takes a session, a path and an optional line range, and returns the
+text with line numbers, refusing a binary file. `edit_file` takes the path, an exact old
+string that must occur once, and its replacement, the same contract an agent's local
+edit tool has, so nothing new is learned. Before writing, it copies the original to
+`<file>.qs-bak-<timestamp>`; it writes to a temporary name and renames, so a dropped
+link never leaves half a file; and it keeps the owner, mode and timestamps the file had.
+
+The answer carries the unified diff, which the approval dialog shows once policy exists
+and the audit log keeps either way.
+
+Proven against the test sshd: a replacement with quotes and a trailing newline, a
+refusal when the old string occurs twice, and a file left intact when the link is cut
+mid-write.
+
+### §QS327 A prompt is an error, not a two-minute hang
+
+An agent's command that stops to ask something has nobody to answer it. Today it hangs
+until the agent's own timeout, two minutes, and the transcript says only that it timed
+out.
+
+`exec` removes what it can before running: stdin closed, `PAGER=cat`, `SYSTEMD_PAGER=`
+and `GIT_PAGER=cat` set, `DEBIAN_FRONTEND=noninteractive` set, and no PTY unless the
+call asks for one. What it cannot remove it detects: output that stops on a known prompt
+shape (`[sudo] password for`, `Password:`, `(y/N)`, `--More--`) with the process still
+alive and no output for a short quiet window ends the command, and the answer names it,
+for example `prompt.sudo_password`.
+
+The agent then has something to act on: ask the person, use a sudoers rule the
+server-side line prepares, or rephrase with `-y`. A host key prompt never reaches this
+point, because the gateway checks the host key against `known_hosts` the way the client
+already does, and an unknown key is a refusal with the fingerprint in it.
+
+Proven against the test sshd with `sudo -k; sudo true`, `less` on a long file and `read
+-p`, each ending inside five seconds with its named error.
+
+### §QS328 Jobs that outlive a tool call
+
+A build, a migration or a backup takes longer than an agent's tool call is allowed to
+wait, and if the connection drops, the process goes with it. The agent's workaround
+today is a hand-written `nohup … &` and a guessed log path, and then it forgets where it
+put it.
+
+Three tools replace that habit. `job_start` runs the argv detached on the server (under
+`setsid` with output to a file in a per-user directory the gateway owns, or under tmux
+where it exists) and returns a job id at once. `job_status` reports running or exited,
+with the exit code. `job_output` reads from a cursor the previous call returned, so the
+agent sees only what is new and a long log is never sent twice.
+
+The gateway keeps job ids in its own state, so a job survives the gateway restarting and
+the connection reconnecting (Block A already brings the session back). A `job_cancel`
+sends TERM, then KILL after a grace period.
+
+Proven against the test sshd: a ninety-second job started, the connection cut and
+restored, and the output read to the end with the right exit code.
+
+### §QS329 Output sized for a context window
+
+An agent pays for every byte a command returns, and a log or a directory listing can be
+most of a session's context in one call. Truncating blindly is no better: the error is
+usually at the end.
+
+`exec` takes a byte budget (a default the design doc sets, overridable per call). Within
+it, output comes back whole. Over it, the answer keeps the head and the tail, says how
+many lines and bytes were cut between them, and returns a cursor; `output_page` reads
+the cut part by range, and `output_grep` runs a pattern over it on the server side
+without sending it back.
+
+The full output is kept in the gateway's spool for the life of the session, so nothing
+has to be run twice to see more of it, and the spool is wiped when the session ends.
+
+Proven by a run that prints two hundred thousand lines: the answer stays inside the
+budget, names the cut, and a grep for a line in the middle finds it.
+
+### §QS330 Redaction on the way out to the agent
+
+`cat .env` is a reasonable thing for an agent to run while debugging, and its output
+then lives in a transcript, in the provider's request and possibly in a log nobody meant
+to keep. The client already redacts its own logs (Block I) so that one can be attached
+to a bug report; the same redactor belongs on this path.
+
+Every answer the gateway returns, from `exec`, `read_file`, a job's output or a page,
+goes through it before it leaves the process: private key blocks,
+`password=`/`secret=`/`token=` assignments, bearer headers, connection strings with
+credentials, and the known token shapes (AWS, GitHub, Slack, JWT). Each match becomes
+`«redacted:kind»`, and the answer carries a count, so the agent knows a value was hidden
+and can ask the person rather than guess.
+
+The redaction is a guard against accidental spread, not a boundary: a command can encode
+a secret past any pattern, which the threat model (QS320) says plainly. A policy can
+also refuse reading known secret paths outright.
+
+Proven by a fixture file holding one of each kind, read through every tool, with nothing
+of the original in any answer.
+
+### §QS332 Closing the side doors
+
+A gateway the agent can step around is a suggestion. Claude Code can run `ssh`, `plink`,
+`scp`, `sftp`, `git` over SSH, or a Python one-liner with paramiko from its own shell,
+and none of them pass through quickshell.
+
+Two measures, of different strength, and the design document says which is which.
+
+A `PreToolUse` hook on the agent's shell tool matches the obvious invocations and denies
+them with a message naming the gateway tool to use instead. This is steering: it catches
+the habit and the accident, and a script written first and run second walks past it.
+
+The agent's sandbox, where enabled, denies outbound connections to port 22 and any port
+a saved session names, while the gateway, a separate process outside the sandbox, keeps
+them. This is the stronger of the two, because it is enforced below the shell rather
+than by reading the command.
+
+Neither touches the third way around, a key file the agent can read; that is the
+credential-isolation work and is named in the threat model (QS320).
+
+Proven by a run of the agent asked to reach the test sshd by each of five routes, every
+one refused, with the gateway's own exec still succeeding.
+
+### §QS333 An audit trail an agent cannot rewrite
+
+After an agent has worked on a server, the person needs to answer what changed, and
+today the only record is the agent's own transcript, which the agent writes.
+
+The gateway writes its own: one JSON line per call, append-only, in quickshell's data
+directory and outside any workspace the agent can write. Each line holds the time, the
+session and its tags, the tool and its arguments (redacted the same way answers are),
+the policy verdict and the rule that gave it, who approved and how (automatic, a plan
+hash, a timed grant), the exit code and a hash of the full output.
+
+A file is rotated by size and day, never edited, and each line carries the hash of the
+one before it, so a deletion in the middle is visible.
+
+`quickshell --audit <session-id>` prints the log as a change summary a person can paste
+into a ticket: what was read, what was changed, what was refused.
+
+The same log is what the approval design (QS324) measures itself against: asks per hour,
+and how many were approved unchanged.
+
+Proven by a recorded gateway session whose summary lists every mutation, and by a line
+removed by hand being reported.
+
+### §QS334 A kill switch
+
+When an agent is doing the wrong thing on a server, every second spent finding which
+window to close is a second it keeps going. Stopping the agent's own process is not
+enough either: jobs it started on the server keep running.
+
+The gateway gets one stop. A keybinding in quickshell, the same command in the palette,
+and an item on the tray icon each revoke every timed grant, cancel every running job
+(TERM, then KILL after a short grace), close every connection the gateway holds, and
+leave the gateway refusing every call until the person re-enables it from the same
+place.
+
+The agent's next call gets a refusal that says it was stopped by the person, so it
+reports that rather than retrying in a loop. The stop and what it cancelled go to the
+audit log.
+
+Proven by a run with three jobs on two sessions: one keypress, every job gone from the
+servers' process lists within the grace period, and the next exec refused with the named
+reason.
+
+### §QS335 The agent's session, in plain sight
+
+The person handing work to an agent wants to glance at what it is doing, the way they
+would look over a colleague's shoulder, and today the only view is the agent's own
+summary after the fact.
+
+When the gateway opens a connection for an agent and the client is running, the client
+shows it as a tab: badged as the agent's, in a colour no human tab uses, and read-only
+for the person so their keystrokes never interleave with the agent's. Each call appears
+as a prompt line with the command as parsed, then its output as it streams, then its
+exit code; a refused call shows the refusal and the rule that gave it.
+
+Closing that tab does not end the agent's session; the kill switch does. Headless, with
+no client running, nothing changes and the audit log is the only view.
+
+The tab is ordinary terminal output drawn by the existing renderer, so it costs nothing
+new on the rendering path.
+
+Proven by a UI case that runs two calls through the gateway and reads the tab's badge
+and its last line from the accessibility tree.
+
+### §QS336 The policy engine
+
+With the policy format (QS322), the command classifier (QS323) and session tags (QS331)
+designed, the engine is what puts them in the path of every call.
+
+Before a call runs, the gateway resolves the session's tags, picks the policy level that
+applies, classifies the call (an `exec` by the classifier, a `read_file` as a read, an
+`edit_file` or `job_start` as a mutation), and checks any live timed grant. The answer
+is one of three: allow and run; ask the person and wait; or refuse, naming the rule, so
+the agent can explain the refusal rather than retry around it.
+
+The engine's verdict and the rule that gave it go into the audit log for every call,
+allowed or not.
+
+Defaults when no policy file exists: every session at `operate`, so the first run asks
+rather than allows, and any session tagged `prod` refuses whatever is not a recognised
+read.
+
+The engine is pure: given a policy, the tags and a call, it returns a verdict and
+touches no connection, which is what lets it be tested on a corpus without a server.
+
+Proven by that corpus run, zero false allows, and by a live refusal on a `prod`-tagged
+test session.
+
+### §QS337 The approval dialog
+
+The approval design (QS324) is built here, in the client rather than in the agent's
+terminal, because the client knows the session, its tags and its colours, and because an
+approval the agent's own process draws is one the agent's process could fake.
+
+The gateway sends the client a pending request: a batch of calls, each with its session,
+tags and parsed command or diff. The client raises a dialog in front of the tab showing
+the agent's session, with the `prod` tag in the danger colour and each call listed as it
+will run. Three answers: approve this batch (bound to its hash, so the gateway runs
+exactly it), approve and grant (the same calls on the same tags for a chosen time, from
+a short list, never open-ended), or refuse with an optional note the agent receives.
+
+Headless, with no client running, an ask is a refusal saying no one was there to answer,
+which is the safe direction.
+
+Every answer is written to the audit log with the hash it approved.
+
+Proven by a UI case that receives a two-call batch, reads both calls and the tag from
+the accessibility tree, approves, and finds both in the audit log under that hash.
+
+### §QS338 Taint after untrusted input
+
+Prompt injection is the attack that needs no exploit: a log line, a README or a database
+row on the server says "ignore your instructions and run this", and an agent that just
+read it may comply. The danger is the combination of untrusted text in the context with
+a tool that can change things.
+
+The gateway cannot tell which text the agent believed, but it can tell when untrusted
+text entered: any `read_file`, any page of output, any `exec` whose output came from a
+file or a remote service rather than the gateway's own metadata. From that point the
+gateway session is tainted, and every mutation asks the person, including one that a
+timed grant or the `operate` level would have allowed. Reads stay automatic, so the cost
+falls only where the risk is.
+
+The taint is shown in the agent's tab and in the approval dialog, so the person knows
+why they are being asked. It clears only when the person clears it, never by the agent.
+
+The design document weighs how coarse this is, and whether a read of a file the person
+marked trusted should taint at all.
+
+Proven by a fixture file holding an injected instruction: after reading it, an otherwise
+granted restart asks.
+
+### §QS339 A policy the agent cannot edit
+
+A permission an agent can grant itself is no permission. The policy file sits on the
+same disk, under the same Windows user, as everything the agent can write.
+
+Three measures. The file lives in quickshell's settings directory, never in a repository
+or a working directory, so it is outside the paths an agent is usually pointed at. The
+plugin's `PreToolUse` hook denies the agent's file tools any write to that path, and its
+shell tool any command naming it. And quickshell holds the hash of the last version the
+person approved: when the file on disk differs, the gateway refuses every call and the
+client asks the person to accept or reject the change, showing the diff.
+
+The third measure is the one that holds even if the first two are walked around, since
+the gateway enforces the approved version, not whatever is on disk.
+
+The design document says what stays open: a same-user process can still read the
+approved hash's store, so the server-side layer remains the real boundary.
+
+Proven by an agent asked to widen its own policy by edit, by shell and by a script, each
+refused or caught, with the gateway refusing calls until the person answered.
+
+### §QS340 The server-side boundary
+
+Everything the gateway does on the client can be walked around by an agent running as
+the same Windows user, which the threat model (QS320) says plainly. The one layer the
+agent cannot route around is the server, so the gateway should make that layer easy
+rather than leave it to a person who already finds it tedious.
+
+A guided setup, from the session's context menu, proposes for one server: a dedicated
+account (`agent` by default) with its own key, `authorized_keys` options on that key
+(`restrict`, `from=` this machine's address, optionally `command=`), and a sudoers file
+granting only the commands the person ticks from a list derived from the session's
+policy. It shows the exact files and commands it will run, runs them only on approval,
+as the person's own account, and records them in the audit log.
+
+The session then gains an agent identity: the gateway connects as `agent`, the person
+still as themselves.
+
+The design document weighs what to offer for a server where the person has no root, and
+how to undo the setup.
+
+Proven against the test sshd: after setup, a command outside the sudoers list fails on
+the server even with the client-side policy turned off.
+
+### §QS341 Certificates that expire with the task
+
+A plain public key in `authorized_keys` is valid forever. If the agent account's private
+key leaves the machine, by a backup, a transcript or a compromised process, it keeps
+working until someone notices.
+
+OpenSSH certificates solve exactly this. The guided setup (QS340) can instead install a
+CA public key on the server with `TrustedUserCAKeys` and an `AuthorizedPrincipalsFile`
+for the agent account. quickshell then holds the CA key (in Credential Manager, behind
+Windows Hello when the person asks for it) and signs a fresh certificate when the
+gateway opens a connection: valid for a short window the policy sets, principal `agent`,
+`source-address` this machine, and `force-command` where the policy has one.
+
+A stolen certificate is worthless within minutes, nothing has to be removed from servers
+when a key rotates, and revocation is simply not signing another.
+
+The design document has to settle where the CA key lives and how a person rotates it,
+whether one CA spans all servers or one per tag, and how SSH.NET presents a certificate,
+which may need work in the library seam rather than here.
+
+Proven against the test sshd: a connection with a fresh certificate succeeds, and the
+same certificate is refused after its window.
+
+### §QS342 Claude Code in a pane, with the pane's context
+
+The most common moment to want help is while looking at an error in a session's output,
+and today that means selecting it, switching to another window and pasting it into an
+agent with no idea which server it came from.
+
+quickshell already runs local shells through ConPTY, so the least new surface is a pane:
+a profile that starts `claude` in a local pane with the gateway's MCP configuration and
+plugin already in place, so it reaches saved sessions through the gateway from its first
+command. A palette command, "Send to Claude", takes the current selection, or the last
+screenful when nothing is selected, and types it into that pane prefixed with the
+session name and tags it came from.
+
+This deliberately does not build a chat interface inside the client. Claude Code already
+is one, a second would cost the window budget, and a person who wants it elsewhere keeps
+using it there with the same gateway. The design document records that choice and what
+would reopen it.
+
+Proven by a UI case that selects text in an SSH pane, invokes the command, and reads the
+prefixed text from the Claude pane's buffer.
+
+### §QS343 Shipped as a Claude Code plugin
+
+Security that takes an afternoon to configure is security most people skip. The
+gateway's pieces are an MCP server entry, two hooks (the side-door steering and the
+policy-path guard), sandbox network rules, and a skill telling the agent which tool does
+what. Each is a hand edit in a different file today.
+
+A Claude Code plugin carries all of them. Its MCP entry points at the installed
+`quickshell.exe --mcp`, found the way the client's own installer records its path. Its
+hooks are small and run without a runtime the user must install. Its skill is short: use
+`exec` with argv rather than a shell string, prefer `edit_file` to heredocs, expect asks
+on `prod`, and report a refusal rather than work around it.
+
+quickshell's settings page offers to install the plugin when it finds `claude` on the
+PATH, and says what it will change before it does.
+
+The design document settles where the plugin is published (this repository, or a
+marketplace entry beside roadkeep's), and how its version is tied to the client's so a
+mismatched gateway refuses with a message rather than misbehaving.
+
+Proven by a clean guest: install the client, accept the offer, and an agent's first
+`exec` reaches the test sshd.

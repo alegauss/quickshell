@@ -93,3 +93,6 @@
 - ✅ **QS95** **The render suite takes the screen with topmost windows, and anything the operator does corrupts it** — A guest run is a second environment and not a second opinion: where it disagrees, that is a finding rather than a harness fault.
 - ✅ **QS100** **The ban on raw control bytes covers tests and not src, so the same byte went into shipped source unseen** — A raw control byte is banned in every C# file this repository has, not only in the half where the first one was noticed.
 - ✅ **QS157** **Three proxy-command tests fail in the guest and pass on this machine, and nothing says which desk is right** — A test that is not about a credential takes one that reads no file: the fixture's keys are gitignored and can never reach another machine.
+
+## Block L — An agent at the controls, held to a policy it cannot edit
+

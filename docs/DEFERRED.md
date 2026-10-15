@@ -40,3 +40,6 @@
 ## Block J — Leaving MobaXterm, proven by the switch
 
 ## Block K — The build and the harness — what a green run is evidence of
+
+## Block L — An agent at the controls, held to a policy it cannot edit
+
