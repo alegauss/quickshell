@@ -57,29 +57,6 @@ to be worth it.
 
 Falsified when a token-backed key cannot authenticate a session.
 
-### §QS305 QS305 A KDBX 4 writer
-
-The export the user asked for (an encrypted file of host, port, login and password to
-consult when one is forgotten) needs a format before it needs a window, and the format
-is KeePass KDBX 4. It is the open standard for an offline vault: Argon2id for the key,
-AES-256 or ChaCha20 for the payload, HMAC-SHA256 over every block so an edited file
-refuses to open, and an inner stream protecting each password field again. What decides
-it is the reader: KeePassXC, KeePass, Strongbox and KeePassDX all open it, so the file
-outlives this client and this machine. A format of our own would be readable only here;
-age has to be decrypted to plain text to be read.
-
-The writer is ours rather than KeePassLib, which is GPL. Argon2id comes from NSec,
-already a dependency since QS115 (libsodium takes parallelism 1, which KDBX permits);
-AES-CBC and HMAC-SHA256 are in .NET; ChaCha20 for the inner stream is a few dozen lines.
-An optional key file, which KDBX defines, is in scope; YubiKey challenge-response is
-KeePassXC's extension and is not.
-
-Done when a test writes a database with groups, entries and an attachment, and
-keepassxc-cli opens it with the passphrase, with the key file where one was set, and
-lists every field as written. No plain text touches the disk: the file is written to a
-temporary name from encrypted buffers and renamed, and every decrypted buffer is zeroed
-as SecretStore does.
-
 ### §QS306 QS306 Exporting saved passwords to a vault
 
 The user keeps a file of passwords because one is always forgotten, and today the client

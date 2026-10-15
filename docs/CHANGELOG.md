@@ -28,6 +28,7 @@
 - 🗑 **QS45** **Nothing forwards an agent, and nothing would stop a compromised host from using one if it did** — abandoned: Decided against by the owner on 2026-10-09: SSH.NET has no agent forwarding and writing it here is forbidden protocol work, so a jump host is the answer, recorded as a non-goal.
 - ✅ **QS115** **A master password is stretched by a function a graphics card is good at, where the design asked for one it is not** — The master password is stretched with Argon2id through libsodium, and entries sealed with the old PBKDF2 still open and are sealed again in the new format.
 - ✅ **QS293** **A session never asks Pageant for a key, so a PuTTY or MobaXterm user's loaded keys are not offered** — A session offers Pageant through its window after the OpenSSH agent; in the guest a saved session with no key opens on the sshd with a key only Pageant 0.77 holds.
+- ✅ **QS305** **Nothing in the client can write a KeePass KDBX 4 file, so no saved secret can leave it in a form another tool opens** — KdbxWriter writes KDBX 4 vaults, key file and attachments included, that keepassxc-cli 2.7.12 opens field for field (design recorded in `src/Quickshell.Transport/Kdbx.cs`).
 
 ## Block C — Emulation that does not lie about the remote
 
