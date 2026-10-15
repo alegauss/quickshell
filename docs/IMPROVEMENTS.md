@@ -271,7 +271,78 @@ Falsified when a one-cell blink costs what a whole-grid one did on that desk. Th
 swap effect goes back to `FlipDiscard` unless photon says sequential costs nothing, and
 the per-frame cost is the wake and the present, which is a different line.
 
+### §QS316 A split that presses Enter
+
+Reported by the user (2026-10-15), with a picture: on a saved session (root on a Debian
+host), each press of Split leaves every pane already open with one more prompt line
+under the last, as if Enter had been pressed in it.
+
+A split narrows the panes beside the new one, and each pane's session is told its new
+size (SessionPipeline.Resize, an SSH window-change on a remote pane). Two explanations
+fit, and they call for different fixes:
+
+1. The client sends input on a resize. A trace of the session log shows channel data from the
+   client at the moment of the split; a defect here.
+2. The host's shell redraws on SIGWINCH: readline, told the width shrank, decides the prompt
+   wrapped and prints it again. Nothing is sent, and Windows Terminal over OpenSSH does the
+   same. What can be done here is one window-change per pane per split, with the final size,
+   and none where a pane's columns and rows did not change.
+
+Measure first: trace one split, counting window-changes and bytes sent per pane, then
+the same split in Windows Terminal. Build only what that points at.
+
+Falsified when a split adds a prompt line to a pane whose size it did not change, or
+sends any input byte to a pane nobody typed into.
+
 ## Block D — The tree a user organises work in
+
+### §QS314 QS314 Selecting several sessions
+
+The owner asked on 2026-10-15 for a PDF documenting chosen sessions, and the first thing
+that needs is a way to choose them. The sidebar is a tree that holds one selection,
+which is also what connects, edits and folds, so a set of sessions has nowhere to be
+said.
+
+Ctrl+click adds or removes a row, Shift+click takes the range between the last row
+clicked and this one in the order the tree shows, and Ctrl+A in the sidebar takes every
+visible row. A selected folder stands for every session beneath it, at any depth, so
+documenting a customer is one click on its folder. A plain click goes back to one row,
+and what acts on one row today (Enter connects, F2 renames, QS300's one-click fold)
+keeps acting on the focused row. The accessibility tree reports each row's IsSelected,
+so a case and a screen reader both read it.
+
+The context menu on a set offers only what takes a set: the document, and later anything
+else that does. Connect on several rows is QS179's group and stays a folder's, not a
+selection's, until a line argues otherwise.
+
+Done when a UI case Ctrl+clicks two sessions and a folder, reads IsSelected on each row,
+and finds the set the window reports holds the two sessions and every session in the
+folder exactly once; a Shift+click range is read the same way; and a plain click leaves
+one.
+
+### §QS315 QS315 A PDF of the selected sessions
+
+The owner asked on 2026-10-15 for a way to document many sessions, with their proxies
+and keys, as a PDF of the ones selected. Today that is the sessions file read by hand,
+where an inherited value is not even on the node that uses it.
+
+Each session is one section: its name and folder path; host, port and user; how it signs
+in (key path and the key's SHA256 fingerprint, the agent, or a password, saying only
+whether one is saved and under which credential); its jump chain hop by hop; forwards as
+a table of kind, listen and target; reconnect, post-login commands, tags. Every value
+inherited from a folder says which. A cover page names the date, the client's version
+and the folders covered. No password, passphrase or private key is ever written, and a
+test asserts it against a store holding all three.
+
+The command is in the sidebar's menu for a selection and in the palette, and asks only
+where to save. PDF needs a library, as Argon2id did in QS115, so the owner decides it:
+PDFsharp with MigraDoc is MIT and pure managed; QuestPDF is nicer to write but free only
+under a revenue limit; printing through Microsoft Print to PDF needs a dialog and a
+printer.
+
+Done when a test documents a store with a folder default, a two-hop jump chain and three
+forwards, reads the PDF's text back, finds every field and its origin, and finds no
+secret.
 
 ## Block E — SCP and SFTP as a thing a person operates
 

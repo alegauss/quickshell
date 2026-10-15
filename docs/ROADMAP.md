@@ -13,7 +13,12 @@
 
 ## Block C — Emulation that does not lie about the remote
 
+- 📋 **QS316** (deps: —) **Each split prints a new prompt line in every pane already open, as if Enter had been pressed in it** — A split resizes the other panes, and either the client sends input on a resize or the host's shell redraws on each window-change. → §QS316
+
 ## Block D — The tree a user organises work in
+
+- 📋 **QS314** (deps: —) **The sidebar selects one row at a time, so nothing can act on several chosen sessions at once** — Ctrl+click and Shift+click select several rows in the sidebar, and a selected folder stands for every session under it, for actions that take a set. → §QS314
+- 📋 **QS315** (deps: QS314) **How a set of sessions is configured, with jump hosts, keys and forwards, can be documented only by copying it by hand** — A command writes a PDF of the selected sessions: each one's resolved settings, where each was inherited from, its jump chain and forwards, and never a secret. → §QS315
 
 ## Block E — SCP and SFTP as a thing a person operates
 
