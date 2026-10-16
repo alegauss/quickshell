@@ -1063,9 +1063,13 @@ public sealed class AgentGateway : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(trust);
 
-        string user = session.User?.Value ?? Environment.UserName;
+        // The agent's own identity where the session has one (QS340): its account and its key alone, so
+        // the server's limits on that account are what bound it, not the person's account.
+        string user = session.AgentUser?.Value ?? session.User?.Value ?? Environment.UserName;
         SshEndpoint target = SshEndpoint.For(session.Host, user, session.Port?.Value ?? SshEndpoint.DefaultPort);
-        IReadOnlyList<SshCredential> keys = RemoteShell.Credentials(session);
+        IReadOnlyList<SshCredential> keys = session.AgentUser is not null
+            ? session.AgentKey is { } agentKey ? [new SshCredential.PrivateKey(RemoteShell.Expand(agentKey.Value))] : []
+            : RemoteShell.Credentials(session);
 
         ISshTransport transport = session.JumpHost is { } jump
             ? new SshChain([.. RemoteShell.Hops(jump.Value, user).Select(hop => new SshHop(hop, keys, trust.CheckAsync)),

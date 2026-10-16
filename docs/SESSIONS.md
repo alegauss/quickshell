@@ -200,6 +200,19 @@ session there. **Off unless something sets it**, deliberately: an unexpected new
 plenty of hosts. A program running on the host does not survive a reconnect — the shell is a new one.
 The session dialog's **Reconnect after a drop** sets it.
 
+### `AgentUser`
+
+The account the agent gateway signs in as on this server, in place of `User`. The person's own tabs
+never use it. It is meant to name an account set up for an agent on the server, limited there by its
+key's options and a sudoers allowlist, so that what the client's agent policy refuses, the server
+refuses too ([the design](design/agent-gateway/README.md)). Set on a folder, every session in it
+uses the same agent account.
+
+### `AgentKey`
+
+The private key the agent gateway signs in with as `AgentUser`, and the only one it offers: not your
+agents, and not the keys OpenSSH looks for. A path, as `Key` is.
+
 ### `Scheme`
 
 The colour scheme this session's pane wears, in place of the window's: a scheme file, named as the

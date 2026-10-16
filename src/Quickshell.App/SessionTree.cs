@@ -56,12 +56,23 @@ public sealed record SessionSettings
     /// </summary>
     public bool? Reconnect { get; init; }
 
+    /// <summary>
+    /// The account the agent gateway signs in as on this server, in place of <see cref="User"/> (QS340):
+    /// one a server-side setup made, limited there by its key's options and a sudoers allowlist. The
+    /// person's own sessions never use it.
+    /// </summary>
+    public string? AgentUser { get; init; }
+
+    /// <summary>The private key the agent gateway signs in with as <see cref="AgentUser"/> (QS340).</summary>
+    public string? AgentKey { get; init; }
+
     /// <summary>Whether every field is unset, which is a node that inherits everything.</summary>
     [JsonIgnore]
     public bool IsEmpty =>
         User is null && Port is null && Key is null && JumpHost is null
         && Scheme is null && Credential is null && FontSize is null
-        && TerminalType is null && Scrollback is null && Reconnect is null;
+        && TerminalType is null && Scrollback is null && Reconnect is null
+        && AgentUser is null && AgentKey is null;
 }
 
 /// <summary>
@@ -152,6 +163,12 @@ public sealed record ResolvedSession(string Path, string Host, Source<string>? U
 
     /// <summary>Whether a dropped link is connected again, and which node said so (QS220).</summary>
     public Source<bool>? Reconnect { get; init; }
+
+    /// <summary>The account the agent gateway signs in as, and which node said so (QS340).</summary>
+    public Source<string>? AgentUser { get; init; }
+
+    /// <summary>The key the agent gateway signs in with, and which node said so (QS340).</summary>
+    public Source<string>? AgentKey { get; init; }
 
     /// <summary>
     /// What this session types after login, which is its own or nothing. No source accompanies it
@@ -405,6 +422,8 @@ public sealed class SessionTree
              carried.Scrollback?.ToString(CultureInfo.InvariantCulture));
         Note(nameof(SessionSettings.Reconnect),
              carried.Reconnect is { } again ? (again ? "true" : "false") : null);
+        Note(nameof(SessionSettings.AgentUser), carried.AgentUser);
+        Note(nameof(SessionSettings.AgentKey), carried.AgentKey);
 
         return inherited;
 
@@ -583,6 +602,8 @@ public sealed class SessionTree
                 Reconnect = settings.Reconnect is { } again
                     ? new Source<bool>(again, sources[nameof(SessionSettings.Reconnect)])
                     : null,
+                AgentUser = Carry(settings.AgentUser, sources, nameof(SessionSettings.AgentUser)),
+                AgentKey = Carry(settings.AgentKey, sources, nameof(SessionSettings.AgentKey)),
 
                 // Its own, never the folder's: see SessionNode.PostLogin.
                 PostLogin = node.PostLogin,
@@ -619,6 +640,8 @@ public sealed class SessionTree
         Take(own.TerminalType, nameof(SessionSettings.TerminalType));
         Take(own.Scrollback, nameof(SessionSettings.Scrollback));
         Take(own.Reconnect, nameof(SessionSettings.Reconnect));
+        Take(own.AgentUser, nameof(SessionSettings.AgentUser));
+        Take(own.AgentKey, nameof(SessionSettings.AgentKey));
 
         return new SessionSettings
         {
@@ -632,6 +655,8 @@ public sealed class SessionTree
             TerminalType = own.TerminalType ?? inherited.TerminalType,
             Scrollback = own.Scrollback ?? inherited.Scrollback,
             Reconnect = own.Reconnect ?? inherited.Reconnect,
+            AgentUser = own.AgentUser ?? inherited.AgentUser,
+            AgentKey = own.AgentKey ?? inherited.AgentKey,
         };
 
         void Take(object? value, string field)

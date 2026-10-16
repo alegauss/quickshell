@@ -497,6 +497,10 @@ public sealed class SessionEditor
                 TerminalType = Mine(nameof(SessionSettings.TerminalType)),
                 Scrollback = Number(nameof(SessionSettings.Scrollback)),
                 Reconnect = Toggle(Mine(nameof(SessionSettings.Reconnect))),
+                // Not in the dialog: the agent's identity is the server-side setup's (QS340), and a
+                // save through the dialog keeps it as it was rather than dropping it.
+                AgentUser = existing.Settings.AgentUser,
+                AgentKey = existing.Settings.AgentKey,
             },
         };
 

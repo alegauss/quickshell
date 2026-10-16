@@ -363,6 +363,19 @@ does not, which a later line has to settle before such a server is offered.
 with the session's key and the agents, never a typed password, and refuses a host key the user's
 known_hosts does not already hold, saying to connect once from the window.
 
+**The server-side boundary, first half (QS340).** `AgentAccountSetup.Plan` writes the setup for one
+server as a POSIX script the person reads before anything runs, and its undo. The script makes the
+account (`agent` by default) where it is not there, installs the agent key with `restrict` and
+`from="<the address the server sees this machine connect from>"`, and writes
+`/etc/sudoers.d/quickshell-agent` naming each allowed command as its program's full path on that
+server (`command -v`) and its arguments, checked with `visudo -c` before it is put in place. A command
+with no arguments is written with `""`, which in sudoers means none; a bare one would mean any. An
+argument a sudoers line cannot hold exactly (a space, or any of `, : = \ * ? [`) is refused rather than
+escaped into something the person did not read. A session's `AgentUser` and `AgentKey` (SESSIONS.md)
+are the identity the gateway then signs in with, offering that key alone. What is still to build is the
+guided half: the session menu entry that generates the key, shows this script, runs it as the person in
+a tab where they answer their own sudo, records the identity in the session, and offers the undo.
+
 **A policy the agent cannot widen (QS339).** Three measures. The policy lives in quickshell's folder,
 outside any repository an agent is pointed at. `quickshell --agent-hook` denies the agent's `Write`,
 `Edit`, `MultiEdit` and `NotebookEdit` any path at or under the files that limit or watch it: the
