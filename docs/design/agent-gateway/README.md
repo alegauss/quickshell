@@ -430,8 +430,22 @@ nothing. Revoking the agent is not signing again. Moving it to a new key means s
 again. A connection the gateway keeps open stays open past its certificate, since sshd checks a
 certificate only at sign-in; a kill switch (QS334) closes it. Settled and not built: one authority spans
 every server, since a separate authority per tag adds keys to keep without narrowing what a certificate
-opens. Each certificate already names one account, and each server trusts that account alone. Windows
-Hello in front of the authority is not built.
+opens. Each certificate already names one account, and each server trusts that account alone.
+
+**Windows Hello before a signing (QS360).** With `agentCertificateHello` on, the gateway asks before it
+unseals anything. It writes a request naming the tool `sign_certificate`, the session and the
+principal into the same asks folder approvals use (QS337). The window answers it, instead of with the
+approval dialog, with a Windows Hello prompt it owns (`WindowsHello.VerifyAsync`, QS306): verified
+approves, and declined or not set up refuses with that reason. No window open means no one to ask,
+said at once. A signing that is not confirmed throws before `ssh-keygen` runs, so no certificate is
+left behind, and the agent sees its connection refused with the reason. Since the gateway signs once
+per connection and keeps the connection, the person is asked once per session per gateway run.
+
+The authority stays sealed with DPAPI with the prompt in front of it, not in a key held by Windows
+Hello. That is weaker against a process that unseals DPAPI itself, past quickshell, but it needs no
+migration of setups already made, and a locked or unattended desk answers no either way. Proven with
+the verdict stubbed. The real prompt waits on a desk with Windows Hello and a person (QS344), and no
+test raises it on a desk somebody is using.
 
 **A policy the agent cannot widen (QS339).** Three measures. The policy lives in quickshell's folder,
 outside any repository an agent is pointed at. `quickshell --agent-hook` denies the agent's `Write`,

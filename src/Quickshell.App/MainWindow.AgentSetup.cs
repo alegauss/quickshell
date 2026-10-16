@@ -148,6 +148,29 @@ public sealed partial class MainWindow
     /// </summary>
     public Func<string, string, bool>? AsksAgentRemoval { get; set; }
 
+    /// <summary>
+    /// The answer to a gateway's request to sign an agent a certificate (QS360): Windows Hello, over this
+    /// window, approves it; declined, or Hello not set up for this account, refuses it, saying which.
+    /// </summary>
+    public async Task<ApprovalAnswer> AnswerSigning(ApprovalRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        AskedCall asked = request.Calls[0];
+        string message = $"An agent is signing in to {asked.Session} as {string.Join(' ', asked.Words)}. Confirm it is you.";
+
+        HelloVerdict verdict = await (Verifies ?? (said => WindowsHello.VerifyAsync(new System.Windows.Interop.WindowInteropHelper(this).Handle, said)))(message)
+            .ConfigureAwait(true);
+
+        return verdict switch
+        {
+            HelloVerdict.Verified => new ApprovalAnswer(Decision.Approve, request.Hash, "confirmed with Windows Hello"),
+            HelloVerdict.Unavailable => new ApprovalAnswer(Decision.Refuse, request.Hash,
+                                                           "Windows Hello is not set up for this Windows account, so nobody could confirm the signing"),
+            _ => new ApprovalAnswer(Decision.Refuse, request.Hash, "Windows Hello was declined at the desk"),
+        };
+    }
+
     /// <summary>Whether the session at <paramref name="path"/> names an agent account, its own or a folder's.</summary>
     public bool HasAgentAccount(string path) => _store?.Session(path)?.AgentUser is not null;
 

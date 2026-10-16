@@ -137,7 +137,7 @@ public sealed class AgentCertificateTests : IDisposable
         {
             store = AgentAccountSetup.Record(store, "db", account, key, certificate: true);
 
-            await using (AgentGateway gateway = new(() => store, (session, token) => AgentGateway.Connect(session, trust, token, (authority, TimeSpan.FromMinutes(1))), "test")
+            await using (AgentGateway gateway = new(() => store, (session, token) => AgentGateway.Connect(session, trust, token, new AgentSigning(authority, TimeSpan.FromMinutes(1))), "test")
             {
                 PolicyFile = Policies.BreakGlass(),
             })
@@ -163,6 +163,79 @@ public sealed class AgentCertificateTests : IDisposable
         {
             SshFixture.Docker($"echo {Convert.ToBase64String(Encoding.UTF8.GetBytes(plan.Undo))} | base64 -d | sh");
         }
+    }
+
+    /// <summary>
+    /// QS360: where the signing must be confirmed and it is not, the gateway refuses the connection naming why,
+    /// and nothing is signed: no certificate is left beside the key. Asked with no quickshell window open, the
+    /// Windows Hello confirmation says there is no one to ask.
+    /// </summary>
+    [Fact]
+    public async Task AnUnconfirmedSigningSignsNothingAndSaysWhy()
+    {
+        AgentAuthority authority = new(Path.Combine(_here, "keys"));
+        string key = AgentAccountSetup.KeyFor(authority.Folder, "db");
+
+        authority.PublicKey();
+        AgentAccountSetup.MakeKey(key);
+
+        ResolvedSession session = SessionTree.Of(new SessionNode
+        {
+            Children = [new SessionNode { Name = "db", Host = "127.0.0.1", Settings = new SessionSettings { Port = 1, AgentUser = "agent", AgentKey = key, AgentCertificate = true } }],
+        }).Session("db")!;
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")), (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        List<string> asked = [];
+
+        AgentSigning declined = new(authority, TimeSpan.FromMinutes(1))
+        {
+            Confirms = (who, principal, _) =>
+            {
+                asked.Add($"{who.Path} as {principal}");
+
+                return Task.FromResult<string?>("Windows Hello was declined at the desk");
+            },
+        };
+
+        SshException refused = await Assert.ThrowsAsync<SshException>(async () => await AgentGateway.Connect(session, trust, Stop, declined));
+
+        Assert.Equal(["db as agent"], asked);
+        Assert.Contains("Windows Hello was declined at the desk", refused.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(key + "-cert.pub"), "a certificate was signed though the signing was not confirmed");
+
+        Assert.False(AgentAsks.WindowOpen(), "a quickshell window holds the asks name in this test process");
+        Assert.Equal("no quickshell window is open to ask Windows Hello in",
+                     await AgentSigning.ByHello(Path.Combine(_here, "asks"))(session, "agent", Stop));
+    }
+
+    /// <summary>The window answers a signing with Windows Hello: verified approves, and declined or not set up refuses, saying which.</summary>
+    [Theory]
+    [InlineData(HelloVerdict.Verified, Decision.Approve, "confirmed with Windows Hello")]
+    [InlineData(HelloVerdict.Declined, Decision.Refuse, "Windows Hello was declined at the desk")]
+    [InlineData(HelloVerdict.Unavailable, Decision.Refuse, "Windows Hello is not set up for this Windows account")]
+    public void TheWindowAnswersASigningWithWindowsHello(HelloVerdict verdict, Decision decision, string said)
+    {
+        ApprovalRequest request = new("r1", "sign", [new AskedCall("Work/db", "db", ["prod"], AgentSigning.SignTool, ["agent"], null, null, "agentCertificateHello")]);
+
+        (ApprovalAnswer answer, string? prompt) = Sta.Run(() =>
+        {
+            string? shown = null;
+            MainWindow window = new()
+            {
+                Verifies = message =>
+                {
+                    shown = message;
+
+                    return Task.FromResult(verdict);
+                },
+            };
+
+            return (window.AnswerSigning(request).GetAwaiter().GetResult(), shown);
+        });
+
+        Assert.Equal(decision, answer.Decision);
+        Assert.Equal(request.Hash, answer.Hash);
+        Assert.StartsWith(said, answer.Note, StringComparison.Ordinal);
+        Assert.Equal("An agent is signing in to Work/db as agent. Confirm it is you.", prompt);
     }
 
     private static async Task SignIn(SshEndpoint target, SshCredential credential, TrustOnFirstUse trust)

@@ -124,6 +124,12 @@ public sealed record Settings
     public MenuBarMode MenuBar { get; init; } = MenuBarMode.Alt;
 
     /// <summary>
+    /// Whether Windows Hello confirms the person is at the desk before quickshell signs an agent a
+    /// certificate (QS360). Off by default: on, an agent signs in only while someone answers the prompt.
+    /// </summary>
+    public bool AgentCertificateHello { get; init; }
+
+    /// <summary>
     /// Every key this build did not recognise, kept exactly as it was read so it can be written back
     /// unchanged.
     /// </summary>
@@ -191,7 +197,7 @@ public static class SettingsFile
     [
         Version, "theme", "fontFamily", "fontSize", "scrollback", "ligatures", "cursor",
         "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar", "startWith", "vaultFile", "tagColours", "agentGateway",
-        "claudeCommand", "menuBar",
+        "claudeCommand", "menuBar", "agentCertificateHello",
     ];
 
     /// <summary>
@@ -312,7 +318,7 @@ public static class SettingsFile
             }
         }
 
-        foreach (string key in (string[])["ligatures", "cursorBlink", "warnOnPaste", "sessionsSidebar"])
+        foreach (string key in (string[])["ligatures", "cursorBlink", "warnOnPaste", "sessionsSidebar", "agentCertificateHello"])
         {
             if (root.TryGetProperty(key, out JsonElement value) && value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
             {
@@ -488,6 +494,7 @@ public static class SettingsFile
             writer.WriteBoolean("agentGateway", settings.AgentGateway);
             writer.WriteString("claudeCommand", settings.ClaudeCommand);
             writer.WriteString("menuBar", settings.MenuBar.ToString());
+            writer.WriteBoolean("agentCertificateHello", settings.AgentCertificateHello);
 
             foreach ((string name, JsonElement value) in settings.Unrecognised)
             {
@@ -655,6 +662,7 @@ public static class SettingsFile
         ["agentGateway"] = settings.AgentGateway ? "true" : "false",
         ["claudeCommand"] = Quoted(settings.ClaudeCommand),
         ["menuBar"] = Quoted(settings.MenuBar.ToString()),
+        ["agentCertificateHello"] = settings.AgentCertificateHello ? "true" : "false",
     };
 
     /// <summary>The spaces and tabs in front of the key that starts at <paramref name="at"/>, back to its line's start.</summary>
@@ -710,6 +718,7 @@ public static class SettingsFile
             AgentGateway = Yes(root, "agentGateway") ?? Settings.Default.AgentGateway,
             ClaudeCommand = Text(root, "claudeCommand") is { Length: > 0 } claude ? claude : Settings.Default.ClaudeCommand,
             MenuBar = Text(root, "menuBar") is { } bar && Enum.TryParse(bar, ignoreCase: true, out MenuBarMode shown) ? shown : Settings.Default.MenuBar,
+            AgentCertificateHello = Yes(root, "agentCertificateHello") ?? Settings.Default.AgentCertificateHello,
             Unrecognised = unrecognised,
         };
     }

@@ -33,7 +33,6 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS360** (deps: QS341 ✅) **The agent's certificate authority signs whenever any process of the person's asks, with nobody present** — Windows Hello in front of each signing, where the person turns it on, would make every agent sign-in need a person at the desk. → §QS360
 - 📋 **QS362** (deps: QS343 ✅) **The Claude Code plugin has never been installed into a real Claude Code and used for an exec** — Its files validate and its steps run against a stand-in; that Claude Code installs it and an agent then reaches a server is unproven without claude in the guest. → §QS362
 - 📋 **QS363** (deps: QS343 ✅, QS358 ✅) **The Claude Code plugin names quickshell.exe by its Windows path, which a Claude Code inside WSL2 cannot start** — WSL2 with its sandbox is the wall QS358 recommends on Windows, and there the plugin's MCP and hook commands need a /mnt path. → §QS363
 
@@ -298,6 +297,13 @@
   finds nothing written.
 - **A real PIN once writes the vault** The owner verifies with a real PIN on the
   reference desk and sees the vault written.
+
+## Done when — QS360
+
+- **A real Windows Hello prompt left unconfirmed signs no certificate** On a desk with
+  Windows Hello set up and agentCertificateHello on, an agent's connection raises the
+  prompt over quickshell; cancelled, the agent's call fails naming Hello and no
+  -cert.pub is written beside the key.
 
 ## Non-goals
 

@@ -43,3 +43,5 @@
 ## Block K — The build and the harness — what a green run is evidence of
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
+
+- ⏸ **QS360** (deps: QS341 ✅) **The agent's certificate authority signs whenever any process of the person's asks, with nobody present** — set aside (It needs a person present.): A real unconfirmed Windows Hello prompt has yet to be seen refusing a signing, on a desk with Hello and a person. → §QS360

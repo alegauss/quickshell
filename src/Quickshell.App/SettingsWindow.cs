@@ -46,6 +46,7 @@ public sealed class SettingsWindow : Window
         ("tagColours", "Tag colours", "Which tags a tab shows besides prod, and in which colour, as staging=caution, db=accent. Empty, the default, shows prod alone."),
         ("agentGateway", "Agent gateway", "Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. What it may run on each is the agent policy's to say."),
         ("claudeCommand", "Claude Code command", "What Open Claude Code runs in its pane, found on the path: claude by default."),
+        ("agentCertificateHello", "Windows Hello before an agent signs in", "Whether Windows Hello asks for you before quickshell signs an agent a certificate. Off by default; on, an agent signs in only while you are at the desk to answer."),
         ("menuBar", "Menu bar", "When the menu bar of every action is on screen: Hidden, Alt (shown by pressing and releasing Alt, the default) or Always."),
     ];
 
@@ -230,6 +231,7 @@ public sealed class SettingsWindow : Window
             ((CheckBox)_controls["agentGateway"]).IsChecked = now.AgentGateway;
             ((TextBox)_controls["claudeCommand"]).Text = now.ClaudeCommand;
             ((ComboBox)_controls["menuBar"]).SelectedItem = now.MenuBar;
+            ((CheckBox)_controls["agentCertificateHello"]).IsChecked = now.AgentCertificateHello;
         }
         finally
         {
@@ -303,6 +305,7 @@ public sealed class SettingsWindow : Window
         "warnOnPaste" => Toggle(on => Change(now => now with { WarnOnPaste = on })),
         "sessionsSidebar" => Toggle(on => Change(now => now with { SessionsSidebar = on })),
         "agentGateway" => Toggle(on => Change(now => now with { AgentGateway = on })),
+        "agentCertificateHello" => Toggle(on => Change(now => now with { AgentCertificateHello = on })),
         "fontFamily" => Field(text => text.Trim().Length > 0 && Change(now => now with { FontFamily = text.Trim() })),
         "fontSize" => Field(text => double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double size)
                                     && size > 0 && Change(now => now with { FontSize = size })),

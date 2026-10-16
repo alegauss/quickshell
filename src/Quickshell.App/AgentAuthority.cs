@@ -9,6 +9,58 @@ using System.Text;
 namespace Quickshell.App;
 
 /// <summary>
+/// How the gateway signs an agent's certificate (QS341): by which authority, for how long, and, where the
+/// person asked for it (QS360), only once Windows Hello has confirmed they are at the desk.
+/// </summary>
+/// <param name="Authority">What signs.</param>
+/// <param name="Lifetime">How long a certificate lasts.</param>
+public sealed record AgentSigning(AgentAuthority Authority, TimeSpan Lifetime)
+{
+    /// <summary>The tool a signing request names in the asks folder, which the window answers with Windows Hello.</summary>
+    public const string SignTool = "sign_certificate";
+
+    /// <summary>
+    /// Asked before each signing, with the session and the principal, and answering null to sign or why not;
+    /// null where nothing is asked.
+    /// </summary>
+    public Func<ResolvedSession, string, CancellationToken, Task<string?>>? Confirms { get; init; }
+
+    /// <summary>
+    /// The installed authority, for the agent policy's lifetime, confirmed by Windows Hello through the window
+    /// where the settings say <c>agentCertificateHello</c>.
+    /// </summary>
+    public static AgentSigning Installed()
+    {
+        AgentSigning signing = new(AgentAuthority.Installed, AgentPolicy.Load(Locations.Current.AgentPolicy).CertificateLifetime);
+
+        return SettingsFile.ReadFrom(Locations.Current.Settings).AgentCertificateHello
+            ? signing with { Confirms = ByHello(Locations.Current.AgentAsks) }
+            : signing;
+    }
+
+    /// <summary>
+    /// A confirmation the window gives with Windows Hello: a signing request in the asks folder, answered by
+    /// the prompt it shows over itself. No window open is no one to ask, and is said.
+    /// </summary>
+    public static Func<ResolvedSession, string, CancellationToken, Task<string?>> ByHello(string asksFolder) =>
+        async (session, principal, cancellationToken) =>
+        {
+            if (!AgentAsks.WindowOpen())
+            {
+                return "no quickshell window is open to ask Windows Hello in";
+            }
+
+            ApprovalRequest request = new(Guid.NewGuid().ToString("N"), "sign",
+                                          [new AskedCall(session.Path, session.Host, session.Tags, SignTool, [principal], null, null, "agentCertificateHello")]);
+            ApprovalAnswer answer = await AgentAsks.AskAsync(asksFolder, request, AgentAsks.Patience, cancellationToken).ConfigureAwait(false);
+
+            return answer.Decision == Decision.Approve
+                ? null
+                : answer.Note is { Length: > 0 } note ? note : $"Windows Hello was not confirmed ({answer.Decision.ToString().ToLowerInvariant()})";
+        };
+}
+
+/// <summary>
 /// quickshell as a small SSH certificate authority for its agents (QS341): a server set up to trust it takes
 /// the agent in on a certificate signed for minutes before each connection, so a key that leaks is worth
 /// nothing once the last certificate signed for it has run out, and nothing on the server has to change

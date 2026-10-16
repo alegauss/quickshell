@@ -249,6 +249,18 @@ everything. `certificateMinutes` (1 to 60, 5 by default) is how long a certifica
 agent lasts, on a server set up to take it in on one. The design (`docs/design/agent-gateway/README.md`)
 gives the format with an example.
 
+### `agentCertificateHello`
+
+Whether Windows Hello asks for you before quickshell signs an agent a certificate. Off by default; on, an agent signs in only while you are at the desk to answer.
+
+On a session set up to take its agent in on a certificate (`AgentCertificate`, [SESSIONS.md](SESSIONS.md)),
+the gateway asks quickshell's window before each signing, and the window shows the Windows Hello prompt
+over itself, naming the session and the account. The gateway signs once per connection, so the prompt
+comes once per session per agent run, not once per command. With no window open, or Hello declined or
+not set up for your account, nothing is signed and the agent is told why. Without it, any program
+running as you can have quickshell sign a certificate; that certificate still opens only the account
+the server limited.
+
 ### `claudeCommand`
 
 What Open Claude Code runs in its pane, found on the path: claude by default.

@@ -747,6 +747,14 @@ public static class Entry
             return;
         }
 
+        // A certificate to sign (QS360) is answered by Windows Hello over this window, not by the dialog.
+        if (request.Calls is [{ Tool: AgentSigning.SignTool }])
+        {
+            _ = SignedAsync(window, folder, request);
+
+            return;
+        }
+
         ApprovalDialog dialog = new(request) { Owner = window.IsLoaded ? window : null, ThemeMode = window.ThemeMode };
 
         dialog.ShowDialog();
@@ -765,6 +773,23 @@ public static class Entry
                 answer = answer with { Decision = Decision.Approve };
                 MessageBox.Show(window, $"The batch runs as approved, but the grant could not be written: {unwritten.Message}", "Agent policy");
             }
+        }
+
+        AgentAsks.WriteAnswer(folder, request.Id, answer);
+    }
+
+    /// <summary>Asks Windows Hello for a signing request and writes its answer, a failure of the prompt itself said as a refusal.</summary>
+    private static async Task SignedAsync(MainWindow window, string folder, ApprovalRequest request)
+    {
+        ApprovalAnswer answer;
+
+        try
+        {
+            answer = await window.AnswerSigning(request).ConfigureAwait(true);
+        }
+        catch (Exception failed) when (failed is System.Runtime.InteropServices.COMException or InvalidOperationException)
+        {
+            answer = new ApprovalAnswer(Decision.Refuse, request.Hash, $"Windows Hello could not be asked: {failed.Message}");
         }
 
         AgentAsks.WriteAnswer(folder, request.Id, answer);

@@ -1069,13 +1069,14 @@ public sealed class AgentGateway : IAsyncDisposable
     /// <param name="session">The session to connect to.</param>
     /// <param name="trust">The host-key check.</param>
     /// <param name="cancellationToken">Abandons the connection.</param>
-    /// <param name="authority">
-    /// What signs the agent's certificate where the session says it signs in on one (QS341), and for how
-    /// long: the installed authority, for the lifetime the agent policy sets, unless a caller says otherwise.
+    /// <param name="signing">
+    /// How the agent's certificate is signed where the session says it signs in on one (QS341): the installed
+    /// authority, for the lifetime the agent policy sets, confirmed by Windows Hello where the settings ask
+    /// for it (QS360), unless a caller says otherwise.
     /// </param>
     public static async ValueTask<IGatewayConnection> Connect(ResolvedSession session, TrustOnFirstUse trust,
                                                               CancellationToken cancellationToken,
-                                                              (AgentAuthority Authority, TimeSpan Lifetime)? authority = null)
+                                                              AgentSigning? signing = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(trust);
@@ -1086,7 +1087,7 @@ public sealed class AgentGateway : IAsyncDisposable
         string user = session.AgentUser?.Value ?? session.User?.Value ?? Environment.UserName;
         SshEndpoint target = SshEndpoint.For(session.Host, user, session.Port?.Value ?? SshEndpoint.DefaultPort);
         IReadOnlyList<SshCredential> keys = session.AgentUser is not null
-            ? session.AgentKey is { } agentKey ? [AgentCredential(RemoteShell.Expand(agentKey.Value), user, session, authority)] : []
+            ? session.AgentKey is { } agentKey ? [await AgentCredentialAsync(RemoteShell.Expand(agentKey.Value), user, session, signing, cancellationToken).ConfigureAwait(false)] : []
             : RemoteShell.Credentials(session);
 
         ISshTransport transport = session.JumpHost is { } jump
@@ -1116,21 +1117,31 @@ public sealed class AgentGateway : IAsyncDisposable
         return new Kept(transport);
     }
 
-    /// <summary>The agent's key, with a certificate signed for it now where the session signs in on one.</summary>
-    private static SshCredential.PrivateKey AgentCredential(string key, string user, ResolvedSession session,
-                                                            (AgentAuthority Authority, TimeSpan Lifetime)? authority)
+    /// <summary>
+    /// The agent's key, with a certificate signed for it now where the session signs in on one, and only once
+    /// Windows Hello has confirmed the person where the settings ask for that (QS360).
+    /// </summary>
+    private static async Task<SshCredential.PrivateKey> AgentCredentialAsync(string key, string user, ResolvedSession session,
+                                                                            AgentSigning? signing, CancellationToken cancellationToken)
     {
         if (session.AgentCertificate is not { Value: true })
         {
             return new SshCredential.PrivateKey(key);
         }
 
-        (AgentAuthority signer, TimeSpan lifetime) = authority
-            ?? (AgentAuthority.Installed, AgentPolicy.Load(Locations.Current.AgentPolicy).CertificateLifetime);
+        signing ??= AgentSigning.Installed();
+
+        // Asked before anything is unsealed: a signing nobody confirmed leaves no certificate behind.
+        if (signing.Confirms is { } confirms && await confirms(session, user, cancellationToken).ConfigureAwait(false) is { } refused)
+        {
+            throw new SshException(SshFailureKind.CredentialRejected, $"No certificate was signed for {session.Path}'s agent account: {refused}.",
+                                   "The person asked for Windows Hello before each signing (agentCertificateHello), and it did not confirm them.",
+                                   "The person answers the Windows Hello prompt over quickshell's window, or turns the setting off.");
+        }
 
         try
         {
-            return new SshCredential.PrivateKey(key, CertificatePath: signer.Sign(key, user, lifetime));
+            return new SshCredential.PrivateKey(key, CertificatePath: signing.Authority.Sign(key, user, signing.Lifetime));
         }
         catch (Exception unsigned) when (unsigned is AgentSetupRefusal or IOException or System.Security.Cryptography.CryptographicException)
         {
