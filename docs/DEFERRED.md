@@ -7,6 +7,7 @@
 ## Block B — Keys, agents, and the host you think you reached
 
 - ⏸ **QS43** (deps: QS41 ✅, QS114 ✅) **A key already unlocked in an agent must be typed again, and a hardware key cannot be used at all** — set aside (Needs a hardware token.): Both carriers now reach an agent, and no key on a hardware token has yet signed a session through either. → §QS43
+- ⏸ **QS344** (deps: —) **The Windows Hello prompt before a vault export has never been seen to run, since no test desk has Hello set up** — set aside (Both criteria need a person present.): Seeing the prompt over the client needs a PIN set in the guest, and one real verification by the owner with a real PIN. → §QS344
 
 ## Block C — Emulation that does not lie about the remote
 
