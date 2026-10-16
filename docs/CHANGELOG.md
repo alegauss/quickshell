@@ -360,6 +360,7 @@
 - ✅ **QS292** **The Explorer drop is proven by a test that drives the desk by hand instead of by a UI case** — The Explorer drop is a UI case in browser.cases.json: a file dragged from the host's pane lands in an Explorer folder and is read back byte for byte, and the hand-driven test is gone.
 - ✅ **QS355** **CI is red on every push: the app tests skip three on a clean runner against a budget of two** — The app tests may skip three on a clean desk, PuTTY's and MobaXterm's two real-file readers, so CI is held to what a runner without either has.
 - ✅ **QS347** **A middle click closing a tab is proven by routed events raised in a unit test, not by a UI case** — UI cases in the guest middle-click a tab closed and right-click Close tabs to the right, now that winwright 1.1.1 names a click's button.
+- ✅ **QS357** **The echo-delay pipeline test goes red in the guest when ConPTY prints under 300 KB/s for thirty seconds** — The echo-delay test reads until a byte count or its patience, skips naming cmd's rate when too little printed, and still fails a parser that falls behind.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

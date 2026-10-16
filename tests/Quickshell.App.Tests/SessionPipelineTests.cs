@@ -208,17 +208,39 @@ public sealed class SessionPipelineTests
 
             await pipeline.TypeAsync(Typed($"type \"{big}\""), TestContext.Current.CancellationToken);
 
-            // Two and eight megabytes: four times the bytes, which is what the bound below is built on,
-            // and a stream the guest's ConPTY prints inside the patience on a slow hour (QS263).
-            string Parsed() => $"{pipeline.Work.Bytes / 1024 / 1024} MB parsed after {Patience.TotalSeconds:F0} s";
+            // Two megabytes, then four times that: four times the bytes, which is what the bound below is
+            // built on. Each reading is taken at its byte count or when the patience runs out, whichever is first
+            // (QS357): the guest's ConPTY has printed well under 300 KB/s for half a minute on an
+            // unchanged tree, and how fast cmd prints is not what this test is about.
+            Stopwatch printing = Stopwatch.StartNew();
 
-            await Until(() => pipeline.Work.Bytes > 2 * 1024 * 1024, Parsed);
+            await Reached(() => pipeline.Work.Bytes > 2 * 1024 * 1024);
             PipelineWork early = pipeline.Work;
 
-            await Until(() => pipeline.Work.Bytes > 8 * 1024 * 1024, Parsed);
+            // Four times the first reading and not a fixed eight megabytes: the first lands a little past
+            // two, and a second at eight would then cover a little under three times it, which is below
+            // what the comparison is built on however fast cmd printed.
+            await Reached(() => pipeline.Work.Bytes >= early.Bytes * 4);
             PipelineWork late = pipeline.Work;
 
-            Assert.True(late.Bytes > early.Bytes * 3, "the stream did not actually grow between readings");
+            // The claim is a ratio over what each interval covered. Where the producer was too slow for
+            // the second to cover three times the first's bytes, there is no ratio to judge, and the
+            // test says so with the rate it saw rather than reading a slow cmd as a broken pipeline.
+            //
+            // But only where the slowness was the producer's. A parser waiting on its renderer is slow
+            // too, and what tells them apart is what a read waited: behind a slow producer the parser is
+            // idle and takes each read at once, behind a slow parser every read queues. So the reads seen
+            // must have waited no longer than the floor the ratio itself allows before it may skip.
+            bool judgeable = early.Bytes > 0 && late.Bytes - early.Bytes >= early.Bytes * 3;
+            double waited = Mean(late, default);
+
+            Assert.True(judgeable || waited <= 2.0,
+                $"only {late.Bytes / 1024 / 1024} MB were parsed in {printing.Elapsed.TotalSeconds:F0} s and each read waited "
+                + $"{waited:F3} ms on average before it was parsed: the parser fell behind, not the producer");
+
+            Assert.SkipUnless(judgeable,
+                $"cmd printed {late.Bytes / 1024.0 / printing.Elapsed.TotalSeconds:F0} KB/s, {late.Bytes / 1024 / 1024} MB in "
+                + $"{printing.Elapsed.TotalSeconds:F0} s, too slow for the second reading to cover three times the first's bytes");
 
             // The mean wait over each interval: the first two megabytes, and then the six after
             // them. Both are averages over their own reads, so neither carries the other's tail.
@@ -507,6 +529,24 @@ public sealed class SessionPipelineTests
     /// Waits for something to become true, or fails saying it did not — and, where the caller says
     /// how, how far it had got (QS263): a timeout that names no number cannot be told from a hang.
     /// </summary>
+    /// <summary>Waits for a condition up to the patience, and answers whether it held, never failing on its own.</summary>
+    private static async Task<bool> Reached(Func<bool> what)
+    {
+        Stopwatch clock = Stopwatch.StartNew();
+
+        while (clock.Elapsed < Patience)
+        {
+            if (what())
+            {
+                return true;
+            }
+
+            await Task.Delay(5, TestContext.Current.CancellationToken);
+        }
+
+        return what();
+    }
+
     private static async Task Until(Func<bool> what, Func<string>? reached = null)
     {
         Stopwatch clock = Stopwatch.StartNew();

@@ -443,28 +443,6 @@ range and a plain click that leaves one row follow. The set has no reading of it
 yet: the first action that takes one, QS315's document, is what the case then reads.
 Done when that case runs green in the guest beside the others.
 
-### §QS357 A slow producer is not a failing pipeline
-
-QS263 cut SessionPipelineTests.TheDelayBeforeAReadIsParsedDoesNotGrowWithTheFile to
-readings at 2 and 8 MB of a 48 MB `type` through cmd in a real ConPTY, inside a 30
-second patience. On 2026-10-15 it went red twice in the guest, both times "6 MB parsed
-after 30 s", then passed twice, once on HEAD and once on the same tree that had failed.
-No code on its path had changed. So the guest's ConPTY sometimes prints well under 300
-KB/s for half a minute, and the test reads that as the pipeline failing.
-
-What the test claims is a ratio: the mean wait before a read is parsed does not grow
-with the bytes. A slow producer does not falsify that, and neither does a fast one, so
-the test should not depend on how fast cmd prints. What to build: measure until a byte
-count or a time is reached, whichever comes first, and compare the two intervals by what
-each covered. If the second interval covered less than three times the first's bytes
-when time ran out, the test says the producer was too slow to judge and skips with the
-rate it measured, which the skip budget then counts, rather than going red. A producer
-the test controls, with no cmd, would lose what the test is for: a producer that does
-not wait.
-
-Done when ten guest runs in a row go green or skip with a rate named, and a parser made
-to wait on its renderer still fails it.
-
 ### §QS361 A typed hyphen that arrived as an r
 
 "Clicking a tab on the strip puts that tab's terminal on screen" (tabs.cases.json) types
