@@ -41,12 +41,12 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- ⏳ **QS340** (deps: QS320 ✅, QS321 ✅) **A client-side policy is advice the server never hears, and nothing helps set up an account that limits an agent there** — A guided setup from the session menu still has to make the key, show the script, run it with the person's sudo and record the identity. → §QS340
-- 📋 **QS341** (deps: QS340 ⏳) **An agent's key on a server is valid until someone removes it, so a key that leaks works for months** — quickshell acts as a small SSH CA and signs the agent a certificate for minutes, bound to its principal, source address and options. → §QS341
+- 📋 **QS341** (deps: QS340 ✅) **An agent's key on a server is valid until someone removes it, so a key that leaks works for months** — quickshell acts as a small SSH CA and signs the agent a certificate for minutes, bound to its principal, source address and options. → §QS341
 - 📋 **QS342** (deps: QS321 ✅) **Asking a local Claude Code about what a pane shows means copying the scrollback by hand into another window** — A local pane runs claude with the gateway configured, and a palette command sends a pane's selection or recent scrollback to it. → §QS342
 - 📋 **QS343** (deps: QS325 ✅, QS332 ✅) **Wiring the gateway into Claude Code means hand-editing MCP config, hooks and sandbox rules, so few will** — A Claude Code plugin installs the MCP server, the hooks and a skill in one step, and quickshell offers to install it when it finds claude. → §QS343
 - 📋 **QS356** (deps: QS325 ✅) **exec quotes every argument for a POSIX shell, so on a Windows server a word with a space or a quote arrives altered** — Windows OpenSSH runs an exec through cmd, where a single quote means nothing, and the command runs on words nobody sent. → §QS356
 - 📋 **QS358** (deps: QS332 ✅) **On native Windows nothing below the shell stops an agent's own script from opening SSH around the gateway** — Claude Code's sandbox runs on macOS, Linux and WSL2 only, so on Windows the command-line hook is the whole defence. → §QS358
+- 📋 **QS359** (deps: QS340 ✅) **An agent account set up from the session menu cannot be removed from it** — The undo script exists and nothing in the window runs it, so taking an agent off a server means finding and running it by hand. → §QS359
 
 ## Done when — Block A
 
@@ -309,13 +309,6 @@
   finds nothing written.
 - **A real PIN once writes the vault** The owner verifies with a real PIN on the
   reference desk and sees the vault written.
-
-## Done when — QS340
-
-- **A person sets up an agent account from the session menu alone** Settled by a UI
-  case: the menu entry makes the key, shows the exact script, runs it in a tab where the
-  person answers sudo, and records AgentUser and AgentKey in the session; then the
-  fixture refuses an unlisted sudo for the gateway.
 
 ## Non-goals
 

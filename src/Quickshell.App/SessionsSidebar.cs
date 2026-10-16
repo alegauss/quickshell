@@ -731,6 +731,14 @@ public sealed class SessionsSidebar : Border
 
         menu.Items.Add(moving);
         menu.Items.Add(Entry("Document as PDF…", () => _window.DocumentSessionsAt(row.Path)));
+
+        // Only where the person turned the gateway on (QS340): a menu of somebody who never will is not
+        // where to learn that agents exist.
+        if (_window.Settings.AgentGateway)
+        {
+            menu.Items.Add(Entry("Set up an agent account…", () => _window.SetUpAgentAccountOrSay(row.Path)));
+        }
+
         menu.Items.Add(new Separator());
         menu.Items.Add(Entry("Delete…", () => _window.DeleteSessionOrSay(row.Path)));
 

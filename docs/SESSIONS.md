@@ -208,6 +208,10 @@ key's options and a sudoers allowlist, so that what the client's agent policy re
 refuses too ([the design](design/agent-gateway/README.md)). Set on a folder, every session in it
 uses the same agent account.
 
+*Set up an agent account…* on a session's menu (shown while `agentGateway` is on) makes that account
+and its key, and writes both settings on the session once the setup has run. The session dialog does
+not show them, and a save through it keeps them.
+
 ### `AgentKey`
 
 The private key the agent gateway signs in with as `AgentUser`, and the only one it offers: not your

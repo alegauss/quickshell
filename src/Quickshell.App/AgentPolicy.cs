@@ -190,6 +190,23 @@ public sealed class AgentPolicy
         };
     }
 
+    /// <summary>
+    /// What the grants naming <paramref name="session"/> have let an agent run as root, live or passed: each
+    /// <c>sudo</c> command they list, with <c>sudo</c> and its options taken off. It is where the server-side
+    /// setup's list starts (QS340), since a command the person granted here is one they meant it to run.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<string>> GrantedAsRoot(ResolvedSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        return [.. _grants.Where(grant => Matches(session, grant.Tags, grant.Sessions))
+                          .SelectMany(grant => grant.Commands)
+                          .Where(command => command.Count > 1 && command[0] == "sudo")
+                          .Select(command => (IReadOnlyList<string>)[.. command.Skip(1).SkipWhile(word => word.StartsWith('-'))])
+                          .Where(command => command.Count > 0)
+                          .DistinctBy(command => string.Join('\0', command), StringComparer.Ordinal)];
+    }
+
     private static bool Live(Grant grant, DateTimeOffset now) =>
         grant.Until is { } until && until > now && until - now <= LongestGrant;
 

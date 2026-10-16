@@ -1,6 +1,10 @@
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+
+using Quickshell.Transport;
 
 namespace Quickshell.App;
 
@@ -114,5 +118,126 @@ public static partial class AgentAccountSetup
                       + "echo quickshell-agent-removed\n";
 
         return new AgentSetupPlan(script.ToString(), undo);
+    }
+
+    /// <summary>Where the script waits in the person's home for the line typed into their tab to run it.</summary>
+    public const string Staged = ".quickshell-agent-setup.sh";
+
+    /// <summary>What that line leaves in the person's home once the script ran to the end under their sudo.</summary>
+    public const string Ready = ".quickshell-agent-ready";
+
+    /// <summary>
+    /// The line typed into the person's own tab: the staged script run with their sudo, where they answer its
+    /// password themselves, and the mark left only where it succeeded.
+    /// </summary>
+    public const string Typed = "sudo sh ~/" + Staged + " && : > ~/" + Ready + "; rm -f ~/" + Staged + "\r";
+
+    /// <summary>The address the server sees this connection come from, which the key's <c>from=</c> names.</summary>
+    /// <exception cref="AgentSetupRefusal">The server did not say: its sshd sets no <c>SSH_CLIENT</c>.</exception>
+    public static async Task<string> SeenFromAsync(ICommandChannel person, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        CommandResult said = await person.RunAsync("echo \"${SSH_CLIENT%% *}\"", TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
+        string from = said.Output.Trim();
+
+        return said.ExitCode == 0 && Addresses.IsMatch(from)
+            ? from
+            : throw new AgentSetupRefusal("The server did not say which address this machine connects from, so the key cannot be tied to it. "
+                                          + "This setup needs a POSIX server running OpenSSH.");
+    }
+
+    /// <summary>Puts the script in the person's home, readable by them alone, and clears any mark an earlier run left.</summary>
+    public static async Task StageAsync(ICommandChannel person, AgentSetupPlan plan, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+        ArgumentNullException.ThrowIfNull(plan);
+
+        string encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(plan.Script));
+        CommandResult staged = await person.RunAsync($"umask 077; rm -f ~/{Ready}; printf '%s' '{encoded}' | base64 -d > ~/{Staged}",
+                                                     TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+
+        if (staged.ExitCode != 0)
+        {
+            throw new AgentSetupRefusal($"The script could not be put in your home on the server: {staged.Error.Trim()}");
+        }
+    }
+
+    /// <summary>Whether the typed line has run the script to the end, taking the mark it left if so.</summary>
+    public static async Task<bool> ReadyAsync(ICommandChannel person, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        CommandResult asked = await person.RunAsync($"test -e ~/{Ready} && rm -f ~/{Ready} && echo ready",
+                                                    TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
+
+        return asked.Output.Trim() == "ready";
+    }
+
+    /// <summary>
+    /// Where the agent's key for the session at <paramref name="path"/> is kept: in quickshell's own folder,
+    /// one per session, named after it.
+    /// </summary>
+    public static string KeyFor(string folder, string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        string name = new([.. path.Select(letter => char.IsAsciiLetterOrDigit(letter) || letter is '-' or '.' ? letter : '_')]);
+
+        return Path.Combine(folder, name + "_ed25519");
+    }
+
+    /// <summary>
+    /// An ed25519 pair with no passphrase at <paramref name="path"/>, made by the OpenSSH that ships with
+    /// Windows, where none is there yet. A key there already is kept, so setting up a server again does not
+    /// lock the agent out of another set up with it.
+    /// </summary>
+    /// <returns>Whether a key was made, which a setup that is then abandoned removes again.</returns>
+    public static bool MakeKey(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        if (File.Exists(path) && File.Exists(path + ".pub"))
+        {
+            return false;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+        using Process keygen = Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "OpenSSH", "ssh-keygen.exe"))
+        {
+            ArgumentList = { "-q", "-t", "ed25519", "-N", "", "-C", "quickshell-agent", "-f", path },
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        }) ?? throw new AgentSetupRefusal("ssh-keygen did not start.");
+
+        string error = keygen.StandardError.ReadToEnd();
+
+        keygen.WaitForExit();
+
+        return File.Exists(path + ".pub") ? true : throw new AgentSetupRefusal($"ssh-keygen made no key: {error.Trim()}");
+    }
+
+    /// <summary>
+    /// Removes a key <see cref="MakeKey"/> made, for a setup the person abandoned.
+    /// </summary>
+    public static void ForgetKey(string path)
+    {
+        File.Delete(path);
+        File.Delete(path + ".pub");
+    }
+
+    /// <summary>The store with the agent's identity on the session at <paramref name="path"/>, everything else as it was.</summary>
+    /// <exception cref="SessionStoreException">The store holds nothing at that path.</exception>
+    public static SessionTree Record(SessionTree store, string path, string account, string key)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+
+        SessionNode node = store.Find(path) ?? throw new SessionStoreException($"There is nothing at {path} in the session store.",
+                                                                                "It may have been moved or deleted while the setup ran.");
+
+        return store.With(path, node with { Settings = node.Settings with { AgentUser = account, AgentKey = key } });
     }
 }

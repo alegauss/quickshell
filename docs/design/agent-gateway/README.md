@@ -363,7 +363,7 @@ does not, which a later line has to settle before such a server is offered.
 with the session's key and the agents, never a typed password, and refuses a host key the user's
 known_hosts does not already hold, saying to connect once from the window.
 
-**The server-side boundary, first half (QS340).** `AgentAccountSetup.Plan` writes the setup for one
+**The server-side boundary (QS340).** `AgentAccountSetup.Plan` writes the setup for one
 server as a POSIX script the person reads before anything runs, and its undo. The script makes the
 account (`agent` by default) where it is not there, installs the agent key with `restrict` and
 `from="<the address the server sees this machine connect from>"`, and writes
@@ -372,9 +372,23 @@ server (`command -v`) and its arguments, checked with `visudo -c` before it is p
 with no arguments is written with `""`, which in sudoers means none; a bare one would mean any. An
 argument a sudoers line cannot hold exactly (a space, or any of `, : = \ * ? [`) is refused rather than
 escaped into something the person did not read. A session's `AgentUser` and `AgentKey` (SESSIONS.md)
-are the identity the gateway then signs in with, offering that key alone. What is still to build is the
-guided half: the session menu entry that generates the key, shows this script, runs it as the person in
-a tab where they answer their own sudo, records the identity in the session, and offers the undo.
+are the identity the gateway then signs in with, offering that key alone.
+
+The guided half is *Set up an agent account…* on a session's menu, there only while `agentGateway` is
+on (`MainWindow.AgentSetup.cs`). It opens the person's own tab on the server and, over that tab's
+connection, reads the address the server sees (`SSH_CLIENT`); a Windows server is refused, since the
+setup writes sudoers. It makes the agent's ed25519 key in `agent-keys` in quickshell's folder, one per
+session, kept if one is there. The dialog (`AgentSetupDialog`) starts its list from the `sudo` commands
+the policy's grants name for that session, and writes the exact script again on every change. While a
+line cannot be written exactly, it says why and offers no Run. Run puts the script in the person's
+home, readable by them alone, and types one line into their tab: `sudo sh` of it, then a mark left only
+if it succeeded. The person answers their own sudo there. The window asks for the mark every two
+seconds for ten minutes. When it appears, `AgentUser` and `AgentKey` are written to the session, and
+the setup goes in an audit run of its own as `agent_setup`, with the script's hash. Any other ending
+leaves the session as it was, says why, and removes the key it made. Removing the account again is
+`Plan.Undo`, which nothing in the window offers yet. Any process of the person's can read the key,
+an agent's included. A copy used directly skips the client's policy and audit, but signs in as the
+same limited account, which is why the account is the boundary.
 
 **A policy the agent cannot widen (QS339).** Three measures. The policy lives in quickshell's folder,
 outside any repository an agent is pointed at. `quickshell --agent-hook` denies the agent's `Write`,

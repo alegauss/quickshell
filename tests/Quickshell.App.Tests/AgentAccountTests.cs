@@ -1,7 +1,9 @@
-using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Controls;
 
 using Quickshell.Transport;
 
@@ -65,7 +67,7 @@ public sealed class AgentAccountTests : IDisposable
         string key = Path.Combine(_here, "agent_ed25519");
         string probeKey = Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519");
 
-        Keygen(key);
+        AgentAccountSetup.MakeKey(key);
 
         SessionTree store = SessionTree.Of(new SessionNode
         {
@@ -137,19 +139,180 @@ public sealed class AgentAccountTests : IDisposable
         return answer["result"]!["structuredContent"] ?? throw new Xunit.Sdk.XunitException(answer.ToJsonString());
     }
 
-    /// <summary>An ed25519 pair with no passphrase, made by the OpenSSH that ships with Windows.</summary>
-    private static void Keygen(string path)
+    /// <summary>
+    /// The guided flow's steps against the Linux fixture, as the window takes them: the address the server
+    /// sees, a key made, the script staged in the person's home, the typed line run (as root by docker,
+    /// standing in for the person answering sudo), the mark taken once, the identity recorded, and the
+    /// gateway then signing in as the agent from the store alone.
+    /// </summary>
+    [Fact]
+    public async Task TheGuidedStepsRecordAnIdentityTheGatewaySignsInWith()
     {
-        using Process keygen = Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "OpenSSH", "ssh-keygen.exe"))
-        {
-            ArgumentList = { "-q", "-t", "ed25519", "-N", "", "-C", "quickshell-agent", "-f", path },
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        })!;
+        SshFixture.SkipWithoutIt();
 
-        keygen.WaitForExit();
-        Assert.True(File.Exists(path + ".pub"), "ssh-keygen made no key: " + keygen.StandardError.ReadToEnd());
+        string account = "qsagent" + Guid.NewGuid().ToString("N")[..6];
+        string probeKey = Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519");
+        string storeFile = Path.Combine(_here, "sessions.json");
+
+        SessionTree.Of(new SessionNode
+        {
+            Children = [new SessionNode { Name = "db", Host = "127.0.0.1", Settings = new SessionSettings { User = "probe", Port = 2222, Key = probeKey } }],
+        }).WriteTo(storeFile);
+
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")), (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        string key = AgentAccountSetup.KeyFor(Path.Combine(_here, "agent-keys"), "Work/db");
+
+        Assert.EndsWith("Work_db_ed25519", key, StringComparison.Ordinal);
+        Assert.True(AgentAccountSetup.MakeKey(key));
+        Assert.False(AgentAccountSetup.MakeKey(key), "a key already there was made again");
+
+        AgentSetupPlan plan;
+
+        await using (IGatewayConnection person = await AgentGateway.Connect(SessionTree.ReadFrom(storeFile).Session("db")!, trust, Stop))
+        {
+            string from = await AgentAccountSetup.SeenFromAsync(person, Stop);
+
+            plan = AgentAccountSetup.Plan(account, await File.ReadAllTextAsync(key + ".pub", Stop), from, [["whoami"]]);
+            await AgentAccountSetup.StageAsync(person, plan, Stop);
+
+            Assert.False(await AgentAccountSetup.ReadyAsync(person, Stop), "ready before anything ran");
+
+            // The typed line, with root's shell for the person's sudo.
+            string typed = AgentAccountSetup.Typed.TrimEnd('\r').Replace("sudo sh ~/", "sh ~/", StringComparison.Ordinal).Replace("~/", "/home/probe/", StringComparison.Ordinal);
+
+            Assert.True(SshFixture.Docker(typed + " && chown probe /home/probe/" + AgentAccountSetup.Ready), "the staged script did not run");
+            Assert.True(await AgentAccountSetup.ReadyAsync(person, Stop), "the mark the typed line leaves was not seen");
+            Assert.False(await AgentAccountSetup.ReadyAsync(person, Stop), "the mark was seen twice");
+        }
+
+        try
+        {
+            AgentAccountSetup.Record(SessionTree.ReadFrom(storeFile), "db", account, key).WriteTo(storeFile);
+
+            await using AgentGateway gateway = new(() => SessionTree.ReadFrom(storeFile), (session, token) => AgentGateway.Connect(session, trust, token), "test")
+            {
+                PolicyFile = Policies.BreakGlass(),
+                Asks = (request, _) => Task.FromResult(new ApprovalAnswer(Decision.Approve, request.Hash)),
+            };
+
+            Assert.Equal(account, (await ExecAsync(gateway, 1, "whoami"))["stdout"]!.GetValue<string>().Trim());
+            Assert.Equal("probe", SessionTree.ReadFrom(storeFile).Session("db")!.User?.Value);
+        }
+        finally
+        {
+            SshFixture.Docker($"echo {Convert.ToBase64String(Encoding.UTF8.GetBytes(plan.Undo))} | base64 -d | sh");
+        }
+    }
+
+    /// <summary>The list starts from the sudo commands the policy's grants name for the session, sudo and its options taken off.</summary>
+    [Fact]
+    public void TheListStartsFromWhatThePolicyGrantedAsRoot()
+    {
+        AgentPolicy policy = AgentPolicy.Parse("""
+            { "grants": [
+                { "sessions": ["Work/*"], "until": "2020-01-01T00:00:00Z",
+                  "commands": [["sudo", "-n", "systemctl", "restart", "nginx"], ["uptime"], ["sudo", "systemctl", "restart", "nginx"]] },
+                { "sessions": ["Home/*"], "commands": [["sudo", "reboot"]] }
+            ] }
+            """);
+        ResolvedSession db = SessionTree.Of(new SessionNode
+        {
+            Children = [new SessionNode { Name = "Work", Children = [new SessionNode { Name = "db", Host = "db" }] }],
+        }).Session("Work/db")!;
+
+        IReadOnlyList<IReadOnlyList<string>> granted = policy.GrantedAsRoot(db);
+
+        Assert.Equal(["systemctl restart nginx"], granted.Select(command => string.Join(' ', command)));
+    }
+
+    /// <summary>The dialog writes the script from what is typed, and will not run while that cannot be written exactly.</summary>
+    [Fact]
+    public void TheDialogShowsTheScriptThatWillRunAndRefusesWhatSudoersCannotSay()
+    {
+        (string first, bool ran, string refused, bool runs) = Sta.Run(() =>
+        {
+            AgentSetupDialog dialog = new("db", Key, "10.0.0.5", [["systemctl", "restart", "nginx"]]);
+            string script = dialog.Plan!.Script;
+
+            TextBox commands = Find<TextBox>(dialog, "AgentCommands");
+            Button run = Find<Button>(dialog, "RunAgentSetup");
+
+            commands.Text = "rm -rf *";
+
+            string said = Find<TextBlock>(dialog, "AgentRefused").Text;
+            bool enabled = run.IsEnabled;
+
+            commands.Text = "uptime";
+
+            return (script, enabled, said, run.IsEnabled && dialog.Plan!.Script.Contains("command -v uptime", StringComparison.Ordinal));
+        });
+
+        Assert.Contains("'restart nginx' >> \"$allowed\"", first, StringComparison.Ordinal);
+        Assert.False(ran, "Run was offered for a list sudoers cannot say exactly");
+        Assert.Contains("cannot be written into sudoers exactly", refused, StringComparison.Ordinal);
+        Assert.True(runs, "the script was not written again for the list as typed");
+    }
+
+    /// <summary>The menu offers the setup only where the person turned the gateway on, and a session that opens no tab is said, with nothing made.</summary>
+    [Fact]
+    public void TheMenuOffersItWithTheGatewayOnAndSaysWhyItStopped()
+    {
+        string storeFile = Path.Combine(_here, "sessions.json");
+        string keys = Path.Combine(_here, "agent-keys");
+
+        SessionTree.Of(new SessionNode { Children = [new SessionNode { Name = "db", Host = "db.example.com" }] }).WriteTo(storeFile);
+
+        (bool off, bool on, string? said) = Sta.Run(() =>
+        {
+            List<string> told = [];
+            MainWindow window = new()
+            {
+                SessionsFile = storeFile,
+                SshConfigFile = Path.Combine(_here, "none"),
+                AgentKeysFolder = keys,
+                Tells = told.Add,
+                OpensSession = _ => { },
+            };
+
+            window.RefreshSessions();
+
+            SessionRow row = window.Sidebar.Rows.Single(each => each.Path == "db");
+
+            bool Offers() => window.Sidebar.Menu(row).Items.OfType<MenuItem>().Any(entry => (string)entry.Header == "Set up an agent account…");
+
+            bool before = Offers();
+
+            window.Apply(Settings.Default with { AgentGateway = true });
+
+            bool after = Offers();
+            bool recorded = window.SetUpAgentAccount("db").GetAwaiter().GetResult();
+
+            return (before, after && !recorded, told.SingleOrDefault());
+        });
+
+        Assert.False(off, "the menu offered agent setup with the gateway off");
+        Assert.True(on, "the menu did not offer agent setup with the gateway on");
+        Assert.Equal("db did not open in a tab, so there is nowhere to run the setup.", said);
+        Assert.False(Directory.Exists(keys), "a key was made for a setup that never reached the server");
+    }
+
+    private static T Find<T>(DependencyObject root, string id)
+        where T : DependencyObject =>
+        Descendants(root).OfType<T>().Single(each => AutomationProperties.GetAutomationId(each) == id);
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        foreach (object child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is DependencyObject node)
+            {
+                yield return node;
+
+                foreach (DependencyObject below in Descendants(node))
+                {
+                    yield return below;
+                }
+            }
+        }
     }
 }

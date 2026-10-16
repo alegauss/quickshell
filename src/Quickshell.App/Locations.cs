@@ -102,6 +102,9 @@ public sealed class Locations
     /// <summary>What each gateway run shows a person, tailed into the agent's tab (QS335).</summary>
     public string AgentFeeds => Path.Combine(Root, "agent-feeds");
 
+    /// <summary>The keys the agent gateway signs in with, one per server set up for an agent (QS340).</summary>
+    public string AgentKeys => Path.Combine(Root, "agent-keys");
+
     /// <summary>The agent gateway's audit logs, one per gateway run (QS333).</summary>
     public string Audit => Path.Combine(Root, "audit");
 

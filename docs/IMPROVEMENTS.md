@@ -549,29 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS340 The server-side boundary
-
-Everything the gateway does on the client can be walked around by an agent running as
-the same Windows user, which the threat model (QS320) says plainly. The one layer the
-agent cannot route around is the server, so the gateway should make that layer easy
-rather than leave it to a person who already finds it tedious.
-
-A guided setup, from the session's context menu, proposes for one server: a dedicated
-account (`agent` by default) with its own key, `authorized_keys` options on that key
-(`restrict`, `from=` this machine's address, optionally `command=`), and a sudoers file
-granting only the commands the person ticks from a list derived from the session's
-policy. It shows the exact files and commands it will run, runs them only on approval,
-as the person's own account, and records them in the audit log.
-
-The session then gains an agent identity: the gateway connects as `agent`, the person
-still as themselves.
-
-The design document weighs what to offer for a server where the person has no root, and
-how to undo the setup.
-
-Proven against the test sshd: after setup, a command outside the sudoers list fails on
-the server even with the client-side policy turned off.
-
 ### §QS341 Certificates that expire with the task
 
 A plain public key in `authorized_keys` is valid forever. If the agent account's private
@@ -685,3 +662,24 @@ What to look at, in this order, each measured before it is chosen:
 Done when, on native Windows, a script the hook cannot see fails to reach the test sshd
 while the gateway's exec reaches it, or when the recommendation is written in the design
 with the reason the other two lost.
+
+### §QS359 Removing an agent account from the menu
+
+QS340's guided setup makes an agent account on a server from the session menu, and
+`AgentAccountSetup.Plan` already writes its undo: the sudoers file removed, the
+account's processes ended and the account deleted with its home. Nothing in the window
+runs it. A person who wants an agent off a server has to find the script, copy it to the
+server and run it as root by hand, which is the tedium the setup existed to remove, now
+on the way out.
+
+A second entry on the menu, *Remove the agent account…*, shown where the session has an
+`AgentUser`, should take the same path as the setup: the person's own tab, the exact
+undo shown first, run under their sudo, and a mark that says it finished. Then
+`AgentUser` and `AgentKey` are cleared from the session, the key in `agent-keys` is
+deleted, and the removal goes in the audit beside the setup.
+
+A session whose agent identity is inherited from a folder needs care: removing it from
+one server must not clear the folder's settings for the rest.
+
+Proven against the Linux fixture: after removal the agent key no longer signs in, the
+sudoers file is gone, and the session carries no agent identity.
