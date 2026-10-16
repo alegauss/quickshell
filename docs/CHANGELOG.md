@@ -245,6 +245,7 @@
 - ✅ **QS317** **A pane opened by Split has no button, chord or palette entry that closes it, only closing the whole tab** — A split tab's panes each carry a close cross above them, Ctrl+Shift+W closes the focused pane before the tab, and Close pane is in the palette (design recorded in `docs/KEYS.md`).
 - ✅ **QS318** **The session bar's Split button always splits side by side, with no way to split one above the other** — The session bar's Split keeps its click beside and has a chevron offering Split right and Split down, each naming its chord (design recorded in `docs/SESSIONS.md`).
 - ✅ **QS319** **Two tabs on the same host carry the same title, so the strip gives nothing to tell them apart by** — Every tab shows its place on the strip before its title, the Alt digit that reaches it, renumbered when a tab is added, closed or moved (design recorded in `docs/KEYS.md`).
+- ✅ **QS353** **A connected recent card on Home clips its New connection and Go to tab buttons when the window is not maximised** — A connected recent card gives its when a row of its own and wraps Go to tab under New connection, so a restored window cuts neither button.
 
 ## Block H — The reason to leave the incumbent
 

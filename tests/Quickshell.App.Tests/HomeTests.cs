@@ -287,6 +287,81 @@ public sealed class HomeTests : IDisposable
         Assert.Equal(["Connect", "Edit…"], free);
     }
 
+    /// <summary>
+    /// QS353: a connected card too narrow for its two buttons side by side, as in a restored window, wraps
+    /// Go to tab under New connection; neither is cut, both lie inside the card, and the when has a row of
+    /// its own rather than the buttons' cell. Wide enough, they sit side by side.
+    /// </summary>
+    [Fact]
+    public void ANarrowConnectedCardWrapsItsButtonsInsideIt()
+    {
+        (bool clipped, bool inside, bool wrapped, bool besideWhenWide, bool whenAbove) = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+            TerminalTab db = TerminalTab.Open(Settings.Default, Shared, "db1");
+
+            db.Saved = "Work/db-primary";
+            window.Add(db);
+            window.SessionWentLive("Work/db-primary");
+
+            System.Windows.Controls.Border card = Card(window.ShowHome(), "Work/db-primary");
+            System.Windows.Controls.Button another = Find<System.Windows.Controls.Button>(card, "CardNewConnection");
+            System.Windows.Controls.Button go = Find<System.Windows.Controls.Button>(card, "CardGoTo");
+            System.Windows.FrameworkElement when = Find<System.Windows.FrameworkElement>(card, "When");
+
+            // Home's body laid out at a width, as a restored window gives it one: the card is a third of it.
+            // The body and not the window, because a window never shown never templates Home's scroller, so
+            // the body is in no visual tree the window's layout would reach.
+            System.Windows.FrameworkElement body = card;
+
+            while (System.Windows.Media.VisualTreeHelper.GetParent(body) is System.Windows.FrameworkElement above)
+            {
+                body = above;
+            }
+
+            void Lay(double width)
+            {
+                body.Measure(new System.Windows.Size(width, double.PositiveInfinity));
+                body.Arrange(new System.Windows.Rect(0, 0, width, body.DesiredSize.Height));
+                body.UpdateLayout();
+            }
+
+            Lay(2400);
+
+            bool beside = Math.Abs(Top(go, card) - Top(another, card)) < 1;
+            double inner = card.Padding.Left + card.Padding.Right + card.BorderThickness.Left + card.BorderThickness.Right;
+            double widest = Math.Max(another.DesiredSize.Width, go.DesiredSize.Width);
+
+            // Down from wide, to the first width at which the card is narrower than both buttons side by side
+            // and still holds the wider one: the restored window of the report.
+            // A desired width includes the button's margin, and the two side by side need both.
+            for (double width = 2400; width > 120 && card.ActualWidth - inner >= another.DesiredSize.Width + go.DesiredSize.Width; width -= 8)
+            {
+                Lay(width);
+            }
+
+            Assert.True(card.ActualWidth - inner >= widest, $"the card at {card.ActualWidth} could not hold even one button");
+
+            // Cut is drawn narrower than it asked for, its margin aside.
+            bool cut = new[] { another, go }.Any(button => button.RenderSize.Width + button.Margin.Left + button.Margin.Right + 0.5 < button.DesiredSize.Width);
+            bool within = new[] { another, go }.All(button => Left(button, card) >= 0 && Left(button, card) + button.RenderSize.Width <= card.ActualWidth + 0.5);
+
+            return (cut, within, Top(go, card) > Top(another, card), beside, Top(when, card) + when.RenderSize.Height <= Top(another, card) + 0.5);
+        });
+
+        Assert.False(clipped, "a button on a narrow card was cut");
+        Assert.True(inside, "a button on a narrow card lay outside it");
+        Assert.True(wrapped, "Go to tab did not move under New connection on a narrow card");
+        Assert.True(besideWhenWide, "the two buttons were not side by side on a wide card");
+        Assert.True(whenAbove, "the when shares the buttons' row instead of one of its own above them");
+
+        static double Left(System.Windows.UIElement element, System.Windows.UIElement card) =>
+            element.TranslatePoint(new System.Windows.Point(0, 0), card).X;
+    }
+
+    private static double Top(System.Windows.UIElement element, System.Windows.UIElement card) =>
+        element.TranslatePoint(new System.Windows.Point(0, 0), card).Y;
+
     private static System.Windows.Controls.Border Card(HomePage home, string path) =>
         Find<System.Windows.Controls.Primitives.UniformGrid>(home, "HomeSessions").Children.OfType<System.Windows.Controls.Border>()
             .Single(card => System.Windows.Automation.AutomationProperties.GetName(card) == path);

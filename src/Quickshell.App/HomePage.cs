@@ -197,43 +197,66 @@ public sealed class HomePage : Border
             inside.Children.Add(chips);
         }
 
-        Grid bottom = new() { Margin = new Thickness(0, 12, 0, 0) };
+        // When it last connected, where it is a recent one. Trimmed rather than overlapped: it never shares
+        // a cell with a button (QS353), whose label cut by it was the defect.
+        TextBlock? when = null;
 
-        // When it last connected, where it is a recent one.
         if (card.When.Length > 0)
         {
-            TextBlock when = new() { Text = card.When, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+            when = new TextBlock { Text = card.When, FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
 
             when.SetResourceReference(TextBlock.ForegroundProperty, Quiet);
             AutomationProperties.SetAutomationId(when, "When");
-            bottom.Children.Add(when);
         }
 
-        // A card whose session a tab holds goes to that tab, which is what Connected promises (QS313);
-        // a second shell on the host is the quieter New connection beside it.
-        StackPanel actions = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         Action main;
 
         if (card.Tabs > 0)
         {
+            // A card whose session a tab holds goes to that tab, which is what Connected promises (QS313);
+            // a second shell on the host is the quieter New connection beside it. Two buttons are wider than
+            // a card in a restored window (QS353), so the when gets a row of its own and the buttons wrap:
+            // on a narrow card Go to tab moves under New connection instead of pushing it out of the card.
             Button another = CardButton("New connection", "CardNewConnection", $"New connection to {card.Path}",
                                         () => _window.ConnectSession(card.Path));
             Button go = CardButton("Go to tab", "CardGoTo", $"Go to tab {card.Path}", () => _window.GoToSession(card.Path));
+            WrapPanel actions = new() { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 6, 0, 0) };
 
-            another.Margin = new Thickness(0, 0, 6, 0);
+            another.Margin = new Thickness(0, 6, 6, 0);
+            go.Margin = new Thickness(0, 6, 0, 0);
             go.SetResourceReference(StyleProperty, "AccentButtonStyle");
             actions.Children.Add(another);
             actions.Children.Add(go);
+            AutomationProperties.SetAutomationId(actions, "CardActions");
+
+            if (when is not null)
+            {
+                when.Margin = new Thickness(0, 12, 0, 0);
+                inside.Children.Add(when);
+            }
+
+            inside.Children.Add(actions);
             main = () => _window.GoToSession(card.Path);
         }
         else
         {
-            actions.Children.Add(CardButton("Connect", "CardConnect", $"Connect {card.Path}", () => _window.ConnectSession(card.Path)));
+            // One button, which fits beside the when: the when takes what is left, and the button what it needs.
+            Grid bottom = new() { Margin = new Thickness(0, 12, 0, 0) };
+            Button connect = CardButton("Connect", "CardConnect", $"Connect {card.Path}", () => _window.ConnectSession(card.Path));
+
+            bottom.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            bottom.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            if (when is not null)
+            {
+                bottom.Children.Add(when);
+            }
+
+            Grid.SetColumn(connect, 1);
+            bottom.Children.Add(connect);
+            inside.Children.Add(bottom);
             main = () => _window.ConnectSession(card.Path);
         }
-
-        bottom.Children.Add(actions);
-        inside.Children.Add(bottom);
 
         Border made = Card(inside, new Thickness(16));
 

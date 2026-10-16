@@ -233,28 +233,6 @@ accessibility tree.
 
 Falsified when a full-screen pane's echoes are composed in photon's report.
 
-### §QS353 A recent card that fits its buttons
-
-Reported by the owner on 2026-10-15 with a picture of a restored window: the recent card
-of a connected session shows "onnection" cut on the left and "Go to tab" against the
-card's edge, with the card's "when" text showing through between them.
-
-Why, in HomePage.cs: the recent cards sit in a UniformGrid of three equal columns inside
-a body capped at 880 wide, so a card gets a third of what the window leaves after the
-sidebar. QS313's two buttons are one horizontal StackPanel aligned right, in the same
-Grid cell as the "when" TextBlock. The StackPanel is wider than the column, so it is
-clipped on the left, and the text sits under it.
-
-What to build: the "when" text gets a row of its own above the buttons, never the same
-cell; the buttons go in a right-aligned WrapPanel, so on a narrow card Go to tab moves
-under New connection instead of pushing it out. Go to tab stays the accent and the last
-one. Not a smaller font or an ellipsis: a button whose label is cut is the defect.
-
-Proven by a UI case on the connected fixture that narrows the window and reads both
-buttons inside the card. A case cannot claim geometry yet (winwright WW539), so until it
-can, a test in process lays the card out at the narrowest width Home allows and asserts
-each button's desired size fits what it was arranged into.
-
 ### §QS354 QS354 A menu bar with every action
 
 Asked by the owner on 2026-10-15: today every feature is reached by a hotkey or by

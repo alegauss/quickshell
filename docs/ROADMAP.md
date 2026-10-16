@@ -16,7 +16,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS353** (deps: —) **A connected recent card on Home clips its New connection and Go to tab buttons when the window is not maximised** — Three equal columns leave a card narrower than its two buttons, which share one cell with the card's when text, so a label is cut. → §QS353
 - 📋 **QS354** (deps: —) **Every action is reached only by a hotkey or the palette, so a user who has not learned them cannot find a feature** — A menu bar built from the palette's own action list, hidden by default and shown by Alt or a setting, lists every action with its shortcut. → §QS354
 
 ## Block H — The reason to leave the incumbent
