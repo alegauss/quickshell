@@ -233,8 +233,11 @@ it on or off.
 
 Every call that reaches a server is judged first by the agent policy, `agent-policy.json` in
 quickshell's folder. With no such file every session is at *operate*: what can be shown to be a read
-runs (`df`, `journalctl`, `systemctl status`, and the list the client ships), and anything else would
-ask you, and is refused until quickshell can ask. A session tagged `prod` is at *observe*: reads only. In
+runs (`df`, `journalctl`, `systemctl status`, and the list the client ships), and anything else asks you
+in a quickshell dialog that shows each command as its words, its session, its tags and an edit's diff:
+*Run it*, *Run it and allow these for* 30 minutes, an hour or four hours (written into the policy as a
+grant), or *Refuse* with a note the agent reads. With no quickshell window open, or no answer within ten
+minutes, the call is refused and the agent is told why. A session tagged `prod` is at *observe*: reads only. In
 the file you set levels by tag or by session path (`deny`, `observe`, `operate`), and grants that
 expire within four hours: named commands on named sessions, or `"level": "break-glass"` for
 everything. The design (`docs/design/agent-gateway/README.md`) gives the format with an example.

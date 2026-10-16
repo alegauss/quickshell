@@ -65,7 +65,7 @@ public sealed class AuditLog
 
     /// <summary>Appends one call.</summary>
     public void Record(DateTimeOffset when, string tool, ResolvedSession? session, JsonObject arguments, JsonObject answer, bool failed,
-                       PolicyVerdict? judged = null)
+                       PolicyVerdict? judged = null, string? approval = null)
     {
         ArgumentNullException.ThrowIfNull(tool);
         ArgumentNullException.ThrowIfNull(arguments);
@@ -88,7 +88,7 @@ public sealed class AuditLog
                 ["arguments"] = redacted,
                 ["verdict"] = judged?.Verdict.ToString().ToLowerInvariant() ?? "allowed",
                 ["rule"] = judged?.Rule ?? "not a call to a session",
-                ["approval"] = "none",
+                ["approval"] = approval ?? "none",
                 ["failed"] = failed,
                 ["exitCode"] = answer["exitCode"]?.DeepClone(),
                 ["output"] = "sha256:" + Hash(answer.ToJsonString()),

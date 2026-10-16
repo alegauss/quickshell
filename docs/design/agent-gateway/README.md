@@ -363,6 +363,22 @@ does not, which a later line has to settle before such a server is offered.
 with the session's key and the agents, never a typed password, and refuses a host key the user's
 known_hosts does not already hold, saying to connect once from the window.
 
+**Approval, built (QS337).** An ask writes `agent-asks/<id>.ask.json` into quickshell's folder, holding
+the batch: each call's session, address, tags, tool, the words it runs or an edit's diff (previewed
+without writing it, and redacted), and the rule that asked. The window holds the named mutex
+`Local\quickshell-agent-asks` while it is open, so a gateway with no window to ask refuses at once,
+saying nobody was there; otherwise it waits up to ten minutes for `<id>.answer.json` and then answers
+`approval timed out`. The window watches the folder, and for each request raises `ApprovalDialog` in
+front of itself: each call as it will run, a command as words each in ‹ ›, prod in the danger colour,
+and the batch's short hash. *Run it* approves the hash; *Run it and allow these for* writes a grant of
+the same commands on the same tags (or the session, untagged) until 30 minutes, one hour or four hours
+from now into the policy, creating one that keeps the no-file levels where there was none, and is
+offered only for a batch of commands; *Refuse* sends the person's note. An answer to any other hash is a
+refusal. The batch's hash is SHA-256 over each call's session, tool, length-prefixed words, path and
+diff. `plan` puts several calls to one approval, runs them in order and stops at the first that fails;
+a single call that asks is a plan of one. The audit line carries `approved <hash>`, `refuse <hash>` or
+`automatic`. Code: `AgentAsks.cs`, `ApprovalDialog.cs`, `AgentGateway.ApprovedAsync`.
+
 **The policy in the path of every call (QS336).** Before a call that reaches a session runs, the
 gateway reads `agent-policy.json` from quickshell's folder (`AgentPolicy`) and judges it: `exec` and
 `job_start` by their argument vector, `read_file`, `job_status`, `job_output` and `job_cancel` as reads

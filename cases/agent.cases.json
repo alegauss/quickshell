@@ -14,6 +14,15 @@
       "files": [
         { "from": "cases/fixtures/agent-feed.vt", "to": "agent-feeds/20261016T000000Z-0c4a1e.vt", "fill": true }
       ]
+    },
+    {
+      // QS337. A request the gateway left for the person: two calls, one on a prod session. Filled for
+      // the same reason as the feed: the window answers requests younger than the gateway's patience.
+      "name": "a client with an agent's request waiting for the person",
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": [
+        { "from": "cases/fixtures/agent-ask.json", "to": "agent-asks/ui0001.ask.json", "fill": true }
+      ]
     }
   ],
 
@@ -46,6 +55,56 @@
           "reads": "text",
           "matches": "agent probe exec uptime[\\s\\S]*agent probe exec systemctl is-active nginx\\s+active\\s+\\[exit 0\\]",
           "named": "and shows both calls, the last one ending as it did"
+        }
+      ]
+    },
+    {
+      "name": "an agent's request is shown call by call in quickshell, and approving it answers that batch",
+      "catches": "an approval drawn where the agent controls what is printed, a command shown as one string a quote can hide a second in, a prod session not marked, or an answer not bound to what was shown",
+      "filed": "QS337",
+      "tags": ["agent", "approval"],
+      "fixture": "a client with an agent's request waiting for the person",
+
+      "steps": [
+        {
+          "locator": "Text#AskCommand[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "‹systemctl› ‹restart› ‹postgresql›",
+          "named": "the first call is shown as the words it runs"
+        },
+        {
+          "locator": "Text#AskCommand[order=bottom]",
+          "act": "read",
+          "reads": "name",
+          "expect": "‹systemctl› ‹restart› ‹nginx›",
+          "named": "and the second, in the order they run"
+        },
+        {
+          "locator": "Text#AskProd",
+          "act": "read",
+          "reads": "name",
+          "expect": "prod",
+          "named": "the prod session is marked"
+        },
+        {
+          "locator": "Text#PlanHash",
+          "act": "read",
+          "reads": "name",
+          "expect": "Plan c40df47bd272",
+          "named": "with the batch's short hash, which the agent's request carries too"
+        },
+        {
+          "locator": "Button#Approve",
+          "act": "invoke",
+          "named": "the person runs it"
+        },
+        {
+          // The answer names the hash of exactly what was shown.
+          "file": "{files}/agent-asks/ui0001.answer.json",
+          "act": "read",
+          "sameBytesAs": "cases/fixtures/agent-ask-approved.json",
+          "named": "and the answer approves that batch and nothing else"
         }
       ]
     }

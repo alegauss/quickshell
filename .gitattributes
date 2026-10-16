@@ -1,0 +1,2 @@
+# A fixture compared byte for byte keeps its bytes: the client writes this answer with CRLF (QS337).
+cases/fixtures/agent-ask-approved.json -text

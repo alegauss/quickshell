@@ -147,6 +147,36 @@ public static class RemoteText
     }
 
     /// <summary>
+    /// The diff an edit would make, without making it, so the person approving it sees exactly what will
+    /// change (QS337). Refused as the edit itself would be.
+    /// </summary>
+    public static async Task<string> PreviewAsync(IFileTransferChannel files, string path, string old, string replacement,
+                                                  CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        ArgumentException.ThrowIfNullOrEmpty(old);
+        ArgumentNullException.ThrowIfNull(replacement);
+
+        string text = await TextAsync(files, path, cancellationToken).ConfigureAwait(false);
+        int at = text.IndexOf(old, StringComparison.Ordinal);
+
+        if (at < 0)
+        {
+            throw new RemoteTextRefusal($"The old text is not in {path}, so nothing was changed. Read the file again and copy it exactly.");
+        }
+
+        if (Occurrences(text, old) is var count and > 1)
+        {
+            throw new RemoteTextRefusal($"The old text occurs {count} times in {path}, so nothing was changed. "
+                                        + "Include more of the lines around it, so it names one place.");
+        }
+
+        string edited = string.Concat(text.AsSpan(0, at), replacement, text.AsSpan(at + old.Length));
+
+        return Diff(path, Lines(text), Lines(edited));
+    }
+
+    /// <summary>
     /// The change as one hunk of <c>diff -u</c>, with three lines of context: an edit is one
     /// replacement, so everything that differs lies between the common start and the common end.
     /// </summary>

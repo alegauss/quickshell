@@ -1,0 +1,41 @@
+{
+  "staged": "{files}",
+  "id": "ui0001",
+  "run": "20261016T000000Z-0c4a1e",
+  "hash": "c40df47bd272cbac4fa14ccc8cad38e25e152e8b77ec5b06361baaa671a5e33e",
+  "calls": [
+    {
+      "session": "Shop/db",
+      "address": "deploy@db1.example.invalid:22",
+      "tags": [
+        "prod",
+        "db"
+      ],
+      "tool": "exec",
+      "words": [
+        "systemctl",
+        "restart",
+        "postgresql"
+      ],
+      "path": null,
+      "diff": null,
+      "rule": "rule 1 (tag db) at operate; a call that is not certainly a read asks the person"
+    },
+    {
+      "session": "Shop/web",
+      "address": "deploy@web1.example.invalid:22",
+      "tags": [
+        "staging"
+      ],
+      "tool": "exec",
+      "words": [
+        "systemctl",
+        "restart",
+        "nginx"
+      ],
+      "path": null,
+      "diff": null,
+      "rule": "rule 2 (tag staging) at operate; a call that is not certainly a read asks the person"
+    }
+  ]
+}

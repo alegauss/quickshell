@@ -549,27 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS337 The approval dialog
-
-The approval design (QS324) is built here, in the client rather than in the agent's
-terminal, because the client knows the session, its tags and its colours, and because an
-approval the agent's own process draws is one the agent's process could fake.
-
-The gateway sends the client a pending request: a batch of calls, each with its session,
-tags and parsed command or diff. The client raises a dialog in front of the tab showing
-the agent's session, with the `prod` tag in the danger colour and each call listed as it
-will run. Three answers: approve this batch (bound to its hash, so the gateway runs
-exactly it), approve and grant (the same calls on the same tags for a chosen time, from
-a short list, never open-ended), or refuse with an optional note the agent receives.
-
-Headless, with no client running, an ask is a refusal saying no one was there to answer,
-which is the safe direction.
-
-Every answer is written to the audit log with the hash it approved.
-
-Proven by a UI case that receives a two-call batch, reads both calls and the tag from
-the accessibility tree, approves, and finds both in the audit log under that hash.
-
 ### §QS338 Taint after untrusted input
 
 Prompt injection is the attack that needs no exploit: a log line, a README or a database

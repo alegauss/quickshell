@@ -255,6 +255,26 @@ public sealed class AgentGateway : IAsyncDisposable
                  ["stream"] = StreamProperty(),
                  ["pattern"] = new JsonObject { ["type"] = "string", ["description"] = "What to look for." },
              }, "output", "pattern"),
+        Tool("plan", "Several calls (exec, edit_file, job_start, read_file) judged together and, where the policy asks, approved by the "
+                     + "person in quickshell once, as a batch bound to its hash; then run in order, stopping at the first that fails. "
+                     + "Prefer one plan to many asks.",
+             new JsonObject
+             {
+                 ["calls"] = new JsonObject
+                 {
+                     ["type"] = "array",
+                     ["items"] = new JsonObject
+                     {
+                         ["type"] = "object",
+                         ["properties"] = new JsonObject
+                         {
+                             ["tool"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray("exec", "edit_file", "job_start", "read_file") },
+                             ["arguments"] = new JsonObject { ["type"] = "object", ["description"] = "The tool's own arguments." },
+                         },
+                         ["required"] = new JsonArray("tool", "arguments"),
+                     },
+                 },
+             }, "calls"),
     ];
 
     private static JsonObject BudgetProperty() => new()
@@ -323,6 +343,199 @@ public sealed class AgentGateway : IAsyncDisposable
 
         // A cancel only ends what the agent started, so it is judged as a read; an edit is a mutation.
         return policy.Judge(session, argv, read: tool is not "edit_file", Clock());
+    }
+
+    /// <summary>Where requests for the person's approval are written for the window (QS337); null asks nobody.</summary>
+    public string? AsksFolder { get; init; }
+
+    /// <summary>How the person is asked: the window through <see cref="AsksFolder"/>, unless a test answers instead.</summary>
+    public Func<ApprovalRequest, CancellationToken, Task<ApprovalAnswer>>? Asks { get; init; }
+
+    private static JsonObject Refused(PolicyVerdict judged) => Content(new JsonObject
+    {
+        ["error"] = $"Refused by the agent policy: {judged.Rule}.",
+        ["verdict"] = "refuse",
+        ["rule"] = judged.Rule,
+    }, isError: true);
+
+    /// <summary>
+    /// Asks the person about a batch (QS337) and, where they approve it, runs it as asked, in order,
+    /// stopping at the first call that fails; what they decided goes to the audit with the batch's hash.
+    /// </summary>
+    private async Task<(JsonObject Answer, string? Approval)> ApprovedAsync(List<(string Tool, JsonObject Arguments, PolicyVerdict? Judged)> batch,
+                                                                         CancellationToken cancellationToken)
+    {
+        List<AskedCall> calls = [];
+
+        try
+        {
+            foreach ((string tool, JsonObject arguments, PolicyVerdict? judged) in batch)
+            {
+                calls.Add(await AskedAsync(tool, arguments, judged, cancellationToken).ConfigureAwait(false));
+            }
+        }
+        catch (RemoteTextRefusal refused)
+        {
+            return (Content(new JsonObject { ["error"] = refused.Message }, isError: true), null);
+        }
+
+        ApprovalRequest request = new(Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(6)),
+                                      Audit?.Run ?? "test", calls);
+
+        ApprovalAnswer answer = Asks is { } asks ? await asks(request, cancellationToken).ConfigureAwait(false)
+            : AsksFolder is { } folder && AgentAsks.WindowOpen() ? await AgentAsks.AskAsync(folder, request, AgentAsks.Patience, cancellationToken).ConfigureAwait(false)
+            : new ApprovalAnswer(Decision.Nobody, request.Hash);
+
+        string said = $"plan {request.ShortHash}";
+
+        if (answer.Decision is not (Decision.Approve or Decision.Grant))
+        {
+            string why = answer.Decision switch
+            {
+                Decision.Refuse => $"The person refused {said}" + (answer.Note.Length > 0 ? $": {answer.Note}" : ".") + " Do not retry it as it was.",
+                Decision.TimedOut => string.Create(CultureInfo.InvariantCulture,
+                    $"approval timed out: nobody answered {said} in quickshell within {AgentAsks.Patience.TotalMinutes:0} minutes."),
+                _ => $"This needs the person's approval ({calls[0].Rule}), and no quickshell window is open to ask in, so it is refused.",
+            };
+
+            return (Content(new JsonObject
+            {
+                ["error"] = why,
+                ["verdict"] = "ask",
+                ["plan"] = request.Hash,
+                ["decision"] = answer.Decision.ToString().ToLowerInvariant(),
+            }, isError: true), $"{answer.Decision.ToString().ToLowerInvariant()} {request.Hash}");
+        }
+
+        string approval = answer.Decision == Decision.Grant
+            ? string.Create(CultureInfo.InvariantCulture, $"approved {request.Hash} and granted for {answer.GrantMinutes} minutes")
+            : $"approved {request.Hash}";
+
+        if (batch.Count == 1)
+        {
+            JsonObject one = await AnsweredAsync(batch[0].Tool, batch[0].Arguments, cancellationToken).ConfigureAwait(false);
+
+            ((JsonObject)one["structuredContent"]!)["plan"] = request.Hash;
+
+            return (one, approval);
+        }
+
+        JsonArray results = [];
+        bool failed = false;
+
+        foreach ((string tool, JsonObject arguments, PolicyVerdict? _) in batch)
+        {
+            JsonObject result = await AnsweredAsync(tool, arguments, cancellationToken).ConfigureAwait(false);
+            JsonNode structured = result["structuredContent"]!;
+
+            results.Add(new JsonObject { ["tool"] = tool, ["result"] = structured.DeepClone(), ["isError"] = result["isError"]!.GetValue<bool>() });
+
+            // Stops at the first call that fails, saying which: the batch was approved as a whole.
+            if (result["isError"]!.GetValue<bool>() || structured["exitCode"] is JsonValue code && code.TryGetValue(out int exit) && exit != 0)
+            {
+                failed = true;
+
+                break;
+            }
+        }
+
+        return (Content(new JsonObject
+        {
+            ["plan"] = request.Hash,
+            ["results"] = results,
+            ["ran"] = results.Count,
+            ["of"] = batch.Count,
+            ["failed"] = failed,
+        }, isError: failed), approval);
+    }
+
+    /// <summary>
+    /// <c>plan</c>: several calls judged together and, where any asks, approved together, then run in
+    /// order and stopped at the first that fails (QS324). A call the policy refuses refuses the plan.
+    /// </summary>
+    private async Task<JsonObject> PlanAsync(JsonObject arguments, CancellationToken cancellationToken)
+    {
+        JsonArray calls = arguments["calls"] is JsonArray { Count: > 0 } given
+            ? given
+            : throw new GatewayRefusal("plan needs calls, each a tool and its arguments.");
+
+        List<(string Tool, JsonObject Arguments, PolicyVerdict? Judged)> batch = [];
+
+        foreach (JsonNode? call in calls)
+        {
+            string tool = call?["tool"]?.GetValue<string>() is "exec" or "edit_file" or "job_start" or "read_file"
+                ? call["tool"]!.GetValue<string>()
+                : throw new GatewayRefusal("A plan's calls are exec, edit_file, job_start or read_file.");
+            JsonObject args = call["arguments"]?.DeepClone() as JsonObject ?? new JsonObject();
+            PolicyVerdict? judged = Judge(tool, args);
+
+            if (judged is { Verdict: Verdict.Refuse })
+            {
+                JsonObject refused = (JsonObject)Refused(judged)["structuredContent"]!.DeepClone();
+
+                refused["failed"] = true;
+
+                return refused;
+            }
+
+            batch.Add((tool, args, judged));
+        }
+
+        if (batch.All(each => each.Judged is null or { Verdict: Verdict.Allow }))
+        {
+            JsonArray results = [];
+
+            foreach ((string tool, JsonObject args, PolicyVerdict? _) in batch)
+            {
+                JsonObject result = await AnsweredAsync(tool, args, cancellationToken).ConfigureAwait(false);
+
+                results.Add(new JsonObject { ["tool"] = tool, ["result"] = result["structuredContent"]!.DeepClone(), ["isError"] = result["isError"]!.GetValue<bool>() });
+
+                if (result["isError"]!.GetValue<bool>())
+                {
+                    break;
+                }
+            }
+
+            return new JsonObject
+            {
+                ["results"] = results,
+                ["ran"] = results.Count,
+                ["of"] = batch.Count,
+                ["failed"] = results.Count < batch.Count || results[^1]!["isError"]!.GetValue<bool>(),
+            };
+        }
+
+        (JsonObject answer, _) = await ApprovedAsync(batch, cancellationToken).ConfigureAwait(false);
+        JsonObject structured = (JsonObject)answer["structuredContent"]!.DeepClone();
+
+        structured["failed"] = answer["isError"]!.GetValue<bool>();
+
+        return structured;
+    }
+
+    /// <summary>One call as the person is shown it: its session, address and tags, and its words or its diff.</summary>
+    private async Task<AskedCall> AskedAsync(string tool, JsonObject arguments, PolicyVerdict? judged, CancellationToken cancellationToken)
+    {
+        string path = arguments["host"]?.GetValue<string>() ?? string.Empty;
+        ResolvedSession session = _store().Session(path) ?? throw new GatewayRefusal($"There is no saved session {path}.");
+        string address = string.Create(CultureInfo.InvariantCulture,
+            $"{session.User?.Value ?? Environment.UserName}@{session.Host}:{session.Port?.Value ?? SshEndpoint.DefaultPort}");
+        string[] words = arguments["argv"] is JsonArray argv ? [.. argv.Select(word => word?.ToString() ?? string.Empty)] : [];
+        string? file = arguments["path"]?.GetValue<string>();
+        string? diff = null;
+
+        if (tool == "edit_file" && file is not null)
+        {
+            IGatewayConnection connection = await ConnectionAsync(session, cancellationToken).ConfigureAwait(false);
+            IFileTransferChannel files = await connection.FilesAsync(cancellationToken).ConfigureAwait(false);
+
+            diff = await RemoteText.PreviewAsync(files, file, arguments["old_string"]?.GetValue<string>() ?? string.Empty,
+                                                 arguments["new_string"]?.GetValue<string>() ?? string.Empty, cancellationToken).ConfigureAwait(false);
+            (diff, _) = SecretRedactor.Redact(diff);
+        }
+
+        return new AskedCall(session.Path, address, session.Tags, tool, words, file, diff, judged?.Rule ?? string.Empty);
     }
 
     /// <summary>What a person watching sees: each call as terminal output, which the window shows as the agent's tab (QS335).</summary>
@@ -407,6 +620,7 @@ public sealed class AgentGateway : IAsyncDisposable
 
         JsonObject answer;
         PolicyVerdict? judged = null;
+        string? approval = null;
 
         Feed?.Begin(name, arguments);
 
@@ -435,17 +649,13 @@ public sealed class AgentGateway : IAsyncDisposable
                     // session's level, its kind and any live grant allow it.
                     judged = Judge(name, arguments);
 
-                    answer = judged is { Verdict: not Verdict.Allow } held
-                        ? Content(new JsonObject
-                          {
-                              ["error"] = held.Verdict == Verdict.Ask
-                                  ? $"This needs the person's approval ({held.Rule}). quickshell cannot ask yet, so it is refused; "
-                                    + "say what you wanted to run and let the person run it or widen the policy."
-                                  : $"Refused by the agent policy: {held.Rule}.",
-                              ["verdict"] = held.Verdict.ToString().ToLowerInvariant(),
-                              ["rule"] = held.Rule,
-                          }, isError: true)
-                        : await AnsweredAsync(name, arguments, either.Token).ConfigureAwait(false);
+                    (answer, approval) = judged switch
+                    {
+                        null => (await AnsweredAsync(name, arguments, either.Token).ConfigureAwait(false), null),
+                        { Verdict: Verdict.Allow } => (await AnsweredAsync(name, arguments, either.Token).ConfigureAwait(false), "automatic"),
+                        { Verdict: Verdict.Refuse } => (Refused(judged), null),
+                        _ => await ApprovedAsync([(name, arguments, judged)], either.Token).ConfigureAwait(false),
+                    };
                 }
                 catch (OperationCanceledException) when (_calls.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                 {
@@ -465,7 +675,7 @@ public sealed class AgentGateway : IAsyncDisposable
             ResolvedSession? session = arguments["host"] is JsonValue host && host.TryGetValue(out string? path) ? _store().Session(path) : null;
 
             audit.Record(DateTimeOffset.Now, name, session, arguments, (JsonObject)answer["structuredContent"]!,
-                         answer["isError"]!.GetValue<bool>(), judged);
+                         answer["isError"]!.GetValue<bool>(), judged, approval);
         }
 
         return answer;
@@ -484,6 +694,7 @@ public sealed class AgentGateway : IAsyncDisposable
                 "job_start" or "job_status" or "job_output" or "job_cancel" => await JobAsync(name, arguments, cancellationToken).ConfigureAwait(false),
                 "output_page" => OutputPage(arguments),
                 "output_grep" => OutputGrep(arguments),
+                "plan" => await PlanAsync(arguments, cancellationToken).ConfigureAwait(false),
                 _ => throw new GatewayRefusal($"There is no tool {name} here; tools/list names the ones there are."),
             };
 
@@ -494,7 +705,7 @@ public sealed class AgentGateway : IAsyncDisposable
                 result["redacted"] = hidden;
             }
 
-            return Content(result, isError: false);
+            return Content(result, isError: name == "plan" && result["failed"]?.GetValue<bool>() == true);
         }
         catch (SshException failed)
         {

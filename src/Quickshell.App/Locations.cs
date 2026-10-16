@@ -93,6 +93,9 @@ public sealed class Locations
     /// <summary>Present while the person has stopped every agent (QS334); the gateway watches for it.</summary>
     public string AgentStop => Path.Combine(Root, "agents-stopped");
 
+    /// <summary>Requests for the person's approval and their answers, between the gateway and the window (QS337).</summary>
+    public string AgentAsks => Path.Combine(Root, "agent-asks");
+
     /// <summary>What each gateway run shows a person, tailed into the agent's tab (QS335).</summary>
     public string AgentFeeds => Path.Combine(Root, "agent-feeds");
 

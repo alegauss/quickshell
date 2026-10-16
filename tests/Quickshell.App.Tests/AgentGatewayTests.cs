@@ -36,7 +36,7 @@ public sealed class AgentGatewayTests
 
         JsonObject listed = (await gateway.AnswerAsync("""{"jsonrpc":"2.0","id":2,"method":"tools/list"}""", Stop))!;
 
-        Assert.Equal(["hosts_list", "exec", "read_file", "edit_file", "job_start", "job_status", "job_output", "job_cancel", "output_page", "output_grep"], listed["result"]!["tools"]!.AsArray().Select(tool => tool!["name"]!.GetValue<string>()));
+        Assert.Equal(["hosts_list", "exec", "read_file", "edit_file", "job_start", "job_status", "job_output", "job_cancel", "output_page", "output_grep", "plan"], listed["result"]!["tools"]!.AsArray().Select(tool => tool!["name"]!.GetValue<string>()));
 
         JsonObject unknown = (await gateway.AnswerAsync("""{"jsonrpc":"2.0","id":"x","method":"resources/list"}""", Stop))!;
 

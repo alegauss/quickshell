@@ -390,6 +390,10 @@ public static class Entry
         window.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background,
                                       () => WatchAgentFeeds(window, share));
 
+        // And what an agent asks the person to approve (QS337): this window says it is here to answer,
+        // and answers each request in a dialog of its own.
+        window.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () => WatchAgentAsks(window));
+
         // A session recorded from its first byte, local or saved (QS134).
         window.OpensRecorded = recording => Opened(window, window.Settings, share, recording: recording);
         window.OpensSessionRecorded = (path, recording) =>
@@ -689,6 +693,67 @@ public static class Entry
                              .ConfigureAwait(false));
     }
 
+    /// <summary>Held while a window can answer an agent's request, so a gateway knows whether anybody is here (QS337).</summary>
+    private static Mutex? _answering;
+
+    /// <summary>The requests this process has shown, so one is never asked twice.</summary>
+    private static readonly HashSet<string> AsksShown = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Answers each pending and each new request for the person's approval (QS337).</summary>
+    private static void WatchAgentAsks(MainWindow window)
+    {
+        string folder = Locations.Current.AgentAsks;
+
+        Directory.CreateDirectory(folder);
+        _answering ??= new Mutex(initiallyOwned: false, AgentAsks.WindowName);
+
+        foreach (string asked in Directory.GetFiles(folder, "*.ask.json")
+                                          .Where(file => File.GetLastWriteTimeUtc(file) > DateTime.UtcNow - AgentAsks.Patience))
+        {
+            window.Dispatcher.BeginInvoke(() => AnswerAsk(window, folder, asked));
+        }
+
+        FileSystemWatcher watching = new(folder, "*.ask.json") { EnableRaisingEvents = true };
+
+        void Seen(object? sender, FileSystemEventArgs seen) =>
+            window.Dispatcher.BeginInvoke(() => AnswerAsk(window, folder, seen.FullPath));
+
+        watching.Created += Seen;
+        watching.Renamed += (sender, renamed) => Seen(sender, renamed);
+        window.Closed += (_, _) => watching.Dispose();
+    }
+
+    /// <summary>One request in its dialog, in front of the window; the answer written beside it, and a grant into the policy.</summary>
+    private static void AnswerAsk(MainWindow window, string folder, string asked)
+    {
+        if (!AsksShown.Add(asked) || !File.Exists(asked) || AgentAsks.ReadRequest(File.ReadAllText(asked)) is not { } request)
+        {
+            return;
+        }
+
+        ApprovalDialog dialog = new(request) { Owner = window.IsLoaded ? window : null, ThemeMode = window.ThemeMode };
+
+        dialog.ShowDialog();
+
+        ApprovalAnswer answer = dialog.Answer;
+
+        if (answer.Decision == Decision.Grant)
+        {
+            try
+            {
+                ApprovalDialog.WriteGrant(Locations.Current.AgentPolicy, request, answer.GrantMinutes, DateTimeOffset.Now);
+            }
+            catch (Exception unwritten) when (unwritten is IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException)
+            {
+                // The batch still runs as approved; the grant is what could not be kept, and the person is told.
+                answer = answer with { Decision = Decision.Approve };
+                MessageBox.Show(window, $"The batch runs as approved, but the grant could not be written: {unwritten.Message}", "Agent policy");
+            }
+        }
+
+        AgentAsks.WriteAnswer(folder, request.Id, answer);
+    }
+
     /// <summary>The feeds this process has given a tab, so a feed that grows is not opened twice.</summary>
     private static readonly HashSet<string> FeedsShown = new(StringComparer.OrdinalIgnoreCase);
 
@@ -842,6 +907,7 @@ public static class Entry
             Audit = audit,
             StopFile = Locations.Current.AgentStop,
             PolicyFile = Locations.Current.AgentPolicy,
+            AsksFolder = Locations.Current.AgentAsks,
             Feed = AgentFeed.Start(Locations.Current.AgentFeeds, audit.Run),
         };
 
