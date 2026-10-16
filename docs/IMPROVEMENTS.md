@@ -549,26 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS334 A kill switch
-
-When an agent is doing the wrong thing on a server, every second spent finding which
-window to close is a second it keeps going. Stopping the agent's own process is not
-enough either: jobs it started on the server keep running.
-
-The gateway gets one stop. A keybinding in quickshell, the same command in the palette,
-and an item on the tray icon each revoke every timed grant, cancel every running job
-(TERM, then KILL after a short grace), close every connection the gateway holds, and
-leave the gateway refusing every call until the person re-enables it from the same
-place.
-
-The agent's next call gets a refusal that says it was stopped by the person, so it
-reports that rather than retrying in a loop. The stop and what it cancelled go to the
-audit log.
-
-Proven by a run with three jobs on two sessions: one keypress, every job gone from the
-servers' process lists within the grace period, and the next exec refused with the named
-reason.
-
 ### §QS335 The agent's session, in plain sight
 
 The person handing work to an agent wants to glance at what it is doing, the way they

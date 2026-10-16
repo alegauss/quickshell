@@ -448,6 +448,11 @@ public sealed partial class MainWindow : Window
         // A PDF of the selected sessions, or of all of them where none is (QS315).
         InputBindings.Add(new InputBinding(new DocumentingSessions(this), new PaletteOnly()));
 
+        // The kill switch for agents (QS334): one chord, because the moment it is needed is not one for
+        // searching a palette; letting them run again is the palette's alone.
+        InputBindings.Add(new KeyBinding(new StoppingAgents(this), Key.F12, ModifierKeys.Control | ModifierKeys.Shift));
+        InputBindings.Add(new InputBinding(new LettingAgentsRun(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();

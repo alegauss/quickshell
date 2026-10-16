@@ -289,12 +289,124 @@ public sealed class AgentGateway : IAsyncDisposable
     /// <summary>Where every call is recorded (QS333); null records nothing, as in a test that does not ask.</summary>
     public AuditLog? Audit { get; init; }
 
+    /// <summary>
+    /// The file whose presence means the person stopped every agent (QS334); null where nothing can stop
+    /// this gateway, as in a test that does not ask.
+    /// </summary>
+    public string? StopFile { get; init; }
+
+    /// <summary>One call or one stop at a time, so a stop never closes a connection under a call it did not cancel.</summary>
+    private readonly SemaphoreSlim _turn = new(1, 1);
+
+    /// <summary>Cancelled by a stop, so a call in flight ends now rather than when it would have.</summary>
+    private CancellationTokenSource _calls = new();
+
+    private bool _swept;
+
+    /// <summary>Whether the person has stopped the agents, by the file's presence.</summary>
+    public bool Stopped => StopFile is { } file && File.Exists(file);
+
+    /// <summary>
+    /// The kill switch (QS334): ends any call in flight, cancels every job still running on each session
+    /// this gateway holds, closes every connection, and records it. Afterwards every call is refused
+    /// until the stop file is gone.
+    /// </summary>
+    /// <returns>Each job cancelled, as <c>session: id</c>.</returns>
+    public async Task<IReadOnlyList<string>> StopAsync()
+    {
+        await _calls.CancelAsync().ConfigureAwait(false);
+        await _turn.WaitAsync().ConfigureAwait(false);
+
+        try
+        {
+            return await SweepAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _turn.Release();
+        }
+    }
+
+    private async Task<IReadOnlyList<string>> SweepAsync()
+    {
+        List<string> cancelled = [];
+
+        foreach ((string session, IGatewayConnection connection) in _open)
+        {
+            try
+            {
+                using CancellationTokenSource limit = new(TimeSpan.FromSeconds(40));
+
+                cancelled.AddRange((await RemoteJobs.CancelAllAsync(connection, limit.Token).ConfigureAwait(false)).Select(job => $"{session}: {job}"));
+            }
+            catch (Exception failed) when (failed is SshException or OperationCanceledException)
+            {
+                cancelled.Add($"{session}: its jobs could not be reached to cancel ({failed.Message})");
+            }
+
+            await connection.DisposeAsync().ConfigureAwait(false);
+        }
+
+        _open.Clear();
+        _swept = true;
+
+        if (_calls.IsCancellationRequested)
+        {
+            _calls.Dispose();
+            _calls = new CancellationTokenSource();
+        }
+
+        Audit?.Record(DateTimeOffset.Now, "stop", null, new JsonObject(),
+                      new JsonObject { ["cancelled"] = new JsonArray([.. cancelled.Select(each => (JsonNode?)JsonValue.Create(each))]) },
+                      failed: false);
+
+        return cancelled;
+    }
+
+    private const string StoppedReason =
+        "The person stopped every agent from quickshell, so nothing runs through the gateway until they let it run again. "
+        + "Report this to them rather than retrying.";
+
     private async Task<JsonObject> CallAsync(JsonObject? call, CancellationToken cancellationToken)
     {
         string name = call?["name"]?.GetValue<string>() ?? throw new GatewayRefusal("A tool call names no tool.");
         JsonObject arguments = call["arguments"] as JsonObject ?? new JsonObject();
 
-        JsonObject answer = await AnsweredAsync(name, arguments, cancellationToken).ConfigureAwait(false);
+        JsonObject answer;
+
+        await _turn.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            if (Stopped)
+            {
+                if (!_swept)
+                {
+                    await SweepAsync().ConfigureAwait(false);
+                }
+
+                answer = Content(new JsonObject { ["error"] = StoppedReason, ["stopped"] = true }, isError: true);
+            }
+            else
+            {
+                _swept = false;
+
+                using CancellationTokenSource either = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _calls.Token);
+
+                try
+                {
+                    answer = await AnsweredAsync(name, arguments, either.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (_calls.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    answer = Content(new JsonObject { ["error"] = StoppedReason, ["stopped"] = true }, isError: true);
+                }
+            }
+        }
+        finally
+        {
+            _turn.Release();
+        }
 
         if (Audit is { } audit)
         {

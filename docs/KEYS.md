@@ -119,6 +119,7 @@ prompt), and the title says which. A name already taken there is left alone.
 | `Ctrl+Shift+R` | Rereads [the settings file](SETTINGS.md). Saving it is normally enough; this is what to press when it was not. |
 | `Ctrl+Shift+I` | Imports sessions from another client, into a folder of their own; the sessions you already have stay. |
 | `Ctrl+Shift+F1` | Help: opens the palette, which lists everything this client can do and the keys that do it. The diagnostic report is in there too, as *Write a diagnostic report*. |
+| `Ctrl+Shift+F12` | Stops every agent working through the agent gateway: each cancels the jobs it started, closes its connections and refuses what an agent asks, until *Let agents run again* in the palette. |
 
 ## In the file browser
 

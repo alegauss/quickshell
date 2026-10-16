@@ -374,6 +374,19 @@ measured against the fixture, nothing is left to hang. A Windows server is told 
 sends (`OpenSSH_for_Windows`) and gets the command without the preamble. Code:
 `src/Quickshell.App/CommandPrompts.cs`.
 
+**The kill switch (QS334).** `Ctrl+Shift+F12` in the window, or *Stop every agent* in the palette,
+writes `agents-stopped` in quickshell's data folder. Every gateway watches for that file. When it
+appears, the gateway ends any call in flight, sends TERM to every job still running for the account on
+each session it holds and KILL after five seconds, closes every connection, and records the stop and
+what it cancelled in the audit log. From then on every call is refused with `stopped: true` and a
+sentence telling the agent the person stopped it and not to retry. A gateway whose watcher missed the
+file sweeps at its next call. *Let agents run again*, in the palette alone so it is never pressed by
+accident, removes the file; nothing cancelled is started again. The window and the gateway are
+separate processes (QS321), so a file is the signal: it needs no port, and a gateway started later
+finds the stop already in force. The line also asked for a tray item, and the client has no tray icon
+yet, so it waits for one; grants (QS337) do not exist yet, so there are none to revoke. Code:
+`MainWindow.AgentStop.cs`, `AgentGateway.StopAsync`, `RemoteJobs.CancelAllAsync`.
+
 **The audit trail (QS333).** Every tool call, answered or refused, is one JSON line in
 `audit/<run>.jsonl` under quickshell's data folder, one file per gateway run, appended and never
 edited, rotated at 16 MB into `<run>.1.jsonl` and on with the chain unbroken. A line holds the time, the

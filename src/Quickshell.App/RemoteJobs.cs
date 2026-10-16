@@ -174,6 +174,32 @@ public static partial class RemoteJobs
         };
     }
 
+    /// <summary>
+    /// Cancels every job still running for this account on this server, the kill switch's sweep
+    /// (QS334): TERM to each one's process group at once, then KILL to any still there after five
+    /// seconds. Returns the ids it cancelled.
+    /// </summary>
+    public static async Task<IReadOnlyList<string>> CancelAllAsync(IGatewayConnection connection, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+
+        if (CommandPrompts.IsWindows(connection.ServerVersion))
+        {
+            return [];
+        }
+
+        string sweep = $"for d in \"{Root}\"/*/; do [ -d \"$d\" ] || continue; [ -f \"$d/exit\" ] && continue; [ -f \"$d/cancelled\" ] && continue; "
+                       + "p=$(cat \"$d/pid\" 2>/dev/null) || continue; kill -0 \"$p\" 2>/dev/null || continue; touch \"$d/cancelled\"; "
+                       + "kill -TERM -- \"-$p\" 2>/dev/null || kill -TERM \"$p\" 2>/dev/null; echo \"$p $(basename \"$d\")\"; done > \"$HOME/.quickshell/stopped\"; "
+                       + "for i in 1 2 3 4 5; do left=0; while read p id; do kill -0 \"$p\" 2>/dev/null && left=1; done < \"$HOME/.quickshell/stopped\"; "
+                       + "[ $left = 0 ] && break; sleep 1; done; "
+                       + "while read p id; do kill -KILL -- \"-$p\" 2>/dev/null || kill -KILL \"$p\" 2>/dev/null; echo \"$id\"; done < \"$HOME/.quickshell/stopped\"";
+
+        CommandResult ran = await connection.RunAsync(sweep, TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+
+        return [.. ran.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+    }
+
     /// <summary>An id as this file makes them, and nothing that could name another path.</summary>
     private static string Checked(string id) =>
         id is not null && Id.IsMatch(id) ? id : throw new JobRefusal($"{id} is not a job id: job_start returns one, twelve hex digits.");

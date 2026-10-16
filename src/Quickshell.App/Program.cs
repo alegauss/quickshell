@@ -776,7 +776,19 @@ public static class Entry
         AgentGateway gateway = new(() => SessionTree.ReadFrom(store), AgentGateway.Connect, CrashContext.Build())
         {
             Audit = AuditLog.Start(Locations.Current.Audit, DateTimeOffset.Now),
+            StopFile = Locations.Current.AgentStop,
         };
+
+        // The kill switch (QS334): the window writes the file and this sweeps at once, without waiting
+        // for the agent's next call, so a job stops while the agent is still thinking.
+        Directory.CreateDirectory(Path.GetDirectoryName(Locations.Current.AgentStop)!);
+
+        using FileSystemWatcher stop = new(Path.GetDirectoryName(Locations.Current.AgentStop)!, Path.GetFileName(Locations.Current.AgentStop))
+        {
+            EnableRaisingEvents = true,
+        };
+
+        stop.Created += (_, _) => _ = gateway.StopAsync();
 
         try
         {

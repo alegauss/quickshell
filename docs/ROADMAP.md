@@ -41,7 +41,6 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS334** (deps: QS325 ✅) **A person who sees an agent going wrong on a server has no single act that stops it everywhere at once** — One keybinding and a tray command revoke every grant, cancel running jobs and close every gateway connection, and the agent is told why. → §QS334
 - 📋 **QS335** (deps: QS325 ✅) **What an agent runs on a server is invisible to the person until it reports back, if it reports at all** — Each gateway connection appears as a quickshell tab badged as the agent's, showing every command and its output live as it runs. → §QS335
 - 📋 **QS336** (deps: QS322 ✅, QS323 ✅, QS325 ✅, QS331 ✅) **Every call an agent makes through the gateway is allowed, whatever the host and whatever the command** — The gateway judges each call against the policy before it runs: allow, ask the person, or refuse with the rule named. → §QS336
 - 📋 **QS337** (deps: QS324 ✅, QS336) **A call the policy says to ask about has nowhere to be asked, so the gateway can only allow or refuse it** — A quickshell dialog shows the plan, its host, tag and diff, approves the exact batch by hash, and can turn it into a timed grant. → §QS337
