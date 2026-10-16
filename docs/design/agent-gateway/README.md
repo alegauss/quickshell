@@ -204,6 +204,8 @@ Here staging asks before anything changes, production can be read and nothing el
 boxes ask, and for half an hour nginx may be restarted on the web servers without asking. A grant's
 commands are argument vectors, matched whole, never strings or patterns: `systemctl restart nginx`
 does not admit `systemctl restart nginx; rm -rf /`, because the second is not that vector (QS323).
+A top-level `"certificateMinutes"` (1 to 60, 5 when absent) sets how long a certificate signed for an
+agent lasts (QS341); a value outside that refuses every call, as any policy that does not read does.
 
 **Three questions this section cannot answer yet.**
 
@@ -389,6 +391,26 @@ leaves the session as it was, says why, and removes the key it made. Removing th
 `Plan.Undo`, which nothing in the window offers yet. Any process of the person's can read the key,
 an agent's included. A copy used directly skips the client's policy and audit, but signs in as the
 same limited account, which is why the account is the boundary.
+
+**Certificates that expire with the task (QS341).** quickshell is a small SSH certificate authority
+(`AgentAuthority.cs`). Its ed25519 pair is made the first time a server is set up, in `agent-keys`:
+the public half as `ca_ed25519.pub` and the private half only as `ca_ed25519.sealed`, protected with
+DPAPI for this Windows account. It is unsealed into a file only while `ssh-keygen -s` (the OpenSSH that
+ships with Windows) signs. That file is created with an access list naming this account alone, which
+ssh-keygen demands, and is deleted afterwards. The setup dialog signs the agent in on a certificate by
+default. The server then trusts the authority, not the agent's key, through one `authorized_keys` line:
+`cert-authority,principals="<account>",restrict,from="…"`. So `sshd_config` is never edited, and the
+line carries the source address. A session set up this way has `AgentCertificate` (SESSIONS.md). Before
+each connection, the gateway signs a certificate for the agent's key with the account as its one
+principal. It is valid from a minute back, for a server's clock, for the policy's `certificateMinutes`
+(five by default, at most sixty). It is handed to SSH.NET beside the key. A failed signing is reported to
+the agent as the connection failing. The key alone opens nothing, and an expired certificate opens
+nothing. Revoking the agent is not signing again. Moving it to a new key means setting the server up
+again. A connection the gateway keeps open stays open past its certificate, since sshd checks a
+certificate only at sign-in; a kill switch (QS334) closes it. Settled and not built: one authority spans
+every server, since a separate authority per tag adds keys to keep without narrowing what a certificate
+opens. Each certificate already names one account, and each server trusts that account alone. Windows
+Hello in front of the authority is not built.
 
 **A policy the agent cannot widen (QS339).** Three measures. The policy lives in quickshell's folder,
 outside any repository an agent is pointed at. `quickshell --agent-hook` denies the agent's `Write`,

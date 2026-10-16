@@ -245,7 +245,9 @@ made outside quickshell, in an editor or by a script, holds every call until you
 the dialog quickshell shows with the change. A session tagged `prod` is at *observe*: reads only. In
 the file you set levels by tag or by session path (`deny`, `observe`, `operate`), and grants that
 expire within four hours: named commands on named sessions, or `"level": "break-glass"` for
-everything. The design (`docs/design/agent-gateway/README.md`) gives the format with an example.
+everything. `certificateMinutes` (1 to 60, 5 by default) is how long a certificate signed for an
+agent lasts, on a server set up to take it in on one. The design (`docs/design/agent-gateway/README.md`)
+gives the format with an example.
 
 ## What is deliberately not here
 

@@ -549,29 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS341 Certificates that expire with the task
-
-A plain public key in `authorized_keys` is valid forever. If the agent account's private
-key leaves the machine, by a backup, a transcript or a compromised process, it keeps
-working until someone notices.
-
-OpenSSH certificates solve exactly this. The guided setup (QS340) can instead install a
-CA public key on the server with `TrustedUserCAKeys` and an `AuthorizedPrincipalsFile`
-for the agent account. quickshell then holds the CA key (in Credential Manager, behind
-Windows Hello when the person asks for it) and signs a fresh certificate when the
-gateway opens a connection: valid for a short window the policy sets, principal `agent`,
-`source-address` this machine, and `force-command` where the policy has one.
-
-A stolen certificate is worthless within minutes, nothing has to be removed from servers
-when a key rotates, and revocation is simply not signing another.
-
-The design document has to settle where the CA key lives and how a person rotates it,
-whether one CA spans all servers or one per tag, and how SSH.NET presents a certificate,
-which may need work in the library seam rather than here.
-
-Proven against the test sshd: a connection with a fresh certificate succeeds, and the
-same certificate is refused after its window.
-
 ### §QS342 Claude Code in a pane, with the pane's context
 
 The most common moment to want help is while looking at an error in a session's output,
@@ -683,3 +660,28 @@ one server must not clear the folder's settings for the rest.
 
 Proven against the Linux fixture: after removal the agent key no longer signs in, the
 sudoers file is gone, and the session carries no agent identity.
+
+### §QS360 Windows Hello in front of the agent authority
+
+QS341 keeps the agents' certificate authority sealed with DPAPI for the person's Windows
+account and unseals it for each signing. That stops a copied file from being used on
+another machine. It does not stop a process on this one: any program running as the
+person, an agent's included, can ask DPAPI for the key and sign itself a certificate.
+The certificate still opens only the account the server limited, but it bypasses the
+client's policy and audit.
+
+An option in Settings, off by default, should ask Windows Hello before each signing
+(`UserConsentVerifier`, or a key held by Windows Hello through the platform key storage
+provider rather than DPAPI). A signing nobody confirms fails, and the gateway reports
+the connection failing, as it does today when there is no authority. Since the gateway
+keeps one connection per session and signs only when it opens one, the person is asked
+once per session per gateway run, not once per command.
+
+The design has to settle three things. First, whether the authority moves into a
+Hello-bound key (a format change, so existing setups are set up again) or stays sealed
+with a Hello prompt in front, which is weaker but needs no migration. Second, what an
+unattended desk does: a locked screen answers no. Third, how a test proves it without a
+person.
+
+Proven where Windows Hello is available: with the option on, a signing with no
+confirmation writes no certificate and the gateway's call fails, naming why.

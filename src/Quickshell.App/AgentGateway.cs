@@ -1057,18 +1057,27 @@ public sealed class AgentGateway : IAsyncDisposable
                 cancellationToken);
 
     /// <summary>The same, over a host-key check of the caller's, which is how a test brings its own known_hosts.</summary>
+    /// <param name="session">The session to connect to.</param>
+    /// <param name="trust">The host-key check.</param>
+    /// <param name="cancellationToken">Abandons the connection.</param>
+    /// <param name="authority">
+    /// What signs the agent's certificate where the session says it signs in on one (QS341), and for how
+    /// long: the installed authority, for the lifetime the agent policy sets, unless a caller says otherwise.
+    /// </param>
     public static async ValueTask<IGatewayConnection> Connect(ResolvedSession session, TrustOnFirstUse trust,
-                                                              CancellationToken cancellationToken)
+                                                              CancellationToken cancellationToken,
+                                                              (AgentAuthority Authority, TimeSpan Lifetime)? authority = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(trust);
 
         // The agent's own identity where the session has one (QS340): its account and its key alone, so
-        // the server's limits on that account are what bound it, not the person's account.
+        // the server's limits on that account are what bound it, not the person's account. On a server
+        // that trusts quickshell's authority (QS341), with a certificate signed for minutes beside it.
         string user = session.AgentUser?.Value ?? session.User?.Value ?? Environment.UserName;
         SshEndpoint target = SshEndpoint.For(session.Host, user, session.Port?.Value ?? SshEndpoint.DefaultPort);
         IReadOnlyList<SshCredential> keys = session.AgentUser is not null
-            ? session.AgentKey is { } agentKey ? [new SshCredential.PrivateKey(RemoteShell.Expand(agentKey.Value))] : []
+            ? session.AgentKey is { } agentKey ? [AgentCredential(RemoteShell.Expand(agentKey.Value), user, session, authority)] : []
             : RemoteShell.Credentials(session);
 
         ISshTransport transport = session.JumpHost is { } jump
@@ -1096,6 +1105,30 @@ public sealed class AgentGateway : IAsyncDisposable
         }
 
         return new Kept(transport);
+    }
+
+    /// <summary>The agent's key, with a certificate signed for it now where the session signs in on one.</summary>
+    private static SshCredential.PrivateKey AgentCredential(string key, string user, ResolvedSession session,
+                                                            (AgentAuthority Authority, TimeSpan Lifetime)? authority)
+    {
+        if (session.AgentCertificate is not { Value: true })
+        {
+            return new SshCredential.PrivateKey(key);
+        }
+
+        (AgentAuthority signer, TimeSpan lifetime) = authority
+            ?? (AgentAuthority.Installed, AgentPolicy.Load(Locations.Current.AgentPolicy).CertificateLifetime);
+
+        try
+        {
+            return new SshCredential.PrivateKey(key, CertificatePath: signer.Sign(key, user, lifetime));
+        }
+        catch (Exception unsigned) when (unsigned is AgentSetupRefusal or IOException or System.Security.Cryptography.CryptographicException)
+        {
+            // Said as the connection failing, which is what it is to the agent: it signs in on nothing else.
+            throw new SshException(SshFailureKind.CredentialRejected, $"No certificate could be signed for {session.Path}'s agent account.",
+                                   unsigned.Message, "The person sets the agent account up again from the session menu.");
+        }
     }
 
     /// <inheritdoc/>

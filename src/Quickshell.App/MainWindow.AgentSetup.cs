@@ -73,8 +73,13 @@ public sealed partial class MainWindow
                 made = key;
             }
 
+            // quickshell's authority, made the first time a server is set up (QS341).
+            AgentAuthority authority = new(AgentKeysFolder ?? Locations.Current.AgentKeys);
+            string authorityKey = await Task.Run(authority.PublicKey).ConfigureAwait(true);
+
             AgentSetupDialog dialog = new(session.Host, await File.ReadAllTextAsync(key + ".pub").ConfigureAwait(true), from,
-                                          AgentPolicy.Load(AgentPolicyFile ?? Locations.Current.AgentPolicy).GrantedAsRoot(session));
+                                          AgentPolicy.Load(AgentPolicyFile ?? Locations.Current.AgentPolicy).GrantedAsRoot(session),
+                                          authorityKey);
 
             bool run = (AsksAgentSetup ?? (shown =>
             {
@@ -103,7 +108,7 @@ public sealed partial class MainWindow
                 return false;
             }
 
-            AgentAccountSetup.Record(SessionTree.ReadFrom(StoreFile), path, account, key).WriteTo(StoreFile);
+            AgentAccountSetup.Record(SessionTree.ReadFrom(StoreFile), path, account, key, dialog.UsesCertificate).WriteTo(StoreFile);
             made = null;
             Audited(session, account, from, plan);
             RefreshSessions();
@@ -190,6 +195,7 @@ public sealed partial class MainWindow
                 ["host"] = session.Path,
                 ["account"] = account,
                 ["from"] = from,
+                ["certificate"] = plan.Script.Contains("cert-authority,", StringComparison.Ordinal),
                 ["script"] = "sha256:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(plan.Script))),
             },
             new JsonObject { ["exitCode"] = 0 }, failed: false, approval: "the person, with their sudo in their own tab");

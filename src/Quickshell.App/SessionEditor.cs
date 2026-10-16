@@ -501,6 +501,7 @@ public sealed class SessionEditor
                 // save through the dialog keeps it as it was rather than dropping it.
                 AgentUser = existing.Settings.AgentUser,
                 AgentKey = existing.Settings.AgentKey,
+                AgentCertificate = existing.Settings.AgentCertificate,
             },
         };
 

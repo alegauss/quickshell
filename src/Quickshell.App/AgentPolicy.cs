@@ -76,6 +76,15 @@ public sealed class AgentPolicy
         _broken = broken;
     }
 
+    /// <summary>The longest a certificate signed for an agent may last (QS341): an hour, a task's length and not a key's.</summary>
+    public const int LongestCertificateMinutes = 60;
+
+    /// <summary>
+    /// How long a certificate the gateway signs for an agent lasts (QS341): the file's
+    /// <c>certificateMinutes</c>, five where it says nothing.
+    /// </summary>
+    public TimeSpan CertificateLifetime { get; private init; } = AgentAuthority.DefaultLifetime;
+
     /// <summary>The policy with no file: every session at operate, prod at observe.</summary>
     public static AgentPolicy None { get; } = new(null, [], [], null);
 
@@ -130,7 +139,14 @@ public sealed class AgentPolicy
                     { } other => throw new InvalidDataException($"grant {at + 1} names level {other}; a grant's only level is break-glass"),
                 }))];
 
-            return new AgentPolicy(fallback, rules, grants, null);
+            int minutes = root["certificateMinutes"]?.GetValue<int>() ?? (int)AgentAuthority.DefaultLifetime.TotalMinutes;
+
+            if (minutes is < 1 or > LongestCertificateMinutes)
+            {
+                throw new InvalidDataException($"certificateMinutes is {minutes}; a certificate lasts from 1 to {LongestCertificateMinutes} minutes");
+            }
+
+            return new AgentPolicy(fallback, rules, grants, null) { CertificateLifetime = TimeSpan.FromMinutes(minutes) };
         }
         catch (Exception wrong) when (wrong is JsonException or InvalidDataException or InvalidOperationException or FormatException)
         {

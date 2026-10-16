@@ -66,13 +66,19 @@ public sealed record SessionSettings
     /// <summary>The private key the agent gateway signs in with as <see cref="AgentUser"/> (QS340).</summary>
     public string? AgentKey { get; init; }
 
+    /// <summary>
+    /// Whether the server takes the agent in on a certificate quickshell signs for minutes, rather than on
+    /// <see cref="AgentKey"/> alone (QS341): the gateway then signs one before every connection.
+    /// </summary>
+    public bool? AgentCertificate { get; init; }
+
     /// <summary>Whether every field is unset, which is a node that inherits everything.</summary>
     [JsonIgnore]
     public bool IsEmpty =>
         User is null && Port is null && Key is null && JumpHost is null
         && Scheme is null && Credential is null && FontSize is null
         && TerminalType is null && Scrollback is null && Reconnect is null
-        && AgentUser is null && AgentKey is null;
+        && AgentUser is null && AgentKey is null && AgentCertificate is null;
 }
 
 /// <summary>
@@ -169,6 +175,9 @@ public sealed record ResolvedSession(string Path, string Host, Source<string>? U
 
     /// <summary>The key the agent gateway signs in with, and which node said so (QS340).</summary>
     public Source<string>? AgentKey { get; init; }
+
+    /// <summary>Whether the agent signs in on a certificate signed for minutes, and which node said so (QS341).</summary>
+    public Source<bool>? AgentCertificate { get; init; }
 
     /// <summary>
     /// What this session types after login, which is its own or nothing. No source accompanies it
@@ -424,6 +433,8 @@ public sealed class SessionTree
              carried.Reconnect is { } again ? (again ? "true" : "false") : null);
         Note(nameof(SessionSettings.AgentUser), carried.AgentUser);
         Note(nameof(SessionSettings.AgentKey), carried.AgentKey);
+        Note(nameof(SessionSettings.AgentCertificate),
+             carried.AgentCertificate is { } signed ? (signed ? "true" : "false") : null);
 
         return inherited;
 
@@ -604,6 +615,9 @@ public sealed class SessionTree
                     : null,
                 AgentUser = Carry(settings.AgentUser, sources, nameof(SessionSettings.AgentUser)),
                 AgentKey = Carry(settings.AgentKey, sources, nameof(SessionSettings.AgentKey)),
+                AgentCertificate = settings.AgentCertificate is { } signed
+                    ? new Source<bool>(signed, sources[nameof(SessionSettings.AgentCertificate)])
+                    : null,
 
                 // Its own, never the folder's: see SessionNode.PostLogin.
                 PostLogin = node.PostLogin,
@@ -642,6 +656,7 @@ public sealed class SessionTree
         Take(own.Reconnect, nameof(SessionSettings.Reconnect));
         Take(own.AgentUser, nameof(SessionSettings.AgentUser));
         Take(own.AgentKey, nameof(SessionSettings.AgentKey));
+        Take(own.AgentCertificate, nameof(SessionSettings.AgentCertificate));
 
         return new SessionSettings
         {
@@ -657,6 +672,7 @@ public sealed class SessionTree
             Reconnect = own.Reconnect ?? inherited.Reconnect,
             AgentUser = own.AgentUser ?? inherited.AgentUser,
             AgentKey = own.AgentKey ?? inherited.AgentKey,
+            AgentCertificate = own.AgentCertificate ?? inherited.AgentCertificate,
         };
 
         void Take(object? value, string field)

@@ -54,7 +54,13 @@ public static partial class AgentAccountSetup
     /// <param name="publicKey">The agent key's public half, one line as a <c>.pub</c> holds it.</param>
     /// <param name="from">The address or addresses the server sees this machine connect from, or null for anywhere.</param>
     /// <param name="sudo">The commands the account may run as root, each its program and arguments.</param>
-    public static AgentSetupPlan Plan(string account, string publicKey, string? from, IReadOnlyList<IReadOnlyList<string>> sudo)
+    /// <param name="authority">
+    /// Whether <paramref name="publicKey"/> is quickshell's certificate authority (QS341) rather than the
+    /// agent's own key: the account then takes in only a certificate it signed for this account, which
+    /// lasts minutes.
+    /// </param>
+    public static AgentSetupPlan Plan(string account, string publicKey, string? from, IReadOnlyList<IReadOnlyList<string>> sudo,
+                                      bool authority = false)
     {
         ArgumentNullException.ThrowIfNull(sudo);
 
@@ -75,7 +81,8 @@ public static partial class AgentAccountSetup
             throw new AgentSetupRefusal($"{from} is not an address list for from=.");
         }
 
-        string options = from is null ? "restrict" : $"restrict,from=\"{from}\"";
+        string options = (authority ? $"cert-authority,principals=\"{account}\"," : string.Empty)
+                         + (from is null ? "restrict" : $"restrict,from=\"{from}\"");
         StringBuilder script = new();
 
         script.Append("#!/bin/sh\n")
@@ -231,13 +238,21 @@ public static partial class AgentAccountSetup
 
     /// <summary>The store with the agent's identity on the session at <paramref name="path"/>, everything else as it was.</summary>
     /// <exception cref="SessionStoreException">The store holds nothing at that path.</exception>
-    public static SessionTree Record(SessionTree store, string path, string account, string key)
+    /// <param name="store">The store as it is now.</param>
+    /// <param name="path">The session set up.</param>
+    /// <param name="account">The agent's account on its server.</param>
+    /// <param name="key">The agent's private key.</param>
+    /// <param name="certificate">Whether the server trusts quickshell's authority, so the gateway signs a certificate each time (QS341).</param>
+    public static SessionTree Record(SessionTree store, string path, string account, string key, bool certificate = false)
     {
         ArgumentNullException.ThrowIfNull(store);
 
         SessionNode node = store.Find(path) ?? throw new SessionStoreException($"There is nothing at {path} in the session store.",
                                                                                 "It may have been moved or deleted while the setup ran.");
 
-        return store.With(path, node with { Settings = node.Settings with { AgentUser = account, AgentKey = key } });
+        return store.With(path, node with
+        {
+            Settings = node.Settings with { AgentUser = account, AgentKey = key, AgentCertificate = certificate ? true : null },
+        });
     }
 }

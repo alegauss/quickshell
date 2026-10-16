@@ -15,7 +15,9 @@ public sealed class AgentSetupDialog : Window
 {
     private readonly string _host;
     private readonly string _publicKey;
+    private readonly string? _authority;
     private readonly string _from;
+    private readonly CheckBox _certificate;
     private readonly TextBox _account;
     private readonly TextBox _commands;
     private readonly TextBlock _script;
@@ -27,12 +29,18 @@ public sealed class AgentSetupDialog : Window
     /// <param name="publicKey">The agent key's public half.</param>
     /// <param name="from">The address the server sees this machine connect from.</param>
     /// <param name="suggested">Commands to start the list with: what the policy already granted as root.</param>
-    public AgentSetupDialog(string host, string publicKey, string from, IReadOnlyList<IReadOnlyList<string>> suggested)
+    /// <param name="authority">
+    /// quickshell's certificate authority's public key (QS341), which the server can trust in place of the
+    /// agent's key, or null to offer only the key.
+    /// </param>
+    public AgentSetupDialog(string host, string publicKey, string from, IReadOnlyList<IReadOnlyList<string>> suggested,
+                            string? authority = null)
     {
         ArgumentNullException.ThrowIfNull(suggested);
 
         _host = host;
         _publicKey = publicKey;
+        _authority = authority;
         _from = from;
 
         Title = $"Set up an agent account on {host}";
@@ -60,6 +68,18 @@ public sealed class AgentSetupDialog : Window
         AutomationProperties.SetAutomationId(_account, "AgentAccount");
         AutomationProperties.SetName(_account, "Account");
         body.Children.Add(_account);
+
+        // On by default where there is an authority (QS341): a key the server takes for good is the one
+        // that keeps working after it leaks.
+        _certificate = new CheckBox
+        {
+            Content = "Sign the agent in on a certificate that lasts minutes, not on a key that lasts until removed",
+            IsChecked = authority is not null,
+            IsEnabled = authority is not null,
+            Margin = new Thickness(0, 10, 0, 0),
+        };
+        AutomationProperties.SetAutomationId(_certificate, "AgentCertificate");
+        body.Children.Add(_certificate);
 
         body.Children.Add(Label("Commands it may run as root, one a line, program first (systemctl restart nginx)"));
         _commands = new TextBox
@@ -101,11 +121,16 @@ public sealed class AgentSetupDialog : Window
 
         _account.TextChanged += (_, _) => Written();
         _commands.TextChanged += (_, _) => Written();
+        _certificate.Checked += (_, _) => Written();
+        _certificate.Unchecked += (_, _) => Written();
         Written();
     }
 
     /// <summary>The account named, as it stood when the plan was last written.</summary>
     public string Account => _account.Text.Trim();
+
+    /// <summary>Whether the server will trust quickshell's authority rather than the agent's key (QS341).</summary>
+    public bool UsesCertificate => _authority is not null && _certificate.IsChecked == true;
 
     /// <summary>The plan as the dialog shows it, or null while what is typed cannot be written exactly.</summary>
     public AgentSetupPlan? Plan { get; private set; }
@@ -119,7 +144,9 @@ public sealed class AgentSetupDialog : Window
     {
         try
         {
-            Plan = AgentAccountSetup.Plan(Account, _publicKey, _from, Commands);
+            Plan = UsesCertificate
+                ? AgentAccountSetup.Plan(Account, _authority!, _from, Commands, authority: true)
+                : AgentAccountSetup.Plan(Account, _publicKey, _from, Commands);
             _script.Text = Plan.Script;
             _refused.Text = string.Empty;
         }
