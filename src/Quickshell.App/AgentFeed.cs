@@ -101,6 +101,9 @@ public sealed class AgentFeed
         Append(said.ToString());
     }
 
+    /// <summary>A line from the gateway itself, in the warning colour: a taint, a stop.</summary>
+    public void Note(string text) => Append($"{Escape}[33m{Escape}[1m! {text}{Escape}[0m\r\n");
+
     /// <summary>Text with its line ends as a terminal wants them, ending on one.</summary>
     private static string Lines(string? text)
     {

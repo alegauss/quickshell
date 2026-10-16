@@ -593,9 +593,12 @@ public sealed class AgentGatewayTests
         TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(Path.GetTempPath(), $"qs325-{Guid.NewGuid():N}")),
                                     (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
 
+        // A stand-in for the person, who approves what is asked: these tests are about other things, and
+        // a change after a read asks (QS338).
         return new AgentGateway(() => store, (session, token) => AgentGateway.Connect(session, trust, token), "test")
         {
             PolicyFile = Policies.BreakGlass(),
+            Asks = (request, _) => Task.FromResult(new ApprovalAnswer(Decision.Approve, request.Hash)),
         };
     }
 

@@ -452,6 +452,7 @@ public sealed partial class MainWindow : Window
         // searching a palette; letting them run again is the palette's alone.
         InputBindings.Add(new KeyBinding(new StoppingAgents(this), Key.F12, ModifierKeys.Control | ModifierKeys.Shift));
         InputBindings.Add(new InputBinding(new LettingAgentsRun(this), new PaletteOnly()));
+        InputBindings.Add(new InputBinding(new TrustingAgents(this), new PaletteOnly()));
 
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.

@@ -363,6 +363,20 @@ does not, which a later line has to settle before such a server is offered.
 with the session's key and the agents, never a typed password, and refuses a host key the user's
 known_hosts does not already hold, saying to connect once from the window.
 
+**Taint after untrusted text (QS338).** A call that brings in text somebody else could have written
+taints the gateway run: `read_file`, a job's output or a page or search of kept output that returned
+anything, and an `exec` (or a plan's call) that printed anything, unless its program only reports the
+machine's own state (`uptime`, `df`, `free`, `whoami`, `id`, `groups`, `hostname`, `uname`, `nproc`,
+`date`, `pwd`, `du`, `lscpu`, `lsblk`, `lsmem`, and `systemctl is-*`). Even `ps` and `systemctl
+status` print text others control, so they taint. From then on a change the level or a grant would
+allow asks instead, its rule naming what was read; a read still runs; a change the policy refuses is
+still refused. The taint is `agent-taints/<run>.taint`, whose presence is the taint and whose text says
+what brought it in; the agent's tab shows a warning line when it happens, and *Trust what agents have
+read* in the palette removes every run's taint. It is as coarse as the design said it would be: a run
+that reads anything asks for every change after, which is the cost of not knowing what the agent
+believed. A same-user process could delete the file, which the side-door hook does not yet cover; it is
+the file QS339's guard should protect beside the policy. Code: `AgentGateway.Untrusted`, `Tainted`.
+
 **Approval, built (QS337).** An ask writes `agent-asks/<id>.ask.json` into quickshell's folder, holding
 the batch: each call's session, address, tags, tool, the words it runs or an edit's diff (previewed
 without writing it, and redacted), and the rule that asked. The window holds the named mutex

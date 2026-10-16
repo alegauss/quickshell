@@ -342,7 +342,13 @@ public sealed class AgentGateway : IAsyncDisposable
             : null;
 
         // A cancel only ends what the agent started, so it is judged as a read; an edit is a mutation.
-        return policy.Judge(session, argv, read: tool is not "edit_file", Clock());
+        PolicyVerdict judged = policy.Judge(session, argv, read: tool is not "edit_file", Clock());
+
+        // After untrusted text came in, a mutation the policy or a grant would allow asks the person
+        // instead (QS338): reads stay automatic, so the cost falls only where the risk is.
+        return judged is { Verdict: Verdict.Allow, Read: false } && Taint is { } why
+            ? judged with { Verdict = Verdict.Ask, Rule = $"{judged.Rule}, but this agent read untrusted text ({why}), so every change asks" }
+            : judged;
     }
 
     /// <summary>Where requests for the person's approval are written for the window (QS337); null asks nobody.</summary>
@@ -538,6 +544,96 @@ public sealed class AgentGateway : IAsyncDisposable
         return new AskedCall(session.Path, address, session.Tags, tool, words, file, diff, judged?.Rule ?? string.Empty);
     }
 
+    /// <summary>
+    /// Where this run's taint is kept (QS338): the file's presence is the taint, and its text says what
+    /// brought it in. The person clears it from the window; nothing the agent calls does.
+    /// </summary>
+    public string? TaintFile { get; init; }
+
+    private string? _taint;
+
+    /// <summary>What made this run untrusted, or null while nothing has.</summary>
+    public string? Taint
+    {
+        get
+        {
+            if (TaintFile is { } file)
+            {
+                return File.Exists(file) ? (_taint ??= File.ReadAllText(file).Trim()) : (_taint = null);
+            }
+
+            return _taint;
+        }
+    }
+
+    /// <summary>Programs whose output is the machine's own state, not text anybody else wrote.</summary>
+    private static readonly HashSet<string> Metadata = new(StringComparer.Ordinal)
+    {
+        "uptime", "df", "free", "whoami", "id", "groups", "hostname", "uname", "nproc", "date", "pwd", "du", "lscpu", "lsblk", "lsmem", "true", "false",
+    };
+
+    /// <summary>
+    /// What untrusted text a call brought in, or null: a file read, a job's output, a page of kept output,
+    /// or a command's output, unless the command only reports the machine's own state.
+    /// </summary>
+    private static string? Untrusted(string tool, JsonObject arguments, JsonObject answer)
+    {
+        string where = arguments["host"]?.ToString() ?? "a session";
+
+        switch (tool)
+        {
+            case "read_file":
+                return $"read_file {arguments["path"]} on {where}";
+
+            case "job_output" or "output_page" or "output_grep":
+                return answer["text"]?.ToString() is { Length: > 0 } ? $"{tool} on {where}" : null;
+
+            case "exec":
+                string[] argv = arguments["argv"] is JsonArray words ? [.. words.Select(word => word?.ToString() ?? string.Empty)] : [];
+                bool said = answer["stdout"]?.ToString() is { Length: > 0 } || answer["stderr"]?.ToString() is { Length: > 0 };
+                string program = argv.Length > 0 ? argv[0].Replace('\\', '/').Split('/')[^1] : string.Empty;
+                bool state = Metadata.Contains(program) || program == "systemctl" && argv.Length > 1 && argv[1].StartsWith("is-", StringComparison.Ordinal);
+
+                return said && !state ? $"the output of {string.Join(' ', argv.Take(4))} on {where}" : null;
+
+            case "plan":
+                foreach (JsonNode? result in answer["results"] as JsonArray ?? [])
+                {
+                    if (result?["tool"]?.ToString() is "read_file" or "exec" && result["result"] is JsonObject inner
+                        && result["isError"]?.GetValue<bool>() != true
+                        && (inner["text"]?.ToString() is { Length: > 0 } || inner["stdout"]?.ToString() is { Length: > 0 }))
+                    {
+                        return $"a plan's {result["tool"]} on {where}";
+                    }
+                }
+
+                return null;
+
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>Marks this run untrusted, keeping what did it, and says so on the person's screen.</summary>
+    private void Tainted(string source)
+    {
+        if (Taint is not null)
+        {
+            return;
+        }
+
+        _taint = source;
+
+        if (TaintFile is { } file)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllText(file, source);
+        }
+
+        Feed?.Note($"untrusted text came in ({source}): from now on every change asks you, until you trust it again "
+                   + "from the palette (Trust what agents have read)");
+    }
+
     /// <summary>What a person watching sees: each call as terminal output, which the window shows as the agent's tab (QS335).</summary>
     public AgentFeed? Feed { get; init; }
 
@@ -669,6 +765,11 @@ public sealed class AgentGateway : IAsyncDisposable
         }
 
         Feed?.End((JsonObject)answer["structuredContent"]!, answer["isError"]!.GetValue<bool>());
+
+        if (!answer["isError"]!.GetValue<bool>() && Untrusted(name, arguments, (JsonObject)answer["structuredContent"]!) is { } source)
+        {
+            Tainted(source);
+        }
 
         if (Audit is { } audit)
         {

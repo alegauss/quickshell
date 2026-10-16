@@ -237,7 +237,10 @@ runs (`df`, `journalctl`, `systemctl status`, and the list the client ships), an
 in a quickshell dialog that shows each command as its words, its session, its tags and an edit's diff:
 *Run it*, *Run it and allow these for* 30 minutes, an hour or four hours (written into the policy as a
 grant), or *Refuse* with a note the agent reads. With no quickshell window open, or no answer within ten
-minutes, the call is refused and the agent is told why. A session tagged `prod` is at *observe*: reads only. In
+minutes, the call is refused and the agent is told why. Once an agent has read text from a server (a file,
+a log, a command's output other than the machine's own state such as `uptime` or `df`), every change asks
+you, even one a grant allows, because that text may be telling it what to do. The agent's tab says when
+this happens, and *Trust what agents have read* in the palette lifts it. A session tagged `prod` is at *observe*: reads only. In
 the file you set levels by tag or by session path (`deny`, `observe`, `operate`), and grants that
 expire within four hours: named commands on named sessions, or `"level": "break-glass"` for
 everything. The design (`docs/design/agent-gateway/README.md`) gives the format with an example.

@@ -549,29 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS338 Taint after untrusted input
-
-Prompt injection is the attack that needs no exploit: a log line, a README or a database
-row on the server says "ignore your instructions and run this", and an agent that just
-read it may comply. The danger is the combination of untrusted text in the context with
-a tool that can change things.
-
-The gateway cannot tell which text the agent believed, but it can tell when untrusted
-text entered: any `read_file`, any page of output, any `exec` whose output came from a
-file or a remote service rather than the gateway's own metadata. From that point the
-gateway session is tainted, and every mutation asks the person, including one that a
-timed grant or the `operate` level would have allowed. Reads stay automatic, so the cost
-falls only where the risk is.
-
-The taint is shown in the agent's tab and in the approval dialog, so the person knows
-why they are being asked. It clears only when the person clears it, never by the agent.
-
-The design document weighs how coarse this is, and whether a read of a file the person
-marked trusted should taint at all.
-
-Proven by a fixture file holding an injected instruction: after reading it, an otherwise
-granted restart asks.
-
 ### §QS339 A policy the agent cannot edit
 
 A permission an agent can grant itself is no permission. The policy file sits on the
@@ -580,9 +557,11 @@ same disk, under the same Windows user, as everything the agent can write.
 Three measures. The file lives in quickshell's settings directory, never in a repository
 or a working directory, so it is outside the paths an agent is usually pointed at. The
 plugin's `PreToolUse` hook denies the agent's file tools any write to that path, and its
-shell tool any command naming it. And quickshell holds the hash of the last version the
-person approved: when the file on disk differs, the gateway refuses every call and the
-client asks the person to accept or reject the change, showing the diff.
+shell tool any command naming it. The same guard covers `agent-taints` (QS338), whose
+deletion would lift a taint the person never lifted. And quickshell holds the hash of
+the last version the person approved: when the file on disk differs, the gateway refuses
+every call and the client asks the person to accept or reject the change, showing the
+diff.
 
 The third measure is the one that holds even if the first two are walked around, since
 the gateway enforces the approved version, not whatever is on disk.

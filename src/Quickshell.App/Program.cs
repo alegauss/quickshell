@@ -908,6 +908,7 @@ public static class Entry
             StopFile = Locations.Current.AgentStop,
             PolicyFile = Locations.Current.AgentPolicy,
             AsksFolder = Locations.Current.AgentAsks,
+            TaintFile = Path.Combine(Locations.Current.AgentTaints, audit.Run + ".taint"),
             Feed = AgentFeed.Start(Locations.Current.AgentFeeds, audit.Run),
         };
 

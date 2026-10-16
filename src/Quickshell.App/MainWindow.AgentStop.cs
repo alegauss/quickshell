@@ -45,6 +45,39 @@ public sealed partial class MainWindow
         Say("Agents can work through the gateway again. Nothing that was cancelled has been started again.", "Agents");
     }
 
+    /// <summary>Where the gateways keep their taints: <see cref="Locations.AgentTaints"/> unless a caller says otherwise.</summary>
+    public string? AgentTaintsFolder { get; set; }
+
+    /// <summary>
+    /// Trusts what every agent has read so far (QS338): removes each gateway run's taint, so changes the
+    /// policy allows run again without asking. Only the person does this; nothing an agent calls can.
+    /// </summary>
+    public void TrustWhatAgentsRead()
+    {
+        string folder = AgentTaintsFolder ?? Locations.Current.AgentTaints;
+        string[] taints = Directory.Exists(folder) ? Directory.GetFiles(folder, "*.taint") : [];
+
+        foreach (string taint in taints)
+        {
+            File.Delete(taint);
+        }
+
+        Say(taints.Length == 0
+                ? "No agent has read anything untrusted."
+                : $"Trusted what {taints.Length} agent run{(taints.Length == 1 ? " has" : "s have")} read: changes the policy allows run again without asking.",
+            "Agents");
+    }
+
+    /// <summary>The palette: trust what agents have read (QS338).</summary>
+    private sealed class TrustingAgents(MainWindow window) : Doing(window)
+    {
+        /// <inheritdoc/>
+        public override string Name => "Trust what agents have read";
+
+        /// <inheritdoc/>
+        public override void Execute(object? parameter) => Window.TrustWhatAgentsRead();
+    }
+
     /// <summary>Ctrl+Shift+F12 and the palette: stop every agent (QS334).</summary>
     private sealed class StoppingAgents(MainWindow window) : Doing(window)
     {

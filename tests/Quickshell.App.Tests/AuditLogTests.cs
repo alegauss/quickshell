@@ -80,6 +80,7 @@ public sealed class AuditLogTests : IDisposable
         {
             Audit = audit,
             PolicyFile = Policies.BreakGlass(),
+            Asks = (request, _) => Task.FromResult(new ApprovalAnswer(Decision.Approve, request.Hash)),
         };
 
         await gateway.AnswerAsync(Call(1, "hosts_list", new JsonObject()), Stop);
