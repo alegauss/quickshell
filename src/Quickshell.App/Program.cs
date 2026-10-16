@@ -59,6 +59,14 @@ public static class Entry
             return ServeAgent();
         }
 
+        // `--agent-hook`: one Claude Code PreToolUse call judged and answered, no window (QS332).
+        if (arguments.Contains(CommandLine.AgentHook, StringComparer.Ordinal))
+        {
+            Console.Out.Write(AgentHook.Answer(Console.In.ReadToEnd()));
+
+            return 0;
+        }
+
         // `--startup-report <file>` times this start and writes the milestones there once the shell
         // is on screen — QS75's instrument, and first so that it sees everything after the runtime.
         if (Given(arguments, CommandLine.StartupReport) is { } report)

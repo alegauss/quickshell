@@ -49,6 +49,29 @@ for needing an administrator, and one is anything else that did not happen.
 input and output, with no window. It exits when its input ends. Without the `agentGateway` setting
 ([SETTINGS.md](SETTINGS.md#agentgateway)) it writes why to standard error and exits with 2.
 
+`--agent-hook` is a Claude Code hook. It turns back a shell command that would reach a server around
+the gateway (`ssh`, `scp`, `sftp`, PuTTY's tools, rsync or git over SSH, PowerShell remoting over SSH,
+a Python script with an SSH library) and tells the agent which gateway tool to use instead. Wired in
+the agent's `settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash|PowerShell",
+        "hooks": [ { "type": "command", "command": "quickshell.exe --agent-hook" } ] }
+    ]
+  },
+  "sandbox": { "enabled": true, "failIfUnavailable": true, "allowUnsandboxedCommands": false }
+}
+```
+
+The hook reads the command line, so a script written first and run second walks past it. The sandbox
+is what holds: inside it a plain `ssh` has no route out at all, while the gateway, which Claude Code
+runs outside the sandbox, keeps its connections. Claude Code's sandbox runs on macOS, Linux and WSL2,
+not on native Windows, where the hook is the only measure on the agent's side.
+
 | Flag | Takes | What it does |
 |---|---|---|
+| `--agent-hook` | | Reads a Claude Code PreToolUse call on standard input and denies a shell command that reaches a server around the agent gateway, naming the gateway tool to use instead. Opens no window. |
 | `--mcp` | | Serves the agent gateway to an agent such as Claude Code on standard input and output, and opens no window. Refused unless the agentGateway setting is on, and unguarded: no policy limits what runs yet. |

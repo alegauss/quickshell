@@ -68,6 +68,9 @@ public static class CommandLine
     /// <summary>Serves the agent gateway on standard input and output, with no window (QS325).</summary>
     public const string Mcp = "--mcp";
 
+    /// <summary>Judges one agent shell call for a way around the gateway, as a Claude Code hook (QS332).</summary>
+    public const string AgentHook = "--agent-hook";
+
     /// <summary>Every flag, in the order the reference lists them.</summary>
     public static readonly IReadOnlyList<Flag> All =
     [
@@ -86,6 +89,7 @@ public static class CommandLine
         new(Uninstall, "", "Removes an installed copy, and asks whether to keep the settings unless --quiet."),
         new(AllUsers, "", "With --install or --uninstall: for every user of the machine, which needs an administrator."),
         new(Quiet, "", "With --install or --uninstall: asks nothing and shows nothing; the exit code is the answer."),
+        new(AgentHook, "", "Reads a Claude Code PreToolUse call on standard input and denies a shell command that reaches a server around the agent gateway, naming the gateway tool to use instead. Opens no window."),
         new(Mcp, "", "Serves the agent gateway to an agent such as Claude Code on standard input and output, and opens no window. Refused unless the agentGateway setting is on, and unguarded: no policy limits what runs yet."),
     ];
 }

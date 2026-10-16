@@ -374,6 +374,21 @@ measured against the fixture, nothing is left to hang. A Windows server is told 
 sends (`OpenSSH_for_Windows`) and gets the command without the preamble. Code:
 `src/Quickshell.App/CommandPrompts.cs`.
 
+**Closing the side doors (QS332).** Two measures of different strength. *Steering:*
+`quickshell --agent-hook` is a `PreToolUse` hook on the agent's `Bash` and `PowerShell` tools; the
+client is the hook, so it needs no runtime and matches the gateway's version. It reads the command line
+and denies, through `permissionDecision: "deny"` whose reason the agent reads, `ssh`, `scp`, `sftp`,
+`slogin`, PuTTY's tools, mosh, autossh, sshpass, rsync to a host, git with an SSH address, PowerShell
+remoting with `-HostName`, and Python with an SSH library, including behind `sudo`, `timeout`, a pipe
+into `xargs` or a `$( )`. A script written first and run second walks past it (`SideDoors.cs`). *The
+wall:* Claude Code's sandbox has no port rule to write; it has no route out but its HTTP proxy, so a
+raw `ssh` cannot connect inside it at all, and MCP servers run outside it, so the gateway keeps its
+connections. The configuration is `sandbox.enabled`, `failIfUnavailable` and
+`allowUnsandboxedCommands: false`, with nothing SSH in `excludedCommands`; COMMAND-LINE.md shows it.
+The sandbox runs on macOS, Linux and WSL2 and not on native Windows, where only the hook stands on
+the agent's side (QS358). A key file the agent can read is the third way around, left to the
+credential-isolation work the threat model names.
+
 **Redaction on the way out (QS330).** Every tool's answer goes through `SecretRedactor` before it
 leaves the process: private key blocks (and half of one, where a budget cut the other half off),
 `password=`, `secret=`, `token=` and `api_key:` style assignments, bearer headers, the password in a

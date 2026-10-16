@@ -549,29 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS332 Closing the side doors
-
-A gateway the agent can step around is a suggestion. Claude Code can run `ssh`, `plink`,
-`scp`, `sftp`, `git` over SSH, or a Python one-liner with paramiko from its own shell,
-and none of them pass through quickshell.
-
-Two measures, of different strength, and the design document says which is which.
-
-A `PreToolUse` hook on the agent's shell tool matches the obvious invocations and denies
-them with a message naming the gateway tool to use instead. This is steering: it catches
-the habit and the accident, and a script written first and run second walks past it.
-
-The agent's sandbox, where enabled, denies outbound connections to port 22 and any port
-a saved session names, while the gateway, a separate process outside the sandbox, keeps
-them. This is the stronger of the two, because it is enforced below the shell rather
-than by reading the command.
-
-Neither touches the third way around, a key file the agent can read; that is the
-credential-isolation work and is named in the threat model (QS320).
-
-Proven by a run of the agent asked to reach the test sshd by each of five routes, every
-one refused, with the gateway's own exec still succeeding.
-
 ### §QS333 An audit trail an agent cannot rewrite
 
 After an agent has worked on a server, the person needs to answer what changed, and
@@ -838,3 +815,26 @@ recognises as Windows, naming the word, rather than running something else.
 
 Done when the guest's server receives an argument holding a space, a double quote, a
 percent sign and an ampersand byte for byte, read back by the program it was given to.
+
+### §QS358 A wall on native Windows
+
+Found by QS332. On macOS, Linux and WSL2, Claude Code's sandbox gives the agent's shell
+no route out but its HTTP proxy, so a raw `ssh` cannot connect, while the gateway, which
+runs outside the sandbox, keeps its connections. That is the measure that holds. Claude
+Code runs commands unsandboxed on native Windows, which is where this client runs. There
+the only thing on the agent's side is `quickshell --agent-hook`, which reads command
+lines, and a script written first and run second walks past it.
+
+What to look at, in this order, each measured before it is chosen:
+
+1. Windows Firewall outbound rules by program: block TCP to port 22 and the saved sessions'
+   ports for `ssh.exe`, `plink.exe` and `python.exe`. Cheap, but an unnamed program gets out.
+2. A rule by user: the agent runs as a second local account that a WFP filter denies those
+   ports, and the gateway runs as the person. A boundary below the shell, at the cost of
+   another account.
+3. The agent in WSL2 with the sandbox on and the gateway on the Windows side, which may
+   be the answer to recommend, with nothing to build.
+
+Done when, on native Windows, a script the hook cannot see fails to reach the test sshd
+while the gateway's exec reaches it, or when the recommendation is written in the design
+with the reason the other two lost.
