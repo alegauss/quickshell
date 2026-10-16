@@ -615,3 +615,35 @@ Proven by a UI case in the guest. A session on the guest's sshd sits under a fol
 with the gateway on and a stand-in for Claude Code. *Send to Claude* opens the pane, whose first line
 shows both files passed, and the pane then holds `From Customer/probe (tags: prod):` and the
 session's screen. Code: `src/Quickshell.App/ClaudePane.cs`, `MainWindow.Claude.cs`.
+
+## Shipped as a Claude Code plugin (QS343)
+
+**Written by the client, not published.** The plugin's MCP entry and its hook must name the
+`quickshell.exe` the person installed, by its full path, and a published plugin could not know it.
+So `ClaudePlugin.Write` writes a marketplace of its own, `quickshell-local`, into `claude-plugin` in
+quickshell's folder. It holds one plugin, `quickshell`:
+- the MCP server `quickshell`, running `<exe> --mcp --plugin-version <version>`;
+- a PreToolUse hook running `<exe> --agent-hook` for `Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit`;
+- the skill `quickshell-gateway`, built into the client (`claude-plugin-skill.md`). It says to pass
+  `exec` an argv, prefer `edit_file` to heredocs, expect asks on `prod`, and report a refusal
+  instead of working around it.
+
+No sandbox rules: Claude Code's sandbox does not run on native Windows.
+
+**Offered in Settings, never installed unasked.** Below the settings, *Install the Claude Code
+plugin…* is enabled where `claudeCommand` is found on the path. It first shows what it will change,
+including every `claude` command it will run:
+- `plugin marketplace remove quickshell-local` (a failure here means nothing was added before);
+- `plugin marketplace add <folder>`;
+- `plugin install quickshell@quickshell-local -s user` (`-s` is `--scope`).
+
+It stops at the first later step that fails and shows what Claude Code said.
+
+**Tied to the client's version.** The manifest's version is the client's, and the MCP entry passes
+it. A gateway of another version exits 2 before reading anything, saying which version wrote the
+plugin and to install it again, so a skill describing other tools is never served.
+
+Proven on the host: Claude Code 2.1.300's `claude plugin validate --strict` accepts both the
+marketplace and the plugin; the built `quickshell.exe` refuses a stale plugin; Settings asks before it
+runs anything, then writes and runs the three steps. Not yet proven: an install into a real Claude Code
+followed by an agent's first `exec`, which needs Claude Code in the guest (QS362).

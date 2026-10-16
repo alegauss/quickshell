@@ -573,29 +573,6 @@ defect with the trace that shows it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS343 Shipped as a Claude Code plugin
-
-Security that takes an afternoon to configure is security most people skip. The
-gateway's pieces are an MCP server entry, two hooks (the side-door steering and the
-policy-path guard), sandbox network rules, and a skill telling the agent which tool does
-what. Each is a hand edit in a different file today.
-
-A Claude Code plugin carries all of them. Its MCP entry points at the installed
-`quickshell.exe --mcp`, found the way the client's own installer records its path. Its
-hooks are small and run without a runtime the user must install. Its skill is short: use
-`exec` with argv rather than a shell string, prefer `edit_file` to heredocs, expect asks
-on `prod`, and report a refusal rather than work around it.
-
-quickshell's settings page offers to install the plugin when it finds `claude` on the
-PATH, and says what it will change before it does.
-
-The design document settles where the plugin is published (this repository, or a
-marketplace entry beside roadkeep's), and how its version is tied to the client's so a
-mismatched gateway refuses with a message rather than misbehaving.
-
-Proven by a clean guest: install the client, accept the offer, and an agent's first
-`exec` reaches the test sshd.
-
 ### §QS356 Quoting for the server's own shell
 
 Found by QS325. `exec` joins the argument vector with `Argv.ForPosix`: a safe word bare,
@@ -688,3 +665,30 @@ person.
 
 Proven where Windows Hello is available: with the option on, a signing with no
 confirmation writes no certificate and the gateway's call fails, naming why.
+
+### §QS362 The plugin, installed for real and used
+
+QS343 writes the agent gateway as a Claude Code plugin and installs it from Settings. What
+was proven:
+- `claude plugin validate --strict` accepts the plugin and its marketplace;
+- the built `quickshell.exe` refuses a plugin of another version;
+- Settings asks first, then writes the plugin and runs its three `claude plugin` steps, against
+  a stand-in that records them.
+
+What was not: that a real Claude Code takes those steps without asking anything QS343
+did not expect, loads the MCP server and the hook from the installed copy, and that an
+agent's first `exec` then reaches a server. The section QS343 came from asked for
+exactly that run, on a clean guest. The guest has no Claude Code, and installing into
+the operator's own Claude Code to prove it would change their configuration.
+
+The work:
+1. Provision Claude Code in the guest, signed in with credentials meant for testing. This is a
+   requirement, declared in `roadkeep.toml`, so the line is offered only to a caller that has it.
+2. Accept the offer through the Settings window as a UI case.
+3. Run `claude -p` with a prompt that calls `hosts_list` and one `exec` on the guest's sshd, and
+   read the audit log the gateway wrote.
+
+A second run, after the client's version changes and before the plugin is installed
+again, should show the gateway refusing with its message in `claude mcp list`.
+
+Proven by the audit log holding that `exec`, its exit code and the session it ran on.

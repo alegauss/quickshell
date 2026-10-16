@@ -99,3 +99,4 @@
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 - ✅ **QS321** **Nothing decides whether an agent gateway fits a client sold as "an SSH client, not a suite"** — The agent gateway stays in the client only while it is off by default, runs as its own quickshell --mcp process, opens no port, and adds nothing to the input-to-pixel path; it is no plugin host.
+- ✅ **QS343** **Wiring the gateway into Claude Code means hand-editing MCP config, hooks and sandbox rules, so few will** — The Claude Code plugin is written by the installed client into its own folder, never published, since it must name that copy's exe and version.

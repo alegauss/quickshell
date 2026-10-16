@@ -42,11 +42,11 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS343** (deps: QS325 ✅, QS332 ✅) **Wiring the gateway into Claude Code means hand-editing MCP config, hooks and sandbox rules, so few will** — A Claude Code plugin installs the MCP server, the hooks and a skill in one step, and quickshell offers to install it when it finds claude. → §QS343
 - 📋 **QS356** (deps: QS325 ✅) **exec quotes every argument for a POSIX shell, so on a Windows server a word with a space or a quote arrives altered** — Windows OpenSSH runs an exec through cmd, where a single quote means nothing, and the command runs on words nobody sent. → §QS356
 - 📋 **QS358** (deps: QS332 ✅) **On native Windows nothing below the shell stops an agent's own script from opening SSH around the gateway** — Claude Code's sandbox runs on macOS, Linux and WSL2 only, so on Windows the command-line hook is the whole defence. → §QS358
 - 📋 **QS359** (deps: QS340 ✅) **An agent account set up from the session menu cannot be removed from it** — The undo script exists and nothing in the window runs it, so taking an agent off a server means finding and running it by hand. → §QS359
 - 📋 **QS360** (deps: QS341 ✅) **The agent's certificate authority signs whenever any process of the person's asks, with nobody present** — Windows Hello in front of each signing, where the person turns it on, would make every agent sign-in need a person at the desk. → §QS360
+- 📋 **QS362** (deps: QS343 ✅) **The Claude Code plugin has never been installed into a real Claude Code and used for an exec** — Its files validate and its steps run against a stand-in; that Claude Code installs it and an agent then reaches a server is unproven without claude in the guest. → §QS362
 
 ## Done when — Block A
 

@@ -56,7 +56,7 @@ public static class Entry
         // it, with no window, no device and nothing else this method sets up (QS321).
         if (arguments.Contains(CommandLine.Mcp, StringComparer.Ordinal))
         {
-            return ServeAgent();
+            return ServeAgent(Given(arguments, CommandLine.PluginVersion));
         }
 
         // `--audit [run]`: a gateway run's log as a change summary, or the runs there are (QS333).
@@ -952,8 +952,17 @@ public static class Entry
     /// standard error.
     /// </summary>
     /// <returns>Zero once the input ended; 2 where the gateway is not turned on.</returns>
-    private static int ServeAgent()
+    private static int ServeAgent(string? pluginVersion)
     {
+        // A plugin another version of quickshell wrote (QS343): its skill and hooks describe a gateway
+        // that is not this one, so it is refused in words rather than served half-right.
+        if (ClaudePlugin.Mismatch(pluginVersion, Setup.Version) is { } stale)
+        {
+            Console.Error.WriteLine("quickshell --mcp: " + stale);
+
+            return 2;
+        }
+
         if (!SettingsFile.ReadFrom(Locations.Current.Settings).AgentGateway)
         {
             Console.Error.WriteLine("quickshell --mcp: the agent gateway is off. Turn on agentGateway in quickshell's "

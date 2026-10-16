@@ -258,6 +258,13 @@ with the agent gateway as its MCP server and `--agent-hook` installed (both writ
 folder each time). *Send to Claude* types the selection, or the screen, of the pane with the keyboard
 into it, under a line naming the session and its tags. Both need `agentGateway` on.
 
+Below the settings, *Install the Claude Code plugin…* is offered where this command is found on the
+path. It writes a plugin into `claude-plugin` in quickshell's folder: the gateway as an MCP server,
+`--agent-hook` before every shell command and file write, and a skill saying which gateway tool does
+what. It then installs the plugin for your user through `claude plugin`, after showing every command
+it will run. Install it again after updating quickshell. A plugin written by another version is
+refused by the gateway, which says so.
+
 ## What is deliberately not here
 
 - **Anything to reach parity with another client.** A feature comparison is not an argument; a user's

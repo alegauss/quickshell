@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -97,9 +98,99 @@ public sealed class SettingsWindow : Window
             body.Children.Add(new TextBlock { Text = means, TextWrapping = TextWrapping.Wrap, Opacity = 0.75, Margin = new Thickness(0, 2, 0, 6) });
         }
 
+        // The Claude Code plugin (QS343): offered where claude is on the path, never installed unasked.
+        _plugin = new Button { Content = "Install the Claude Code plugin…", HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(12, 3, 12, 3) };
+        _pluginSaid = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = 0.75, Margin = new Thickness(0, 4, 0, 6) };
+
+        AutomationProperties.SetAutomationId(_plugin, "InstallClaudePlugin");
+        AutomationProperties.SetAutomationId(_pluginSaid, "ClaudePluginSaid");
+        _plugin.Click += (_, _) => _ = InstallClaudePlugin();
+
+        body.Children.Add(new TextBlock { Text = "Claude Code plugin", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 2) });
+        body.Children.Add(_plugin);
+        body.Children.Add(_pluginSaid);
+
         Content = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 720 };
 
         Reload();
+    }
+
+    private readonly Button _plugin;
+    private readonly TextBlock _pluginSaid;
+
+    /// <summary>Asks whether to install the plugin, given what it will change; a dialog unless a caller says otherwise.</summary>
+    public Func<string, bool>? AsksToInstallPlugin { get; set; }
+
+    /// <summary>Runs one step of the install through claude; <see cref="ClaudePlugin.Run"/> unless a caller says otherwise.</summary>
+    public Func<IReadOnlyList<string>, PluginStep>? RunsClaude { get; set; }
+
+    /// <summary>Where the plugin is written: <c>claude-plugin</c> in quickshell's folder unless a caller says otherwise.</summary>
+    public string? PluginFolder { get; set; }
+
+    /// <summary>Where Claude Code was found, or null; asked again each time the window reloads.</summary>
+    public string? ClaudeFound { get; private set; }
+
+    /// <summary>
+    /// Writes the plugin and installs it into Claude Code, after saying exactly what that changes and being
+    /// told yes (QS343), and says how it went under the button.
+    /// </summary>
+    /// <returns>Each step run, empty where the person said no or claude is not there.</returns>
+    public async Task<IReadOnlyList<PluginStep>> InstallClaudePlugin()
+    {
+        string claude = SettingsFile.ReadFrom(_path).ClaudeCommand;
+
+        if (ClaudePlugin.Find(claude) is null && RunsClaude is null)
+        {
+            return [];
+        }
+
+        string quickshell = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "quickshell.exe");
+        string folder = PluginFolder ?? Path.Combine(Locations.Current.Root, "claude-plugin");
+        string changes =
+            $"This writes a Claude Code plugin into {folder}, and asks Claude Code ({claude}) to install it for your user:\n\n"
+            + $"• the MCP server \"{ClaudePlugin.Name}\", which runs {quickshell} --mcp;\n"
+            + $"• a hook before every shell command and file write, which runs {quickshell} --agent-hook and turns back ssh "
+            + "around the gateway and writes to the files that limit agents;\n"
+            + "• a skill telling Claude which gateway tool does what.\n\n"
+            + "Claude Code commands it runs:\n"
+            + string.Join("\n", ClaudePlugin.Steps(folder).Select(step => $"  {claude} {string.Join(' ', step)}"))
+            + "\n\nWhat agents may do on each session is still the agent policy's to say, and agentGateway must be on.";
+
+        bool yes = AsksToInstallPlugin is { } asks
+            ? asks(changes)
+            : Quickshell.App.Choice.Ask(this, "Install the Claude Code plugin", changes,
+                         new ChoiceButton("Install it", "install"), new ChoiceButton("Not now", "cancel")) == "install";
+
+        if (!yes)
+        {
+            return [];
+        }
+
+        _plugin.IsEnabled = false;
+        _pluginSaid.Text = "Installing…";
+
+        Func<IReadOnlyList<string>, PluginStep> run = RunsClaude ?? new Func<IReadOnlyList<string>, PluginStep>(step => ClaudePlugin.Run(claude, step));
+        IReadOnlyList<PluginStep> ran = await Task.Run(() => ClaudePlugin.Install(
+            ClaudePlugin.Write(folder, quickshell, Setup.Version), run)).ConfigureAwait(true);
+
+        PluginStep last = ran[^1];
+
+        _pluginSaid.Text = last.ExitCode == 0
+            ? $"Installed: quickshell {Setup.Version}'s plugin is in Claude Code for your user. Start a new Claude Code session to use it."
+            : $"Not installed: {claude} {string.Join(' ', last.Command)} said: {last.Said}";
+        _plugin.IsEnabled = true;
+
+        return ran;
+    }
+
+    /// <summary>The offer as it stands: a button where claude is found, and a sentence either way.</summary>
+    private void Offered(Settings now)
+    {
+        ClaudeFound = ClaudePlugin.Find(now.ClaudeCommand);
+        _plugin.IsEnabled = ClaudeFound is not null;
+        _pluginSaid.Text = ClaudeFound is { } found
+            ? $"Claude Code is at {found}. Installing adds quickshell's agent gateway to it in one step, and says first what it changes."
+            : $"{now.ClaudeCommand} is not on the path, so there is no Claude Code to install the plugin into.";
     }
 
     /// <summary>What the window is saying about the file, which is empty where the file is all used.</summary>
@@ -147,6 +238,8 @@ public sealed class SettingsWindow : Window
         {
             control.IsEnabled = readable;
         }
+
+        Offered(now);
     }
 
     /// <summary>

@@ -38,6 +38,7 @@
 
     <!-- QS336: the commands an agent may run as reads, versioned with the client. -->
     <EmbeddedResource Include="agent-reads.json" LogicalName="Quickshell.App.agent-reads.json" />
+    <EmbeddedResource Include="claude-plugin-skill.md" LogicalName="Quickshell.App.claude-plugin-skill.md" />
   </ItemGroup>
 
   <ItemGroup>

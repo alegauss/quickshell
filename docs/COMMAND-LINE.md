@@ -49,6 +49,11 @@ for needing an administrator, and one is anything else that did not happen.
 input and output, with no window. It exits when its input ends. Without the `agentGateway` setting
 ([SETTINGS.md](SETTINGS.md#agentgateway)) it writes why to standard error and exits with 2.
 
+You need not wire either by hand. *Install the Claude Code plugin…* in Settings, offered where
+`claude` is on the path, writes a plugin holding both into quickshell's folder and installs it, after
+saying what it changes. Its `--mcp` entry carries `--plugin-version`, so after an update the plugin
+is installed again before the gateway serves it.
+
 `--agent-hook` is a Claude Code hook. It turns back a write by the agent's file tools or shell to the
 files that limit it (the agent policy, its approvals, taints, stop and audit), and a shell command that
 would reach a server around the gateway (`ssh`, `scp`, `sftp`, PuTTY's tools, rsync or git over SSH, PowerShell remoting over SSH,
@@ -77,3 +82,4 @@ not on native Windows, where the hook is the only measure on the agent's side.
 | `--audit` | `[run]` | Prints an agent gateway run's audit log as a summary of what was changed, run, refused and read, and says whether the log is whole; with no run, lists the runs recorded. Opens no window. |
 | `--agent-hook` | | Reads a Claude Code PreToolUse call on standard input and denies a shell command that reaches a server around the agent gateway, or a write to the files that limit agents, saying why. Opens no window. |
 | `--mcp` | | Serves the agent gateway to an agent such as Claude Code on standard input and output, and opens no window. Refused unless the agentGateway setting is on; every call is judged by the agent policy first. |
+| `--plugin-version` | `<version>` | With --mcp: the version of quickshell that wrote the Claude Code plugin starting it. A plugin written by another version is refused, naming both, until it is installed again from Settings. |

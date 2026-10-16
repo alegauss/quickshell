@@ -74,6 +74,9 @@ public static class CommandLine
     /// <summary>Judges one agent shell call for a way around the gateway, as a Claude Code hook (QS332).</summary>
     public const string AgentHook = "--agent-hook";
 
+    /// <summary>With --mcp: the version of quickshell that wrote the Claude Code plugin starting it (QS343).</summary>
+    public const string PluginVersion = "--plugin-version";
+
     /// <summary>Every flag, in the order the reference lists them.</summary>
     public static readonly IReadOnlyList<Flag> All =
     [
@@ -95,5 +98,6 @@ public static class CommandLine
         new(Audit, "[run]", "Prints an agent gateway run's audit log as a summary of what was changed, run, refused and read, and says whether the log is whole; with no run, lists the runs recorded. Opens no window."),
         new(AgentHook, "", "Reads a Claude Code PreToolUse call on standard input and denies a shell command that reaches a server around the agent gateway, or a write to the files that limit agents, saying why. Opens no window."),
         new(Mcp, "", "Serves the agent gateway to an agent such as Claude Code on standard input and output, and opens no window. Refused unless the agentGateway setting is on; every call is judged by the agent policy first."),
+        new(PluginVersion, "<version>", "With --mcp: the version of quickshell that wrote the Claude Code plugin starting it. A plugin written by another version is refused, naming both, until it is installed again from Settings."),
     ];
 }
