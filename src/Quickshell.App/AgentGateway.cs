@@ -988,9 +988,18 @@ public sealed class AgentGateway : IAsyncDisposable
 
         IGatewayConnection connection = await ConnectionAsync(session, cancellationToken).ConfigureAwait(false);
         // On a POSIX server, nothing in the command can wait for a person (QS327). A Windows server's
-        // shell is not POSIX, so it gets the line alone until QS356 quotes for it.
-        string line = Argv.ForPosix(argv, cwd);
-        string command = CommandPrompts.IsWindows(connection.ServerVersion) ? line : CommandPrompts.PosixPreamble + line;
+        // shell is cmd, which no quoting gets every word past, so there the vector goes through
+        // PowerShell to CreateProcess, quoted as Windows reads a command line back (QS356).
+        string command = CommandPrompts.IsWindows(connection.ServerVersion)
+            ? Argv.ForWindows(argv, cwd)
+            : CommandPrompts.PosixPreamble + Argv.ForPosix(argv, cwd);
+
+        // cmd reads at most 8191 characters of a line, and a longer one would run cut short.
+        if (CommandPrompts.IsWindows(connection.ServerVersion) && command.Length > 8191)
+        {
+            throw new GatewayRefusal($"This command is {command.Length} characters once joined for a Windows server, and cmd takes "
+                                     + "8191 at most. Write the long text to a file with edit_file and pass its path instead.");
+        }
 
         CommandResult ran = await connection.RunAsync(command, timeout, cancellationToken).ConfigureAwait(false);
         CommandPrompt? asked = CommandPrompts.Recognise(ran);

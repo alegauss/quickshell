@@ -107,17 +107,34 @@ public sealed class AgentGatewayTests
         Assert.Equal(2, gateway.Opened);
     }
 
-    /// <summary>A Windows server's shell is not POSIX, so its command carries no POSIX preamble (QS327).</summary>
+    /// <summary>
+    /// A Windows server's shell is not POSIX, so its command carries no POSIX preamble (QS327), and its vector
+    /// is joined for Windows, through PowerShell past cmd (QS356).
+    /// </summary>
     [Fact]
-    public async Task AWindowsServerGetsTheCommandAlone()
+    public async Task AWindowsServerGetsTheVectorJoinedForWindows()
     {
         Recording connection = new() { ServerVersion = "SSH-2.0-OpenSSH_for_Windows_9.5" };
 
-        await using AgentGateway gateway = new(Store, (_, _) => ValueTask.FromResult<IGatewayConnection>(connection), "1.2.3");
+        // At break-glass, so what answers the long call is its length and not the policy.
+        await using AgentGateway gateway = new(Store, (_, _) => ValueTask.FromResult<IGatewayConnection>(connection), "1.2.3")
+        {
+            PolicyFile = Policies.BreakGlass(),
+        };
 
-        await gateway.AnswerAsync(Call(1, "exec", new JsonObject { ["host"] = "Work/db", ["argv"] = new JsonArray("whoami") }), Stop);
+        await gateway.AnswerAsync(Call(1, "exec", new JsonObject { ["host"] = "Work/db", ["argv"] = new JsonArray("whoami", "/all") }), Stop);
 
-        Assert.Equal("whoami", connection.Commands[0]);
+        Assert.Equal(Argv.ForWindows(["whoami", "/all"]), connection.Commands[0]);
+
+        // Past what cmd reads, refused in words and never sent cut short.
+        JsonObject tooLong = (await gateway.AnswerAsync(Call(2, "exec", new JsonObject
+        {
+            ["host"] = "Work/db",
+            ["argv"] = new JsonArray("findstr", new string('x', 4000)),
+        }), Stop))!;
+
+        Assert.Single(connection.Commands);
+        Assert.Contains("8191 at most", tooLong.ToJsonString(), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -448,6 +465,44 @@ public sealed class AgentGatewayTests
         }
 
         Assert.Equal(1, gateway.Opened);
+    }
+
+    /// <summary>
+    /// QS356, in the guest against its Windows OpenSSH, whose exec goes through cmd: an argument holding a
+    /// space, double quotes, a percent sign, an ampersand and a caret arrives byte for byte, read back by the
+    /// program it was given to. That program is PowerShell, printing what its own runtime parsed out of its
+    /// command line; the argument rides after a comment in the -Command text, so PowerShell itself only
+    /// carries it. A directory is honoured, and a program that is not there is said, exit code 127.
+    /// </summary>
+    [Fact]
+    public async Task OnTheGuestsServerAnAwkwardArgumentArrivesByteForByte()
+    {
+        Assert.SkipUnless(SshFixture.Listening(GuestPort) && File.Exists(GuestKey),
+            $"Windows OpenSSH is not on 127.0.0.1:{GuestPort}: run tools/provision-guest-sshd.ps1 once, which sets it up in the guest");
+
+        const string awkward = "a b \"quoted\" 100% & echo pwned ^ | <in >out it's \\ end\\";
+
+        await using AgentGateway gateway = Real("probe", GuestPort, GuestKey);
+
+        JsonNode echoed = await ExecAsync(gateway, 1, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                                          "[Console]::Out.Write([Environment]::GetCommandLineArgs()[5]) #", awkward);
+
+        Assert.Equal(0, echoed["exitCode"]!.GetValue<int>());
+        Assert.Equal(awkward, echoed["stdout"]!.GetValue<string>());
+
+        JsonObject moved = (await gateway.AnswerAsync(Call(2, "exec", new JsonObject
+        {
+            ["host"] = "real",
+            ["argv"] = new JsonArray("cmd.exe", "/c", "cd"),
+            ["cwd"] = @"C:\Windows",
+        }), Stop))!;
+
+        Assert.Equal(@"C:\Windows", moved["result"]!["structuredContent"]!["stdout"]!.GetValue<string>().Trim());
+
+        JsonNode missing = await ExecAsync(gateway, 3, "no-such-program-qs356");
+
+        Assert.Equal(127, missing["exitCode"]!.GetValue<int>());
+        Assert.StartsWith("no-such-program-qs356: ", missing["stderr"]!.GetValue<string>().Trim(), StringComparison.Ordinal);
     }
 
     /// <summary>

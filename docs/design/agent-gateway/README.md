@@ -357,8 +357,21 @@ that exits non-zero is a result.
 **Quoting once.** The vector is joined for a POSIX shell by `Argv.ForPosix` in the transport: a word
 of safe characters goes bare, any other is single-quoted. That is the only layer between the agent and
 the program, so a quote, a dollar sign or a newline arrives as itself (proven against the Linux
-fixture). A Windows server's shell is not POSIX; a bare word reaches it intact, and anything quoted
-does not, which a later line has to settle before such a server is offered.
+fixture).
+
+A Windows server runs an exec through cmd. cmd gives a single quote no meaning and expands `%` even
+inside double quotes, so no quoting carries every word past it (QS356). There, `Argv.ForWindows` joins
+the vector as `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand <base64>`,
+which holds no character cmd acts on. The script starts the program with `ProcessStartInfo`, whose
+arguments are one string quoted by the rules `CommandLineToArgvW` reads back, the rules .NET's own
+`ArgumentList` writes. PowerShell is never asked to pass arguments to a native program itself, since
+Windows PowerShell 5.1 drops embedded double quotes when it does. A `cwd` becomes
+`Set-Location -LiteralPath`. The program inherits the channel's streams and its exit code is the
+call's, and one that will not start is reported on stderr with exit code 127. Proven in the guest: an
+argument holding a space, double quotes, `%`, `&`, `^`, `|`, `<`, `>`, a single quote and backslashes
+is read back byte for byte by the program it was given to. The one limit left is cmd's 8191-character
+line, which the base64 reaches at around 2,500 characters of arguments. Past it, the gateway refuses
+the call and says to put the long text in a file, instead of sending a line cmd would cut short.
 
 **One connection per session.** Kept between calls over an exec channel of its own
 (`ICommandChannel`, which stays off the `ISshTransport` seam), and replaced when it drops. It signs in
@@ -483,7 +496,7 @@ command said on its way out is then matched against the shapes those questions t
 carries `prompt` (`prompt.sudo_password`, `prompt.password`, `prompt.confirmation`, `prompt.pager`)
 and a `hint` saying what to do instead. The quiet-window detection the line proposed is not needed:
 measured against the fixture, nothing is left to hang. A Windows server is told apart by the version it
-sends (`OpenSSH_for_Windows`) and gets the command without the preamble. Code:
+sends (`OpenSSH_for_Windows`) and gets the command without the preamble, joined for Windows (QS356). Code:
 `src/Quickshell.App/CommandPrompts.cs`.
 
 **The agent's work in plain sight (QS335).** Each gateway run appends what it does to

@@ -491,30 +491,6 @@ defect with the trace that shows it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS356 Quoting for the server's own shell
-
-Found by QS325. `exec` joins the argument vector with `Argv.ForPosix`: a safe word bare,
-anything else in single quotes. Windows OpenSSH runs an exec request through the
-account's default shell, cmd.exe unless the server's DefaultShell says otherwise, and
-cmd gives a single quote no meaning. So on the guest's own server `whoami` and
-`hostname` work, and an argument holding a space or a quote arrives with the quotes in
-it or split in two. Nothing says so: the command runs, wrongly.
-
-What to build: the gateway learns the server's family once per connection and quotes for
-it. The cheapest reliable probe is the version string the handshake already carries
-(`OpenSSH_for_Windows_9.5`), with an `echo %OS%` exec as the check where the banner is
-silent. For a Windows server the vector is joined as `CommandLineToArgvW` reads a
-command line, the rules .NET's ProcessStartInfo.ArgumentList follows, and run through
-cmd with `^`-escaping of `& | < > ^ %` outside quotes, or through `powershell
--EncodedCommand` with the vector as a literal array, which sidesteps cmd entirely and is
-the choice to try first. A `cwd` becomes `Set-Location -LiteralPath` there.
-
-Until it is built, `exec` refuses a vector with any non-bare word on a server it
-recognises as Windows, naming the word, rather than running something else.
-
-Done when the guest's server receives an argument holding a space, a double quote, a
-percent sign and an ampersand byte for byte, read back by the program it was given to.
-
 ### §QS358 A wall on native Windows
 
 Found by QS332. On macOS, Linux and WSL2, Claude Code's sandbox gives the agent's shell
