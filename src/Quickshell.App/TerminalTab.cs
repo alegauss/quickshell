@@ -76,6 +76,12 @@ public sealed class TerminalTab : IAsyncDisposable
     /// </summary>
     public string? Saved { get; set; }
 
+    /// <summary>
+    /// Whether this tab shows what an agent does through the gateway (QS335): badged as the agent's, and
+    /// read-only, since what it shows is a feed and not a shell.
+    /// </summary>
+    public bool Agent { get; set; }
+
     /// <summary>What the strip shows: the user's name for it, or the focused pane's own title.</summary>
     public string Title => Named is { Length: > 0 } named ? named : Focused.Title;
 

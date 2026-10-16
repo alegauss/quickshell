@@ -295,6 +295,9 @@ public sealed class AgentGateway : IAsyncDisposable
     /// </summary>
     public string? StopFile { get; init; }
 
+    /// <summary>What a person watching sees: each call as terminal output, which the window shows as the agent's tab (QS335).</summary>
+    public AgentFeed? Feed { get; init; }
+
     /// <summary>One call or one stop at a time, so a stop never closes a connection under a call it did not cancel.</summary>
     private readonly SemaphoreSlim _turn = new(1, 1);
 
@@ -374,6 +377,8 @@ public sealed class AgentGateway : IAsyncDisposable
 
         JsonObject answer;
 
+        Feed?.Begin(name, arguments);
+
         await _turn.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
@@ -407,6 +412,8 @@ public sealed class AgentGateway : IAsyncDisposable
         {
             _turn.Release();
         }
+
+        Feed?.End((JsonObject)answer["structuredContent"]!, answer["isError"]!.GetValue<bool>());
 
         if (Audit is { } audit)
         {

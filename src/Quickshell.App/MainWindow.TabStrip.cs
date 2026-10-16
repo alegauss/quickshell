@@ -475,6 +475,9 @@ public sealed partial class MainWindow
         text.SetResourceReference(TextBlock.ForegroundProperty, brush);
         AutomationProperties.SetName(text, word);
 
+        // Found by what it is rather than by what it says, so a case can read the word (QS335).
+        AutomationProperties.SetAutomationId(text, "TabTag");
+
         Border chip = new()
         {
             Child = text,
@@ -492,12 +495,19 @@ public sealed partial class MainWindow
 
     /// <summary>The tags of the saved session a tab holds, its folders' included, or none for a local shell (QS331).</summary>
     private IReadOnlyList<string> TagsOf(TerminalTab tab) =>
-        tab.Saved is { Length: > 0 } saved && _store?.Session(saved) is { } session ? session.Tags : [];
+        tab.Agent ? [AgentTag]
+        : tab.Saved is { Length: > 0 } saved && _store?.Session(saved) is { } session ? session.Tags : [];
+
+    /// <summary>The badge an agent's tab wears (QS335), in the accent unless the settings colour it otherwise.</summary>
+    private const string AgentTag = "agent";
 
     /// <summary>Every tab dressed for whether it is the one on screen, which no tab is while Home is.</summary>
     private void DressTabs()
     {
-        IReadOnlyDictionary<string, string> colours = TagColours.Parse(Settings.TagColours);
+        IReadOnlyDictionary<string, string> parsed = TagColours.Parse(Settings.TagColours);
+        Dictionary<string, string> colours = new(parsed, StringComparer.OrdinalIgnoreCase);
+
+        colours.TryAdd(AgentTag, "AccentFillColorDefaultBrush");
 
         for (int tab = 0; tab < _open.Count && tab < _tabs.Items.Count; tab++)
         {

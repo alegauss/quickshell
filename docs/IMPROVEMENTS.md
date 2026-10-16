@@ -549,27 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS335 The agent's session, in plain sight
-
-The person handing work to an agent wants to glance at what it is doing, the way they
-would look over a colleague's shoulder, and today the only view is the agent's own
-summary after the fact.
-
-When the gateway opens a connection for an agent and the client is running, the client
-shows it as a tab: badged as the agent's, in a colour no human tab uses, and read-only
-for the person so their keystrokes never interleave with the agent's. Each call appears
-as a prompt line with the command as parsed, then its output as it streams, then its
-exit code; a refused call shows the refusal and the rule that gave it.
-
-Closing that tab does not end the agent's session; the kill switch does. Headless, with
-no client running, nothing changes and the audit log is the only view.
-
-The tab is ordinary terminal output drawn by the existing renderer, so it costs nothing
-new on the rendering path.
-
-Proven by a UI case that runs two calls through the gateway and reads the tab's badge
-and its last line from the accessibility tree.
-
 ### §QS336 The policy engine
 
 With the policy format (QS322), the command classifier (QS323) and session tags (QS331)

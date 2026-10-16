@@ -384,6 +384,12 @@ public static class Entry
         // forty sessions laid out as rows was a sixth of a start. The sidebar says nothing until then.
         window.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, window.RefreshSessions);
 
+        // An agent's work through the gateway, each run in a tab of its own (QS335): the feeds written in
+        // the last ten minutes once the window is up, and any written from then on as it is. Not left for
+        // idle, which a busy desk reaches late: it is one directory listing, after the first paint.
+        window.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background,
+                                      () => WatchAgentFeeds(window, share));
+
         // A session recorded from its first byte, local or saved (QS134).
         window.OpensRecorded = recording => Opened(window, window.Settings, share, recording: recording);
         window.OpensSessionRecorded = (path, recording) =>
@@ -683,6 +689,62 @@ public static class Entry
                              .ConfigureAwait(false));
     }
 
+    /// <summary>The feeds this process has given a tab, so a feed that grows is not opened twice.</summary>
+    private static readonly HashSet<string> FeedsShown = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Opens a tab for each recent agent feed and watches for new ones (QS335).</summary>
+    private static void WatchAgentFeeds(MainWindow window, TerminalShare share)
+    {
+        string folder = Locations.Current.AgentFeeds;
+
+        Directory.CreateDirectory(folder);
+
+        foreach (string feed in Directory.GetFiles(folder, "*.vt")
+                                         .Where(file => File.GetLastWriteTimeUtc(file) > DateTime.UtcNow.AddMinutes(-10))
+                                         .Order(StringComparer.Ordinal))
+        {
+            OpenedFeed(window, share, feed);
+        }
+
+        FileSystemWatcher watching = new(folder, "*.vt") { EnableRaisingEvents = true };
+
+        void Seen(object? sender, FileSystemEventArgs seen) =>
+            window.Dispatcher.BeginInvoke(() => OpenedFeed(window, share, seen.FullPath));
+
+        watching.Created += Seen;
+        watching.Changed += Seen;
+        window.Closed += (_, _) => watching.Dispose();
+    }
+
+    /// <summary>
+    /// One agent feed in a tab badged as the agent's, put behind the tab the person is in so it never
+    /// takes the screen from them (QS335).
+    /// </summary>
+    private static void OpenedFeed(MainWindow window, TerminalShare share, string feed)
+    {
+        if (!FeedsShown.Add(feed) || !File.Exists(feed))
+        {
+            return;
+        }
+
+        TerminalTab tab = TerminalTab.Open(window.Settings, share, "agent");
+
+        tab.Agent = true;
+
+        int was = window.Active;
+        bool had = window.Held.Count > 0;
+
+        window.Add(tab);
+
+        if (had)
+        {
+            window.Active = was;
+        }
+
+        _ = tab.Focused.ConnectAsync((emulator, damage, columns, rows, _) =>
+            Task.FromResult<IShellSession>(FeedSession.Open(feed, emulator, damage, columns, rows)));
+    }
+
     /// <summary>
     /// What a split pane runs: another shell on the server of the pane it was split from (QS309), or
     /// a local shell where that pane was local or remembers no session.
@@ -773,10 +835,13 @@ public static class Entry
 
         string store = Locations.Current.Sessions;
 
+        AuditLog audit = AuditLog.Start(Locations.Current.Audit, DateTimeOffset.Now);
+
         AgentGateway gateway = new(() => SessionTree.ReadFrom(store), AgentGateway.Connect, CrashContext.Build())
         {
-            Audit = AuditLog.Start(Locations.Current.Audit, DateTimeOffset.Now),
+            Audit = audit,
             StopFile = Locations.Current.AgentStop,
+            Feed = AgentFeed.Start(Locations.Current.AgentFeeds, audit.Run),
         };
 
         // The kill switch (QS334): the window writes the file and this sweeps at once, without waiting

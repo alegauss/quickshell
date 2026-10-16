@@ -90,6 +90,9 @@ public sealed class Locations
     /// <summary>Present while the person has stopped every agent (QS334); the gateway watches for it.</summary>
     public string AgentStop => Path.Combine(Root, "agents-stopped");
 
+    /// <summary>What each gateway run shows a person, tailed into the agent's tab (QS335).</summary>
+    public string AgentFeeds => Path.Combine(Root, "agent-feeds");
+
     /// <summary>The agent gateway's audit logs, one per gateway run (QS333).</summary>
     public string Audit => Path.Combine(Root, "audit");
 

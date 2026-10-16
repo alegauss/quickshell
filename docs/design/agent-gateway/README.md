@@ -374,6 +374,19 @@ measured against the fixture, nothing is left to hang. A Windows server is told 
 sends (`OpenSSH_for_Windows`) and gets the command without the preamble. Code:
 `src/Quickshell.App/CommandPrompts.cs`.
 
+**The agent's work in plain sight (QS335).** Each gateway run appends what it does to
+`agent-feeds/<run>.vt` in quickshell's data folder, as terminal output: a title, then for each call a
+prompt line (`agent`, the session, the tool, the command as the agent gave it) written before it runs,
+then what came back, errors in red, and `[exit N]` or the refusal. All of it is redacted as answers
+are. The window opens each feed written in the last ten minutes once it is idle, and any feed written
+after that as it appears, in a tab of its own. The tab wears an `agent` chip in the accent, drawn the
+way a tag's is, and is put behind the tab the person is in so it never takes the screen. A tab tails its
+file through `FeedChannel`, a pty channel that reads the file and writes nowhere, so it is read-only
+and is drawn by the ordinary pipeline and renderer. Closing the tab ends nothing; the kill switch does.
+With no window open, nothing changes. The line asked for output as it streams: `exec` answers when the
+command ends (QS325), so a call shows its prompt at once and its output when it is done. Code:
+`src/Quickshell.App/AgentFeed.cs`.
+
 **The kill switch (QS334).** `Ctrl+Shift+F12` in the window, or *Stop every agent* in the palette,
 writes `agents-stopped` in quickshell's data folder. Every gateway watches for that file. When it
 appears, the gateway ends any call in flight, sends TERM to every job still running for the account on

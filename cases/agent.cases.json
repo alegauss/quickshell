@@ -1,0 +1,53 @@
+{
+  // QS335. What an agent does through the gateway, shown to the person as a tab of its own. The
+  // gateway is another process, and writes a feed under the client's data folder; this fixture stages
+  // one, a run of two calls as the gateway writes it, and the client opens it at start. The client
+  // opens only feeds written in the last ten minutes, and winwright stages a file with the
+  // modification time it had in the tree unless filling changes it (WW543), so the feed opens with an
+  // OSC no terminal acts on, naming {files}, and is filled: the copy is then written now, and draws
+  // nothing.
+
+  "fixtures": [
+    {
+      "name": "a client whose data folder holds an agent's feed",
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": [
+        { "from": "cases/fixtures/agent-feed.vt", "to": "agent-feeds/20261016T000000Z-0c4a1e.vt", "fill": true }
+      ]
+    }
+  ],
+
+  "cases": [
+    {
+      "name": "an agent's run is a tab badged as the agent's, ending on its last call",
+      "catches": "an agent working through the gateway with nothing on the person's screen, or a tab that looks like any human session",
+      "filed": "QS335",
+      "tags": ["agent", "tabs"],
+      "fixture": "a client whose data folder holds an agent's feed",
+
+      "steps": [
+        {
+          // The badge is a chip on the tab, in the accent, as a tag is.
+          "locator": "Text#TabTag",
+          "act": "read",
+          "reads": "name",
+          "expect": "agent",
+          "named": "the agent's tab wears its badge"
+        },
+        {
+          "locator": "TabItem[order=right]",
+          "act": "select",
+          "named": "the agent's tab is put on screen"
+        },
+        {
+          // Read the way a screen reader reads a terminal: both calls are there, the last with its result.
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "read",
+          "reads": "text",
+          "matches": "agent probe exec uptime[\\s\\S]*agent probe exec systemctl is-active nginx\\s+active\\s+\\[exit 0\\]",
+          "named": "and shows both calls, the last one ending as it did"
+        }
+      ]
+    }
+  ]
+}

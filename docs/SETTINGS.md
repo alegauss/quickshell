@@ -224,7 +224,8 @@ A long output comes back as its first and last lines within a budget, and `outpu
 anything a tool returns are replaced with `«redacted:…»` before the agent sees them; that guards against
 a slip, not a determined command, which can always encode a value past it. Every call is recorded in
 `audit` in quickshell's folder, and `quickshell --audit` prints what a run changed, ran, refused and
-read ([COMMAND-LINE.md](COMMAND-LINE.md#serving-an-agent)). `Ctrl+Shift+F12` stops every agent at once,
+read ([COMMAND-LINE.md](COMMAND-LINE.md#serving-an-agent)). Each run also appears in quickshell, while it is open, as a read-only tab badged `agent` that shows every
+call and what came back. `Ctrl+Shift+F12` stops every agent at once,
 cancelling the jobs they started, until *Let agents run again* in the palette ([KEYS.md](KEYS.md)). It signs in with the session's
 key and your agents, never a typed password, and refuses a host whose key you have not already trusted
 from the window. It is a separate process: the window, its start and its memory are the same with

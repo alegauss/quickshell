@@ -1,0 +1,9 @@
+]7777;staged={files}]0;agent 20261016T000000Z-0c4a1e[2mAn agent is working through quickshell's gateway (run 20261016T000000Z-0c4a1e). This tab only shows what it does; Ctrl+Shift+F12 stops every agent.[0m
+
+[1;35magent[0m [1mprobe[0m [36mexec[0m uptime
+ 10:00:01 up 3 days,  2 users,  load average: 0.01, 0.02, 0.00
+[2m[exit 0][0m
+
+[1;35magent[0m [1mprobe[0m [36mexec[0m systemctl is-active nginx
+active
+[2m[exit 0][0m
