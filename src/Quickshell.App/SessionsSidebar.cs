@@ -737,6 +737,12 @@ public sealed class SessionsSidebar : Border
         if (_window.Settings.AgentGateway)
         {
             menu.Items.Add(Entry("Set up an agent account…", () => _window.SetUpAgentAccountOrSay(row.Path)));
+
+            // And taken off again, where the session has one (QS359).
+            if (_window.HasAgentAccount(row.Path))
+            {
+                menu.Items.Add(Entry("Remove the agent account…", () => _window.RemoveAgentAccountOrSay(row.Path)));
+            }
         }
 
         menu.Items.Add(new Separator());

@@ -117,14 +117,29 @@ public static partial class AgentAccountSetup
               .Append("rm -f \"$allowed\"\n")
               .Append("echo quickshell-agent-ready\n");
 
-        string undo = "#!/bin/sh\n"
-                      + "# Removes what quickshell's agent setup made (QS340).\n"
-                      + $"rm -f {Sudoers}\n"
-                      + $"pkill -u {account} 2>/dev/null || true\n"
-                      + $"userdel -r {account} 2>/dev/null || true\n"
-                      + "echo quickshell-agent-removed\n";
+        return new AgentSetupPlan(script.ToString(), Removal(account!));
+    }
 
-        return new AgentSetupPlan(script.ToString(), undo);
+    /// <summary>
+    /// What removes an agent account the setup made (QS359): the sudoers file, the account's processes, and
+    /// the account with its home, which takes its <c>authorized_keys</c> and any trust in quickshell's
+    /// authority with it.
+    /// </summary>
+    /// <exception cref="AgentSetupRefusal">The account is not one a setup could have made.</exception>
+    public static string Removal(string account)
+    {
+        if (!AccountName.IsMatch(account ?? string.Empty))
+        {
+            throw new AgentSetupRefusal($"{account} is not an account name a server takes: lower case letters, digits, _ and -.");
+        }
+
+        return "#!/bin/sh\n"
+               + "# Removes what quickshell's agent setup made (QS340, QS359).\n"
+               + $"rm -f {Sudoers}\n"
+               + $"pkill -u {account} 2>/dev/null || true\n"
+               + $"userdel -r {account} 2>/dev/null || true\n"
+               + $"! id -u {account} >/dev/null 2>&1\n"
+               + "echo quickshell-agent-removed\n";
     }
 
     /// <summary>Where the script waits in the person's home for the line typed into their tab to run it.</summary>
@@ -155,12 +170,20 @@ public static partial class AgentAccountSetup
     }
 
     /// <summary>Puts the script in the person's home, readable by them alone, and clears any mark an earlier run left.</summary>
-    public static async Task StageAsync(ICommandChannel person, AgentSetupPlan plan, CancellationToken cancellationToken)
+    public static Task StageAsync(ICommandChannel person, AgentSetupPlan plan, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(person);
         ArgumentNullException.ThrowIfNull(plan);
 
-        string encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(plan.Script));
+        return StageAsync(person, plan.Script, cancellationToken);
+    }
+
+    /// <summary>Puts a script in the person's home, readable by them alone, for the typed line to run (QS359: the removal too).</summary>
+    public static async Task StageAsync(ICommandChannel person, string script, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+        ArgumentNullException.ThrowIfNull(script);
+
+        string encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(script));
         CommandResult staged = await person.RunAsync($"umask 077; rm -f ~/{Ready}; printf '%s' '{encoded}' | base64 -d > ~/{Staged}",
                                                      TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
 
@@ -254,5 +277,20 @@ public static partial class AgentAccountSetup
         {
             Settings = node.Settings with { AgentUser = account, AgentKey = key, AgentCertificate = certificate ? true : null },
         });
+    }
+
+    /// <summary>
+    /// The store with the session's own agent identity taken off (QS359), everything else as it was. A
+    /// folder's is never touched: removing the account from one server does not take it from the others.
+    /// </summary>
+    /// <exception cref="SessionStoreException">The store holds nothing at that path.</exception>
+    public static SessionTree Forget(SessionTree store, string path)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+
+        SessionNode node = store.Find(path) ?? throw new SessionStoreException($"There is nothing at {path} in the session store.",
+                                                                                "It may have been moved or deleted while the removal ran.");
+
+        return store.With(path, node with { Settings = node.Settings with { AgentUser = null, AgentKey = null, AgentCertificate = null } });
     }
 }

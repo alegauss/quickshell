@@ -209,7 +209,9 @@ refuses too ([the design](design/agent-gateway/README.md)). Set on a folder, eve
 uses the same agent account.
 
 *Set up an agent account…* on a session's menu (shown while `agentGateway` is on) makes that account
-and its key, and writes both settings on the session once the setup has run. The session dialog does
+and its key, and writes both settings on the session once the setup has run. *Remove the agent
+account…* undoes it the same way and takes the settings off the session again, unless they are a
+folder's. The session dialog does
 not show them, and a save through it keeps them.
 
 ### `AgentKey`

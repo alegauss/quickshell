@@ -400,8 +400,16 @@ home, readable by them alone, and types one line into their tab: `sudo sh` of it
 if it succeeded. The person answers their own sudo there. The window asks for the mark every two
 seconds for ten minutes. When it appears, `AgentUser` and `AgentKey` are written to the session, and
 the setup goes in an audit run of its own as `agent_setup`, with the script's hash. Any other ending
-leaves the session as it was, says why, and removes the key it made. Removing the account again is
-`Plan.Undo`, which nothing in the window offers yet. Any process of the person's can read the key,
+leaves the session as it was, says why, and removes the key it made.
+
+*Remove the agent account…* sits beside it on the menu wherever a session names one (QS359), and
+takes the same path. It shows `AgentAccountSetup.Removal` first: the sudoers file removed, the
+account's processes ended, the account deleted with its home, which takes its key or its trust in the
+authority with it. It runs that in the person's tab under their sudo and waits for the mark. Then the
+session's own `AgentUser`, `AgentKey` and `AgentCertificate` are cleared, its key is deleted where no
+other session names it, and the removal goes in the audit as `agent_removal`. An identity the session
+inherits from a folder is left on the folder, since the other servers under it keep theirs, and the
+window says that the gateway will still try it here. Any process of the person's can read the key,
 an agent's included. A copy used directly skips the client's policy and audit, but signs in as the
 same limited account, which is why the account is the boundary.
 

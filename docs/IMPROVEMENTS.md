@@ -469,27 +469,6 @@ defect with the trace that shows it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS359 Removing an agent account from the menu
-
-QS340's guided setup makes an agent account on a server from the session menu, and
-`AgentAccountSetup.Plan` already writes its undo: the sudoers file removed, the
-account's processes ended and the account deleted with its home. Nothing in the window
-runs it. A person who wants an agent off a server has to find the script, copy it to the
-server and run it as root by hand, which is the tedium the setup existed to remove, now
-on the way out.
-
-A second entry on the menu, *Remove the agent account…*, shown where the session has an
-`AgentUser`, should take the same path as the setup: the person's own tab, the exact
-undo shown first, run under their sudo, and a mark that says it finished. Then
-`AgentUser` and `AgentKey` are cleared from the session, the key in `agent-keys` is
-deleted, and the removal goes in the audit beside the setup.
-
-A session whose agent identity is inherited from a folder needs care: removing it from
-one server must not clear the folder's settings for the rest.
-
-Proven against the Linux fixture: after removal the agent key no longer signs in, the
-sudoers file is gone, and the session carries no agent identity.
-
 ### §QS360 Windows Hello in front of the agent authority
 
 QS341 keeps the agents' certificate authority sealed with DPAPI for the person's Windows

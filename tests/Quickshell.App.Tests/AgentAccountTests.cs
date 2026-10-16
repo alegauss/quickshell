@@ -296,6 +296,130 @@ public sealed class AgentAccountTests : IDisposable
         Assert.False(Directory.Exists(keys), "a key was made for a setup that never reached the server");
     }
 
+    /// <summary>
+    /// QS359 against the Linux fixture: an account set up, then removed the way the menu removes it — the
+    /// removal staged in the person's home and run by the typed line (as root by docker, standing in for the
+    /// person's sudo), its mark taken — and after it the agent's key signs in nowhere, the sudoers file is
+    /// gone, and the session names no agent.
+    /// </summary>
+    [Fact]
+    public async Task ARemovedAccountSignsInNoMoreAndTheSessionForgetsIt()
+    {
+        SshFixture.SkipWithoutIt();
+
+        string account = "qsagent" + Guid.NewGuid().ToString("N")[..6];
+        string probeKey = Path.Combine(Repository.Root, "prototypes", "SshProbe", "fixture", "keys", "probe_ed25519");
+        string key = AgentAccountSetup.KeyFor(Path.Combine(_here, "agent-keys"), "db");
+        TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")), (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
+        SessionTree store = SessionTree.Of(new SessionNode
+        {
+            Children = [new SessionNode { Name = "db", Host = "127.0.0.1", Settings = new SessionSettings { User = "probe", Port = 2222, Key = probeKey } }],
+        });
+
+        AgentAccountSetup.MakeKey(key);
+
+        await using IGatewayConnection person = await AgentGateway.Connect(store.Session("db")!, trust, Stop);
+
+        AgentSetupPlan plan = AgentAccountSetup.Plan(account, await File.ReadAllTextAsync(key + ".pub", Stop),
+                                                     await AgentAccountSetup.SeenFromAsync(person, Stop), [["whoami"]]);
+
+        Assert.True(SshFixture.Docker($"echo {Convert.ToBase64String(Encoding.UTF8.GetBytes(plan.Script))} | base64 -d | sh"), "the setup did not run");
+
+        store = AgentAccountSetup.Record(store, "db", account, key);
+
+        // Signs in before the removal, so what fails after it is the removal's doing.
+        await (await AgentGateway.Connect(store.Session("db")!, trust, Stop)).DisposeAsync();
+
+        try
+        {
+            await AgentAccountSetup.StageAsync(person, AgentAccountSetup.Removal(account), Stop);
+
+            string typed = AgentAccountSetup.Typed.TrimEnd('\r').Replace("sudo sh ~/", "sh ~/", StringComparison.Ordinal).Replace("~/", "/home/probe/", StringComparison.Ordinal);
+
+            Assert.True(SshFixture.Docker(typed + " && chown probe /home/probe/" + AgentAccountSetup.Ready), "the removal did not run");
+            Assert.True(await AgentAccountSetup.ReadyAsync(person, Stop), "the removal's mark was not seen");
+
+            store = AgentAccountSetup.Forget(store, "db");
+
+            Assert.False(SshFixture.Docker($"test -e {AgentAccountSetup.Sudoers}"), "the sudoers file is still there");
+            Assert.False(SshFixture.Docker($"id -u {account}"), "the account is still there");
+            Assert.Null(store.Session("db")!.AgentUser);
+
+            // The key alone, as the agent: the account is gone, so it signs in nowhere.
+            SshEndpoint target = SshEndpoint.For("127.0.0.1", account, 2222);
+            await using SshNetTransport transport = new();
+
+            await Assert.ThrowsAsync<SshException>(() => transport.ConnectAsync(target, [new SshCredential.PrivateKey(key)], trust.CheckAsync, Stop).AsTask());
+        }
+        finally
+        {
+            SshFixture.Docker($"echo {Convert.ToBase64String(Encoding.UTF8.GetBytes(plan.Undo))} | base64 -d | sh");
+        }
+    }
+
+    /// <summary>Forgetting a session's agent takes its own off and leaves a folder's for the sessions under it.</summary>
+    [Fact]
+    public void ForgettingASessionsAgentLeavesTheFoldersAlone()
+    {
+        SessionTree store = SessionTree.Of(new SessionNode
+        {
+            Children =
+            [
+                new SessionNode
+                {
+                    Name = "Work",
+                    Settings = new SessionSettings { AgentUser = "agent", AgentKey = "folder-key" },
+                    Children =
+                    [
+                        new SessionNode { Name = "db", Host = "db", Settings = new SessionSettings { AgentUser = "dbagent", AgentKey = "db-key", AgentCertificate = true } },
+                        new SessionNode { Name = "web", Host = "web" },
+                    ],
+                },
+            ],
+        });
+
+        SessionTree forgotten = AgentAccountSetup.Forget(store, "Work/db");
+
+        Assert.Equal("agent", forgotten.Session("Work/db")!.AgentUser?.Value);
+        Assert.Equal("Work", forgotten.Session("Work/db")!.AgentUser?.From);
+        Assert.Null(forgotten.Session("Work/db")!.AgentCertificate);
+        Assert.Equal("agent", forgotten.Session("Work/web")!.AgentUser?.Value);
+        Assert.Throws<AgentSetupRefusal>(() => AgentAccountSetup.Removal("Root"));
+        Assert.Contains("userdel -r dbagent", AgentAccountSetup.Removal("dbagent"), StringComparison.Ordinal);
+    }
+
+    /// <summary>The menu offers the removal only where the session names an agent account.</summary>
+    [Fact]
+    public void TheMenuOffersTheRemovalWhereThereIsAnAccount()
+    {
+        string storeFile = Path.Combine(_here, "sessions.json");
+
+        SessionTree.Of(new SessionNode
+        {
+            Children =
+            [
+                new SessionNode { Name = "db", Host = "db.example.com", Settings = new SessionSettings { AgentUser = "agent", AgentKey = "k" } },
+                new SessionNode { Name = "web", Host = "web.example.com" },
+            ],
+        }).WriteTo(storeFile);
+
+        (bool db, bool web) = Sta.Run(() =>
+        {
+            MainWindow window = new() { SessionsFile = storeFile, SshConfigFile = Path.Combine(_here, "none") };
+
+            window.Apply(Settings.Default with { AgentGateway = true });
+            window.RefreshSessions();
+
+            bool Offers(string path) => window.Sidebar.Menu(window.Sidebar.Rows.Single(row => row.Path == path))
+                .Items.OfType<MenuItem>().Any(entry => (string)entry.Header == "Remove the agent account…");
+
+            return (Offers("db"), Offers("web"));
+        });
+
+        Assert.True(db, "the menu did not offer to remove the agent account a session has");
+        Assert.False(web, "the menu offered to remove an agent account a session does not have");
+    }
+
     private static T Find<T>(DependencyObject root, string id)
         where T : DependencyObject =>
         Descendants(root).OfType<T>().Single(each => AutomationProperties.GetAutomationId(each) == id);
