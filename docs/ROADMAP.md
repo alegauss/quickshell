@@ -32,7 +32,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS347** (deps: —) **A middle click closing a tab is proven by routed events raised in a unit test, not by a UI case** — A case's click verb presses only the left button, so the gesture waits on winwright to name another. → §QS347
 - 📋 **QS348** (deps: winwright WW539) **That a tab's close cross is drawn inside its tab is proven by an in-process render, not by a UI case** — A case cannot claim one element sits within another, so the geometry QS312 fixed waits on winwright to name it. → §QS348
 - 📋 **QS349** (deps: winwright WW540) **Choosing several sidebar rows is proven by automation peers in a unit test, not by a UI case** — A case cannot add to a selection or Ctrl+click, so QS314's selection waits on winwright to name the act. → §QS349
 - 📋 **QS357** (deps: —) **The echo-delay pipeline test goes red in the guest when ConPTY prints under 300 KB/s for thirty seconds** — It failed twice at 6 MB of 8 and then passed twice on the same tree, so a slow producer reads as a broken pipeline. → §QS357

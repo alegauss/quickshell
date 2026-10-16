@@ -20,6 +20,13 @@
       "name": "a window with three tabs to number",
       "arguments": ["--tabs", "3"],
       "shareable": false
+    },
+    {
+      // Four tabs, the last on screen, for the middle click and the tab menu (QS347): what each closes is
+      // one or two tabs that are not on screen, so which tab stays selected is part of the claim.
+      "name": "a window with four tabs to close from",
+      "arguments": ["--tabs", "4"],
+      "shareable": false
     }
   ],
 
@@ -220,6 +227,102 @@
           "reads": "name",
           "matches": "^2\\.",
           "named": "the tab that was third is now 2, the Alt chord that reaches it"
+        }
+      ]
+    },
+    {
+      // QS310 from outside the process, now that a click names its button (winwright WW538, in 1.1.1).
+      "name": "a middle click on a tab closes that tab and leaves the one on screen",
+      "catches": "a middle click that does nothing, closes the tab on screen instead of the one under the pointer, or closes a live shell without asking",
+      "filed": "QS347",
+      "tags": ["window", "tabs"],
+      "fixture": "a window with four tabs to close from",
+
+      "steps": [
+        {
+          "locator": "TabItem[order=left][index=2]",
+          "act": "click",
+          "with": "PointerIsTheAct",
+          "button": "middle",
+          "named": "the second tab is middle-clicked"
+        },
+        {
+          // Its shell is live, so closing it is asked about first, as its cross would.
+          "locator": "Window#Closing > Button#close",
+          "act": "invoke",
+          "named": "and closing its live shell is agreed to"
+        },
+        {
+          "locator": "Text#TabNumber[order=right]",
+          "act": "read",
+          "reads": "name",
+          "matches": "^3\\.",
+          "named": "three tabs are left"
+        },
+        {
+          "locator": "TabItem[order=right]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "and the tab that was on screen still is"
+        }
+      ]
+    },
+    {
+      // QS311 from outside the process: the strip's own menu, opened by the right button.
+      "name": "Close tabs to the right, from a tab's menu, asks once and closes the tabs after it",
+      "catches": "a tab menu a right click does not open, a close that asks once per tab or not at all, or one that closes the wrong side",
+      "filed": "QS347",
+      "tags": ["window", "tabs"],
+      "fixture": "a window with four tabs to close from",
+
+      "steps": [
+        {
+          "locator": "TabItem[order=left][index=2]",
+          "act": "click",
+          "with": "PointerIsTheAct",
+          "button": "right",
+          "named": "the second tab is right-clicked"
+        },
+        {
+          "locator": "MenuItem#CloseTabsToTheRight",
+          "act": "invoke",
+          "named": "and Close tabs to the right is chosen from its menu"
+        },
+        {
+          // Two live shells, the third and the fourth: one question for both.
+          "locator": "Window#Closing > Text#Asking",
+          "act": "read",
+          "reads": "name",
+          "matches": "^Close 2 sessions\\?",
+          "named": "one question names both sessions it would end"
+        },
+        {
+          "locator": "Window#Closing > Button#close",
+          "act": "invoke",
+          "named": "and closing them is agreed to"
+        },
+        {
+          "locator": "Text#TabNumber[order=right]",
+          "act": "read",
+          "reads": "name",
+          "matches": "^2\\.",
+          "named": "two tabs are left"
+        },
+        {
+          // The tab on screen was closed, so the one clicked takes the screen, with the first behind it.
+          "locator": "TabItem[order=right]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "the tab whose menu it was is on screen"
+        },
+        {
+          "locator": "TabItem[order=left]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "not selected",
+          "named": "and the first is behind it"
         }
       ]
     }

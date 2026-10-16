@@ -484,24 +484,6 @@ both sides' algorithm lists.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS347 QS347 UI cases for the middle click and the tab menu
-
-QS310's middle click on a tab and QS311's right-click menu on a tab are both proven in
-TabStripTests (routed mouse events raised on the tab item, the menu built by
-MainWindow.TabMenu and its entry clicked), not by UI cases, because a case's click verb
-presses only the left button (winwright WW538). Shift+F10 was tried for the menu on
-2026-10-15 and does not stand in for it: the press does not give the TabItem the
-keyboard, so another menu opens and MenuItem#CloseTabsToTheRight is never found.
-
-Once winwright spells the button, cases/tabs.cases.json gains two cases over a four-tab
-fixture: one middle-clicks TabItem[order=left][index=2] and reads that the first tab
-stays selected; one right-clicks the same tab, invokes MenuItem#CloseTabsToTheRight,
-reads Window#Closing > Text#Asking as "Close 2 sessions?" (the four tabs are live
-shells), invokes Button#close, and reads the second tab selected and the first behind
-it. The unit tests stay, since they hold the live-session questions without a desk.
-
-Done when both cases run green in the guest beside the others.
-
 ### §QS348 QS348 A UI case for the close cross
 
 QS312 fixed a tab's close cross that painted nothing (the theme's 11-a-side padding on a
