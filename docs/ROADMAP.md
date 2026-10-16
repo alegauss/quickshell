@@ -8,8 +8,6 @@
 
 ## Block C — Emulation that does not lie about the remote
 
-- 📋 **QS350** (deps: —) **Whether a narrowed bash pane's extra prompt line on a split is bash's or this client's reflow was never traced** — No desk here has a bash over SSH, so QS316 fixed the client's half and left the narrowed pane's half unmeasured. → §QS350
-
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates

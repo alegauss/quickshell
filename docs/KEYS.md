@@ -74,6 +74,11 @@ by when you used it rather than where it sits, so pressing it twice brings you b
 | `Ctrl+Shift+E` | Gives every pane in the tab an equal share. |
 | `Ctrl+Shift+B` | Types into every pane in the tab at once, pastes included; press it again to stop. Each pane receiving what you type has an orange edge. |
 
+**Why the prompt moves down when a split narrows a pane.** Lines wider than the narrower pane wrap
+onto a second row, so everything below them, the prompt included, moves down a row for each. The
+server's shell is told the new width and redraws its prompt where it is. bash 5.2 adds no line, and
+the prompt is shown once ([the trace](../benchmarks/results/narrowed-prompt.md)).
+
 A pane closes with `Ctrl+Shift+W` while its tab has more than one, with *Close pane* in the palette,
 or with the cross in the strip above it, which a tab of several panes gives each of them and which
 closes that pane rather than the one with the keyboard. A pane also goes when the thing running in

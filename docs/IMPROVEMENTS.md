@@ -200,23 +200,6 @@ Falsified when a one-cell blink costs what a whole-grid one did on that desk. Th
 swap effect goes back to `FlipDiscard` unless photon says sequential costs nothing, and
 the per-frame cost is the wake and the present, which is a different line.
 
-### §QS350 QS350 Tracing the narrowed pane's prompt line
-
-QS316 settled the client's half of the extra prompt line a split leaves:
-SessionPipelineTests prove a resize writes no input byte and a burst of resizes is one
-window-change at the final size, and a pane whose size did not change is now told
-nothing. The pane a split narrows is told, as it must be, and whether a real bash at its
-prompt then adds a line (readline redrawing on SIGWINCH, which Windows Terminal over
-OpenSSH would show too) or this client's reflow moves the cursor under it was never
-traced: neither the guest (Windows OpenSSH, cmd) nor the host has a bash over SSH. The
-Docker fixture's Debian sshd (prototypes/SshProbe/fixture) does. The trace: one split on
-a Debian session with a short prompt, the session log at trace level counting
-window-changes and bytes each way, the screen before and after; the same split in
-Windows Terminal over ssh. If the line appears in both, it is bash's and is recorded as
-such in docs/KEYS.md under Panes; if only here, the reflow on narrowing is the defect
-and gets a line of its own. Done when that trace is recorded in benchmarks/results and
-the conclusion is written where a user will look.
-
 ## Block D — The tree a user organises work in
 
 ## Block E — SCP and SFTP as a thing a person operates
@@ -531,18 +514,18 @@ to wait on its renderer still fails it.
 
 ### §QS361 A typed hyphen that arrived as an r
 
-On 2026-10-16, a guest run of the UI cases failed "clicking a tab on the strip puts that
-tab's terminal on screen" in tabs.cases.json. The case types `title first-tab-marker`
-into a local tab with winwright's `type` verb. The pane's text read back `title
-first-tabrmarker`, and cmd took that as the title, so both the title-bar check and the
-text check failed. The very next run, on the same tree, passed all 24 cases.
+"Clicking a tab on the strip puts that tab's terminal on screen" (tabs.cases.json) types
+`title first-tab-marker` into a local tab with winwright's `type` verb. It failed in two
+guest runs on 2026-10-16, both times because one character arrived as an `r`:
+`first-tabrmarker` (the hyphen) and `first-tab-markrr` (the last `e`). cmd took that as
+the title, so the title-bar check and the text check both failed. Each time, the next
+run on the same tree passed.
 
-A hyphen becoming an `r` is not a timing slip of the usual kind, a key lost or doubled.
-One character was turned into another. The candidates are winwright's key synthesis (a
-virtual key sent under a keyboard layout it did not expect, or a scan code mapped twice)
-and the client's own path from `TextInput` and `KeyDown` to the bytes `Typist` sends.
-The guest's layout is Brazilian Portuguese, where OEM keys sit elsewhere than in US
-English.
+A lost or doubled key is a timing slip. One character turned into an `r`, twice, is not.
+The candidates are winwright's key synthesis (a virtual key sent under a layout it did
+not expect, or a scan code reused from an earlier key) and the client's own path from
+`KeyDown` and `TextInput` to the bytes `Typist` sends. The guest's layout is Brazilian
+Portuguese, where OEM keys sit elsewhere than in US English.
 
 The work is to tell the two apart. First, a trace of what quickshell received for each
 key (the `KeyDown` virtual key, the `TextInput` text) for a run of the case. Then the
