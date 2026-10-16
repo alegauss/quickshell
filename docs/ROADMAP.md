@@ -16,8 +16,6 @@
 
 ## Block G — The clean interface, defended
 
-- 📋 **QS354** (deps: —) **Every action is reached only by a hotkey or the palette, so a user who has not learned them cannot find a feature** — A menu bar built from the palette's own action list, hidden by default and shown by Alt or a setting, lists every action with its shortcut. → §QS354
-
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77

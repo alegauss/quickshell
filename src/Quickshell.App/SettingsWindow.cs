@@ -46,6 +46,7 @@ public sealed class SettingsWindow : Window
         ("tagColours", "Tag colours", "Which tags a tab shows besides prod, and in which colour, as staging=caution, db=accent. Empty, the default, shows prod alone."),
         ("agentGateway", "Agent gateway", "Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. What it may run on each is the agent policy's to say."),
         ("claudeCommand", "Claude Code command", "What Open Claude Code runs in its pane, found on the path: claude by default."),
+        ("menuBar", "Menu bar", "When the menu bar of every action is on screen: Hidden, Alt (shown by pressing and releasing Alt, the default) or Always."),
     ];
 
     private readonly string _path;
@@ -228,6 +229,7 @@ public sealed class SettingsWindow : Window
             ((TextBox)_controls["tagColours"]).Text = now.TagColours;
             ((CheckBox)_controls["agentGateway"]).IsChecked = now.AgentGateway;
             ((TextBox)_controls["claudeCommand"]).Text = now.ClaudeCommand;
+            ((ComboBox)_controls["menuBar"]).SelectedItem = now.MenuBar;
         }
         finally
         {
@@ -292,6 +294,8 @@ public sealed class SettingsWindow : Window
                           value => Change(now => now with { Theme = (ChromeTheme)value })),
         "cursor" => Choice([CursorShape.Block, CursorShape.Underline, CursorShape.Bar],
                            value => Change(now => now with { Cursor = (CursorShape)value })),
+        "menuBar" => Choice(Enum.GetValues<MenuBarMode>().Cast<object>(),
+                            value => Change(now => now with { MenuBar = (MenuBarMode)value })),
         "startWith" => Choice(Enum.GetValues<StartWith>().Cast<object>(),
                               value => Change(now => now with { StartWith = (StartWith)value })),
         "ligatures" => Toggle(on => Change(now => now with { Ligatures = on })),

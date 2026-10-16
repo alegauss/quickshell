@@ -126,6 +126,11 @@ prompt), and the title says which. A name already taken there is left alone.
 | `Ctrl+Shift+F1` | Help: opens the palette, which lists everything this client can do and the keys that do it. The diagnostic report is in there too, as *Write a diagnostic report*. |
 | `Ctrl+Shift+F12` | Stops every agent working through the agent gateway: each cancels the jobs it started, closes its connections and refuses what an agent asks, until *Let agents run again* in the palette. |
 
+**The menu bar.** Press and release `Alt` on its own, and a menu bar appears under the title bar. It
+holds every action the palette has, under headings, with its keys beside it. `Esc`, choosing an item
+or clicking elsewhere puts it away. `Alt` held with another key is still that chord. The
+[`menuBar` setting](SETTINGS.md) keeps it on screen or turns it off.
+
 ## In the file browser
 
 The browser is a window of its own, so none of its keys is taken from the program in the

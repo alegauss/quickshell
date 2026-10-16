@@ -72,7 +72,11 @@ public static class Commands
     /// do nothing.</para>
     /// </summary>
     /// <param name="bindings">The window's input bindings.</param>
-    public static IReadOnlyList<Command> From(IEnumerable<InputBinding> bindings)
+    /// <param name="runnable">
+    /// Whether to leave out what cannot run now, as the palette does. The menu bar (QS354) keeps it, shown
+    /// disabled, so the place a person browses for a feature never loses one because of the moment.
+    /// </param>
+    public static IReadOnlyList<Command> From(IEnumerable<InputBinding> bindings, bool runnable = true)
     {
         ArgumentNullException.ThrowIfNull(bindings);
 
@@ -81,7 +85,7 @@ public static class Commands
 
         foreach (InputBinding binding in bindings)
         {
-            if (binding.Command is not INamedCommand named || !named.CanExecute(null))
+            if (binding.Command is not INamedCommand named || (runnable && !named.CanExecute(null)))
             {
                 continue;
             }

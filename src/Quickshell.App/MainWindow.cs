@@ -239,7 +239,9 @@ public sealed partial class MainWindow : Window
         layout.Children.Add(_find);
         layout.Children.Add(_terminalInset);
 
-        Content = layout;
+        // Docked above everything and collapsed until Alt or the setting shows it (QS354), so a default
+        // window still opens with no menu, as Block G promises.
+        Content = WithMenuBar(layout);
 
         // Help, on the chord a person guesses for it (QS172): Ctrl+Shift+F1, because F1 is where help
         // is looked for, with the two modifiers that keep it away from anything the terminal owes the
@@ -457,6 +459,9 @@ public sealed partial class MainWindow : Window
         // Claude Code in a pane, and what a pane shows sent to it (QS342).
         InputBindings.Add(new InputBinding(new OpeningClaude(this), new PaletteOnly()));
         InputBindings.Add(new InputBinding(new SendingToClaude(this), new PaletteOnly()));
+
+        // The menu bar kept on screen, or left to Alt again (QS354).
+        InputBindings.Add(new InputBinding(new KeepingMenuBar(this), new PaletteOnly()));
 
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
@@ -1896,6 +1901,10 @@ public sealed partial class MainWindow : Window
 
         // A new scheme is a new background, around the terminal as well as in it (QS281).
         PaintInset();
+
+        // The menu bar as the file says (QS354): built only where it is to be on screen, so a default
+        // start pays nothing for it.
+        PlaceMenuBar();
     }
 
     /// <summary>

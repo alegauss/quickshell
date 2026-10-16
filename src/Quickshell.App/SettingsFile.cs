@@ -118,11 +118,30 @@ public sealed record Settings
     public string ClaudeCommand { get; init; } = "claude";
 
     /// <summary>
+    /// When the menu bar is on screen (QS354): never, while Alt has shown it (the default), or always. A
+    /// default window shows none, as Block G promises; the bar is a way to find what the palette holds.
+    /// </summary>
+    public MenuBarMode MenuBar { get; init; } = MenuBarMode.Alt;
+
+    /// <summary>
     /// Every key this build did not recognise, kept exactly as it was read so it can be written back
     /// unchanged.
     /// </summary>
     public IReadOnlyDictionary<string, JsonElement> Unrecognised { get; init; } =
         new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+}
+
+/// <summary>When the menu bar is on screen (QS354).</summary>
+public enum MenuBarMode
+{
+    /// <summary>Never: Alt does nothing, as before the menu bar.</summary>
+    Hidden,
+
+    /// <summary>When Alt is pressed and released, until Esc or the keyboard leaves it.</summary>
+    Alt,
+
+    /// <summary>Always, under the title bar.</summary>
+    Always,
 }
 
 /// <summary>What a new window opens on (QS272).</summary>
@@ -172,7 +191,7 @@ public static class SettingsFile
     [
         Version, "theme", "fontFamily", "fontSize", "scrollback", "ligatures", "cursor",
         "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar", "startWith", "vaultFile", "tagColours", "agentGateway",
-        "claudeCommand",
+        "claudeCommand", "menuBar",
     ];
 
     /// <summary>
@@ -311,6 +330,12 @@ public static class SettingsFile
             && !(start.ValueKind == JsonValueKind.String && Enum.TryParse(start.GetString(), ignoreCase: true, out StartWith _)))
         {
             said.Add($"\"startWith\" is {start.GetRawText()}, which is not Home or Shell, so Home is in use.");
+        }
+
+        if (root.TryGetProperty("menuBar", out JsonElement bar)
+            && !(bar.ValueKind == JsonValueKind.String && Enum.TryParse(bar.GetString(), ignoreCase: true, out MenuBarMode _)))
+        {
+            said.Add($"\"menuBar\" is {bar.GetRawText()}, which is not Hidden, Alt or Always, so Alt is in use.");
         }
 
         if (root.TryGetProperty("cursor", out JsonElement cursor) && Shape(root) is null)
@@ -462,6 +487,7 @@ public static class SettingsFile
             writer.WriteString("tagColours", settings.TagColours);
             writer.WriteBoolean("agentGateway", settings.AgentGateway);
             writer.WriteString("claudeCommand", settings.ClaudeCommand);
+            writer.WriteString("menuBar", settings.MenuBar.ToString());
 
             foreach ((string name, JsonElement value) in settings.Unrecognised)
             {
@@ -628,6 +654,7 @@ public static class SettingsFile
         ["tagColours"] = Quoted(settings.TagColours),
         ["agentGateway"] = settings.AgentGateway ? "true" : "false",
         ["claudeCommand"] = Quoted(settings.ClaudeCommand),
+        ["menuBar"] = Quoted(settings.MenuBar.ToString()),
     };
 
     /// <summary>The spaces and tabs in front of the key that starts at <paramref name="at"/>, back to its line's start.</summary>
@@ -682,6 +709,7 @@ public static class SettingsFile
             TagColours = Text(root, "tagColours") ?? Settings.Default.TagColours,
             AgentGateway = Yes(root, "agentGateway") ?? Settings.Default.AgentGateway,
             ClaudeCommand = Text(root, "claudeCommand") is { Length: > 0 } claude ? claude : Settings.Default.ClaudeCommand,
+            MenuBar = Text(root, "menuBar") is { } bar && Enum.TryParse(bar, ignoreCase: true, out MenuBarMode shown) ? shown : Settings.Default.MenuBar,
             Unrecognised = unrecognised,
         };
     }
