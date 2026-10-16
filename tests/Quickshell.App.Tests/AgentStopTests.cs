@@ -114,7 +114,11 @@ public sealed class AgentStopTests : IDisposable
         });
         TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(_here, "known_hosts")), (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
 
-        await using AgentGateway gateway = new(() => store, (session, token) => AgentGateway.Connect(session, trust, token), "test") { StopFile = StopFile };
+        await using AgentGateway gateway = new(() => store, (session, token) => AgentGateway.Connect(session, trust, token), "test")
+        {
+            StopFile = StopFile,
+            PolicyFile = Policies.BreakGlass(),
+        };
 
         foreach ((int id, string host, string marker) in ((int, string, string)[])[(1, "one", "301"), (2, "one", "302"), (3, "two", "303")])
         {

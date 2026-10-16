@@ -20,6 +20,11 @@
     <PackageReference Include="PdfPig" Version="0.1.16" />
   </ItemGroup>
 
+  <!-- QS336: the command judge's corpus, read beside the test assembly. -->
+  <ItemGroup>
+    <None Include="agent-commands.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\Quickshell.App\Quickshell.App.csproj" />
   </ItemGroup>

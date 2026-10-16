@@ -1,0 +1,46 @@
+{
+  // QS323/QS336: the commands an agent may run without asking where the policy allows reads. A command
+  // is a read only when it is listed here, its subcommand (its first word that is not an option) is
+  // one of the listed reads where a list is given, and none of its arguments is a writing option.
+  // Everything else, and anything the classifier cannot be sure of, is a mutation. Versioned with the
+  // client; a site's own reads are added in the policy, never here by an agent.
+  //
+  //   subcommands  the first non-option word must be one of these, or the first argument where the
+  //                list is of options (crontab -l); absent means any is a read
+  //   writes       arguments that make it write, matched whole, or as a prefix where they end in '*'
+  //   bare         true where the command is a read only with no arguments at all
+  "schema": 1,
+  "reads": [
+    { "command": "ls" }, { "command": "dir" }, { "command": "pwd" }, { "command": "cat" }, { "command": "head" },
+    { "command": "tail" }, { "command": "less", "writes": ["-o", "-O", "--log-file*", "--LOG-FILE*"] }, { "command": "more" }, { "command": "wc" }, { "command": "file" },
+    { "command": "stat" }, { "command": "du" }, { "command": "df" }, { "command": "free" }, { "command": "uptime" },
+    { "command": "uname" }, { "command": "hostname", "bare": true }, { "command": "hostnamectl", "subcommands": ["status"] },
+    { "command": "whoami" }, { "command": "id" }, { "command": "groups" }, { "command": "w" }, { "command": "who" },
+    { "command": "last" }, { "command": "lastlog" }, { "command": "date", "bare": true }, { "command": "nproc" },
+    { "command": "lscpu" }, { "command": "lsblk" }, { "command": "lsmem" }, { "command": "lspci" }, { "command": "lsusb" },
+    { "command": "lsof" }, { "command": "ps" }, { "command": "pgrep" }, { "command": "pstree" },
+    { "command": "top", "writes": [] }, { "command": "vmstat" }, { "command": "iostat" }, { "command": "mpstat" },
+    { "command": "ss", "writes": ["-K", "--kill"] }, { "command": "netstat" }, { "command": "getent" }, { "command": "which" }, { "command": "whereis" },
+    { "command": "echo" }, { "command": "printf" }, { "command": "true" }, { "command": "false" }, { "command": "test" },
+    { "command": "grep" }, { "command": "egrep" }, { "command": "fgrep" }, { "command": "zgrep" }, { "command": "rg", "writes": ["--pre*"] },
+    { "command": "cut" }, { "command": "tr" }, { "command": "column" }, { "command": "nl" }, { "command": "rev" },
+    { "command": "diff" }, { "command": "cmp" }, { "command": "comm" }, { "command": "basename" }, { "command": "dirname" },
+    { "command": "realpath" }, { "command": "readlink" }, { "command": "md5sum" }, { "command": "sha1sum" },
+    { "command": "sha256sum" }, { "command": "sha512sum" }, { "command": "zcat" }, { "command": "jq" },
+    { "command": "sort", "writes": ["-o", "--output*", "--compress-program*"] },
+    { "command": "find", "writes": ["-delete", "-exec", "-execdir", "-ok", "-okdir", "-fprint", "-fprint0", "-fprintf", "-fls"] },
+    { "command": "dmesg", "writes": ["-c", "-C", "--clear", "--read-clear", "-D", "-E", "--console-off", "--console-on", "-n", "--console-level"] },
+    { "command": "journalctl", "writes": ["--vacuum*", "--rotate", "--flush", "--sync", "--relinquish-var", "--smart-relinquish-var", "--setup-keys", "--update-catalog"] },
+    { "command": "systemctl", "subcommands": ["status", "is-active", "is-enabled", "is-failed", "is-system-running", "show", "cat", "list-units", "list-unit-files", "list-timers", "list-sockets", "list-dependencies", "get-default"] },
+    { "command": "crontab", "subcommands": ["-l"] },
+    { "command": "ip", "subcommands": ["addr", "address", "a", "route", "r", "link", "l", "neigh", "n", "rule"], "writes": ["add", "del", "delete", "change", "replace", "set", "flush", "append", "prepend", "save", "restore"] },
+    { "command": "docker", "subcommands": ["ps", "images", "logs", "inspect", "stats", "top", "port", "version", "info", "diff", "history"] },
+    { "command": "kubectl", "subcommands": ["get", "describe", "logs", "top", "version", "explain", "api-resources", "api-versions", "cluster-info"], "writes": ["-f", "--follow", "-w", "--watch"] },
+    { "command": "git", "subcommands": ["status", "log", "diff", "show", "rev-parse", "describe", "shortlog", "ls-files", "blame"], "writes": ["--output*", "-o"] },
+    { "command": "apt", "subcommands": ["list", "show", "search", "policy"] },
+    { "command": "apt-cache", "subcommands": ["policy", "show", "search", "depends", "rdepends"] },
+    { "command": "dpkg", "subcommands": ["-l", "-L", "-s", "--list", "--listfiles", "--status"] },
+    { "command": "rpm", "subcommands": ["-q", "-qa", "-qi", "-ql"] },
+    { "command": "nginx", "subcommands": ["-t", "-T", "-v", "-V"] }
+  ]
+}

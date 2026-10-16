@@ -363,6 +363,26 @@ does not, which a later line has to settle before such a server is offered.
 with the session's key and the agents, never a typed password, and refuses a host key the user's
 known_hosts does not already hold, saying to connect once from the window.
 
+**The policy in the path of every call (QS336).** Before a call that reaches a session runs, the
+gateway reads `agent-policy.json` from quickshell's folder (`AgentPolicy`) and judges it: `exec` and
+`job_start` by their argument vector, `read_file`, `job_status`, `job_output` and `job_cancel` as reads
+(a cancel only ends what the agent started), `edit_file` as a mutation. `hosts_list` and the kept
+output reach no server and are not judged. A refusal or an ask comes back as a tool error carrying
+`verdict` and `rule`, and the verdict and rule go into the audit line. An ask is refused for now with
+a sentence saying so, since nothing can ask the person until the approval dialog exists (QS337); that
+is the headless answer QS337 gives anyway. The judge (`CommandJudge`, with `agent-reads.json` built in)
+takes the argument vector, unwraps `sudo` (`-n`, `-u` only), `env` (no `PATH`, `LD_*` or `BASH_*`),
+`timeout` and `nice` narrowly, treats interpreters and stream editors as never reads, and parses an
+`sh -c` script only within the narrow subset; inside one, an argument that expands (`$`, a glob) makes
+a command with writing options or subcommands uncertain. Rules may add reads for their sessions.
+`break-glass` is a grant (`"level": "break-glass"`), never a rule's level, which a policy that tries
+is refused whole. A policy that does not read refuses every call, naming why. Measured: the corpus in
+`tests/Quickshell.App.Tests/agent-commands.json`, 130 vectors, half adversarial from GTFOBins, has no
+false allow, and 2 false asks of 29 common reads (a `find` with a glob, `$HOME/...` inside a word).
+Two of QS322's questions are still open: whether a grant belongs to one agent session, and whether a
+jump host's tag constrains what is behind it; the third, refusing secret paths at `observe`, is not
+done, and redaction (QS330) is what stands there.
+
 **A prompt is an answer, not a hang (QS327).** On a POSIX server `exec` puts
 `exec </dev/null; export PAGER=cat GIT_PAGER=cat SYSTEMD_PAGER= DEBIAN_FRONTEND=noninteractive;`
 before the command. With no terminal and nothing on standard input, nothing can wait for a person:

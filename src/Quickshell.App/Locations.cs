@@ -87,6 +87,9 @@ public sealed class Locations
     /// <summary>The session log's folder.</summary>
     public string Logs => Path.Combine(Root, "logs");
 
+    /// <summary>The agent policy (QS322, QS336): what an agent may do on which session, written by the person.</summary>
+    public string AgentPolicy => Path.Combine(Root, "agent-policy.json");
+
     /// <summary>Present while the person has stopped every agent (QS334); the gateway watches for it.</summary>
     public string AgentStop => Path.Combine(Root, "agents-stopped");
 

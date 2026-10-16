@@ -43,7 +43,7 @@ public sealed class SettingsWindow : Window
         ("startWith", "Start with", "What a new window opens on: Home, or a local shell."),
         ("vaultFile", "Vault kept up to date", "The KeePass vault the saved passwords are written to again whenever one changes. Empty, the default, keeps none."),
         ("tagColours", "Tag colours", "Which tags a tab shows besides prod, and in which colour, as staging=caution, db=accent. Empty, the default, shows prod alone."),
-        ("agentGateway", "Agent gateway", "Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. Nothing yet limits what it runs."),
+        ("agentGateway", "Agent gateway", "Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. What it may run on each is the agent policy's to say."),
     ];
 
     private readonly string _path;

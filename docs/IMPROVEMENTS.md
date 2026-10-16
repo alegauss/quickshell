@@ -549,30 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS336 The policy engine
-
-With the policy format (QS322), the command classifier (QS323) and session tags (QS331)
-designed, the engine is what puts them in the path of every call.
-
-Before a call runs, the gateway resolves the session's tags, picks the policy level that
-applies, classifies the call (an `exec` by the classifier, a `read_file` as a read, an
-`edit_file` or `job_start` as a mutation), and checks any live timed grant. The answer
-is one of three: allow and run; ask the person and wait; or refuse, naming the rule, so
-the agent can explain the refusal rather than retry around it.
-
-The engine's verdict and the rule that gave it go into the audit log for every call,
-allowed or not.
-
-Defaults when no policy file exists: every session at `operate`, so the first run asks
-rather than allows, and any session tagged `prod` refuses whatever is not a recognised
-read.
-
-The engine is pure: given a policy, the tags and a call, it returns a verdict and
-touches no connection, which is what lets it be tested on a corpus without a server.
-
-Proven by that corpus run, zero false allows, and by a live refusal on a `prod`-tagged
-test session.
-
 ### §QS337 The approval dialog
 
 The approval design (QS324) is built here, in the client rather than in the agent's

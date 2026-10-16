@@ -593,7 +593,10 @@ public sealed class AgentGatewayTests
         TrustOnFirstUse trust = new(KnownHosts.ReadFrom(Path.Combine(Path.GetTempPath(), $"qs325-{Guid.NewGuid():N}")),
                                     (_, _) => ValueTask.FromResult(SshHostKeyVerdict.Accept));
 
-        return new AgentGateway(() => store, (session, token) => AgentGateway.Connect(session, trust, token), "test");
+        return new AgentGateway(() => store, (session, token) => AgentGateway.Connect(session, trust, token), "test")
+        {
+            PolicyFile = Policies.BreakGlass(),
+        };
     }
 
     private static async Task<JsonNode> ExecAsync(AgentGateway gateway, int id, params string[] argv)

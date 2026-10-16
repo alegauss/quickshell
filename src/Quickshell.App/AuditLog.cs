@@ -64,7 +64,8 @@ public sealed class AuditLog
     }
 
     /// <summary>Appends one call.</summary>
-    public void Record(DateTimeOffset when, string tool, ResolvedSession? session, JsonObject arguments, JsonObject answer, bool failed)
+    public void Record(DateTimeOffset when, string tool, ResolvedSession? session, JsonObject arguments, JsonObject answer, bool failed,
+                       PolicyVerdict? judged = null)
     {
         ArgumentNullException.ThrowIfNull(tool);
         ArgumentNullException.ThrowIfNull(arguments);
@@ -85,8 +86,8 @@ public sealed class AuditLog
                 ["host"] = session?.Path ?? (arguments["host"] is JsonValue asked && asked.TryGetValue(out string? named) ? named : null),
                 ["tags"] = session is null ? null : new JsonArray([.. session.Tags.Select(tag => (JsonNode?)JsonValue.Create(tag))]),
                 ["arguments"] = redacted,
-                ["verdict"] = "allowed",
-                ["rule"] = "no policy yet",
+                ["verdict"] = judged?.Verdict.ToString().ToLowerInvariant() ?? "allowed",
+                ["rule"] = judged?.Rule ?? "not a call to a session",
                 ["approval"] = "none",
                 ["failed"] = failed,
                 ["exitCode"] = answer["exitCode"]?.DeepClone(),

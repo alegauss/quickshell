@@ -42,6 +42,9 @@ public sealed class AuditLogTests : IDisposable
         Assert.Contains("on nowhere", summary.Refused[0], StringComparison.Ordinal);
         Assert.Contains("The log is whole", summary.ToString(), StringComparison.Ordinal);
 
+        // Each call that reached a session carries the verdict and the rule that gave it (QS336).
+        Assert.Contains("\"verdict\":\"allow\",\"rule\":\"break-glass grant 1 until", written, StringComparison.Ordinal);
+
         // The arguments are redacted as answers are: the token typed into a command is not in the log.
         Assert.DoesNotContain("ghp_0123456789abcdefghijABCDEFGHIJ0123456789", written, StringComparison.Ordinal);
         Assert.Equal([audit.Run], AuditLog.Runs(_folder));
@@ -73,7 +76,11 @@ public sealed class AuditLogTests : IDisposable
         AuditLog audit = AuditLog.Start(_folder, DateTimeOffset.Now);
         Connection connection = new();
 
-        await using AgentGateway gateway = new(Store, (_, _) => ValueTask.FromResult<IGatewayConnection>(connection), "1.2.3") { Audit = audit };
+        await using AgentGateway gateway = new(Store, (_, _) => ValueTask.FromResult<IGatewayConnection>(connection), "1.2.3")
+        {
+            Audit = audit,
+            PolicyFile = Policies.BreakGlass(),
+        };
 
         await gateway.AnswerAsync(Call(1, "hosts_list", new JsonObject()), Stop);
         await gateway.AnswerAsync(Call(2, "exec", new JsonObject { ["host"] = "Work/db", ["argv"] = new JsonArray("systemctl", "restart", "nginx") }), Stop);

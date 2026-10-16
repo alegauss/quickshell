@@ -19,7 +19,8 @@ namespace Quickshell.App;
 /// <c>ssh</c>, no second shell to get the quoting wrong. A session's connection is kept and reused,
 /// so the tenth command pays no handshake. What an agent may run is not limited by anything in this
 /// file: that is the policy (QS322, QS323), which is why the gateway is off until the
-/// <c>agentGateway</c> setting turns it on and is documented as unguarded until the policy lands.</para>
+/// <c>agentGateway</c> setting turns it on, and every call that reaches a server is judged by the
+/// policy before it runs (QS336).</para>
 ///
 /// <para><b>The conditions QS321 set.</b> Its own process, so the window's figures do not move; no
 /// listening port, only the pipe the agent's host started it with; nothing on the terminal's path.
@@ -136,7 +137,8 @@ public sealed class AgentGateway : IAsyncDisposable
         ["instructions"] =
             "Runs commands on the SSH sessions saved in quickshell. hosts_list names them; exec runs an argument "
             + "vector on one and answers its exit code, stdout and stderr apart. read_file and edit_file read a text "
-            + "file there and change one exact piece of it, keeping the original beside it. No policy limits any of it yet.",
+            + "file there and change one exact piece of it, keeping the original beside it. Every call is judged by the "
+            + "person's policy first: a refusal names its rule; report it rather than working around it.",
     };
 
     private static JsonArray Tools() =>
@@ -295,6 +297,34 @@ public sealed class AgentGateway : IAsyncDisposable
     /// </summary>
     public string? StopFile { get; init; }
 
+    /// <summary>The agent policy's file (QS336), read at every call so a change applies at once; null judges by the policy with no file.</summary>
+    public string? PolicyFile { get; init; }
+
+    /// <summary>The clock grants are judged against: now, unless a test says otherwise.</summary>
+    public Func<DateTimeOffset> Clock { get; init; } = () => DateTimeOffset.Now;
+
+    /// <summary>
+    /// The policy's verdict on a call that reaches a session, or null for one that does not
+    /// (<c>hosts_list</c>, and the kept output, which came from calls already judged).
+    /// </summary>
+    private PolicyVerdict? Judge(string tool, JsonObject arguments)
+    {
+        if (tool is "hosts_list" or "output_page" or "output_grep"
+            || arguments["host"] is not JsonValue host || !host.TryGetValue(out string? path)
+            || _store().Session(path) is not { } session)
+        {
+            return null;
+        }
+
+        AgentPolicy policy = PolicyFile is { } file ? AgentPolicy.Load(file) : AgentPolicy.None;
+        IReadOnlyList<string>? argv = tool is "exec" or "job_start" && arguments["argv"] is JsonArray words
+            ? [.. words.Select(word => word?.ToString() ?? string.Empty)]
+            : null;
+
+        // A cancel only ends what the agent started, so it is judged as a read; an edit is a mutation.
+        return policy.Judge(session, argv, read: tool is not "edit_file", Clock());
+    }
+
     /// <summary>What a person watching sees: each call as terminal output, which the window shows as the agent's tab (QS335).</summary>
     public AgentFeed? Feed { get; init; }
 
@@ -376,6 +406,7 @@ public sealed class AgentGateway : IAsyncDisposable
         JsonObject arguments = call["arguments"] as JsonObject ?? new JsonObject();
 
         JsonObject answer;
+        PolicyVerdict? judged = null;
 
         Feed?.Begin(name, arguments);
 
@@ -400,7 +431,21 @@ public sealed class AgentGateway : IAsyncDisposable
 
                 try
                 {
-                    answer = await AnsweredAsync(name, arguments, either.Token).ConfigureAwait(false);
+                    // The policy first (QS336): a call that would reach a server runs only where its
+                    // session's level, its kind and any live grant allow it.
+                    judged = Judge(name, arguments);
+
+                    answer = judged is { Verdict: not Verdict.Allow } held
+                        ? Content(new JsonObject
+                          {
+                              ["error"] = held.Verdict == Verdict.Ask
+                                  ? $"This needs the person's approval ({held.Rule}). quickshell cannot ask yet, so it is refused; "
+                                    + "say what you wanted to run and let the person run it or widen the policy."
+                                  : $"Refused by the agent policy: {held.Rule}.",
+                              ["verdict"] = held.Verdict.ToString().ToLowerInvariant(),
+                              ["rule"] = held.Rule,
+                          }, isError: true)
+                        : await AnsweredAsync(name, arguments, either.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (_calls.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                 {
@@ -420,7 +465,7 @@ public sealed class AgentGateway : IAsyncDisposable
             ResolvedSession? session = arguments["host"] is JsonValue host && host.TryGetValue(out string? path) ? _store().Session(path) : null;
 
             audit.Record(DateTimeOffset.Now, name, session, arguments, (JsonObject)answer["structuredContent"]!,
-                         answer["isError"]!.GetValue<bool>());
+                         answer["isError"]!.GetValue<bool>(), judged);
         }
 
         return answer;

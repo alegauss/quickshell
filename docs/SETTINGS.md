@@ -208,7 +208,7 @@ settings window and ignored.
 
 ### `agentGateway`
 
-Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. Nothing yet limits what it runs.
+Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. What it may run on each is the agent policy's to say.
 
 With it on, an agent's host can start `quickshell --mcp` ([COMMAND-LINE.md](COMMAND-LINE.md#serving-an-agent))
 and call four tools: `hosts_list`, which names your saved sessions and never a password or a key;
@@ -229,8 +229,15 @@ call and what came back. `Ctrl+Shift+F12` stops every agent at once,
 cancelling the jobs they started, until *Let agents run again* in the palette ([KEYS.md](KEYS.md)). It signs in with the session's
 key and your agents, never a typed password, and refuses a host whose key you have not already trusted
 from the window. It is a separate process: the window, its start and its memory are the same with
-it on or off. **There is no policy yet**: an agent with this on can run anything your account on that
-server can. Turn it on for sessions whose accounts you would hand the agent anyway.
+it on or off.
+
+Every call that reaches a server is judged first by the agent policy, `agent-policy.json` in
+quickshell's folder. With no such file every session is at *operate*: what can be shown to be a read
+runs (`df`, `journalctl`, `systemctl status`, and the list the client ships), and anything else would
+ask you, and is refused until quickshell can ask. A session tagged `prod` is at *observe*: reads only. In
+the file you set levels by tag or by session path (`deny`, `observe`, `operate`), and grants that
+expire within four hours: named commands on named sessions, or `"level": "break-glass"` for
+everything. The design (`docs/design/agent-gateway/README.md`) gives the format with an example.
 
 ## What is deliberately not here
 

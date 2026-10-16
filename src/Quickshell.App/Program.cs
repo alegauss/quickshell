@@ -841,6 +841,7 @@ public static class Entry
         {
             Audit = audit,
             StopFile = Locations.Current.AgentStop,
+            PolicyFile = Locations.Current.AgentPolicy,
             Feed = AgentFeed.Start(Locations.Current.AgentFeeds, audit.Run),
         };
 
