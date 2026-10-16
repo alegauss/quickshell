@@ -469,29 +469,6 @@ defect with the trace that shows it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS358 A wall on native Windows
-
-Found by QS332. On macOS, Linux and WSL2, Claude Code's sandbox gives the agent's shell
-no route out but its HTTP proxy, so a raw `ssh` cannot connect, while the gateway, which
-runs outside the sandbox, keeps its connections. That is the measure that holds. Claude
-Code runs commands unsandboxed on native Windows, which is where this client runs. There
-the only thing on the agent's side is `quickshell --agent-hook`, which reads command
-lines, and a script written first and run second walks past it.
-
-What to look at, in this order, each measured before it is chosen:
-
-1. Windows Firewall outbound rules by program: block TCP to port 22 and the saved sessions'
-   ports for `ssh.exe`, `plink.exe` and `python.exe`. Cheap, but an unnamed program gets out.
-2. A rule by user: the agent runs as a second local account that a WFP filter denies those
-   ports, and the gateway runs as the person. A boundary below the shell, at the cost of
-   another account.
-3. The agent in WSL2 with the sandbox on and the gateway on the Windows side, which may
-   be the answer to recommend, with nothing to build.
-
-Done when, on native Windows, a script the hook cannot see fails to reach the test sshd
-while the gateway's exec reaches it, or when the recommendation is written in the design
-with the reason the other two lost.
-
 ### §QS359 Removing an agent account from the menu
 
 QS340's guided setup makes an agent account on a server from the session menu, and
@@ -564,3 +541,28 @@ A second run, after the client's version changes and before the plugin is instal
 again, should show the gateway refusing with its message in `claude mcp list`.
 
 Proven by the audit log holding that `exec`, its exit code and the session it ran on.
+
+### §QS363 The plugin, inside WSL2
+
+QS358 settled that on a Windows desk the wall around an agent is WSL2: the agent runs
+there with Claude Code's sandbox on, and the gateway is the Windows `quickshell.exe`,
+started through interop. It measured that this works: from inside WSL2, the Windows
+client answers the MCP handshake over its streams.
+
+The plugin QS343 writes cannot be used there. Its MCP entry and its hook name the client
+by its Windows path (`C:\…\quickshell.exe`), which a Linux process cannot start. A
+person following the recommendation is back to writing the MCP configuration and the
+hook by hand, which is the tedium QS343 removed.
+
+What to build: when Settings offers the plugin, it also looks for Claude Code inside the
+installed WSL distributions (`wsl -l -q`, then `wsl -d <name> -e sh -c 'command -v
+claude'`) and offers to install the plugin there too. It writes a second copy of the
+marketplace whose commands are the `/mnt/<drive>/…` path of the same executable
+(`wslpath -u`), and installs it with that distribution's `claude plugin`, saying first
+what it will run, as the Windows install does. The sandbox settings go with this copy,
+since there the sandbox exists: `enabled`, `failIfUnavailable`, and
+`allowUnsandboxedCommands: false`.
+
+Proven by a WSL2 distribution with a stand-in `claude` that records its arguments: the
+offer finds it, the written plugin's commands are `/mnt` paths, and the gateway started
+from that path answers `tools/list`.

@@ -77,6 +77,13 @@ is what holds: inside it a plain `ssh` has no route out at all, while the gatewa
 runs outside the sandbox, keeps its connections. Claude Code's sandbox runs on macOS, Linux and WSL2,
 not on native Windows, where the hook is the only measure on the agent's side.
 
+So on Windows, run the agent in WSL2 with the sandbox on and give it the Windows client as its MCP
+server: `"command": "/mnt/c/<where quickshell is>/quickshell.exe", "args": ["--mcp"]`. The gateway
+then runs on the Windows side with your sessions, keys and policy, and the agent's own shell cannot
+reach port 22 around it. A firewall rule per program blocks only the programs it names, and a second
+account for the agent would wall in the gateway too, which Claude Code starts as the agent; the design
+document weighs both.
+
 | Flag | Takes | What it does |
 |---|---|---|
 | `--audit` | `[run]` | Prints an agent gateway run's audit log as a summary of what was changed, run, refused and read, and says whether the log is whole; with no run, lists the runs recorded. Opens no window. |

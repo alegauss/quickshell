@@ -550,8 +550,32 @@ raw `ssh` cannot connect inside it at all, and MCP servers run outside it, so th
 connections. The configuration is `sandbox.enabled`, `failIfUnavailable` and
 `allowUnsandboxedCommands: false`, with nothing SSH in `excludedCommands`; COMMAND-LINE.md shows it.
 The sandbox runs on macOS, Linux and WSL2 and not on native Windows, where only the hook stands on
-the agent's side (QS358). A key file the agent can read is the third way around, left to the
+the agent's side. A key file the agent can read is the third way around, left to the
 credential-isolation work the threat model names.
+
+**The wall on Windows is WSL2 (QS358).** On a Windows desk, the recommendation is to run the agent in
+WSL2 with the sandbox on and to point its MCP configuration at the Windows client:
+`"command": "/mnt/c/…/quickshell.exe", "args": ["--mcp"]`. Measured: from inside a WSL2 distribution,
+the Windows `quickshell.exe --mcp` answers `initialize` and `tools/list` over its standard streams, and
+`WSLENV` carries a `QUICKSHELL_DATA` across with its path translated. The gateway is a Windows process
+started by Claude Code, outside the sandbox. It keeps its saved sessions, keys, known hosts, policy and
+approval dialog, while the agent's own shell, inside the sandbox, has no route to port 22 at all. A
+script the hook cannot see then fails, and nothing has to be built.
+
+Two other walls were weighed and lost:
+- *Windows Firewall outbound rules by program* (`ssh.exe`, `plink.exe`, `python.exe`) block the
+  programs they name and nothing else. PowerShell's `TcpClient`, a copied `ssh.exe` or any runtime
+  the agent can reach still gets out, so the rule is a longer list of the hook's kind, below the shell
+  but not around it.
+- *A rule by user*, with the agent as a second local account that a WFP filter denies the sessions'
+  ports, fails on how the gateway is started. Claude Code starts `quickshell --mcp` as its own child,
+  as the agent's account, so the filter would wall in the gateway with the agent. Keeping the gateway
+  as the person would take a broker across accounts, a service and a pipe, for a boundary WSL2 already
+  gives.
+
+Native Windows without WSL2 keeps the hook alone, and COMMAND-LINE.md says so where it shows the
+configuration. Writing the plugin (QS343) for a Claude Code inside WSL2, whose MCP command must be a
+`/mnt` path, is QS363.
 
 **Redaction on the way out (QS330).** Every tool's answer goes through `SecretRedactor` before it
 leaves the process: private key blocks (and half of one, where a budget cut the other half off),
