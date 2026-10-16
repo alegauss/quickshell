@@ -368,6 +368,18 @@ public static class Entry
         window.Connects = (leaf, from) => ConnectSplit(window, leaf, from);
         window.OpensSession = path => OpenedSession(window, window.Settings, share, path, trace: false);
 
+        // A program in a local tab of its own, by its command line: the Claude Code pane (QS342).
+        window.OpensProgram = (title, commandLine) =>
+        {
+            TerminalTab tab = TerminalTab.Open(window.Settings, share, title);
+
+            window.Apply(window.Settings);
+            window.Add(tab);
+            _ = tab.ConnectAsync(commandLine);
+
+            return tab;
+        };
+
         // An address typed into quick connect and not saved (QS271): the same path a saved one takes.
         window.OpensUnsaved = session => OpenResolved(window, window.Settings, share, session, saved: false);
 

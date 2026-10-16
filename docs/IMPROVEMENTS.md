@@ -547,28 +547,31 @@ not wait.
 Done when ten guest runs in a row go green or skip with a rate named, and a parser made
 to wait on its renderer still fails it.
 
+### §QS361 A typed hyphen that arrived as an r
+
+On 2026-10-16, a guest run of the UI cases failed "clicking a tab on the strip puts that
+tab's terminal on screen" in tabs.cases.json. The case types `title first-tab-marker`
+into a local tab with winwright's `type` verb. The pane's text read back `title
+first-tabrmarker`, and cmd took that as the title, so both the title-bar check and the
+text check failed. The very next run, on the same tree, passed all 24 cases.
+
+A hyphen becoming an `r` is not a timing slip of the usual kind, a key lost or doubled.
+One character was turned into another. The candidates are winwright's key synthesis (a
+virtual key sent under a keyboard layout it did not expect, or a scan code mapped twice)
+and the client's own path from `TextInput` and `KeyDown` to the bytes `Typist` sends.
+The guest's layout is Brazilian Portuguese, where OEM keys sit elsewhere than in US
+English.
+
+The work is to tell the two apart. First, a trace of what quickshell received for each
+key (the `KeyDown` virtual key, the `TextInput` text) for a run of the case. Then the
+case run until it fails again, which says whether the wrong character arrived at the
+window or was made there. If winwright sent it, the finding moves to its roadmap as a WW
+line and this one closes.
+
+Proven by the case passing in thirty guest runs in a row, or by a WW line naming the
+defect with the trace that shows it.
+
 ## Block L — An agent at the controls, held to a policy it cannot edit
-
-### §QS342 Claude Code in a pane, with the pane's context
-
-The most common moment to want help is while looking at an error in a session's output,
-and today that means selecting it, switching to another window and pasting it into an
-agent with no idea which server it came from.
-
-quickshell already runs local shells through ConPTY, so the least new surface is a pane:
-a profile that starts `claude` in a local pane with the gateway's MCP configuration and
-plugin already in place, so it reaches saved sessions through the gateway from its first
-command. A palette command, "Send to Claude", takes the current selection, or the last
-screenful when nothing is selected, and types it into that pane prefixed with the
-session name and tags it came from.
-
-This deliberately does not build a chat interface inside the client. Claude Code already
-is one, a second would cost the window budget, and a person who wants it elsewhere keeps
-using it there with the same gateway. The design document records that choice and what
-would reopen it.
-
-Proven by a UI case that selects text in an SSH pane, invokes the command, and reads the
-prefixed text from the Claude pane's buffer.
 
 ### §QS343 Shipped as a Claude Code plugin
 

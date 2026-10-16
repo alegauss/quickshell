@@ -1,0 +1,7 @@
+// QS342: the gateway on, and a stand-in for Claude Code, which the guest does not have. The stand-in
+// is the command processor echoing what it was given and then waiting at a prompt: what the pane is
+// started with is read back off its first line, and what is sent to it lands at that prompt.
+{
+  "agentGateway": true,
+  "claudeCommand": "cmd /k echo claude-stand-in"
+}

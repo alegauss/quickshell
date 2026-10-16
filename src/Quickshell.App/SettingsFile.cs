@@ -112,6 +112,12 @@ public sealed record Settings
     public bool AgentGateway { get; init; }
 
     /// <summary>
+    /// What the Claude Code pane runs (QS342), found on the path by the command processor: <c>claude</c>
+    /// unless the person installed it under another name or wants another program in its place.
+    /// </summary>
+    public string ClaudeCommand { get; init; } = "claude";
+
+    /// <summary>
     /// Every key this build did not recognise, kept exactly as it was read so it can be written back
     /// unchanged.
     /// </summary>
@@ -166,6 +172,7 @@ public static class SettingsFile
     [
         Version, "theme", "fontFamily", "fontSize", "scrollback", "ligatures", "cursor",
         "cursorBlink", "warnOnPaste", "colourScheme", "sessionsSidebar", "startWith", "vaultFile", "tagColours", "agentGateway",
+        "claudeCommand",
     ];
 
     /// <summary>
@@ -454,6 +461,7 @@ public static class SettingsFile
             writer.WriteString("vaultFile", settings.VaultFile);
             writer.WriteString("tagColours", settings.TagColours);
             writer.WriteBoolean("agentGateway", settings.AgentGateway);
+            writer.WriteString("claudeCommand", settings.ClaudeCommand);
 
             foreach ((string name, JsonElement value) in settings.Unrecognised)
             {
@@ -619,6 +627,7 @@ public static class SettingsFile
         ["vaultFile"] = Quoted(settings.VaultFile),
         ["tagColours"] = Quoted(settings.TagColours),
         ["agentGateway"] = settings.AgentGateway ? "true" : "false",
+        ["claudeCommand"] = Quoted(settings.ClaudeCommand),
     };
 
     /// <summary>The spaces and tabs in front of the key that starts at <paramref name="at"/>, back to its line's start.</summary>
@@ -672,6 +681,7 @@ public static class SettingsFile
             VaultFile = Text(root, "vaultFile") ?? Settings.Default.VaultFile,
             TagColours = Text(root, "tagColours") ?? Settings.Default.TagColours,
             AgentGateway = Yes(root, "agentGateway") ?? Settings.Default.AgentGateway,
+            ClaudeCommand = Text(root, "claudeCommand") is { Length: > 0 } claude ? claude : Settings.Default.ClaudeCommand,
             Unrecognised = unrecognised,
         };
     }

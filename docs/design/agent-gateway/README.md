@@ -585,10 +585,33 @@ modification time, as any edit does. If the second rename fails the original is 
 that fails too the error names both paths. The answer carries one `diff -u` hunk with three lines of
 context; the audit log that keeps it is QS333's. Code: `src/Quickshell.App/RemoteText.cs`.
 
-## Sections to come
+## Claude Code in a pane, with the pane's context (QS342)
 
-Each is written by the line that owns it, into this document.
+**A pane, not a chat window.** *Open Claude Code* in the palette opens a local tab titled `claude`
+running Claude Code, or goes to the one already open. Claude Code already is a chat interface. A
+second one inside the window would spend the window's budget on something the person can run
+anywhere against the same gateway. What would reopen this is a task a pane cannot serve, not a wish
+for a nicer one.
 
-| Line | Section |
-|---|---|
-| QS340, QS341 | The server account and short-lived certificates |
+**Wired to the gateway from its first command.** Each time the pane opens, it writes two files into
+quickshell's folder, naming this copy of `quickshell.exe`:
+- `claude-mcp.json` starts the gateway as the MCP server `quickshell` (`--mcp`);
+- `claude-settings.json` installs `--agent-hook` for the shell and file tools.
+
+The pane runs `%COMSPEC% /c <claudeCommand> --mcp-config … --settings …`. The command processor
+finds a `claude.cmd` as readily as a `claude.exe`, and `claudeCommand` (SETTINGS.md) names another
+program where the person installed it under another name. Claude Code's sandbox is left out: it
+does not run on native Windows, and told to fail where it cannot run, it would not start at all.
+While `agentGateway` is off, the command says so and opens nothing.
+
+**Send to Claude** in the palette takes the selection in the pane with the keyboard. With nothing
+selected, it takes that pane's screen, with wrapped rows joined. It sends the text under one line,
+`From <session path> (tags: …):`, where the tags include those inherited from folders; a local pane
+is named by its title. The text is cleaned of control characters as a paste is, bracketed where
+Claude Code asked for it, and not entered: the person adds the question. With no Claude pane open,
+it opens one and waits for its first frame, up to half a minute, before sending.
+
+Proven by a UI case in the guest. A session on the guest's sshd sits under a folder tagged `prod`,
+with the gateway on and a stand-in for Claude Code. *Send to Claude* opens the pane, whose first line
+shows both files passed, and the pane then holds `From Customer/probe (tags: prod):` and the
+session's screen. Code: `src/Quickshell.App/ClaudePane.cs`, `MainWindow.Claude.cs`.

@@ -38,10 +38,10 @@
 - 📋 **QS348** (deps: winwright WW539) **That a tab's close cross is drawn inside its tab is proven by an in-process render, not by a UI case** — A case cannot claim one element sits within another, so the geometry QS312 fixed waits on winwright to name it. → §QS348
 - 📋 **QS349** (deps: winwright WW540) **Choosing several sidebar rows is proven by automation peers in a unit test, not by a UI case** — A case cannot add to a selection or Ctrl+click, so QS314's selection waits on winwright to name the act. → §QS349
 - 📋 **QS357** (deps: —) **The echo-delay pipeline test goes red in the guest when ConPTY prints under 300 KB/s for thirty seconds** — It failed twice at 6 MB of 8 and then passed twice on the same tree, so a slow producer reads as a broken pipeline. → §QS357
+- 📋 **QS361** (deps: —) **The tab-strip UI case's typed "first-tab-marker" once reached cmd as "first-tabrmarker"** — One run of 24 cases lost a hyphen to an r and passed on rerun, so either the client or winwright's type verb can turn a keystroke into another. → §QS361
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS342** (deps: QS321 ✅) **Asking a local Claude Code about what a pane shows means copying the scrollback by hand into another window** — A local pane runs claude with the gateway configured, and a palette command sends a pane's selection or recent scrollback to it. → §QS342
 - 📋 **QS343** (deps: QS325 ✅, QS332 ✅) **Wiring the gateway into Claude Code means hand-editing MCP config, hooks and sandbox rules, so few will** — A Claude Code plugin installs the MCP server, the hooks and a skill in one step, and quickshell offers to install it when it finds claude. → §QS343
 - 📋 **QS356** (deps: QS325 ✅) **exec quotes every argument for a POSIX shell, so on a Windows server a word with a space or a quote arrives altered** — Windows OpenSSH runs an exec through cmd, where a single quote means nothing, and the command runs on words nobody sent. → §QS356
 - 📋 **QS358** (deps: QS332 ✅) **On native Windows nothing below the shell stops an agent's own script from opening SSH around the gateway** — Claude Code's sandbox runs on macOS, Linux and WSL2 only, so on Windows the command-line hook is the whole defence. → §QS358

@@ -32,6 +32,18 @@
         { "from": "cases/fixtures/agent-policy-widened.json", "to": "agent-policy.json" },
         { "from": "cases/fixtures/agent-policy-approved.json", "to": "agent-policy.json.approved" }
       ]
+    },
+    {
+      // QS342. A session on the guest's own sshd under a folder tagged prod, with the gateway on and a
+      // stand-in where Claude Code would run.
+      "name": "a client connected to prod, with a Claude Code pane to send to",
+      "reaches": ["127.0.0.1:2240"],
+      "arguments": ["--session", "Customer/probe"],
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": [
+        { "from": "cases/fixtures/tagged.json", "to": "sessions.json" },
+        { "from": "cases/fixtures/claude-settings.json", "to": "settings.json" }
+      ]
     }
   ],
 
@@ -142,6 +154,69 @@
           "act": "read",
           "sameBytesAs": "cases/fixtures/agent-policy-approved.json",
           "named": "and the policy is the approved one again, byte for byte"
+        }
+      ]
+    },
+    {
+      "name": "Send to Claude gives the Claude Code pane the screen of a session, with where it came from",
+      "catches": "a Claude pane started without the gateway's configuration, or text sent to it with no session or tags, or sent nowhere",
+      "filed": "QS342",
+      "tags": ["agent", "palette"],
+      "fixture": "a client connected to prod, with a Claude Code pane to send to",
+
+      "steps": [
+        {
+          "locator": "Window#Choice > Button#once",
+          "act": "invoke",
+          "named": "the server's key is trusted for this connection only"
+        },
+        {
+          "locator": "TabItem[status=\"Connected\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "the session is connected in its tab"
+        },
+        {
+          "locator": "TabItem[status=\"Connected\"]",
+          "act": "press",
+          "with": "Ctrl+Shift+P",
+          "named": "the palette is opened the way a user opens it"
+        },
+        {
+          "locator": "Edit[name=\"Command\"]",
+          "act": "set value",
+          "with": "send to claude",
+          "expect": "send to claude",
+          "reads": "value",
+          "named": "the command, by its words"
+        },
+        {
+          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Send to Claude",
+          "named": "is in the palette"
+        },
+        {
+          // Nothing is selected, so what is sent is the session's screen. No Claude pane is open yet,
+          // so the command opens one first and waits for it to draw.
+          "locator": "Edit[name=\"Command\"]",
+          "act": "press",
+          "with": "Enter",
+          "named": "and taken"
+        },
+        {
+          // The stand-in's first line is the command line the pane was started with: the gateway as its
+          // MCP server and the hook's settings, both written into the client's data folder. The pane is
+          // narrow and the data folder's path long, so the paths wrap mid-word and are matched across
+          // the breaks. The stand-in asked for no bracketed paste, so it runs each line it is sent;
+          // Claude Code asks, and takes them as one paste.
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "read",
+          "reads": "text",
+          "matches": "claude-stand-in --mcp-config [\\s\\S]*claude-mcp\\.json[\\s\\S]*--settings [\\s\\S]*claude-settings[\\s\\S]*>From Customer/probe \\(tags: prod\\):",
+          "named": "the Claude pane is on screen, started with the gateway, and holds the text with its session and tags"
         }
       ]
     }

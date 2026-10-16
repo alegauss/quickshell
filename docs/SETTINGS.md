@@ -249,6 +249,15 @@ everything. `certificateMinutes` (1 to 60, 5 by default) is how long a certifica
 agent lasts, on a server set up to take it in on one. The design (`docs/design/agent-gateway/README.md`)
 gives the format with an example.
 
+### `claudeCommand`
+
+What Open Claude Code runs in its pane, found on the path: claude by default.
+
+*Open Claude Code* in the palette opens a local tab running this, through the command processor,
+with the agent gateway as its MCP server and `--agent-hook` installed (both written into quickshell's
+folder each time). *Send to Claude* types the selection, or the screen, of the pane with the keyboard
+into it, under a line naming the session and its tags. Both need `agentGateway` on.
+
 ## What is deliberately not here
 
 - **Anything to reach parity with another client.** A feature comparison is not an argument; a user's

@@ -454,6 +454,10 @@ public sealed partial class MainWindow : Window
         InputBindings.Add(new InputBinding(new LettingAgentsRun(this), new PaletteOnly()));
         InputBindings.Add(new InputBinding(new TrustingAgents(this), new PaletteOnly()));
 
+        // Claude Code in a pane, and what a pane shows sent to it (QS342).
+        InputBindings.Add(new InputBinding(new OpeningClaude(this), new PaletteOnly()));
+        InputBindings.Add(new InputBinding(new SendingToClaude(this), new PaletteOnly()));
+
         // Every pane's place is a proportion, so the pixels are worked out afresh whenever the space
         // they are proportions of changes.
         _terminal.SizeChanged += (_, _) => Arrange();

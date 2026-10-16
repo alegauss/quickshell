@@ -44,6 +44,7 @@ public sealed class SettingsWindow : Window
         ("vaultFile", "Vault kept up to date", "The KeePass vault the saved passwords are written to again whenever one changes. Empty, the default, keeps none."),
         ("tagColours", "Tag colours", "Which tags a tab shows besides prod, and in which colour, as staging=caution, db=accent. Empty, the default, shows prod alone."),
         ("agentGateway", "Agent gateway", "Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. What it may run on each is the agent policy's to say."),
+        ("claudeCommand", "Claude Code command", "What Open Claude Code runs in its pane, found on the path: claude by default."),
     ];
 
     private readonly string _path;
@@ -135,6 +136,7 @@ public sealed class SettingsWindow : Window
             ((TextBox)_controls["vaultFile"]).Text = now.VaultFile;
             ((TextBox)_controls["tagColours"]).Text = now.TagColours;
             ((CheckBox)_controls["agentGateway"]).IsChecked = now.AgentGateway;
+            ((TextBox)_controls["claudeCommand"]).Text = now.ClaudeCommand;
         }
         finally
         {
@@ -212,6 +214,7 @@ public sealed class SettingsWindow : Window
         "colourScheme" => Field(text => Change(now => now with { Scheme = text.Trim() })),
         "vaultFile" => Field(text => Change(now => now with { VaultFile = text.Trim() })),
         "tagColours" => Field(text => Change(now => now with { TagColours = text.Trim() })),
+        "claudeCommand" => Field(text => Change(now => now with { ClaudeCommand = text.Trim().Length > 0 ? text.Trim() : Settings.Default.ClaudeCommand })),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "no control for this key"),
     };
 
