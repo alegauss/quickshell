@@ -107,6 +107,7 @@ public sealed class AgentTaintTests : IDisposable
                 ["until"] = DateTimeOffset.Now.AddMinutes(30).ToString("O"),
             }),
         }.ToJsonString(), Stop);
+        PolicyApproval.Accept(policy);
 
         await using AgentGateway gateway = new(() => store, (session, token) => AgentGateway.Connect(session, trust, token), "test")
         {
@@ -159,6 +160,7 @@ public sealed class AgentTaintTests : IDisposable
                 ["until"] = DateTimeOffset.Now.AddMinutes(30).ToString("O"),
             }),
         }.ToJsonString());
+        PolicyApproval.Accept(file);
 
         return file;
     }

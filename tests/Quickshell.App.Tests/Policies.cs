@@ -28,6 +28,9 @@ internal static class Policies
             }),
         }.ToJsonString());
 
+        // Accepted, as the person would accept a policy they wrote (QS339).
+        PolicyApproval.Accept(file);
+
         return file;
     }
 }

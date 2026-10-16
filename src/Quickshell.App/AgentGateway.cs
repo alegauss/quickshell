@@ -336,6 +336,14 @@ public sealed class AgentGateway : IAsyncDisposable
             return null;
         }
 
+        // The approved version, never whatever is on disk (QS339): a policy changed outside quickshell's own
+        // window holds every call until the person accepts or rejects the change.
+        if (PolicyFile is { } changed && !PolicyApproval.Approved(changed))
+        {
+            return new PolicyVerdict(Verdict.Refuse,
+                "the agent policy was changed outside quickshell and waits for the person to accept or reject the change there", false);
+        }
+
         AgentPolicy policy = PolicyFile is { } file ? AgentPolicy.Load(file) : AgentPolicy.None;
         IReadOnlyList<string>? argv = tool is "exec" or "job_start" && arguments["argv"] is JsonArray words
             ? [.. words.Select(word => word?.ToString() ?? string.Empty)]

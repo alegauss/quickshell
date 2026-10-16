@@ -239,6 +239,15 @@ public sealed class ApprovalDialog : Window
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(policyFile)!);
+        // Written from the person's own answer, so it is the approved version as it lands (QS339). A policy
+        // already waiting on a change keeps waiting: this grant is not an answer to that change.
+        bool approved = PolicyApproval.Approved(policyFile);
+
         File.WriteAllText(policyFile, policy.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+
+        if (approved)
+        {
+            PolicyApproval.Accept(policyFile);
+        }
     }
 }

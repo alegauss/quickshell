@@ -549,29 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS339 A policy the agent cannot edit
-
-A permission an agent can grant itself is no permission. The policy file sits on the
-same disk, under the same Windows user, as everything the agent can write.
-
-Three measures. The file lives in quickshell's settings directory, never in a repository
-or a working directory, so it is outside the paths an agent is usually pointed at. The
-plugin's `PreToolUse` hook denies the agent's file tools any write to that path, and its
-shell tool any command naming it. The same guard covers `agent-taints` (QS338), whose
-deletion would lift a taint the person never lifted. And quickshell holds the hash of
-the last version the person approved: when the file on disk differs, the gateway refuses
-every call and the client asks the person to accept or reject the change, showing the
-diff.
-
-The third measure is the one that holds even if the first two are walked around, since
-the gateway enforces the approved version, not whatever is on disk.
-
-The design document says what stays open: a same-user process can still read the
-approved hash's store, so the server-side layer remains the real boundary.
-
-Proven by an agent asked to widen its own policy by edit, by shell and by a script, each
-refused or caught, with the gateway refusing calls until the person answered.
-
 ### §QS340 The server-side boundary
 
 Everything the gateway does on the client can be walked around by an agent running as

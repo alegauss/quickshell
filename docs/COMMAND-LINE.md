@@ -49,8 +49,9 @@ for needing an administrator, and one is anything else that did not happen.
 input and output, with no window. It exits when its input ends. Without the `agentGateway` setting
 ([SETTINGS.md](SETTINGS.md#agentgateway)) it writes why to standard error and exits with 2.
 
-`--agent-hook` is a Claude Code hook. It turns back a shell command that would reach a server around
-the gateway (`ssh`, `scp`, `sftp`, PuTTY's tools, rsync or git over SSH, PowerShell remoting over SSH,
+`--agent-hook` is a Claude Code hook. It turns back a write by the agent's file tools or shell to the
+files that limit it (the agent policy, its approvals, taints, stop and audit), and a shell command that
+would reach a server around the gateway (`ssh`, `scp`, `sftp`, PuTTY's tools, rsync or git over SSH, PowerShell remoting over SSH,
 a Python script with an SSH library) and tells the agent which gateway tool to use instead. Wired in
 the agent's `settings.json`:
 
@@ -58,7 +59,7 @@ the agent's `settings.json`:
 {
   "hooks": {
     "PreToolUse": [
-      { "matcher": "Bash|PowerShell",
+      { "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit",
         "hooks": [ { "type": "command", "command": "quickshell.exe --agent-hook" } ] }
     ]
   },
@@ -74,5 +75,5 @@ not on native Windows, where the hook is the only measure on the agent's side.
 | Flag | Takes | What it does |
 |---|---|---|
 | `--audit` | `[run]` | Prints an agent gateway run's audit log as a summary of what was changed, run, refused and read, and says whether the log is whole; with no run, lists the runs recorded. Opens no window. |
-| `--agent-hook` | | Reads a Claude Code PreToolUse call on standard input and denies a shell command that reaches a server around the agent gateway, naming the gateway tool to use instead. Opens no window. |
+| `--agent-hook` | | Reads a Claude Code PreToolUse call on standard input and denies a shell command that reaches a server around the agent gateway, or a write to the files that limit agents, saying why. Opens no window. |
 | `--mcp` | | Serves the agent gateway to an agent such as Claude Code on standard input and output, and opens no window. Refused unless the agentGateway setting is on; every call is judged by the agent policy first. |

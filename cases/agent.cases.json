@@ -23,6 +23,15 @@
       "files": [
         { "from": "cases/fixtures/agent-ask.json", "to": "agent-asks/ui0001.ask.json", "fill": true }
       ]
+    },
+    {
+      // QS339. A policy some script widened outside quickshell, beside the version the person approved.
+      "name": "a client whose agent policy was changed outside it",
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": [
+        { "from": "cases/fixtures/agent-policy-widened.json", "to": "agent-policy.json" },
+        { "from": "cases/fixtures/agent-policy-approved.json", "to": "agent-policy.json.approved" }
+      ]
     }
   ],
 
@@ -105,6 +114,34 @@
           "act": "read",
           "sameBytesAs": "cases/fixtures/agent-ask-approved.json",
           "named": "and the answer approves that batch and nothing else"
+        }
+      ]
+    },
+    {
+      "name": "an agent policy changed outside quickshell is shown as its diff, and rejecting it puts the approved one back",
+      "catches": "an agent that writes its own policy and gains what it wrote, or a change the person is asked about without being shown it",
+      "filed": "QS339",
+      "tags": ["agent", "policy"],
+      "fixture": "a client whose agent policy was changed outside it",
+
+      "steps": [
+        {
+          "locator": "Text#PolicyDiff",
+          "act": "read",
+          "reads": "name",
+          "matches": "\\+\\s+\"grants\".*\"level\": \"break-glass\"",
+          "named": "the change is shown as what was added"
+        },
+        {
+          "locator": "Button#RejectPolicy",
+          "act": "invoke",
+          "named": "the person rejects it"
+        },
+        {
+          "file": "{files}/agent-policy.json",
+          "act": "read",
+          "sameBytesAs": "cases/fixtures/agent-policy-approved.json",
+          "named": "and the policy is the approved one again, byte for byte"
         }
       ]
     }

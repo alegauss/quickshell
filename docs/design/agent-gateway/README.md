@@ -363,6 +363,19 @@ does not, which a later line has to settle before such a server is offered.
 with the session's key and the agents, never a typed password, and refuses a host key the user's
 known_hosts does not already hold, saying to connect once from the window.
 
+**A policy the agent cannot widen (QS339).** Three measures. The policy lives in quickshell's folder,
+outside any repository an agent is pointed at. `quickshell --agent-hook` denies the agent's `Write`,
+`Edit`, `MultiEdit` and `NotebookEdit` any path at or under the files that limit or watch it: the
+policy and its approved copy, `agent-taints`, `agent-asks` (or an agent could write its own approval),
+`agents-stopped` and `audit`. It also denies its shell any command naming them. Reading them is left
+alone. And quickshell keeps the version the person approved as `agent-policy.json.approved`: while
+the policy on disk differs from it, or exists with no approved copy, the gateway refuses every call
+with that rule, and the window shows the change as a diff, *Accept the change* or *Reject the change*,
+the second putting the approved bytes back. A grant written from the approval dialog updates both, so
+the person's own answers never trip it. What stays open: a same-user process can write the approved
+copy too, past the hook, so the server-side layer remains the real boundary. Code:
+`PolicyApproval.cs`, `PolicyChangeDialog.cs`, `AgentHook.cs`.
+
 **Taint after untrusted text (QS338).** A call that brings in text somebody else could have written
 taints the gateway run: `read_file`, a job's output or a page or search of kept output that returned
 anything, and an `exec` (or a plan's call) that printed anything, unless its program only reports the

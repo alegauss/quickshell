@@ -394,6 +394,10 @@ public static class Entry
         // and answers each request in a dialog of its own.
         window.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () => WatchAgentAsks(window));
 
+        // And a change to the agent policy made outside this window, which holds every call until the
+        // person answers it (QS339).
+        window.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () => WatchAgentPolicy(window));
+
         // A session recorded from its first byte, local or saved (QS134).
         window.OpensRecorded = recording => Opened(window, window.Settings, share, recording: recording);
         window.OpensSessionRecorded = (path, recording) =>
@@ -752,6 +756,58 @@ public static class Entry
         }
 
         AgentAsks.WriteAnswer(folder, request.Id, answer);
+    }
+
+    private static bool _policyAsking;
+
+    /// <summary>Asks the person about the agent policy whenever it differs from the version they approved (QS339).</summary>
+    private static void WatchAgentPolicy(MainWindow window)
+    {
+        string policy = Locations.Current.AgentPolicy;
+        string folder = Path.GetDirectoryName(policy)!;
+
+        Directory.CreateDirectory(folder);
+
+        FileSystemWatcher watching = new(folder, Path.GetFileName(policy) + "*")
+        {
+            EnableRaisingEvents = true,
+            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
+        };
+
+        // A moment after the last change, so the window's own grant, which writes the policy and then its
+        // approved copy, is read once both have landed and not between them.
+        async void Changed(object? sender, FileSystemEventArgs changed)
+        {
+            await Task.Delay(400).ConfigureAwait(true);
+            await window.Dispatcher.InvokeAsync(() => AskAboutPolicy(window, policy));
+        }
+
+        watching.Changed += Changed;
+        watching.Created += Changed;
+        watching.Deleted += Changed;
+        watching.Renamed += (sender, renamed) => Changed(sender, renamed);
+        window.Closed += (_, _) => watching.Dispose();
+
+        AskAboutPolicy(window, policy);
+    }
+
+    private static void AskAboutPolicy(MainWindow window, string policy)
+    {
+        if (_policyAsking || PolicyApproval.Approved(policy))
+        {
+            return;
+        }
+
+        _policyAsking = true;
+
+        try
+        {
+            new PolicyChangeDialog(policy) { Owner = window.IsLoaded ? window : null, ThemeMode = window.ThemeMode }.ShowDialog();
+        }
+        finally
+        {
+            _policyAsking = false;
+        }
     }
 
     /// <summary>The feeds this process has given a tab, so a feed that grows is not opened twice.</summary>

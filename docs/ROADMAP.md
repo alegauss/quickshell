@@ -41,7 +41,6 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS339** (deps: QS322 ✅, QS332 ✅) **An agent able to write files can rewrite the very policy that limits it, and grant itself whatever it wants** — The plugin's hook denies writes to the policy path, and quickshell re-asks the person whenever the file changes outside its own UI. → §QS339
 - 📋 **QS340** (deps: QS320 ✅, QS321 ✅) **A client-side policy is advice the server never hears, and nothing helps set up an account that limits an agent there** — A guided setup writes an agent account, a sudoers allowlist and key restrictions, shown first. → §QS340
 - 📋 **QS341** (deps: QS340) **An agent's key on a server is valid until someone removes it, so a key that leaks works for months** — quickshell acts as a small SSH CA and signs the agent a certificate for minutes, bound to its principal, source address and options. → §QS341
 - 📋 **QS342** (deps: QS321 ✅) **Asking a local Claude Code about what a pane shows means copying the scrollback by hand into another window** — A local pane runs claude with the gateway configured, and a palette command sends a pane's selection or recent scrollback to it. → §QS342

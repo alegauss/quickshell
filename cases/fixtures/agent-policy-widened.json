@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "default": "operate",
+  "rules": [ { "tags": ["staging"], "level": "operate" } ],
+  "grants": [ { "sessions": ["*"], "level": "break-glass", "until": "2099-01-01T00:00:00Z", "why": "written by a script" } ]
+}

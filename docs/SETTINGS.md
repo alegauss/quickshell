@@ -240,7 +240,9 @@ grant), or *Refuse* with a note the agent reads. With no quickshell window open,
 minutes, the call is refused and the agent is told why. Once an agent has read text from a server (a file,
 a log, a command's output other than the machine's own state such as `uptime` or `df`), every change asks
 you, even one a grant allows, because that text may be telling it what to do. The agent's tab says when
-this happens, and *Trust what agents have read* in the palette lifts it. A session tagged `prod` is at *observe*: reads only. In
+this happens, and *Trust what agents have read* in the palette lifts it. A change to `agent-policy.json`
+made outside quickshell, in an editor or by a script, holds every call until you accept or reject it in
+the dialog quickshell shows with the change. A session tagged `prod` is at *observe*: reads only. In
 the file you set levels by tag or by session path (`deny`, `observe`, `operate`), and grants that
 expire within four hours: named commands on named sessions, or `"level": "break-glass"` for
 everything. The design (`docs/design/agent-gateway/README.md`) gives the format with an example.
