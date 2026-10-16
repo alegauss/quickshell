@@ -32,7 +32,6 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS362** (deps: QS343 ✅) **The Claude Code plugin has never been installed into a real Claude Code and used for an exec** — Its files validate and its steps run against a stand-in; that Claude Code installs it and an agent then reaches a server is unproven without claude in the guest. → §QS362
 - 📋 **QS363** (deps: QS343 ✅, QS358 ✅) **The Claude Code plugin names quickshell.exe by its Windows path, which a Claude Code inside WSL2 cannot start** — WSL2 with its sandbox is the wall QS358 recommends on Windows, and there the plugin's MCP and hook commands need a /mnt path. → §QS363
 
 ## Done when — Block A

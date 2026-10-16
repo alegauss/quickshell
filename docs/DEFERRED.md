@@ -45,3 +45,4 @@
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 - ⏸ **QS360** (deps: QS341 ✅) **The agent's certificate authority signs whenever any process of the person's asks, with nobody present** — set aside (It needs a person present.): A real unconfirmed Windows Hello prompt has yet to be seen refusing a signing, on a desk with Hello and a person. → §QS360
+- ⏸ **QS362** (deps: QS343 ✅) **The Claude Code plugin has never been installed into a real Claude Code and used for an exec** — set aside (It needs Claude Code test credentials.): Its files validate and its steps run against a stand-in; a real install and an agent's exec through it need claude in the guest. → §QS362
