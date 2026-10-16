@@ -193,5 +193,112 @@ public sealed class ClaudePluginTests : IDisposable
         Assert.True(written, "the plugin was not written before it was installed");
     }
 
+    /// <summary>
+    /// QS363, against a stand-in wsl.exe: the distributions with claude are found and the one without is not;
+    /// the plugin written for one names this copy by its /mnt path; and its three steps run through that
+    /// distribution's own claude, from the marketplace's /mnt path.
+    /// </summary>
+    [Fact]
+    public void TheWslCopyNamesTheClientByItsMntPathAndInstallsThere()
+    {
+        List<string> calls = [];
+
+        PluginStep Wsl(string? distribution, IReadOnlyList<string> words)
+        {
+            calls.Add($"{distribution ?? "-"}: {string.Join(' ', words)}");
+
+            return (distribution, words) switch
+            {
+                (null, ["-l", "-q"]) => new PluginStep(words, 0, "Ubuntu\nDebian\n"),
+                ("Ubuntu", ["sh", "-lc", "command -v claude"]) => new PluginStep(words, 0, "/home/me/.local/bin/claude\n"),
+                (_, ["sh", "-lc", "command -v claude"]) => new PluginStep(words, 1, string.Empty),
+                (_, ["wslpath", "-u", var path]) => new PluginStep(words, 0, "/mnt/" + char.ToLowerInvariant(path[0]) + path[2..].Replace('\\', '/')),
+                _ => new PluginStep(words, 0, "ok"),
+            };
+        }
+
+        Assert.Equal([("Ubuntu", "/home/me/.local/bin/claude")], ClaudePlugin.InWsl(Wsl));
+
+        (string windows, string inside) = ClaudePlugin.WriteForWsl(Path.Combine(_here, "claude-plugin"), "Ubuntu", @"C:\Program Files\quickshell\quickshell.exe", "1.2.3", Wsl);
+        JsonNode manifest = Read(Path.Combine(windows, "quickshell", ".claude-plugin", "plugin.json"));
+
+        Assert.EndsWith("claude-plugin-wsl-Ubuntu", windows, StringComparison.Ordinal);
+        Assert.StartsWith("/mnt/", inside, StringComparison.Ordinal);
+        Assert.Equal("/mnt/c/Program Files/quickshell/quickshell.exe", manifest["mcpServers"]!["quickshell"]!["command"]!.GetValue<string>());
+        Assert.Equal("\"/mnt/c/Program Files/quickshell/quickshell.exe\" --agent-hook",
+                     Read(Path.Combine(windows, "quickshell", "hooks", "hooks.json"))["hooks"]!["PreToolUse"]![0]!["hooks"]![0]!["command"]!.GetValue<string>());
+
+        calls.Clear();
+
+        IReadOnlyList<PluginStep> ran = ClaudePlugin.Install(inside, step => ClaudePlugin.RunInWsl("Ubuntu", step, Wsl));
+
+        Assert.Equal(3, ran.Count);
+        Assert.Equal($"Ubuntu: sh -lc exec claude \"$@\" claude plugin marketplace add {inside}", calls[1]);
+        Assert.Equal("Ubuntu: sh -lc exec claude \"$@\" claude plugin install quickshell@quickshell-local -s user", calls[2]);
+    }
+
+    /// <summary>Settings looks in WSL only when asked, says so where no distribution has claude, and installs into the one picked after asking.</summary>
+    [Fact]
+    public void SettingsInstallsIntoWslWhenAsked()
+    {
+        string settings = Path.Combine(_here, "settings.json");
+
+        File.WriteAllText(settings, "{}");
+
+        (string none, string? asked, int ran, string said) = Sta.Run(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext());
+
+            bool any = false;
+            string? question = null;
+            SettingsWindow window = new(settings)
+            {
+                PluginFolder = Path.Combine(_here, "claude-plugin"),
+                AsksToInstallPlugin = text =>
+                {
+                    question = text;
+
+                    return true;
+                },
+                RunsWsl = (distribution, words) => (distribution, words) switch
+                {
+                    (null, _) => new PluginStep(words, 0, "Ubuntu"),
+                    (_, ["sh", "-lc", "command -v claude"]) => new PluginStep(words, any ? 0 : 1, any ? "/usr/bin/claude" : string.Empty),
+                    (_, ["wslpath", "-u", var path]) => new PluginStep(words, 0, "/mnt/c/" + Path.GetFileName(path)),
+                    _ => new PluginStep(words, 0, "ok"),
+                },
+            };
+
+            T Wait<T>(Task<T> task)
+            {
+                while (!task.IsCompleted)
+                {
+                    System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+                    Thread.Sleep(20);
+                }
+
+                return task.Result;
+            }
+
+            TextBlock result() => (TextBlock)((StackPanel)((ScrollViewer)window.Content).Content).Children
+                .OfType<TextBlock>().Single(block => System.Windows.Automation.AutomationProperties.GetAutomationId(block) == "ClaudePluginSaid");
+
+            Wait(window.InstallClaudePluginInWsl());
+
+            string nowhere = result().Text;
+
+            any = true;
+
+            int steps = Wait(window.InstallClaudePluginInWsl()).Count;
+
+            return (nowhere, question, steps, result().Text);
+        });
+
+        Assert.StartsWith("No WSL distribution here finds claude", none, StringComparison.Ordinal);
+        Assert.Contains("Turn Claude Code's sandbox on in that distribution", asked, StringComparison.Ordinal);
+        Assert.Equal(3, ran);
+        Assert.StartsWith("Installed into Ubuntu: quickshell ", said, StringComparison.Ordinal);
+    }
+
     private static JsonNode Read(string path) => JsonNode.Parse(File.ReadAllText(path))!;
 }

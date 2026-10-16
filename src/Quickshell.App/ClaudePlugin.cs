@@ -239,6 +239,121 @@ public static class ClaudePlugin
         return null;
     }
 
+    /// <summary>
+    /// The WSL distributions whose shell finds a <c>claude</c> (QS363), each with where it found it. Asked
+    /// only when the person asks, since asking starts every distribution that is stopped.
+    /// </summary>
+    /// <param name="wsl">Runs a program inside a distribution, or <c>wsl.exe</c> itself where the name is null.</param>
+    public static IReadOnlyList<(string Distribution, string Claude)> InWsl(Func<string?, IReadOnlyList<string>, PluginStep>? wsl = null)
+    {
+        wsl ??= Wsl;
+
+        PluginStep listed = wsl(null, ["-l", "-q"]);
+
+        if (listed.ExitCode != 0)
+        {
+            return [];
+        }
+
+        List<(string, string)> found = [];
+
+        foreach (string distribution in listed.Said.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            PluginStep where = wsl(distribution, ["sh", "-lc", "command -v claude"]);
+
+            if (where.ExitCode == 0 && where.Said.Trim() is { Length: > 0 } path)
+            {
+                found.Add((distribution, path));
+            }
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// Writes the plugin for a Claude Code inside <paramref name="distribution"/> (QS363): the same plugin,
+    /// its commands naming this <c>quickshell.exe</c> by the <c>/mnt</c> path that distribution starts it by,
+    /// in a marketplace folder of its own beside the Windows one.
+    /// </summary>
+    /// <returns>The marketplace's folder as Windows names it, and as the distribution does.</returns>
+    public static (string Windows, string Inside) WriteForWsl(string folder, string distribution, string quickshell, string version,
+                                                              Func<string?, IReadOnlyList<string>, PluginStep>? wsl = null)
+    {
+        wsl ??= Wsl;
+
+        string inside = Inside(distribution, quickshell, wsl);
+        string written = Write($"{folder}-wsl-{Safe(distribution)}", inside, version);
+
+        return (written, Inside(distribution, written, wsl));
+    }
+
+    /// <summary>One step of the install, run by the distribution's own <c>claude</c> through its login shell, where its PATH is.</summary>
+    public static PluginStep RunInWsl(string distribution, IReadOnlyList<string> step, Func<string?, IReadOnlyList<string>, PluginStep>? wsl = null) =>
+        (wsl ?? Wsl)(distribution, ["sh", "-lc", "exec claude \"$@\"", "claude", .. step]);
+
+    /// <summary>A path as <paramref name="distribution"/> names it, by its own <c>wslpath</c>.</summary>
+    private static string Inside(string distribution, string path, Func<string?, IReadOnlyList<string>, PluginStep> wsl)
+    {
+        PluginStep converted = wsl(distribution, ["wslpath", "-u", path]);
+
+        return converted.ExitCode == 0 && converted.Said.Trim() is { Length: > 0 } inside
+            ? inside
+            : throw new InvalidOperationException($"{distribution} could not name {path}: {converted.Said}");
+    }
+
+    private static string Safe(string name) => new([.. name.Select(letter => char.IsAsciiLetterOrDigit(letter) ? letter : '_')]);
+
+    /// <summary>
+    /// <c>wsl.exe</c>, with each word passed as its own argument and its output as UTF-8 (<c>WSL_UTF8</c>), so a
+    /// distribution's name reads as itself; a distribution named runs the words there with no shell between.
+    /// </summary>
+    private static PluginStep Wsl(string? distribution, IReadOnlyList<string> words)
+    {
+        ProcessStartInfo start = new(Path.Combine(Environment.SystemDirectory, "wsl.exe"))
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+            Environment = { ["WSL_UTF8"] = "1" },
+        };
+
+        if (distribution is not null)
+        {
+            start.ArgumentList.Add("-d");
+            start.ArgumentList.Add(distribution);
+            start.ArgumentList.Add("-e");
+        }
+
+        foreach (string word in words)
+        {
+            start.ArgumentList.Add(word);
+        }
+
+        try
+        {
+            using Process wsl = Process.Start(start) ?? throw new InvalidOperationException("wsl.exe did not start.");
+
+            Task<string> output = wsl.StandardOutput.ReadToEndAsync();
+            Task<string> error = wsl.StandardError.ReadToEndAsync();
+
+            if (!wsl.WaitForExit(TimeSpan.FromMinutes(2)))
+            {
+                wsl.Kill(entireProcessTree: true);
+
+                return new PluginStep(words, -1, "wsl.exe did not answer within two minutes.");
+            }
+
+            return new PluginStep(words, wsl.ExitCode, (output.Result + error.Result).Replace("\0", string.Empty, StringComparison.Ordinal).Trim());
+        }
+        catch (System.ComponentModel.Win32Exception missing)
+        {
+            return new PluginStep(words, -1, $"WSL is not installed: {missing.Message}");
+        }
+    }
+
     private static void Json(string path, JsonObject value)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);

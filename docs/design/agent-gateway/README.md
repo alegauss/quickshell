@@ -596,8 +596,17 @@ Two other walls were weighed and lost:
   gives.
 
 Native Windows without WSL2 keeps the hook alone, and COMMAND-LINE.md says so where it shows the
-configuration. Writing the plugin (QS343) for a Claude Code inside WSL2, whose MCP command must be a
-`/mnt` path, is QS363.
+configuration.
+
+*Install into WSL…* in Settings (QS363) writes the plugin for a Claude Code inside WSL2. It looks for
+one only when asked, since asking starts every stopped distribution: it lists the distributions and,
+in each, asks a login shell `command -v claude`. In the one picked, it writes a copy of the
+marketplace beside the Windows one, naming this `quickshell.exe` by that distribution's
+`wslpath -u`. It installs that copy with the distribution's own `claude plugin`, after saying what
+it will run. The plugin does not touch Claude Code's settings there, so the offer says to turn the
+sandbox on, which is the part that makes WSL2 the wall. Measured on a desk with WSL: the `claude`
+installed in a distribution was found, the copy's MCP command came out as a `/mnt/d/…` path, and the
+gateway started by that command inside WSL answered `tools/list`.
 
 **Redaction on the way out (QS330).** Every tool's answer goes through `SecretRedactor` before it
 leaves the process: private key blocks (and half of one, where a budget cut the other half off),

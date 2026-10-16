@@ -277,6 +277,11 @@ what. It then installs the plugin for your user through `claude plugin`, after s
 it will run. Install it again after updating quickshell. A plugin written by another version is
 refused by the gateway, which says so.
 
+*Install into WSL…* beside it does the same for a Claude Code inside WSL2, the setup the agent gateway's
+design recommends on Windows. It looks in your WSL distributions for `claude` only when you press it,
+and writes the plugin naming quickshell by the `/mnt` path that distribution uses. Turn Claude Code's
+sandbox on there yourself; the plugin does not change your Claude Code settings.
+
 ### `menuBar`
 
 When the menu bar of every action is on screen: Hidden, Alt (shown by pressing and releasing Alt, the default) or Always.

@@ -496,28 +496,3 @@ A second run, after the client's version changes and before the plugin is instal
 again, should show the gateway refusing with its message in `claude mcp list`.
 
 Proven by the audit log holding that `exec`, its exit code and the session it ran on.
-
-### §QS363 The plugin, inside WSL2
-
-QS358 settled that on a Windows desk the wall around an agent is WSL2: the agent runs
-there with Claude Code's sandbox on, and the gateway is the Windows `quickshell.exe`,
-started through interop. It measured that this works: from inside WSL2, the Windows
-client answers the MCP handshake over its streams.
-
-The plugin QS343 writes cannot be used there. Its MCP entry and its hook name the client
-by its Windows path (`C:\…\quickshell.exe`), which a Linux process cannot start. A
-person following the recommendation is back to writing the MCP configuration and the
-hook by hand, which is the tedium QS343 removed.
-
-What to build: when Settings offers the plugin, it also looks for Claude Code inside the
-installed WSL distributions (`wsl -l -q`, then `wsl -d <name> -e sh -c 'command -v
-claude'`) and offers to install the plugin there too. It writes a second copy of the
-marketplace whose commands are the `/mnt/<drive>/…` path of the same executable
-(`wslpath -u`), and installs it with that distribution's `claude plugin`, saying first
-what it will run, as the Windows install does. The sandbox settings go with this copy,
-since there the sandbox exists: `enabled`, `failIfUnavailable`, and
-`allowUnsandboxedCommands: false`.
-
-Proven by a WSL2 distribution with a stand-in `claude` that records its arguments: the
-offer finds it, the written plugin's commands are `/mnt` paths, and the gateway started
-from that path answers `tools/list`.

@@ -108,8 +108,16 @@ public sealed class SettingsWindow : Window
         AutomationProperties.SetAutomationId(_pluginSaid, "ClaudePluginSaid");
         _plugin.Click += (_, _) => _ = InstallClaudePlugin();
 
+        // And into a Claude Code inside WSL2, the wall QS358 recommends (QS363): looked for only when asked,
+        // since looking starts every distribution that is stopped.
+        Button wsl = new() { Content = "Install into WSL…", HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(12, 3, 12, 3), Margin = new Thickness(0, 4, 0, 0) };
+
+        AutomationProperties.SetAutomationId(wsl, "InstallClaudePluginWsl");
+        wsl.Click += (_, _) => _ = InstallClaudePluginInWsl();
+
         body.Children.Add(new TextBlock { Text = "Claude Code plugin", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 2) });
         body.Children.Add(_plugin);
+        body.Children.Add(wsl);
         body.Children.Add(_pluginSaid);
 
         Content = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 720 };
@@ -181,6 +189,84 @@ public sealed class SettingsWindow : Window
             ? $"Installed: quickshell {Setup.Version}'s plugin is in Claude Code for your user. Start a new Claude Code session to use it."
             : $"Not installed: {claude} {string.Join(' ', last.Command)} said: {last.Said}";
         _plugin.IsEnabled = true;
+
+        return ran;
+    }
+
+    /// <summary>Runs <c>wsl.exe</c>, or a program inside a distribution; the real one unless a caller says otherwise.</summary>
+    public Func<string?, IReadOnlyList<string>, PluginStep>? RunsWsl { get; set; }
+
+    /// <summary>Picks one of the distributions with Claude Code, or null for none; a dialog unless a caller says otherwise.</summary>
+    public Func<IReadOnlyList<string>, string?>? PicksWsl { get; set; }
+
+    /// <summary>
+    /// Installs the plugin into a Claude Code inside WSL2 (QS363): the distributions with <c>claude</c> found,
+    /// one picked, what will change said and agreed to, the plugin written with this <c>quickshell.exe</c>'s
+    /// <c>/mnt</c> path, and installed with that distribution's own <c>claude plugin</c>.
+    /// </summary>
+    /// <returns>Each step run, empty where nothing was.</returns>
+    public async Task<IReadOnlyList<PluginStep>> InstallClaudePluginInWsl()
+    {
+        _pluginSaid.Text = "Looking for Claude Code in WSL…";
+
+        Func<string?, IReadOnlyList<string>, PluginStep>? wsl = RunsWsl;
+        IReadOnlyList<(string Distribution, string Claude)> found = await Task.Run(() => ClaudePlugin.InWsl(wsl)).ConfigureAwait(true);
+
+        if (found.Count == 0)
+        {
+            _pluginSaid.Text = "No WSL distribution here finds claude on its path, so there is nowhere in WSL to install the plugin.";
+
+            return [];
+        }
+
+        string[] names = [.. found.Select(each => each.Distribution)];
+        string? picked = names.Length == 1 && PicksWsl is null
+            ? names[0]
+            : (PicksWsl ?? (choices => Quickshell.App.Choice.Ask(this, "Install into WSL", "Which distribution's Claude Code?",
+                                                                  [.. choices.Take(3).Select(name => new ChoiceButton(name, name)), new ChoiceButton("Not now", string.Empty)])))(names);
+
+        if (string.IsNullOrEmpty(picked))
+        {
+            _pluginSaid.Text = string.Empty;
+
+            return [];
+        }
+
+        string quickshell = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "quickshell.exe");
+        string folder = PluginFolder ?? Path.Combine(Locations.Current.Root, "claude-plugin");
+        string changes =
+            $"This writes a Claude Code plugin into {folder}-wsl-…, naming {quickshell} by the path {picked} starts it by, and asks the "
+            + $"Claude Code in {picked} ({found.Single(each => each.Distribution == picked).Claude}) to install it for your user: the MCP "
+            + "server \"quickshell\" and the hook that turns back ssh around it, as on Windows.\n\n"
+            + "Turn Claude Code's sandbox on in that distribution too (sandbox.enabled, failIfUnavailable, allowUnsandboxedCommands: false): "
+            + "it is what stops a script the hook cannot see, and the plugin does not change your Claude Code settings.";
+
+        bool yes = AsksToInstallPlugin is { } asks
+            ? asks(changes)
+            : Quickshell.App.Choice.Ask(this, "Install the Claude Code plugin into WSL", changes,
+                                        new ChoiceButton("Install it", "install"), new ChoiceButton("Not now", "cancel")) == "install";
+
+        if (!yes)
+        {
+            _pluginSaid.Text = string.Empty;
+
+            return [];
+        }
+
+        _pluginSaid.Text = "Installing…";
+
+        IReadOnlyList<PluginStep> ran = await Task.Run(() =>
+        {
+            (_, string inside) = ClaudePlugin.WriteForWsl(folder, picked, quickshell, Setup.Version, wsl);
+
+            return ClaudePlugin.Install(inside, step => ClaudePlugin.RunInWsl(picked, step, wsl));
+        }).ConfigureAwait(true);
+
+        PluginStep last = ran[^1];
+
+        _pluginSaid.Text = last.ExitCode == 0
+            ? $"Installed into {picked}: quickshell {Setup.Version}'s plugin is in its Claude Code. Start a new Claude Code session there to use it."
+            : $"Not installed into {picked}: claude {string.Join(' ', last.Command)} said: {last.Said}";
 
         return ran;
     }

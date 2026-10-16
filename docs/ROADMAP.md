@@ -32,8 +32,6 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-- 📋 **QS363** (deps: QS343 ✅, QS358 ✅) **The Claude Code plugin names quickshell.exe by its Windows path, which a Claude Code inside WSL2 cannot start** — WSL2 with its sandbox is the wall QS358 recommends on Windows, and there the plugin's MCP and hook commands need a /mnt path. → §QS363
-
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a
