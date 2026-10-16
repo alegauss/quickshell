@@ -361,6 +361,7 @@
 - ✅ **QS355** **CI is red on every push: the app tests skip three on a clean runner against a budget of two** — The app tests may skip three on a clean desk, PuTTY's and MobaXterm's two real-file readers, so CI is held to what a runner without either has.
 - ✅ **QS347** **A middle click closing a tab is proven by routed events raised in a unit test, not by a UI case** — UI cases in the guest middle-click a tab closed and right-click Close tabs to the right, now that winwright 1.1.1 names a click's button.
 - ✅ **QS357** **The echo-delay pipeline test goes red in the guest when ConPTY prints under 300 KB/s for thirty seconds** — The echo-delay test reads until a byte count or its patience, skips naming cmd's rate when too little printed, and still fails a parser that falls behind.
+- ✅ **QS361** **The tab-strip UI case's typed "first-tab-marker" once reached cmd as "first-tabrmarker"** — Traced to winwright: both typos are WW310's last-character substitution, which its resend cannot repair on a terminal; filed there as WW545, nothing for the client.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

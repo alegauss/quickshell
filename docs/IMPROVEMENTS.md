@@ -443,30 +443,6 @@ range and a plain click that leaves one row follow. The set has no reading of it
 yet: the first action that takes one, QS315's document, is what the case then reads.
 Done when that case runs green in the guest beside the others.
 
-### §QS361 A typed hyphen that arrived as an r
-
-"Clicking a tab on the strip puts that tab's terminal on screen" (tabs.cases.json) types
-`title first-tab-marker` into a local tab with winwright's `type` verb. It failed in two
-guest runs on 2026-10-16, both times because one character arrived as an `r`:
-`first-tabrmarker` (the hyphen) and `first-tab-markrr` (the last `e`). cmd took that as
-the title, so the title-bar check and the text check both failed. Each time, the next
-run on the same tree passed.
-
-A lost or doubled key is a timing slip. One character turned into an `r`, twice, is not.
-The candidates are winwright's key synthesis (a virtual key sent under a layout it did
-not expect, or a scan code reused from an earlier key) and the client's own path from
-`KeyDown` and `TextInput` to the bytes `Typist` sends. The guest's layout is Brazilian
-Portuguese, where OEM keys sit elsewhere than in US English.
-
-The work is to tell the two apart. First, a trace of what quickshell received for each
-key (the `KeyDown` virtual key, the `TextInput` text) for a run of the case. Then the
-case run until it fails again, which says whether the wrong character arrived at the
-window or was made there. If winwright sent it, the finding moves to its roadmap as a WW
-line and this one closes.
-
-Proven by the case passing in thirty guest runs in a row, or by a WW line naming the
-defect with the trace that shows it.
-
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 ### §QS360 Windows Hello in front of the agent authority

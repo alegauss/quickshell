@@ -29,7 +29,6 @@
 
 - 📋 **QS348** (deps: winwright WW539) **That a tab's close cross is drawn inside its tab is proven by an in-process render, not by a UI case** — A case cannot claim one element sits within another, so the geometry QS312 fixed waits on winwright to name it. → §QS348
 - 📋 **QS349** (deps: winwright WW540) **Choosing several sidebar rows is proven by automation peers in a unit test, not by a UI case** — A case cannot add to a selection or Ctrl+click, so QS314's selection waits on winwright to name the act. → §QS349
-- 📋 **QS361** (deps: —) **The tab-strip UI case's typed "first-tab-marker" once reached cmd as "first-tabrmarker"** — One run of 24 cases lost a hyphen to an r and passed on rerun, so either the client or winwright's type verb can turn a keystroke into another. → §QS361
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
