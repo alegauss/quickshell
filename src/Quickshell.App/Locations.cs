@@ -87,6 +87,9 @@ public sealed class Locations
     /// <summary>The session log's folder.</summary>
     public string Logs => Path.Combine(Root, "logs");
 
+    /// <summary>The agent gateway's audit logs, one per gateway run (QS333).</summary>
+    public string Audit => Path.Combine(Root, "audit");
+
     /// <summary>Where crash reports go.</summary>
     public string Crashes => Path.Combine(Root, "crashes");
 

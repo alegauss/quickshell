@@ -73,5 +73,6 @@ not on native Windows, where the hook is the only measure on the agent's side.
 
 | Flag | Takes | What it does |
 |---|---|---|
+| `--audit` | `[run]` | Prints an agent gateway run's audit log as a summary of what was changed, run, refused and read, and says whether the log is whole; with no run, lists the runs recorded. Opens no window. |
 | `--agent-hook` | | Reads a Claude Code PreToolUse call on standard input and denies a shell command that reaches a server around the agent gateway, naming the gateway tool to use instead. Opens no window. |
 | `--mcp` | | Serves the agent gateway to an agent such as Claude Code on standard input and output, and opens no window. Refused unless the agentGateway setting is on, and unguarded: no policy limits what runs yet. |

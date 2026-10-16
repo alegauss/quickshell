@@ -549,29 +549,6 @@ to wait on its renderer still fails it.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-### §QS333 An audit trail an agent cannot rewrite
-
-After an agent has worked on a server, the person needs to answer what changed, and
-today the only record is the agent's own transcript, which the agent writes.
-
-The gateway writes its own: one JSON line per call, append-only, in quickshell's data
-directory and outside any workspace the agent can write. Each line holds the time, the
-session and its tags, the tool and its arguments (redacted the same way answers are),
-the policy verdict and the rule that gave it, who approved and how (automatic, a plan
-hash, a timed grant), the exit code and a hash of the full output.
-
-A file is rotated by size and day, never edited, and each line carries the hash of the
-one before it, so a deletion in the middle is visible.
-
-`quickshell --audit <session-id>` prints the log as a change summary a person can paste
-into a ticket: what was read, what was changed, what was refused.
-
-The same log is what the approval design (QS324) measures itself against: asks per hour,
-and how many were approved unchanged.
-
-Proven by a recorded gateway session whose summary lists every mutation, and by a line
-removed by hand being reported.
-
 ### §QS334 A kill switch
 
 When an agent is doing the wrong thing on a server, every second spent finding which

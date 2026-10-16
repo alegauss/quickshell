@@ -286,11 +286,29 @@ public sealed class AgentGateway : IAsyncDisposable
 
     private static JsonObject JobProperty() => new() { ["type"] = "string", ["description"] = "The id job_start returned." };
 
+    /// <summary>Where every call is recorded (QS333); null records nothing, as in a test that does not ask.</summary>
+    public AuditLog? Audit { get; init; }
+
     private async Task<JsonObject> CallAsync(JsonObject? call, CancellationToken cancellationToken)
     {
         string name = call?["name"]?.GetValue<string>() ?? throw new GatewayRefusal("A tool call names no tool.");
         JsonObject arguments = call["arguments"] as JsonObject ?? new JsonObject();
 
+        JsonObject answer = await AnsweredAsync(name, arguments, cancellationToken).ConfigureAwait(false);
+
+        if (Audit is { } audit)
+        {
+            ResolvedSession? session = arguments["host"] is JsonValue host && host.TryGetValue(out string? path) ? _store().Session(path) : null;
+
+            audit.Record(DateTimeOffset.Now, name, session, arguments, (JsonObject)answer["structuredContent"]!,
+                         answer["isError"]!.GetValue<bool>());
+        }
+
+        return answer;
+    }
+
+    private async Task<JsonObject> AnsweredAsync(string name, JsonObject arguments, CancellationToken cancellationToken)
+    {
         try
         {
             JsonObject result = name switch

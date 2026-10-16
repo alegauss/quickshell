@@ -374,6 +374,19 @@ measured against the fixture, nothing is left to hang. A Windows server is told 
 sends (`OpenSSH_for_Windows`) and gets the command without the preamble. Code:
 `src/Quickshell.App/CommandPrompts.cs`.
 
+**The audit trail (QS333).** Every tool call, answered or refused, is one JSON line in
+`audit/<run>.jsonl` under quickshell's data folder, one file per gateway run, appended and never
+edited, rotated at 16 MB into `<run>.1.jsonl` and on with the chain unbroken. A line holds the time, the
+call's number, the tool and what kind of call it is (read, changed, ran), the session and its tags,
+the arguments redacted as answers are, the verdict, the rule and the approval, whether it failed, the
+exit code, the SHA-256 of the whole answer, and the SHA-256 of the line before it. Until the policy
+exists (QS336) the verdict is `allowed` by `no policy yet` and the approval `none`. `quickshell --audit`
+lists the runs and `quickshell --audit <run>` prints one as a change summary, changed, ran, refused and
+read, saying first whether every line follows the one before it; a broken chain names the line and
+exits 1. The chain shows a slip or a casual edit, not a determined one: a process running as the same
+user can rewrite every line and every hash, which is the server-side log's to answer. Code:
+`src/Quickshell.App/AuditLog.cs`.
+
 **Closing the side doors (QS332).** Two measures of different strength. *Steering:*
 `quickshell --agent-hook` is a `PreToolUse` hook on the agent's `Bash` and `PowerShell` tools; the
 client is the hook, so it needs no runtime and matches the gateway's version. It reads the command line

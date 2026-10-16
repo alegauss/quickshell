@@ -59,6 +59,12 @@ public static class Entry
             return ServeAgent();
         }
 
+        // `--audit [run]`: a gateway run's log as a change summary, or the runs there are (QS333).
+        if (arguments.Contains(CommandLine.Audit, StringComparer.Ordinal))
+        {
+            return PrintAudit(Given(arguments, CommandLine.Audit));
+        }
+
         // `--agent-hook`: one Claude Code PreToolUse call judged and answered, no window (QS332).
         if (arguments.Contains(CommandLine.AgentHook, StringComparer.Ordinal))
         {
@@ -767,7 +773,10 @@ public static class Entry
 
         string store = Locations.Current.Sessions;
 
-        AgentGateway gateway = new(() => SessionTree.ReadFrom(store), AgentGateway.Connect, CrashContext.Build());
+        AgentGateway gateway = new(() => SessionTree.ReadFrom(store), AgentGateway.Connect, CrashContext.Build())
+        {
+            Audit = AuditLog.Start(Locations.Current.Audit, DateTimeOffset.Now),
+        };
 
         try
         {
@@ -779,6 +788,35 @@ public static class Entry
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// Prints a gateway run's audit as a change summary, or lists the runs where none is named (QS333).
+    /// </summary>
+    /// <returns>Zero for a whole log or a list; 1 where the run's chain is broken; 2 where there is no such run.</returns>
+    private static int PrintAudit(string? run)
+    {
+        string folder = Locations.Current.Audit;
+
+        if (run is null)
+        {
+            IReadOnlyList<string> runs = AuditLog.Runs(folder);
+
+            Console.Out.WriteLine(runs.Count == 0 ? $"No agent gateway run is recorded in {folder}." : string.Join(Environment.NewLine, runs));
+
+            return 0;
+        }
+
+        if (AuditLog.Read(folder, run) is not { } summary)
+        {
+            Console.Error.WriteLine($"quickshell --audit: no run {run} is recorded in {folder}. quickshell --audit alone lists them.");
+
+            return 2;
+        }
+
+        Console.Out.Write(summary.ToString());
+
+        return summary.Breaks.Count == 0 ? 0 : 1;
     }
 
     /// <summary>The path a flag was given, or null where it was absent.</summary>
