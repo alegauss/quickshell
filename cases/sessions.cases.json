@@ -15,6 +15,14 @@
       "arguments": [],
       "variables": { "QUICKSHELL_DATA": "{files}" },
       "files": ["cases/fixtures/sessions.json"]
+    },
+    {
+      // QS349. The same store in a window of its own, so the rows the selection case chooses are not
+      // left chosen, or a folder left open, for the cases that read this sidebar from the top.
+      "name": "a client whose sessions are chosen several at once",
+      "arguments": [],
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": ["cases/fixtures/sessions.json"]
     }
   ],
 
@@ -145,6 +153,124 @@
           "expect": "On",
           "reads": "toggle",
           "named": "and opened again from the rail, by the same button"
+        }
+      ]
+    },
+    {
+      // QS349, the selection QS314 built, from outside the process now that a click can hold Ctrl or
+      // Shift (winwright WW540, in 1.1.2). The list offers the gesture as a user makes it, so the case
+      // makes it rather than calling the selection pattern. What the set then stands for is read by
+      // SessionSelectionTests: the set's only reading is QS315's document, which is a PDF.
+      "name": "Ctrl and Shift choose several sidebar rows, a folder among them, and a plain click leaves one",
+      "catches": "a Ctrl+click that replaces the row chosen, a folder that folds instead of joining the set, a Shift+click that takes no range, or a plain click that leaves the others chosen",
+      "filed": "QS349",
+      "tags": ["sessions"],
+      "fixture": "a client whose sessions are chosen several at once",
+
+      "steps": [
+        {
+          // Folders start folded (QS304); Work is opened so the sessions in it have rows.
+          "locator": "List#SessionsList > ListItem[name=\"Work\"]",
+          "act": "click",
+          "with": "PointerIsTheAct",
+          "named": "Work is opened"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Work/build-box\"]",
+          "act": "click",
+          "with": "PointerIsTheAct",
+          "named": "one session is chosen"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Work/db-primary\"]",
+          "act": "click",
+          "with": "PointerIsTheAct",
+          "holding": "ctrl",
+          "named": "a second is added with Ctrl"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Home\"]",
+          "act": "click",
+          "with": "PointerIsTheAct",
+          "holding": "ctrl",
+          "named": "and a folder with Ctrl"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Work/build-box\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "the first session is still chosen"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Work/db-primary\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "the second is chosen"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Home\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "the folder is chosen"
+        },
+        {
+          // Home is the store's last folder: while it stays folded, it is the bottom row.
+          "locator": "List#SessionsList > ListItem[order=bottom]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Home",
+          "named": "and was chosen without folding open"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Work/build-box\"]",
+          "act": "click",
+          "with": "PointerIsTheAct",
+          "named": "a plain click on the first session"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Work/db-primary\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "not selected",
+          "named": "leaves the second unchosen"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Home\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "not selected",
+          "named": "and the folder"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Home\"]",
+          "act": "click",
+          "with": "PointerIsTheAct",
+          "holding": "shift",
+          "named": "Shift on the folder takes the range to it"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Work/build-box\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "from the session the range began at"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Work/db-primary\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "through the one between"
+        },
+        {
+          "locator": "List#SessionsList > ListItem[name=\"Home\"]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "to the folder"
         }
       ]
     }

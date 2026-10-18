@@ -27,8 +27,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS349** (deps: winwright WW540) **Choosing several sidebar rows is proven by automation peers in a unit test, not by a UI case** — A case cannot add to a selection or Ctrl+click, so QS314's selection waits on winwright to name the act. → §QS349
-
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 ## Done when — Block A

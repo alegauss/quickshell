@@ -420,18 +420,6 @@ both sides' algorithm lists.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS349 QS349 A UI case for the sidebar's selection
-
-QS314's several-row selection in the sidebar is proven in process (SessionSelectionTests
-reads each row's IsSelected through ListBoxItemAutomationPeer and the set the window
-reports), not by the UI case its design asked for, because a case cannot add to a
-selection or click with Ctrl or Shift held (winwright WW540). Once it can,
-cases/sessions.cases.json, over a store of its own, adds two sessions and a folder to
-the selection, reads each row selected, and reads the set the window reports; a Shift
-range and a plain click that leaves one row follow. The set has no reading of its own
-yet: the first action that takes one, QS315's document, is what the case then reads.
-Done when that case runs green in the guest beside the others.
-
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 ### §QS360 Windows Hello in front of the agent authority
