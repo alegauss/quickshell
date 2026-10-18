@@ -27,6 +27,12 @@
       "name": "a window with four tabs to close from",
       "arguments": ["--tabs", "4"],
       "shareable": false
+    },
+    {
+      // Two tabs, so the strip is up; the case retitles the one on screen, short and then long (QS348).
+      "name": "a window with two tabs to retitle",
+      "arguments": ["--tabs", "2"],
+      "shareable": false
     }
   ],
 
@@ -323,6 +329,71 @@
           "reads": "selected",
           "expect": "not selected",
           "named": "and the first is behind it"
+        }
+      ]
+    },
+    {
+      // QS348, the geometry QS312 fixed, from outside the process now that a step can claim where an
+      // element is drawn (winwright WW539, in 1.1.2): the cross inside its own tab and not empty, at a
+      // title shorter than the cross's padding and at one the strip has to make room for.
+      "name": "a tab's close cross is drawn inside that tab at a short title and a long one",
+      "catches": "a cross that paints nothing because its padding ate the button, or one pushed past its tab's edge by a long title",
+      "filed": "QS348",
+      "tags": ["window", "tabs"],
+      "fixture": "a window with two tabs to retitle",
+
+      "steps": [
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "type",
+          "with": "title qs",
+          "named": "the tab on screen is given a short title"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "press",
+          "with": "Enter",
+          "named": "and runs it"
+        },
+        {
+          // The window's name is the title of the tab on screen (QS223's case), so it says the title
+          // landed before the cross is measured against it.
+          "locator": "TitleBar",
+          "act": "read",
+          "reads": "name",
+          "matches": "^(Administrator: +)?qs( |$)",
+          "named": "the short title is the tab's"
+        },
+        {
+          "locator": "Button#CloseTab[order=right]",
+          "act": "read",
+          "within": "TabItem[order=right]",
+          "named": "its cross is drawn inside it"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "type",
+          "with": "title a-much-longer-host-name.example.invalid",
+          "named": "the same tab is given a long title"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "press",
+          "with": "Enter",
+          "named": "and runs that"
+        },
+        {
+          "locator": "TitleBar",
+          "act": "read",
+          "reads": "name",
+          "matches": "^(Administrator: +)?a-much-longer-host-name\\.example\\.invalid",
+          "named": "the long title is the tab's"
+        },
+        {
+          "locator": "Button#CloseTab[order=right]",
+          "act": "read",
+          "within": "TabItem[order=right]",
+          "named": "and its cross is still drawn inside it"
         }
       ]
     }

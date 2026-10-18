@@ -420,17 +420,6 @@ both sides' algorithm lists.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS348 QS348 A UI case for the close cross
-
-QS312 fixed a tab's close cross that painted nothing (the theme's 11-a-side padding on a
-22-wide button) and proved it in process: TabStripTests shows the window off the desk,
-renders the button through a VisualBrush, and counts painted pixels against New tab's
-plus. The design wanted a UI case reading CloseTab's bounding rectangle inside its
-tab's, which a case cannot claim yet (winwright WW539). Once it can,
-cases/tabs.cases.json asserts Button#CloseTab within its TabItem for the short and the
-long title, so a regression that clips or empties it fails in the guest too. Done when
-that case runs green beside the others.
-
 ### §QS349 QS349 A UI case for the sidebar's selection
 
 QS314's several-row selection in the sidebar is proven in process (SessionSelectionTests
