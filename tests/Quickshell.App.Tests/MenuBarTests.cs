@@ -133,6 +133,8 @@ public sealed class MenuBarTests : IDisposable
     [InlineData("Stop every agent", "_Agents")]
     [InlineData("Send to Claude", "_Agents")]
     [InlineData("Settings", "_View")]
+    [InlineData("Full screen", "_View")]
+    [InlineData("Leave full screen", "_View")]
     [InlineData("Show all commands", "_Help")]
     [InlineData("Something nobody has named yet", "_Terminal")]
     public void AnActionsHeadingComesFromItsName(string name, string heading) => Assert.Equal(heading, MenuBar.HeadingOf(name));

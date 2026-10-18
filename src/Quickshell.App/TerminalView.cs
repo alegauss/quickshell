@@ -43,6 +43,11 @@ public sealed class TerminalView : IDisposable
     private long _draws;
     private bool _showing = true;
     private bool _covered;
+
+    // Whether this pane has waited on the swapchain and not presented since (QS257). The wait comes
+    // before the model is read, and a wake-up that then has nothing to draw keeps the slot it waited
+    // for, so the next wake-up does not wait a second time for a frame nobody queued.
+    private bool _slotHeld;
     private volatile bool _outlined;
 
     private TerminalView(GraphicsDevice device, GlyphAtlas atlas, PresentSurface surface,
@@ -418,6 +423,12 @@ public sealed class TerminalView : IDisposable
             return false;
         }
 
+        // Waited for before the model is read and not after the frame is painted (QS257). Photon timed
+        // both orders on the reference desk (benchmarks/results/photon-h.md): waiting after painting
+        // presents a frame built from what the model held a vblank ago, and at full screen lost the
+        // independent flip on two echoes in three, where waiting first kept it on every one.
+        WaitForSlot();
+
         Damage damage = emulator.Damage;
         Redraw owed = _gate.Decide(damage, _renderer.CursorShowing);
 
@@ -457,10 +468,6 @@ public sealed class TerminalView : IDisposable
                        caret ? Shape(damage) : CursorShape.None, _renderer.Metrics, Selection, Viewport,
                        Composing);
 
-        // Waited for here and not at the top of the loop: the wait is for a queue slot, and a
-        // wake-up with nothing to draw should not be parked on the swapchain.
-        _surface.WaitForNextFrame();
-
         long occluded = _surface.Occlusions;
 
         // The cursor this pane's scheme or host asked for (QS198). The renderer draws every pane in
@@ -476,6 +483,7 @@ public sealed class TerminalView : IDisposable
         // the buffers already holding it go on counting towards the next blink drawing one cell.
         _surface.Present(continues: cell);
 
+        _slotHeld = false;
         _draws++;
 
         // The frame went nowhere: something is over this window. Remembered so the next wake-up asks
@@ -495,6 +503,18 @@ public sealed class TerminalView : IDisposable
         }
 
         return true;
+    }
+
+    /// <summary>Waits for a queue slot unless this pane already holds one it has not presented into.</summary>
+    private void WaitForSlot()
+    {
+        if (_slotHeld)
+        {
+            return;
+        }
+
+        _surface.WaitForNextFrame();
+        _slotHeld = true;
     }
 
     /// <summary>
@@ -538,8 +558,6 @@ public sealed class TerminalView : IDisposable
             return false;
         }
 
-        _surface.WaitForNextFrame();
-
         long occluded = _surface.Occlusions;
 
         _renderer.CursorColour = _palette.Cursor;
@@ -547,6 +565,7 @@ public sealed class TerminalView : IDisposable
                        only: region);
         _surface.PresentRegion(region);
 
+        _slotHeld = false;
         _draws++;
         CursorDraws++;
         _covered = _surface.Occlusions != occluded;

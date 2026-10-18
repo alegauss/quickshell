@@ -23,6 +23,13 @@
       "name": "a window started on a shell",
       "arguments": ["--tabs", "1"],
       "shareable": true
+    },
+    {
+      // Two tabs, so there is a strip for full screen to take away (QS257); not lent, since the case
+      // changes the window's shape.
+      "name": "a window of two tabs to fill the screen with",
+      "arguments": ["--tabs", "2"],
+      "shareable": false
     }
   ],
 
@@ -101,6 +108,72 @@
           "expect": "Terminal output",
           "reads": "name",
           "named": "the pane publishes a terminal for a screen reader to find"
+        }
+      ]
+    },
+
+    {
+      // QS257. F11 takes the frame, the strip and the bars away and leaves the terminal, and F11 again
+      // puts them back. That the window then covers its monitor to the pixel is FullScreenTests': a
+      // case cannot yet claim a window covers its monitor (winwright WW548), only that its frame went.
+      "name": "F11 fills the screen with the terminal alone, and F11 again gives the window back",
+      "catches": "a full screen that keeps its title bar or tab strip over the terminal, or one that F11 cannot leave",
+      "filed": "QS257",
+      "tags": ["window", "tabs"],
+      "fixture": "a window of two tabs to fill the screen with",
+
+      "steps": [
+        {
+          "locator": "TabItem[order=right]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "the strip is up with the second tab on screen"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "press",
+          "with": "F11",
+          "named": "F11 is pressed at the terminal"
+        },
+        {
+          "locator": "TitleBar",
+          "act": "read",
+          "absent": true,
+          "named": "the window has no title bar"
+        },
+        {
+          "locator": "TabItem",
+          "act": "read",
+          "absent": true,
+          "named": "nor a tab strip"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "read",
+          "reads": "name",
+          "expect": "Terminal output",
+          "named": "and the terminal is still there"
+        },
+        {
+          "locator": "Document[class=\"Terminal\"]",
+          "act": "press",
+          "with": "F11",
+          "named": "F11 is pressed again"
+        },
+        {
+          "locator": "TitleBar",
+          "act": "read",
+          "reads": "name",
+          "matches": "quickshell$",
+          "named": "the title bar is back"
+        },
+        {
+          "locator": "TabItem[order=right]",
+          "act": "read",
+          "reads": "selected",
+          "expect": "selected",
+          "named": "and the strip, with the same tab on screen"
         }
       ]
     }

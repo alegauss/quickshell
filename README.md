@@ -118,7 +118,7 @@ sitting, the comparison holds better than either number on its own.
   to resume when the partial file doesn't match the source. A local and a remote folder can be
   compared and mirrored. Files drag in from Explorer.
 - **Every action in one place.** `Ctrl+Shift+P` opens a command palette that reaches anything the
-  client can do.
+  client can do. `F11` fills the screen with the terminal alone, and gives the window back.
 - **Safety with a hostile host.** `OSC 52` clipboard access is off by default and write-only
   when on. The window title is never reported back to the host. A multi-line paste asks first.
 - **Secrets.** Passwords go to Windows Credential Manager. Logs are redacted and never contain a

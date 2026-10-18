@@ -124,6 +124,7 @@ prompt), and the title says which. A name already taken there is left alone.
 | `Ctrl+Shift+R` | Rereads [the settings file](SETTINGS.md). Saving it is normally enough; this is what to press when it was not. |
 | `Ctrl+Shift+I` | Imports sessions from another client, into a folder of their own; the sessions you already have stay. |
 | `Ctrl+Shift+F1` | Help: opens the palette, which lists everything this client can do and the keys that do it. The diagnostic report is in there too, as *Write a diagnostic report*. |
+| `F11` | Full screen, and back: the window fills its monitor with no border, no tab strip, no sidebar and no bars, so the terminal is all there is. Also *Full screen* in the palette and under View. |
 | `Ctrl+Shift+F12` | Stops every agent working through the agent gateway: each cancels the jobs it started, closes its connections and refuses what an agent asks, until *Let agents run again* in the palette. |
 
 **The menu bar.** Press and release `Alt` on its own, and a menu bar appears under the title bar. It
@@ -156,8 +157,11 @@ normally take.
 **`Alt` and not `Ctrl` for the digits.** `Ctrl` with a digit is a control character a host has
 meanings for. `Alt` with one is not.
 
-**`Ctrl+Tab` is the exception, and it is taken anyway.** A full-screen program could plausibly want
-it. A client where you cannot leave the tab you are in has no tabs, so this one is spent knowingly.
+**`Ctrl+Tab` and `F11` are the exceptions, and they are taken anyway.** A full-screen program could
+plausibly want `Ctrl+Tab`, and a client where you cannot leave the tab you are in has no tabs. `F11`
+is the key Windows Terminal and every browser here put full screen on, and a person pressing it to
+fill the screen is far more common than a program on the far side that needs it. Both are spent
+knowingly.
 
 **The chords on punctuation follow your keyboard layout.** `Ctrl+Shift+\`, `Ctrl+Shift+-` and
 `Ctrl+Shift+,` are bound to the character and not to a key: whichever key types that character
@@ -174,4 +178,5 @@ is checked against this.
 - **`F1` on its own.** An unmodified function key belongs to the program on the far side.
 - **`PageUp` and `PageDown` on their own.** A pager and an editor both bind them, and taking them
   would mean the terminal scrolled while the thing on screen did not.
-- **Anything with no modifier at all.** Those are the remote program's, without exception.
+- **Anything else with no modifier at all.** Those are the remote program's; `F11` is the one
+  exception, named above.

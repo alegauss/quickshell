@@ -247,6 +247,7 @@
 - ✅ **QS319** **Two tabs on the same host carry the same title, so the strip gives nothing to tell them apart by** — Every tab shows its place on the strip before its title, the Alt digit that reaches it, renumbered when a tab is added, closed or moved (design recorded in `docs/KEYS.md`).
 - ✅ **QS353** **A connected recent card on Home clips its New connection and Go to tab buttons when the window is not maximised** — A connected recent card gives its when a row of its own and wraps Go to tab under New connection, so a restored window cuts neither button.
 - ✅ **QS354** **Every action is reached only by a hotkey or the palette, so a user who has not learned them cannot find a feature** — An Alt tap shows a menu bar built from the palette's own bindings, every action under a heading with its keys; a default window still holds no menu.
+- ✅ **QS257 (the mode)** **There is no full-screen mode, the one window shape whose echoes reach the glass an interval sooner** — F11 and the palette make the window borderless at its monitor's pixel bounds with no strip, sidebar or bars, and each pane waits on its swapchain before reading the model.
 
 ## Block H — The reason to leave the incumbent
 

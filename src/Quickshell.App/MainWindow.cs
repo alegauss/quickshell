@@ -382,6 +382,12 @@ public sealed partial class MainWindow : Window
                                              ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift));
         }
 
+        // Full screen (QS257), on F11 and in the palette. A bare function key is otherwise the
+        // program's, and this one is taken anyway, as Ctrl+Tab is: it is the key Windows Terminal and
+        // every browser here put the mode on, and a program on the far side that wants F11 is rarer
+        // than a person who presses it to fill the screen. That cost is what KEYS.md names.
+        BindFullScreen();
+
         // Zoom and equalise, which are the two gestures that make a cramped split workable.
         InputBindings.Add(new KeyBinding(new Zooming(this), Key.Z,
                                          ModifierKeys.Control | ModifierKeys.Shift));
@@ -1687,7 +1693,8 @@ public sealed partial class MainWindow : Window
         _sessionBar.Show(view);
         _statusBar.Show(view);
 
-        if (_sessionBar.Visibility != Visibility.Visible)
+        // Kept up to date while full screen and not shown, so leaving it shows the bars as they are now.
+        if (_sessionBar.Visibility != Visibility.Visible && !FullScreen)
         {
             _sessionBar.Visibility = Visibility.Visible;
             _statusBar.Visibility = Visibility.Visible;
@@ -1796,8 +1803,9 @@ public sealed partial class MainWindow : Window
             : Visibility.Collapsed;
         _homeSlot.Visibility = _homeOpen ? Visibility.Visible : Visibility.Collapsed;
 
-        // The row goes with what is in it: New tab and Commands are not a strip on their own.
-        _stripFrame.Visibility = _tabs.Visibility == Visibility.Visible || _homeOpen
+        // The row goes with what is in it: New tab and Commands are not a strip on their own. Never
+        // while full screen, where a strip drawn over the pane is what would compose its chain (QS257).
+        _stripFrame.Visibility = !FullScreen && (_tabs.Visibility == Visibility.Visible || _homeOpen)
             ? Visibility.Visible
             : Visibility.Collapsed;
 
@@ -4853,8 +4861,10 @@ public sealed partial class MainWindow : Window
     /// </summary>
     public Placement Where()
     {
-        bool maximised = WindowState == WindowState.Maximized;
-        Rect bounds = maximised ? RestoreBounds : new Rect(Left, Top, Width, Height);
+        // A window closed full screen is remembered as the window it was before, so the next start is
+        // not a borderless rectangle the size of the monitor (QS257).
+        bool maximised = _windowed?.State == WindowState.Maximized || (_windowed is null && WindowState == WindowState.Maximized);
+        Rect bounds = _windowed?.Bounds ?? (maximised ? RestoreBounds : new Rect(Left, Top, Width, Height));
 
         bool real = !bounds.IsEmpty
                     && double.IsFinite(bounds.Left) && double.IsFinite(bounds.Top)

@@ -16,6 +16,8 @@
 
 ## Block G — The clean interface, defended
 
+- ⏳ **QS257** (deps: QS225 ✅) **There is no full-screen mode, the one window shape whose echoes reach the glass an interval sooner** — Photon has not timed the client's own full-screen pane on the reference desk, so whether its echoes reach the glass as an independent flip is unmeasured. → §QS257
+
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
@@ -297,6 +299,13 @@
   Windows Hello set up and agentCertificateHello on, an agent's connection raises the
   prompt over quickshell; cancelled, the agent's call fails naming Hello and no
   -cert.pub is written beside the key.
+
+## Done when — QS257
+
+- **Photon reads a full-screen client pane's echoes as independent flips**
+  tools/Quickshell.Photon at full screen in the client's own host on the reference desk,
+  before and after wait-first, with the echoes reported as overlay or independent flip
+  rather than composed.
 
 ## Non-goals
 

@@ -32,6 +32,10 @@ public sealed partial class KeysReferenceTests
     [GeneratedRegex(@"`([^`]+)`")]
     private static partial Regex Quoted { get; }
 
+    /// <summary>A function key's name, F1 to F24.</summary>
+    [GeneratedRegex(@"^F([1-9]|1[0-9]|2[0-4])$")]
+    private static partial Regex FunctionKey { get; }
+
     /// <summary>Every chord this client takes is on the page, and everything on it is taken.</summary>
     [Fact]
     public void EveryChordIsDocumentedAndEveryDocumentedChordIsTaken()
@@ -102,6 +106,13 @@ public sealed partial class KeysReferenceTests
     private static bool IsChord(string quoted)
     {
         string[] parts = quoted.Split('+', StringSplitOptions.None);
+
+        // A function key alone is a chord too: F11 is the one this client takes without a modifier
+        // (QS257), and a page naming it in a table is claiming it is taken.
+        if (parts.Length == 1 && FunctionKey.IsMatch(quoted))
+        {
+            return true;
+        }
 
         // A trailing "+" as the key itself would split into an empty last part; nothing binds it
         // today, and reading it as a chord would be reading "Ctrl+" as one too.

@@ -25,7 +25,7 @@ public static class MenuBar
         ("Tab and _Pane", ["tab", "pane", "divider", "split", "broadcast"]),
         ("_Edit", ["copy", "paste", "find", "select"]),
         ("_Session", ["session", "connect", "record", "trace", "vault", "password", "import"]),
-        ("_View", ["home", "settings", "zoom", "font", "theme", "sidebar", "menu bar"]),
+        ("_View", ["home", "settings", "zoom", "font", "theme", "sidebar", "menu bar", "full screen"]),
         ("_Terminal", ["scroll", "clear", "reset"]),
     ];
 
