@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Quickshell.App.Tests;
 
-/// <summary>QS354: a menu bar of every action, built from the palette's own list, and not on screen by default.</summary>
+/// <summary>QS354: a menu bar of every action, built from the palette's own list, and on screen by default (QS366).</summary>
 public sealed class MenuBarTests : IDisposable
 {
     private static readonly TerminalShare Shared = new();
@@ -74,24 +74,33 @@ public sealed class MenuBarTests : IDisposable
     }
 
     /// <summary>
-    /// A default window shows no menu bar, as Block G promises; Always shows it at once and keeps it, the
-    /// palette's entry writes that to the file, and Hidden lets the toggle do nothing.
+    /// A default window shows the menu bar and keeps it (QS366); the palette's entry leaves it to Alt and
+    /// writes that to the file, where the Alt toggle shows and hides it, and Hidden lets it do nothing.
     /// </summary>
     [Fact]
-    public void ADefaultWindowHasNoMenuBarAndTheSettingDecides()
+    public void ADefaultWindowShowsTheMenuBarAndTheSettingDecides()
     {
         string settings = Path.Combine(_here, "settings.json");
 
         File.WriteAllText(settings, "{}");
 
-        (bool atStart, bool toggled, bool hidden, bool kept, MenuBarMode written, bool hiddenToggled) = Sta.Run(() =>
+        (bool atStart, bool kept, MenuBarMode written, bool leftToAlt, bool toggled, bool hidden, bool hiddenToggled) = Sta.Run(() =>
         {
             MainWindow window = Window();
 
             window.SettingsPath = settings;
-            window.Apply(Settings.Default);
+            window.Apply(SettingsFile.ReadFrom(settings));
 
             bool start = window.MenuBarShowing;
+
+            window.HideMenuBar();
+
+            bool stays = window.MenuBarShowing;
+
+            window.KeepMenuBar(always: false);
+
+            MenuBarMode file = SettingsFile.ReadFrom(settings).MenuBar;
+            bool away = !window.MenuBarShowing;
 
             window.ToggleMenuBar();
 
@@ -101,22 +110,17 @@ public sealed class MenuBarTests : IDisposable
 
             bool gone = !window.MenuBarShowing;
 
-            window.KeepMenuBar(always: true);
-            window.HideMenuBar();
-
-            bool stays = window.MenuBarShowing;
-            MenuBarMode file = SettingsFile.ReadFrom(settings).MenuBar;
-
             window.Apply(Settings.Default with { MenuBar = MenuBarMode.Hidden });
 
-            return (start, shown, gone, stays, file, window.MenuBarShowing);
+            return (start, stays, file, away, shown, gone, window.MenuBarShowing);
         });
 
-        Assert.False(atStart, "a default window opened with the menu bar on screen");
+        Assert.True(atStart, "a default window opened without the menu bar on screen");
+        Assert.True(kept, "the bar on screen by default went when hidden");
+        Assert.Equal(MenuBarMode.Alt, written);
+        Assert.True(leftToAlt, "the bar stayed on screen once left to Alt");
         Assert.True(toggled, "the toggle Alt makes did not show the bar");
         Assert.True(hidden, "the bar shown by Alt did not go");
-        Assert.True(kept, "the bar kept on screen went when hidden");
-        Assert.Equal(MenuBarMode.Always, written);
         Assert.False(hiddenToggled, "the bar stayed on screen with the setting at Hidden");
     }
 

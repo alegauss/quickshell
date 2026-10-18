@@ -7,15 +7,14 @@ namespace Quickshell.App;
 
 /// <summary>
 /// The menu bar (QS354): every action the palette has, under headings, with its keys, for a person who
-/// has not learned the keys or the palette. A default window shows none, as Block G promises; pressing
-/// and releasing Alt shows it, the Windows way, and the <c>menuBar</c> setting can keep it up or keep it
-/// away.
+/// has not learned the keys or the palette. A default window shows it under the title bar (QS366); the
+/// <c>menuBar</c> setting can leave it to an Alt tap, the Windows way, or keep it away.
 /// </summary>
 public sealed partial class MainWindow
 {
     /// <summary>
-    /// The bar, made the first time it is shown and not before: a default window holds no menu at all, in
-    /// its tree or its start, which is what Block G's "no menu" means to a test reading the tree.
+    /// The bar, made the first time it is shown and not before: the settings file is applied after the
+    /// window's first paint, so even a default window that shows the bar does not build it on the way there.
     /// </summary>
     private Menu? _menuBar;
 

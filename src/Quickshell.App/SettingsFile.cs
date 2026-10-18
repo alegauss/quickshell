@@ -118,10 +118,11 @@ public sealed record Settings
     public string ClaudeCommand { get; init; } = "claude";
 
     /// <summary>
-    /// When the menu bar is on screen (QS354): never, while Alt has shown it (the default), or always. A
-    /// default window shows none, as Block G promises; the bar is a way to find what the palette holds.
+    /// When the menu bar is on screen (QS354): never, while Alt has shown it, or always (the default,
+    /// QS366). The owner put it on screen by default on 2026-10-18: a bar a person has to know to tap Alt
+    /// for is not found by the person it is for, who has not learned the keys or the palette.
     /// </summary>
-    public MenuBarMode MenuBar { get; init; } = MenuBarMode.Alt;
+    public MenuBarMode MenuBar { get; init; } = MenuBarMode.Always;
 
     /// <summary>
     /// Whether Windows Hello confirms the person is at the desk before quickshell signs an agent a

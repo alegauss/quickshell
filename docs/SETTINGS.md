@@ -284,15 +284,16 @@ sandbox on there yourself; the plugin does not change your Claude Code settings.
 
 ### `menuBar`
 
-When the menu bar of every action is on screen: Hidden, Alt (shown by pressing and releasing Alt, the default) or Always.
+When the menu bar of every action is on screen: Hidden, Alt (shown by pressing and releasing Alt) or Always (the default).
 
 The bar lists what the palette lists, read off the same bindings, under Session, Edit, View, Terminal,
 Tab and Pane, Transfer, Forward, Agents and Help, each action with its keys beside it. An action
-that cannot run now is shown disabled rather than left out. With `Alt`, a window opens with no bar,
-as a default installation always has. Pressing and releasing Alt alone shows it with the keyboard on
-its first heading, and Esc, choosing an item or clicking elsewhere puts it away. Alt held with another
-key is still that chord, sent to the terminal as before. *Keep the menu bar on screen* in the palette
-writes `Always`, and *Let Alt show the menu bar* writes `Alt` again.
+that cannot run now is shown disabled rather than left out. With `Always`, the default, it sits under
+the title bar, and pressing and releasing Alt alone puts the keyboard on its first heading. With `Alt`,
+a window opens with no bar: an Alt tap shows it with the keyboard on its first heading, and Esc,
+choosing an item or clicking elsewhere puts it away. Alt held with another key is still that chord,
+sent to the terminal as before. *Let Alt show the menu bar* in the palette writes `Alt`, and *Keep the
+menu bar on screen* writes `Always` again.
 
 ## What is deliberately not here
 

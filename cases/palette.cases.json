@@ -33,18 +33,20 @@
       "files": ["cases/fixtures/sessions.json"]
     },
     {
-      // QS354. A data folder of its own, because keeping the menu bar on screen writes the settings file,
-      // and a window shared with other cases would write the desk's own.
-      "name": "a client whose menu bar can be kept on screen",
+      // QS354, QS366. A data folder of its own and no settings file, so the bar is at its default: on
+      // screen. Not the desk's own folder, whose settings may say otherwise.
+      "name": "a client with the menu bar at its default",
       "arguments": ["--tabs", "2"],
       "variables": { "QUICKSHELL_DATA": "{files}" }
     },
     {
-      // QS354 again, with the bar at its default: hidden until an Alt tap. A window of its own, so no
-      // case before it has kept the bar on screen and the tap is what brings it up.
+      // QS354 again, with the setting at Alt: hidden until an Alt tap.
       "name": "a client whose menu bar waits for an Alt tap",
       "arguments": ["--tabs", "2"],
-      "variables": { "QUICKSHELL_DATA": "{files}" }
+      "variables": { "QUICKSHELL_DATA": "{files}" },
+      "files": [
+        { "from": "cases/fixtures/menu-alt-settings.json", "to": "settings.json" }
+      ]
     }
   ],
 
@@ -336,48 +338,21 @@
       ]
     },
     {
-      // QS354. The bar kept on screen from the palette, which is the setting's other way in; the case
-      // after this one brings it up the Windows way.
-      "name": "the menu bar lists every action under headings, and an item in it runs that action",
-      "catches": "a menu bar that cannot be brought on screen, a heading that opens on nothing, or an item that does not run the action it names",
-      "filed": "QS354",
+      // QS354, QS366. The bar on screen with nothing done, as a default installation opens; the case
+      // after this one brings it up the Windows way where the setting leaves it to Alt.
+      "name": "a default window shows the menu bar of every action, and an item in it runs that action",
+      "catches": "a default window that opens without the menu bar, a heading that opens on nothing, or an item that does not run the action it names",
+      "filed": "QS366",
       "tags": ["palette", "window"],
-      "fixture": "a client whose menu bar can be kept on screen",
+      "fixture": "a client with the menu bar at its default",
 
       "steps": [
-        {
-          "locator": "TabItem[order=right]",
-          "act": "press",
-          "with": "Ctrl+Shift+P",
-          "named": "the palette is opened the way a user opens it"
-        },
-        {
-          "locator": "Edit[name=\"Command\"]",
-          "act": "set value",
-          "with": "keep the menu bar",
-          "expect": "keep the menu bar",
-          "reads": "value",
-          "named": "the way to keep the menu bar up"
-        },
-        {
-          "locator": "List[name=\"Commands\"] > ListItem[order=top]",
-          "act": "read",
-          "reads": "name",
-          "expect": "Keep the menu bar on screen",
-          "named": "is in the palette"
-        },
-        {
-          "locator": "Edit[name=\"Command\"]",
-          "act": "press",
-          "with": "Enter",
-          "named": "and taken"
-        },
         {
           "locator": "MenuItem#MenuView",
           "act": "read",
           "reads": "name",
           "expect": "View",
-          "named": "the bar is on screen with its View heading"
+          "named": "the bar is on screen at start with its View heading"
         },
         {
           "locator": "MenuItem#MenuView",

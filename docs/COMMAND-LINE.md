@@ -1,6 +1,6 @@
 # The command line
 
-This client has no menu, on purpose. That makes the command line a real surface rather than a
+A menu is for a person at the window. The command line is a real surface rather than a
 convenience: it is how a shortcut, a script or another program asks the client for anything. Every
 flag it acts on is on this page, and nothing else is — a test reads the client's own list and fails
 when the two differ.

@@ -9,8 +9,8 @@ public readonly record struct Flag(string Name, string Takes, string Means);
 /// <summary>
 /// Every flag the client acts on, in one list (QS178).
 ///
-/// <para><b>The command line is a real surface here and not a convenience.</b> The client has no menu
-/// on purpose, so the command line is where a script, a shortcut or another program asks it for
+/// <para><b>The command line is a real surface here and not a convenience.</b> The menu bar is for a
+/// person at the window, so the command line is where a script, a shortcut or another program asks it for
 /// anything — and a surface nobody documented is one nobody finds. The entry points read these names
 /// rather than spelling their own, and a test holds <c>docs/COMMAND-LINE.md</c> to this list in both
 /// directions, as it holds <c>docs/KEYS.md</c> to the bindings.</para>

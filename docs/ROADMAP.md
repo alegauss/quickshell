@@ -123,10 +123,11 @@
 - **Sixteen open panes share one glyph atlas** Settled by reading atlas memory in use
   with one pane and with sixteen at the same font, which must not differ by more than
   the instance buffers.
-- **A default installation opens on Home, with no toolbar, menu or status bar** Restated
-  by the owner on 2026-10-13 (QS272). Settled by a first run on a clean profile: title
-  bar, tab strip, sessions sidebar and Home, nothing else, beside the incumbent's first
-  run; a shell start shows a terminal in Home's place.
+- **A default installation opens on Home with the menu bar, no toolbar or status bar**
+  Restated by the owner on 2026-10-13 (QS272) and on 2026-10-18 (QS366, the menu bar on
+  screen). Settled by a first run on a clean profile: title bar, menu bar, tab strip,
+  sessions sidebar and Home, nothing else; a shell start shows a terminal in Home's
+  place.
 
 ## Done when — Block H
 

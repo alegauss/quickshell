@@ -127,10 +127,11 @@ prompt), and the title says which. A name already taken there is left alone.
 | `F11` | Full screen, and back: the window fills its monitor with no border, no tab strip, no sidebar and no bars, so the terminal is all there is. Also *Full screen* in the palette and under View. |
 | `Ctrl+Shift+F12` | Stops every agent working through the agent gateway: each cancels the jobs it started, closes its connections and refuses what an agent asks, until *Let agents run again* in the palette. |
 
-**The menu bar.** Press and release `Alt` on its own, and a menu bar appears under the title bar. It
-holds every action the palette has, under headings, with its keys beside it. `Esc`, choosing an item
-or clicking elsewhere puts it away. `Alt` held with another key is still that chord. The
-[`menuBar` setting](SETTINGS.md) keeps it on screen or turns it off.
+**The menu bar.** Under the title bar, a menu bar holds every action the palette has, under
+headings, with its keys beside it. Press and release `Alt` on its own to put the keyboard on its
+first heading. `Alt` held with another key is still that chord. The
+[`menuBar` setting](SETTINGS.md) leaves it to an `Alt` tap, where `Esc`, choosing an item or clicking
+elsewhere puts it away, or turns it off.
 
 ## In the file browser
 

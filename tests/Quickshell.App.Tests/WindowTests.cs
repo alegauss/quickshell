@@ -39,26 +39,29 @@ public sealed class WindowTests : IDisposable
     // ---- The falsification: what a default installation shows ----
 
     /// <summary>
-    /// A default installation shows a title bar, the sessions sidebar and a terminal, and the tab strip
-    /// that is there is not on screen. No toolbar, no status bar, no menu — and not hidden ones either,
-    /// because the tree does not contain them at all.
+    /// A default installation shows a title bar, the menu bar (QS366), the sessions sidebar and a
+    /// terminal, and the tab strip that is there is not on screen. No toolbar, no status bar — and not
+    /// hidden ones either, because the tree does not contain them at all.
     /// </summary>
     [Fact]
-    public void ADefaultWindowShowsATitleBarAndATerminalAndNothingElse()
+    public void ADefaultWindowShowsATitleBarAMenuBarAndATerminalAndNothingElse()
     {
-        (bool tabs, string[] tree) = Sta.Run(() =>
+        (bool tabs, bool menu, string[] tree) = Sta.Run(() =>
         {
             MainWindow window = new();
 
-            return (window.TabStripShowing, Tree(window).ToArray());
+            // As a start applies the settings file after the first paint; a fresh profile has none.
+            window.Apply(Settings.Default);
+
+            return (window.TabStripShowing, window.MenuBarShowing, Tree(window).ToArray());
         });
 
         Assert.False(tabs, "the tab strip was on screen with one tab open");
+        Assert.True(menu, "a default window opened without the menu bar");
 
         // The elements a terminal that opens onto a terminal does not have.
         Assert.DoesNotContain(tree, element => element.Contains("ToolBar", StringComparison.Ordinal));
         Assert.DoesNotContain(tree, element => element.Contains("StatusBar", StringComparison.Ordinal));
-        Assert.DoesNotContain(tree, element => element.Contains("Menu", StringComparison.Ordinal));
         Assert.DoesNotContain(tree, element => element.Contains("Ribbon", StringComparison.Ordinal));
     }
 

@@ -65,7 +65,8 @@ the session (`Credential`), where you can see and remove it with Windows' own to
 - **Tabs and split panes**, a tab dragged out into a window of its own, and **typing into several
   panes at once** (MobaXterm's MultiExec) with `Ctrl+Shift+B`.
 - **Quick connect** from an address or from `~/.ssh/config`, **Home** with the sessions you opened
-  last, and **a command palette** (`Ctrl+Shift+P`) where every command is — there is no menu bar.
+  last, and **a command palette** (`Ctrl+Shift+P`) where every command is, the same ones a menu bar
+  lists under the title bar.
 - **Reconnect** after a dropped link, per session; **a trace** of one session's negotiation when
   something will not connect; **a recording** of what a host sent.
 - **A local shell** in a tab, whatever `COMSPEC` names (normally `cmd.exe`).

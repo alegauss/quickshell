@@ -2,12 +2,12 @@
   // QS147. The first case read through the accessibility tree instead of a screenshot.
   //
   // What it asserts is thin, and the thinness is itself the finding: this window is a title bar, the
-  // sessions sidebar and Home or a terminal (QS272), so there is very little in its tree to read. That is QS46's design
+  // sessions sidebar, the menu bar (QS366) and Home or a terminal (QS272), so there is very little in its tree to read. That is QS46's design
   // working as intended, and it means the cases worth writing here are about the dialogs — which is
   // WW317 in the engine's roadmap, because every one of them is behind a keyboard chord `press`
   // cannot yet spell.
   //
-  // What is deliberately NOT here: "there is no toolbar, no status bar, no menu". A locator matching
+  // What is deliberately NOT here: "there is no toolbar and no status bar". A locator matching
   // nothing has no subject to read, so an expectation of absence is indistinguishable from a broken
   // read — WW318, filed against the engine. `WindowTests` walks the visual tree in-process for that
   // claim and keeps it until there is a word for absence.

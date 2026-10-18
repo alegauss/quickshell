@@ -21,10 +21,11 @@ namespace Quickshell.App;
 /// <para><b>A title bar, the saved sessions, a terminal, and nothing else.</b> The tab strip builds
 /// itself and stays collapsed while there is one tab. The sessions sidebar is the one addition, made on
 /// purpose (QS268, the friendly-shell design approved on 2026-10-11): saved sessions reached only
-/// through a palette chord were sessions a new user never saw. It folds to a rail. There is no toolbar
-/// and no menu — not hidden ones waiting to be switched on, but no elements at all, so that adding one
-/// is a change somebody makes on purpose against a test that says what a default installation looks
-/// like.</para>
+/// through a palette chord were sessions a new user never saw. It folds to a rail. The menu bar is the
+/// other (QS366, the owner's call on 2026-10-18): an action a new user cannot see is one they never
+/// find. There is no toolbar and no status bar — not hidden ones waiting to be switched on, but no
+/// elements at all, so that adding one is a change somebody makes on purpose against a test that says
+/// what a default installation looks like.</para>
 ///
 /// <para><b>The theme is handed to WPF rather than resolved here.</b> <c>ThemeMode.System</c> watches
 /// the setting and repaints while the window is open, which is what "follow the system" has to mean
@@ -239,8 +240,8 @@ public sealed partial class MainWindow : Window
         layout.Children.Add(_find);
         layout.Children.Add(_terminalInset);
 
-        // Docked above everything and collapsed until Alt or the setting shows it (QS354), so a default
-        // window still opens with no menu, as Block G promises.
+        // Docked above everything and collapsed until the setting or Alt shows it (QS354). A default
+        // window shows it (QS366), once the settings are applied after the first paint.
         Content = WithMenuBar(layout);
 
         // Help, on the chord a person guesses for it (QS172): Ctrl+Shift+F1, because F1 is where help
@@ -1910,8 +1911,8 @@ public sealed partial class MainWindow : Window
         // A new scheme is a new background, around the terminal as well as in it (QS281).
         PaintInset();
 
-        // The menu bar as the file says (QS354): built only where it is to be on screen, so a default
-        // start pays nothing for it.
+        // The menu bar as the file says (QS354, on screen by default since QS366): built only where it is
+        // to be on screen, and only now, after the first paint.
         PlaceMenuBar();
     }
 

@@ -47,7 +47,7 @@ public sealed class SettingsWindow : Window
         ("agentGateway", "Agent gateway", "Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. What it may run on each is the agent policy's to say."),
         ("claudeCommand", "Claude Code command", "What Open Claude Code runs in its pane, found on the path: claude by default."),
         ("agentCertificateHello", "Windows Hello before an agent signs in", "Whether Windows Hello asks for you before quickshell signs an agent a certificate. Off by default; on, an agent signs in only while you are at the desk to answer."),
-        ("menuBar", "Menu bar", "When the menu bar of every action is on screen: Hidden, Alt (shown by pressing and releasing Alt, the default) or Always."),
+        ("menuBar", "Menu bar", "When the menu bar of every action is on screen: Hidden, Alt (shown by pressing and releasing Alt) or Always (the default)."),
     ];
 
     private readonly string _path;
