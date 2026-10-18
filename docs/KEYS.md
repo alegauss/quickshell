@@ -34,7 +34,7 @@ to a KeePass file, after Windows Hello and under a passphrase you choose or gene
 ([SESSIONS.md](SESSIONS.md#exporting-saved-passwords) says what goes in),
 *Import saved passwords from a KeePass vault* remembers the passwords a vault holds for the sessions
 they belong to, showing what would change first ([SESSIONS.md](SESSIONS.md#importing-saved-passwords)),
-*Document sessions as PDF* writes the sessions selected in the sidebar, or all of them, to a PDF with
+*Document all sessions as PDF* writes every saved session to a PDF with
 every value and where it comes from, and no secret ([SESSIONS.md](SESSIONS.md#documenting-sessions)), and
 *Leave this pane out of broadcast typing* is described under [Panes](#panes).
 

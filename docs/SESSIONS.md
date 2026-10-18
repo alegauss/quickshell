@@ -289,10 +289,10 @@ vault edited outside the client since it was last written is never written over.
 
 ## Documenting sessions
 
-**Document as PDF…**, in the sidebar's menu for a session, a folder or several selected rows, and
-*Document sessions as PDF* in the palette, write a PDF of those sessions: the ones selected, a folder
-counting as every session under it, or every saved session when nothing is selected. It asks only
-where to save.
+*Document all sessions as PDF* in the palette writes a PDF of every saved session, whatever the
+sidebar has selected. **Document as PDF…**, in the sidebar's menu for a session, a folder or several
+selected rows, writes only those: a folder counts as every session under it. Either asks only where
+to save.
 
 A cover page names the date, the client's version and the folders covered. Each session then has a
 page of its own: its folder, host, port and user; how it signs in, with the key file and its SHA256

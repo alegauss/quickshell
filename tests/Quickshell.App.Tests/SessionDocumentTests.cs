@@ -123,6 +123,33 @@ public sealed class SessionDocumentTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// QS365: the palette's entry documents every saved session even where one row is selected, as a
+    /// connection leaves the row of the session it opened.
+    /// </summary>
+    [Fact]
+    public void ThePaletteDocumentsEverySessionWhateverOneRowIsSelected()
+    {
+        string pdf = Path.Combine(_here, "all.pdf");
+        List<string> said = [];
+
+        string? written = Sta.Run(() =>
+        {
+            MainWindow window = Window(said, SecretStore.In(Path.Combine(_here, "secrets")), pdf);
+
+            window.SelectSessionRows(["nas"]);
+
+            return window.DocumentAllSessions();
+        });
+
+        Assert.Equal(pdf, written);
+        Assert.Contains(said, sentence => sentence.StartsWith($"4 sessions are documented in {pdf}", StringComparison.Ordinal));
+
+        string[] words = Text(pdf).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        Assert.All(["db-primary", "web01", "pi", "nas"], session => Assert.Contains(session, words));
+    }
+
     /// <summary>A key whose public half is beside it is fingerprinted from that, as ssh-keygen -l prints it.</summary>
     [Fact]
     public void AKeyBesideItsPubIsFingerprintedFromThePub()

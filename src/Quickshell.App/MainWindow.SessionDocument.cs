@@ -27,6 +27,13 @@ public sealed partial class MainWindow
         return DocumentSessions(chosen.Count > 0 ? chosen : (_store ?? SessionTree.Empty()).Sessions());
     }
 
+    /// <summary>
+    /// Writes a PDF of every saved session, whatever the sidebar has selected (QS365): the row a
+    /// connection or a click left selected is where the person was, not what they chose to document.
+    /// </summary>
+    /// <returns>The file written, or null where nothing was.</returns>
+    public string? DocumentAllSessions() => DocumentSessions((_store ?? SessionTree.Empty()).Sessions());
+
     /// <summary>Writes a PDF of the session at <paramref name="path"/>, or of every session in the folder there.</summary>
     /// <returns>The file written, or null where nothing was.</returns>
     public string? DocumentSessionsAt(string path)
@@ -97,13 +104,16 @@ public sealed partial class MainWindow
         return choose.ShowDialog(this) == true ? choose.FileName : null;
     }
 
-    /// <summary>The document of the selected sessions, from the palette and from no key (QS315).</summary>
+    /// <summary>
+    /// The document of every saved session, from the palette and from no key (QS315, QS365). A set
+    /// is documented from the sidebar's own menus, which are where it was chosen.
+    /// </summary>
     private sealed class DocumentingSessions(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public override string Name => "Document sessions as PDF";
+        public override string Name => "Document all sessions as PDF";
 
         /// <inheritdoc/>
-        public override void Execute(object? parameter) => Window.DocumentSessions();
+        public override void Execute(object? parameter) => Window.DocumentAllSessions();
     }
 }

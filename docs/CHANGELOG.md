@@ -159,6 +159,8 @@
 - ✅ **QS331** **A saved session carries nothing that tells production from staging, to the person or to anything reading the store** — A tab holding a session tagged prod, by its own tag or a folder's, shows prod in the danger colour, and every tag is the tab's item type (design recorded in `docs/SESSIONS.md`).
 - ✅ **QS351** **Only the prod tag has a look on the strip, and no import brings tags in from MobaXterm or PuTTY** — A MobaXterm folder named exactly prod, production or prd imports tagged prod, named in the preview first (design recorded in `docs/SESSIONS.md`).
 - ✅ **QS315** **How a set of sessions is configured, with jump hosts, keys and forwards, can be documented only by copying it by hand** — Document as PDF, in the sidebar's menu and the palette, writes the chosen sessions with every value's origin, jump hops, forwards and key fingerprints, and no secret.
+- ✅ **QS365** **The palette's Document sessions as PDF writes only the connected session instead of every saved one** — Document all sessions as PDF, in the palette, writes every saved session whatever the sidebar selected; the sidebar's own menus still document the session, folder or rows chosen there.
+  checked **The palette's document holds every saved session with a row selected** Settled by SessionDocumentTests selecting one row and reading all four sessions of the fixture store back out of the PDF.
 
 ## Block E — SCP and SFTP as a thing a person operates
 
