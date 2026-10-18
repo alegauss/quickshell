@@ -49,6 +49,7 @@ public sealed class TerminalView : IDisposable
     // for, so the next wake-up does not wait a second time for a frame nobody queued.
     private bool _slotHeld;
     private volatile bool _outlined;
+    private volatile bool _focused = true;
 
     private TerminalView(GraphicsDevice device, GlyphAtlas atlas, PresentSurface surface,
                          CellRenderer renderer, Palette palette)
@@ -200,6 +201,30 @@ public sealed class TerminalView : IDisposable
             }
         }
     }
+
+    /// <summary>
+    /// Whether this pane has the keyboard (QS367). One that does not draws its cursor as a steady hollow
+    /// box and is owed no blink frames: the blink is the renderer's, shared by every pane, and a split
+    /// whose panes all blinked in step said nothing about where the keys would go.
+    /// </summary>
+    public bool Focused
+    {
+        get => _focused;
+
+        set
+        {
+            if (_focused == value)
+            {
+                return;
+            }
+
+            _focused = value;
+            _gate.Invalidate();
+        }
+    }
+
+    /// <summary>The blink's phase as this pane draws it: lit throughout where it does not have the keyboard.</summary>
+    private bool Lit => !_focused || _renderer.CursorShowing;
 
     /// <summary>
     /// Whether this pane's edge is drawn in the renderer's outline colour — QS53's mark on a pane
@@ -430,7 +455,7 @@ public sealed class TerminalView : IDisposable
         WaitForSlot();
 
         Damage damage = emulator.Damage;
-        Redraw owed = _gate.Decide(damage, _renderer.CursorShowing);
+        Redraw owed = _gate.Decide(damage, Lit);
 
         if (owed == Redraw.None)
         {
@@ -458,7 +483,7 @@ public sealed class TerminalView : IDisposable
         // A cursor the host has hidden is painted nowhere. One the blink has dark this instant is
         // painted where it is with no shape (QS262): a composition is placed by where the cursor is,
         // and only the caret is the blink's, so what is being composed does not flash with it.
-        bool caret = damage.CursorVisible && _renderer.CursorShowing;
+        bool caret = damage.CursorVisible && Lit;
 
         // Told before the frame is built, so a scrollbar can say output arrived. It moves nothing:
         // the viewport is anchored to a line and this only records that the bottom has grown.
@@ -474,6 +499,7 @@ public sealed class TerminalView : IDisposable
         // the process, so its cursor colour is set for each pane's frame, on the one thread that
         // draws them, rather than once for all of them.
         _renderer.CursorColour = _palette.Cursor;
+        _renderer.CursorFocused = _focused;
 
         // Cleared to the scheme's own background first, read afresh each frame so a scheme changed
         // under a live pane takes the strip past its last cell with it (QS177).
@@ -539,7 +565,7 @@ public sealed class TerminalView : IDisposable
             return false;
         }
 
-        bool caret = damage.CursorVisible && _renderer.CursorShowing;
+        bool caret = damage.CursorVisible && Lit;
         _cells[at] = GridPainter.WithCursor(_cells[at], caret ? Shape(damage) : CursorShape.None);
 
         // A wide character's cursor covers both of its cells, and the rectangle covers what it does.
@@ -561,6 +587,7 @@ public sealed class TerminalView : IDisposable
         long occluded = _surface.Occlusions;
 
         _renderer.CursorColour = _palette.Cursor;
+        _renderer.CursorFocused = _focused;
         _renderer.Draw(_surface, _cells.AsSpan(0, _painter.Painted), buffer.Columns, _outlined,
                        only: region);
         _surface.PresentRegion(region);

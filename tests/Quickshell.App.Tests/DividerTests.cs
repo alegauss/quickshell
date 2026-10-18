@@ -16,8 +16,8 @@ public sealed class DividerTests
     private static readonly TerminalShare Shared = new();
 
     /// <summary>
-    /// The falsification: a pane can be resized without closing it and splitting again. The panes
-    /// leave a gap exactly a handle wide, the handle sits in it, and dragging it forty pixels
+    /// The falsification: a pane can be resized without closing it and splitting again. The panes'
+    /// frames leave a gap exactly a handle wide, the handle sits in it, and dragging it forty pixels
     /// right moves the edge forty pixels and gives the other pane forty fewer.
     /// </summary>
     [Fact]
@@ -47,8 +47,9 @@ public sealed class DividerTests
                     window.DividerHandles.Count);
         });
 
-        Assert.Equal(4, gap);
-        Assert.Equal(leftEdge, handleAt);
+        // Each pane sits inside its frame (QS367), and the frames leave the handle's gap between them.
+        Assert.Equal(4 + (2 * MainWindow.PaneFrameWidth), gap);
+        Assert.Equal(leftEdge + MainWindow.PaneFrameWidth, handleAt);
         Assert.Equal(1, handles);
 
         // Whole pixels, so a pixel either way of forty is the rounding and not the drag.

@@ -74,6 +74,10 @@ by when you used it rather than where it sits, so pressing it twice brings you b
 | `Ctrl+Shift+E` | Gives every pane in the tab an equal share. |
 | `Ctrl+Shift+B` | Types into every pane in the tab at once, pastes included; press it again to stop. Each pane receiving what you type has an orange edge. |
 
+**Which pane has the keyboard.** In a split tab the focused pane has a frame in the accent colour,
+and only its cursor blinks. The cursor of every other pane is a steady hollow box, which marks where
+it is without suggesting that typing goes there.
+
 **Why the prompt moves down when a split narrows a pane.** Lines wider than the narrower pane wrap
 onto a second row, so everything below them, the prompt included, moves down a row for each. The
 server's shell is told the new width and redraws its prompt where it is. bash 5.2 adds no line, and

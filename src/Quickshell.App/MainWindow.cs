@@ -622,6 +622,10 @@ public sealed partial class MainWindow : Window
                 bool closable = visible && tab.Layout.Count > 1 && tab.Zoomed < 0;
                 Button close = PaneClose(leaf);
 
+                // And a frame round the pane and its strip, which the focused one fills in the accent
+                // (QS367): drawn behind the pane, which is inset by its width so the ring shows.
+                (left, top, right, bottom) = Frame(PaneFrame(leaf), closable, left, top, right, bottom);
+
                 close.Visibility = closable ? Visibility.Visible : Visibility.Collapsed;
 
                 if (closable)
@@ -642,13 +646,109 @@ public sealed partial class MainWindow : Window
 
         Handles(width, height);
 
-        // A pane that has gone takes its close button with it.
+        // A pane that has gone takes its close button and its frame with it.
         foreach (TerminalLeaf gone in _paneCloses.Keys.Where(leaf => !_open.Any(tab => tab.Leaves.Contains(leaf))).ToArray())
         {
             _terminal.Children.Remove(_paneCloses[gone]);
             _paneCloses.Remove(gone);
         }
+
+        foreach (TerminalLeaf gone in _paneFrames.Keys.Where(leaf => !_open.Any(tab => tab.Leaves.Contains(leaf))).ToArray())
+        {
+            _terminal.Children.Remove(_paneFrames[gone]);
+            _paneFrames.Remove(gone);
+        }
+
+        MarkFocus();
     }
+
+    /// <summary>The width of the frame round each pane of a split tab, in the accent round the focused one (QS367).</summary>
+    public const double PaneFrameWidth = 2;
+
+    /// <summary>Each pane's frame, made the first time its tab has two panes.</summary>
+    private readonly Dictionary<TerminalLeaf, System.Windows.Controls.Border> _paneFrames = [];
+
+    /// <summary>Places a pane's frame over its whole rectangle where it is shown, and gives back what is left inside it.</summary>
+    private static (double Left, double Top, double Right, double Bottom) Frame(
+        System.Windows.Controls.Border frame, bool shown, double left, double top, double right, double bottom)
+    {
+        frame.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!shown)
+        {
+            return (left, top, right, bottom);
+        }
+
+        Canvas.SetLeft(frame, left);
+        Canvas.SetTop(frame, top);
+        frame.Width = Math.Max(1d, right - left);
+        frame.Height = Math.Max(1d, bottom - top);
+
+        return (left + PaneFrameWidth, top + PaneFrameWidth, right - PaneFrameWidth, bottom - PaneFrameWidth);
+    }
+
+    /// <summary>A pane's frame (QS367): a ring and nothing inside it, so it takes no click meant for the strip.</summary>
+    private System.Windows.Controls.Border PaneFrame(TerminalLeaf leaf)
+    {
+        if (_paneFrames.TryGetValue(leaf, out System.Windows.Controls.Border? made))
+        {
+            return made;
+        }
+
+        System.Windows.Controls.Border frame = new()
+        {
+            BorderThickness = new Thickness(PaneFrameWidth),
+            BorderBrush = System.Windows.Media.Brushes.Transparent,
+            Focusable = false,
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
+        };
+
+        System.Windows.Automation.AutomationProperties.SetAutomationId(frame, "PaneFrame");
+        Panel.SetZIndex(frame, -1);
+
+        _paneFrames[leaf] = frame;
+        _terminal.Children.Add(frame);
+
+        return frame;
+    }
+
+    /// <summary>
+    /// Tells each pane whether it has the keyboard, and frames the one that does (QS367): only the
+    /// focused pane of the tab on screen blinks, and in a split tab its frame is in the accent.
+    /// </summary>
+    private void MarkFocus()
+    {
+        foreach (TerminalTab tab in _open)
+        {
+            bool showing = ReferenceEquals(tab, Current);
+
+            foreach (TerminalLeaf leaf in tab.Leaves)
+            {
+                bool focused = showing && ReferenceEquals(leaf, tab.Focused);
+
+                leaf.Terminal.Focused = focused;
+
+                if (_paneFrames.TryGetValue(leaf, out System.Windows.Controls.Border? frame))
+                {
+                    if (focused)
+                    {
+                        frame.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, "AccentFillColorDefaultBrush");
+                    }
+                    else
+                    {
+                        frame.BorderBrush = System.Windows.Media.Brushes.Transparent;
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>Whether a pane's frame is drawn in the accent, which is what a test reads (QS367).</summary>
+    public bool PaneFramed(TerminalLeaf leaf) =>
+        _paneFrames.TryGetValue(leaf, out System.Windows.Controls.Border? frame)
+        && frame.Visibility == Visibility.Visible
+        && frame.BorderBrush is System.Windows.Media.SolidColorBrush { Color.A: > 0 };
 
     /// <summary>The height of the strip above each pane of a split tab, which its close button sits in (QS317).</summary>
     public const double PaneStrip = 22;
@@ -1164,6 +1264,7 @@ public sealed partial class MainWindow : Window
             if (pane >= 0 && pane != tab.FocusedPane)
             {
                 tab.Focus(pane);
+                MarkFocus();
                 Retitle();
             }
         };
@@ -1175,6 +1276,7 @@ public sealed partial class MainWindow : Window
             if (Current is { } tab && tab.PaneOf(leaf) is var pane and >= 0)
             {
                 tab.Focus(pane);
+                MarkFocus();
                 Retitle();
             }
 
@@ -1324,6 +1426,7 @@ public sealed partial class MainWindow : Window
     {
         if (Current?.Focus(direction) == true)
         {
+            MarkFocus();
             Retitle();
         }
     }

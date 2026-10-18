@@ -134,6 +134,13 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
     public Rgb CursorColour { get; set; } = Brand.Cursor;
 
     /// <summary>
+    /// Whether the pane being drawn has the keyboard (QS367), set for each pane's frame as
+    /// <see cref="CursorColour"/> is. One that does not has its cursor drawn as a steady hollow box,
+    /// whatever its shape and whatever the blink's phase.
+    /// </summary>
+    public bool CursorFocused { get; set; } = true;
+
+    /// <summary>
     /// How much dark ink is thickened, as DirectWrite's enhanced contrast thickens it (QS212): the k
     /// of its a(k+1)/(ak+1) curve, applied in full to ink darker than a quarter's lightness and to
     /// none past three quarters, so light text on a dark ground is drawn as it always was. Null is
@@ -404,6 +411,17 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
         return buffer;
     }
 
+    /// <summary>The cursor as the shader reads it: one lit, zero dark, two a steady hollow box for a pane without the keyboard (QS367).</summary>
+    private float Phase()
+    {
+        if (!CursorFocused)
+        {
+            return 2f;
+        }
+
+        return CursorShowing ? 1f : 0f;
+    }
+
     private unsafe void WriteFrameConstants(ID3D11DeviceContext context, PresentSurface surface,
                                             int columns, int rows, bool outlined)
     {
@@ -419,7 +437,7 @@ public sealed class CellRenderer : IDeviceResource, IDisposable
             UnderlineThickness = Metrics.UnderlineThickness,
             StrikeY = Metrics.StrikeY,
             StrikeThickness = Metrics.StrikeThickness,
-            CursorShowing = CursorShowing ? 1f : 0f,
+            CursorShowing = Phase(),
 
             // The atlas's answer and not the renderer's: it is the one that knows both what the font
             // asked for and what the display said about its stripes.

@@ -20,7 +20,8 @@ cbuffer Frame : register(b0)
     float  UnderlineThickness;
     float  StrikeY;             // the font's own strikethrough
     float  StrikeThickness;
-    float  CursorShowing;       // the blink phase: 1 while the cursor is on, 0 while it is not
+    float  CursorShowing;       // the blink phase: 1 while the cursor is on, 0 while it is not, 2 for a
+                                // steady hollow box in a pane without the keyboard (QS367)
     float  ClearType;           // 1 while the coverage pages carry one alpha per colour stripe
     float3 CursorColour;
     float  OutlineWidth;        // pixels of outline inside the grid's edge, 0 for none
@@ -195,7 +196,7 @@ Fragment VertexMain(Instance input)
     // A block cursor inverts the glyph against the cursor colour rather than being drawn over it.
     // Overdrawn, the character under the cursor is invisible on any theme where the cursor is
     // opaque, which is every theme.
-    if (cursor == 1u && CursorShowing > 0.5)
+    if (cursor == 1u && CursorShowing > 0.5 && CursorShowing < 1.5)
     {
         foreground = background;
         background = CursorColour;
@@ -314,7 +315,21 @@ float4 PixelMain(Fragment input) : SV_Target
     // cursor's swap without any of them needing to know that a rule exists.
     blended = lerp(blended, ToLinear(input.Foreground), saturate(rule));
 
-    if (CursorShowing > 0.5 && input.Cursor >= 2u)
+    if (CursorShowing > 1.5 && input.Cursor >= 1u)
+    {
+        // A pane without the keyboard: a box round the cell whatever the shape, which says where the
+        // cursor is without saying that typing goes there (QS367).
+        float2 box = float2(CellSize.x * max(1u, input.Attributes >> 6), CellSize.y);
+        float edge = max(1.0, round(UnderlineThickness));
+        float inside = min(min(input.CellPixel.x, input.CellPixel.y),
+                           min(box.x - input.CellPixel.x, box.y - input.CellPixel.y));
+
+        if (inside < edge)
+        {
+            blended = ToLinear(CursorColour);
+        }
+    }
+    else if (CursorShowing > 0.5 && input.Cursor >= 2u)
     {
         float bar = input.Cursor == 2u
             ? 1.0 - smoothstep(max(1.0, CellSize.x * 0.12), max(1.0, CellSize.x * 0.12) + 1.0, input.CellPixel.x)

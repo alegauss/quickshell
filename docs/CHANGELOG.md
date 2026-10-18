@@ -252,6 +252,8 @@
 - ✅ **QS257 (the mode)** **There is no full-screen mode, the one window shape whose echoes reach the glass an interval sooner** — F11 and the palette make the window borderless at its monitor's pixel bounds with no strip, sidebar or bars, and each pane waits on its swapchain before reading the model.
 - ✅ **QS366** **A default window hides the menu bar until Alt is tapped, so a person who does not know the tap never finds it** — A default window shows the menu bar under the title bar, menuBar now defaulting to Always; Alt and Hidden stay, and Block G's criterion names the menu bar as part of a default window.
   checked **A client on a clean profile opens with the menu bar on screen** Settled by the palette UI case reading the View heading at start with no settings file, and by WindowTests and MenuBarTests at the default settings.
+- ✅ **QS367** **In a split tab every pane blinks its cursor and nothing marks which pane has the keyboard** — Only the focused pane blinks; the others draw a steady hollow cursor and ask for no blink frames, and in a split tab the focused pane is framed in the accent.
+  checked **Only the pane with the keyboard blinks and is framed in the accent** Settled by PaneFocusTests splitting a tab and moving the keyboard, reading each pane's focus and frame, and by DecorationTests reading the unfocused cursor's hollow box in both blink phases.
 
 ## Block H — The reason to leave the incumbent
 

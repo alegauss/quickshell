@@ -307,6 +307,41 @@ public sealed class DecorationTests
         Assert.Equal(Rgb.Black, Pixel(frame, metrics.Width / 2, metrics.Height / 2));
     }
 
+    /// <summary>
+    /// QS367: a pane without the keyboard draws a block cursor as a box round the cell, its middle left
+    /// the cell's own background, and the same in the blink's off phase, since it does not blink.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AnUnfocusedCursorIsASteadyHollowBox(bool offPhase)
+    {
+        using Harness harness = new();
+        CellMetrics metrics = harness.Metrics;
+
+        harness.Renderer.CursorColour = new Rgb(255, 0, 0);
+        harness.Renderer.CursorFocused = false;
+
+        if (offPhase)
+        {
+            harness.Renderer.Elapsed = harness.Renderer.Blink.Interval;
+        }
+
+        CellInstance[] cells =
+        [
+            CellInstance.For(GlyphPlacement.Empty, Rgb.White, Rgb.Black, cursor: CursorShape.Block),
+        ];
+
+        harness.Renderer.Draw(harness.Surface, cells, 1);
+        byte[] frame = harness.ReadBack();
+
+        Assert.True(Pixel(frame, 0, metrics.Height / 2).Red > 128, "the box has no left edge");
+        Assert.True(Pixel(frame, metrics.Width - 1, metrics.Height / 2).Red > 128, "the box has no right edge");
+        Assert.True(Pixel(frame, metrics.Width / 2, 0).Red > 128, "the box has no top edge");
+        Assert.True(Pixel(frame, metrics.Width / 2, metrics.Height - 1).Red > 128, "the box has no bottom edge");
+        Assert.Equal(Rgb.Black, Pixel(frame, metrics.Width / 2, metrics.Height / 2));
+    }
+
     // ---- Selection composes with the rest rather than covering it ----
 
     [Fact]

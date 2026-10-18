@@ -151,6 +151,28 @@ public sealed class PaneAttachment : IDisposable
         }
     }
 
+    private bool _focused = true;
+
+    /// <summary>
+    /// Whether the pane has the keyboard (QS367), held as <see cref="Outlined"/> is: a pane split off
+    /// before its view opens must come up knowing whether it blinks.
+    /// </summary>
+    public bool Focused
+    {
+        get => _focused;
+
+        set
+        {
+            _focused = value;
+
+            if (View is { } view && view.Focused != value)
+            {
+                view.Focused = value;
+                _damage.Set();
+            }
+        }
+    }
+
     /// <summary>
     /// What went wrong opening the device, or null.
     ///
@@ -683,8 +705,9 @@ public sealed class PaneAttachment : IDisposable
         _emulator.Resize(View.Columns, View.Rows);
         TellCellPixels();
 
-        // A mark asked for before there was anything to draw it on.
+        // A mark asked for before there was anything to draw it on, and whether it has the keyboard.
         View.Outlined = _outlined;
+        View.Focused = _focused;
 
         // Every size after this one, from the render thread once the swapchain has taken it.
         View.GridChanged += (columns, rows) =>
