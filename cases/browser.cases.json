@@ -119,13 +119,14 @@
         {
           // The server is this same machine, and its account reads the guest's checkout, where
           // tools\vm-guest.ps1 puts it: the fixture's staged folder is under the runner's own profile,
-          // which it cannot. Spelled whole until a step can name the project's root (winwright WW542).
+          // which it cannot. Named by the project's root as OpenSSH spells it (winwright WW542, in
+          // 1.1.2), so the case holds on any desk whose checkout the server can read.
           // A folder holding the one file: with others beside it, a listing re-sorted between finding
           // the row and pressing on it moved another file under the press (QS335's run).
           "locator": "Edit[name=\"Path on 127.0.0.1\"]",
           "act": "set value",
-          "with": "/C:/src/quickshell/cases/fixtures/drop",
-          "expect": "/C:/src/quickshell/cases/fixtures/drop",
+          "with": "{root/}/cases/fixtures/drop",
+          "matches": "^/[A-Za-z]:/.+/cases/fixtures/drop$",
           "reads": "value",
           "named": "the host's side is pointed at the folder holding the file"
         },

@@ -362,6 +362,7 @@
 - ✅ **QS347** **A middle click closing a tab is proven by routed events raised in a unit test, not by a UI case** — UI cases in the guest middle-click a tab closed and right-click Close tabs to the right, now that winwright 1.1.1 names a click's button.
 - ✅ **QS357** **The echo-delay pipeline test goes red in the guest when ConPTY prints under 300 KB/s for thirty seconds** — The echo-delay test reads until a byte count or its patience, skips naming cmd's rate when too little printed, and still fails a parser that falls behind.
 - ✅ **QS361** **The tab-strip UI case's typed "first-tab-marker" once reached cmd as "first-tabrmarker"** — Traced to winwright: both typos are WW310's last-character substitution, which its resend cannot repair on a terminal; filed there as WW545, nothing for the client.
+- ✅ **QS364** **The UI cases still work around three winwright gaps that 1.1.2 closed** — The cases name the checkout by {root/}, stage the agent feed and request as written now, and bring the menu bar up by an Alt tap, all on winwright 1.1.2.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

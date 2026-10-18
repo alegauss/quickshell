@@ -34,7 +34,7 @@
        1.1.1 for a fixture that opens an Explorer folder beside the client (WW536) and a step that
        reads the file a drop left there (WW535), so the Explorer drop is a case: QS292. -->
   <ItemGroup>
-    <PackageReference Include="Winwright" Version="1.1.1" />
+    <PackageReference Include="Winwright" Version="1.1.2" />
   </ItemGroup>
 
 </Project>

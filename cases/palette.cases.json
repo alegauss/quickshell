@@ -38,6 +38,13 @@
       "name": "a client whose menu bar can be kept on screen",
       "arguments": ["--tabs", "2"],
       "variables": { "QUICKSHELL_DATA": "{files}" }
+    },
+    {
+      // QS354 again, with the bar at its default: hidden until an Alt tap. A window of its own, so no
+      // case before it has kept the bar on screen and the tap is what brings it up.
+      "name": "a client whose menu bar waits for an Alt tap",
+      "arguments": ["--tabs", "2"],
+      "variables": { "QUICKSHELL_DATA": "{files}" }
     }
   ],
 
@@ -329,8 +336,8 @@
       ]
     },
     {
-      // QS354. The bar is shown the Windows way by an Alt tap, which a case cannot press yet (winwright
-      // WW544), so it is kept on screen from the palette, which is the setting's other way in.
+      // QS354. The bar kept on screen from the palette, which is the setting's other way in; the case
+      // after this one brings it up the Windows way.
       "name": "the menu bar lists every action under headings, and an item in it runs that action",
       "catches": "a menu bar that cannot be brought on screen, a heading that opens on nothing, or an item that does not run the action it names",
       "filed": "QS354",
@@ -389,6 +396,54 @@
           "reads": "name",
           "expect": "Settings",
           "named": "the settings window opens, as its chord and the palette open it"
+        }
+      ]
+    },
+    {
+      // QS354. The Windows way in: Alt pressed and released with nothing between (winwright WW544, in
+      // 1.1.2) shows the hidden bar and puts the keyboard in it.
+      "name": "an Alt tap brings the hidden menu bar up, and an item in it runs its action",
+      "catches": "a bar the Alt key never shows, a tap that shows it without the keyboard in it, or a heading that opens on nothing",
+      "filed": "QS354",
+      "tags": ["palette", "window"],
+      "fixture": "a client whose menu bar waits for an Alt tap",
+
+      "steps": [
+        {
+          "locator": "MenuItem#MenuView",
+          "act": "read",
+          "absent": true,
+          "named": "the bar is hidden at start"
+        },
+        {
+          "locator": "TabItem[order=right]",
+          "act": "press",
+          "with": "Alt",
+          "named": "Alt is tapped"
+        },
+        {
+          "locator": "MenuItem#MenuView",
+          "act": "read",
+          "reads": "name",
+          "expect": "View",
+          "named": "the bar is on screen with its View heading"
+        },
+        {
+          "locator": "MenuItem#MenuView",
+          "act": "expand",
+          "named": "which opens"
+        },
+        {
+          "locator": "MenuItem[name=\"Settings\"]",
+          "act": "invoke",
+          "named": "and Settings is chosen from it"
+        },
+        {
+          "locator": "Window#Settings",
+          "act": "read",
+          "reads": "name",
+          "expect": "Settings",
+          "named": "the settings window opens from the bar the tap showed"
         }
       ]
     }

@@ -2,26 +2,24 @@
   // QS335. What an agent does through the gateway, shown to the person as a tab of its own. The
   // gateway is another process, and writes a feed under the client's data folder; this fixture stages
   // one, a run of two calls as the gateway writes it, and the client opens it at start. The client
-  // opens only feeds written in the last ten minutes, and winwright stages a file with the
-  // modification time it had in the tree unless filling changes it (WW543), so the feed opens with an
-  // OSC no terminal acts on, naming {files}, and is filled: the copy is then written now, and draws
-  // nothing.
+  // opens only feeds written in the last ten minutes, which a staged copy is, being written now
+  // (winwright WW543, in 1.1.2).
 
   "fixtures": [
     {
       "name": "a client whose data folder holds an agent's feed",
       "variables": { "QUICKSHELL_DATA": "{files}" },
       "files": [
-        { "from": "cases/fixtures/agent-feed.vt", "to": "agent-feeds/20261016T000000Z-0c4a1e.vt", "fill": true }
+        { "from": "cases/fixtures/agent-feed.vt", "to": "agent-feeds/20261016T000000Z-0c4a1e.vt" }
       ]
     },
     {
-      // QS337. A request the gateway left for the person: two calls, one on a prod session. Filled for
-      // the same reason as the feed: the window answers requests younger than the gateway's patience.
+      // QS337. A request the gateway left for the person: two calls, one on a prod session. The window
+      // answers requests younger than the gateway's patience, which a copy staged now is.
       "name": "a client with an agent's request waiting for the person",
       "variables": { "QUICKSHELL_DATA": "{files}" },
       "files": [
-        { "from": "cases/fixtures/agent-ask.json", "to": "agent-asks/ui0001.ask.json", "fill": true }
+        { "from": "cases/fixtures/agent-ask.json", "to": "agent-asks/ui0001.ask.json" }
       ]
     },
     {
