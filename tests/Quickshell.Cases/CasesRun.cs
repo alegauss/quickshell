@@ -128,8 +128,8 @@ public sealed class CasesRun
         {
             using ProcessRegister register = ProcessRegister.For(project);
 
-            Nudge();
-
+            // No input before the launch since winwright 1.1.3, which hands the client the
+            // foreground itself (WW549, found by this soak): QS369.
             SuiteVerdict verdict = Suite.Launch(declared, Selection.All, register, project);
             IReadOnlyList<Survivor> survivors = register.StopAll();
 
@@ -173,42 +173,6 @@ public sealed class CasesRun
         TestContext.Current.TestOutputHelper?.WriteLine(summary);
 
         Assert.True(greens == repeat, summary);
-    }
-
-    /// <summary>
-    /// A mouse move of no distance, so the client launched next is let take the foreground.
-    ///
-    /// <para><b>A workaround, filed as winwright WW549; delete it when that ships.</b> On the unattended guest a client
-    /// launched before any synthesised input never comes forward: Program Manager keeps the
-    /// foreground and a case whose first step types is Degraded. In the full run an earlier
-    /// case's input lifts the lock; a soak of one typing case has none before it.</para>
-    /// </summary>
-    private static void Nudge()
-    {
-        Input move = new() { Type = 0, Mouse = new MouseInput { Flags = 0x0001 } };
-
-        _ = SendInput(1, [move], System.Runtime.InteropServices.Marshal.SizeOf<Input>());
-    }
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
-    private static extern uint SendInput(uint count, Input[] inputs, int size);
-
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-    private struct Input
-    {
-        public uint Type;
-        public MouseInput Mouse;
-    }
-
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-    private struct MouseInput
-    {
-        public int Dx;
-        public int Dy;
-        public uint Data;
-        public uint Flags;
-        public uint Time;
-        public nint Extra;
     }
 
     private static bool Reaches(CaseDeclaration declared) => declared.Fixture.Reaches.Count > 0;

@@ -32,9 +32,11 @@
        drops onto another window (WW530), and one run at a time on the guest desk (WW534, from
        QS302): QS303.
        1.1.1 for a fixture that opens an Explorer folder beside the client (WW536) and a step that
-       reads the file a drop left there (WW535), so the Explorer drop is a case: QS292. -->
+       reads the file a drop left there (WW535), so the Explorer drop is a case: QS292.
+       1.1.3 for a launch that hands the started client the foreground itself (WW549, from
+       QS368), so a case soaked alone needs no synthesised input before it: QS369. -->
   <ItemGroup>
-    <PackageReference Include="Winwright" Version="1.1.2" />
+    <PackageReference Include="Winwright" Version="1.1.3" />
   </ItemGroup>
 
 </Project>

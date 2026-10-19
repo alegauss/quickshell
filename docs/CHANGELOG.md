@@ -373,6 +373,7 @@
 - ✅ **QS348** **That a tab's close cross is drawn inside its tab is proven by an in-process render, not by a UI case** — A UI case retitles a tab short and then long and claims its close cross is drawn inside it and not empty, so QS312's geometry is proven in the guest.
 - ✅ **QS349** **Choosing several sidebar rows is proven by automation peers in a unit test, not by a UI case** — A UI case Ctrl+clicks two sessions and a folder, Shift+clicks a range and reads each row chosen; the set they stand for is still read in process.
 - ✅ **QS368** **Winwright 1.1.2's repair of the tab case's typed substitution is unproven, so winwright's WW545 stays blocked** — The tab case passed 300 of 300 guest runs on winwright 1.1.2, the repair firing on two; run-tests-vm -Soak repeats any one case on one build.
+- ✅ **QS369** **The UI cases still carry a synthesised-input workaround for a foreground winwright 1.1.3 now takes itself** — The UI cases run on winwright 1.1.3, which takes the foreground at launch, so the nudge is gone and the tab case soaked alone passed 20 of 20.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
