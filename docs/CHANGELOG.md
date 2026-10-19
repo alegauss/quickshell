@@ -405,3 +405,6 @@
 - ✅ **QS359** **An agent account set up from the session menu cannot be removed from it** — Remove the agent account from the session menu: the removal shown, run in the person's tab under their sudo, and the session's own identity and key forgotten.
 - ✅ **QS360 (the confirmation path, verdict stubbed)** **The agent's certificate authority signs whenever any process of the person's asks, with nobody present** — With agentCertificateHello on, Windows Hello over the window confirms each signing; unconfirmed, nothing is signed and the agent is told why.
 - ✅ **QS363** **The Claude Code plugin names quickshell.exe by its Windows path, which a Claude Code inside WSL2 cannot start** — Install into WSL in Settings finds a distribution's claude and installs a plugin naming quickshell.exe by its /mnt path, measured answering tools/list.
+
+## Block M — The site on the design system
+
