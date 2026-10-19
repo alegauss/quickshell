@@ -16,8 +16,6 @@
 
 ## Block G — The clean interface, defended
 
-- ⏳ **QS257** (deps: QS225 ✅) **There is no full-screen mode, the one window shape whose echoes reach the glass an interval sooner** — Photon has not timed the client's own full-screen pane on the reference desk, so whether its echoes reach the glass as an independent flip is unmeasured. → §QS257
-
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77

@@ -25,6 +25,8 @@
 
 ## Block G — The clean interface, defended
 
+- ⏸ **QS257** (deps: QS225 ✅) **There is no full-screen mode, the one window shape whose echoes reach the glass an interval sooner** — set aside (Needs the operator to clear the host desk.): The mode landed; photon has not timed its pane on the reference desk. → §QS257
+
 ## Block H — The reason to leave the incumbent
 
 - ⏸ **QS78** (deps: QS139 ✅) **Nothing has run for longer than a working session, so a slow leak would reach users first** — set aside (The operator frees the machine for three days.): The 72-hour run, atlas and GPU watched, has not been run: it waits for a machine free for three days. → §QS78
