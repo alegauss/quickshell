@@ -72,7 +72,14 @@ param(
     # commit still owes a whole one. See run-tests.cmd.
     [string[]] $Only,
 
-    [string] $Filter
+    [string] $Filter,
+
+    # One UI case by name, run -Repeat times on one build (QS368): Quickshell.Cases alone, with the
+    # count and each red's reading left in TestResults\vm\guest\soak. A claim that is a count of
+    # runs, such as "300 in a row", is this and not three hundred suites.
+    [string] $Soak,
+
+    [int] $Repeat = 300
 )
 
 Set-StrictMode -Version Latest
@@ -82,6 +89,16 @@ $script:Tool = 'run-tests-vm'
 $script:RepoRoot = Split-Path -Parent $PSScriptRoot
 
 . (Join-Path $PSScriptRoot 'vm-guest.ps1')
+
+if ($Soak) {
+    # The soak is one test that runs for as long as the repeats take, so the per-test hang timeout
+    # and the run's ceiling are sized from the count: about twenty seconds a run, doubled.
+    if (-not $Only) { $Only = @('Quickshell.Cases') }
+    if (-not $Filter) { $Filter = '--filter-method *EveryUiCaseInThisRepositoryRuns' }
+    $minutes = [Math]::Max(10, [int][Math]::Ceiling($Repeat * 40 / 60))
+    if (-not $Hang) { $Hang = "$($minutes)m" }
+    if ($CeilingMinutes -lt $minutes + 20) { $CeilingMinutes = $minutes + 20 }
+}
 
 $vmxPath = Connect-Guest -Vmx $Vmx
 
@@ -164,6 +181,7 @@ $(if ($Hang) { "set `"QUICKSHELL_HANG=$Hang`"" } else { 'rem The hang timeout is
 $(if ($WriteGoldens) { 'set "QUICKSHELL_GOLDEN=write"' } else { 'rem References are only read.' })
 $(if ($Only) { "set `"QUICKSHELL_ONLY=$($Only -join ' ')`"" } else { 'rem Every assembly.' })
 $(if ($Filter) { "set `"QUICKSHELL_FILTER=$Filter`"" } else { 'rem Every test.' })
+$(if ($Soak) { "set `"QUICKSHELL_SOAK_CASE=$Soak`"`r`nset `"QUICKSHELL_SOAK_REPEAT=$Repeat`"" } else { 'rem No soak.' })
 
 cd /d "$script:GuestRepo"
 call "$script:GuestRepo\run-tests.cmd" $Configuration > "$script:GuestSync\vm-run.log" 2>&1

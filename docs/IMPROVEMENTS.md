@@ -420,31 +420,6 @@ both sides' algorithm lists.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS368 The tab case's typing, proven over three hundred runs
-
-QS361 traced the tab case's typos (`first-tabrmarker`, `first-tab-markrr`, two guest
-runs in about twenty) to winwright's last-character substitution and filed it there as
-WW545. Winwright landed the repair on 2026-10-18: a control with Text and no Value, such
-as our terminal, is read as a document, and where the screen carries the substitution of
-what was sent it erases exactly that with Backspace and resends it, up to three times,
-before Enter. It shipped in 1.1.2, which QS364 adopted.
-
-WW545 stays open in winwright, blocked on "a release proven by quickshell", until this
-repository supplies the proof only an adopter can: the case "clicking a tab on the strip
-puts that tab's terminal on screen" in `cases/tabs.cases.json` passing three hundred
-guest runs in a row on 1.1.2, with no substitution reaching the title.
-
-Build it as a guest loop, not a change to the case: an untracked `.cmd` that builds once
-and runs only that case three hundred times through `Quickshell.Cases`, counting greens
-and keeping each red's trace, driven by `run-tests-vm.cmd`. The case's trace names the
-resends the repair needed (winwright WW546), so the run also says how often the repair
-fired, not only whether the title came out right.
-
-Done when the count is 300 of 300. Then ship this line naming the run, and tell
-winwright, whose WW545 ships on that number. A red that still reads a substituted title
-is a winwright defect: file it there with the trace (winwright-friction), and leave this
-line open.
-
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 ### §QS360 Windows Hello in front of the agent authority

@@ -41,7 +41,16 @@ public sealed class CasesRun
     /// observer between two runs fails the run instead of passing it quietly.</para>
     /// </summary>
     [Fact]
-    public void EveryUiCaseInThisRepositoryRuns() => Run(Declared().Where(each => !Reaches(each)).ToList());
+    public void EveryUiCaseInThisRepositoryRuns()
+    {
+        if (Environment.GetEnvironmentVariable("QUICKSHELL_SOAK_CASE") is { Length: > 0 } soaked)
+        {
+            Soak(soaked);
+            return;
+        }
+
+        Run(Declared().Where(each => !Reaches(each)).ToList());
+    }
 
     /// <summary>
     /// The cases whose fixture reaches a server outside the client (QS273, winwright WW522): the
@@ -69,6 +78,137 @@ public sealed class CasesRun
         }
 
         Run(reaching);
+    }
+
+    /// <summary>
+    /// One case, run again and again on one build, for a claim that is a count and not a pass (QS368).
+    ///
+    /// <para><b>Why the suite's own test carries it.</b> A case that goes red in two guest runs of
+    /// twenty is not settled by a green one, and relaunching the whole suite per run would spend an
+    /// hour building what has not changed. <c>QUICKSHELL_SOAK_CASE</c> names the case and
+    /// <c>QUICKSHELL_SOAK_REPEAT</c> how many runs (300 unless given); <c>run-tests-vm.cmd -Soak</c>
+    /// sets both. Each red keeps its whole reading in <c>TestResults\soak</c>, and the summary there
+    /// says how many runs needed a resend to land their typing (winwright WW546), so the count says
+    /// how often a repair fired and not only whether the title came out right.</para>
+    /// </summary>
+    private static void Soak(string name)
+    {
+        int repeat = int.TryParse(Environment.GetEnvironmentVariable("QUICKSHELL_SOAK_REPEAT"), out int asked) && asked > 0
+            ? asked
+            : 300;
+
+        List<CaseDeclaration> declared = [.. Declared().Where(each => each.Name == name)];
+
+        Assert.True(declared.Count == 1, $"QUICKSHELL_SOAK_CASE names {declared.Count} declared cases, not one: {name}");
+
+        Desk desk = Desk.Read();
+
+        if (!desk.CanObserve)
+        {
+            Assert.Skip($"the soak did not run: this desk lacks {desk.FirstAbsent!.Name}");
+        }
+
+        ProjectDeclaration project = ForThisBuild(Repository.Root);
+
+        string folder = Path.Combine(Repository.Root, "TestResults", "soak");
+
+        if (Directory.Exists(folder))
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+
+        Directory.CreateDirectory(folder);
+
+        int greens = 0;
+        int repaired = 0;
+        int resends = 0;
+        List<int> reds = [];
+
+        for (int run = 1; run <= repeat; run++)
+        {
+            using ProcessRegister register = ProcessRegister.For(project);
+
+            Nudge();
+
+            SuiteVerdict verdict = Suite.Launch(declared, Selection.All, register, project);
+            IReadOnlyList<Survivor> survivors = register.StopAll();
+
+            // A typing step that needed resends says so in its detail, in Substitution.Repaired's words.
+            int sent = verdict.Ran.SelectMany(each => each.Trace)
+                .Select(step => System.Text.RegularExpressions.Regex.Match(step.Detail ?? string.Empty, @"after (\d+) resends? "))
+                .Where(match => match.Success)
+                .Sum(match => int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture));
+
+            if (sent > 0)
+            {
+                repaired++;
+                resends += sent;
+            }
+
+            bool green = verdict.Ran.Count == 1 && verdict.Outcome == RunOutcome.Passed
+                         && verdict.ExitCode == 0 && survivors.Count == 0;
+
+            if (green)
+            {
+                greens++;
+                continue;
+            }
+
+            reds.Add(run);
+
+            // Read carries the trace of an unhappy case; a green case that left a survivor needs its own.
+            IEnumerable<string> trace = verdict.Unhappy.Any()
+                ? []
+                : verdict.Ran.SelectMany(each => each.Trace.Select(one => $"  trace     {one}"));
+
+            File.WriteAllText(Path.Combine(folder, $"red-{run:000}.txt"), string.Join(Environment.NewLine,
+                [Read(verdict), .. trace, .. survivors.Select(each => $"survivor  {each}")]));
+        }
+
+        string summary = $"soak: {greens} of {repeat} runs of \"{name}\" passed; "
+                         + $"{repaired} needed a resend to land their typing ({resends} resends in all)"
+                         + (reds.Count > 0 ? $"; red runs: {string.Join(", ", reds)}" : string.Empty);
+
+        File.WriteAllText(Path.Combine(folder, "soak.txt"), summary + Environment.NewLine);
+        TestContext.Current.TestOutputHelper?.WriteLine(summary);
+
+        Assert.True(greens == repeat, summary);
+    }
+
+    /// <summary>
+    /// A mouse move of no distance, so the client launched next is let take the foreground.
+    ///
+    /// <para><b>A workaround, filed as winwright WW549; delete it when that ships.</b> On the unattended guest a client
+    /// launched before any synthesised input never comes forward: Program Manager keeps the
+    /// foreground and a case whose first step types is Degraded. In the full run an earlier
+    /// case's input lifts the lock; a soak of one typing case has none before it.</para>
+    /// </summary>
+    private static void Nudge()
+    {
+        Input move = new() { Type = 0, Mouse = new MouseInput { Flags = 0x0001 } };
+
+        _ = SendInput(1, [move], System.Runtime.InteropServices.Marshal.SizeOf<Input>());
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern uint SendInput(uint count, Input[] inputs, int size);
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct Input
+    {
+        public uint Type;
+        public MouseInput Mouse;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct MouseInput
+    {
+        public int Dx;
+        public int Dy;
+        public uint Data;
+        public uint Flags;
+        public uint Time;
+        public nint Extra;
     }
 
     private static bool Reaches(CaseDeclaration declared) => declared.Fixture.Reaches.Count > 0;
