@@ -29,6 +29,8 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
+- 📋 **QS368** (deps: —) **Winwright 1.1.2's repair of the tab case's typed substitution is unproven, so winwright's WW545 stays blocked** — Only an adopter can supply the proof WW545 waits on: the tab case passing 300 guest runs in a row on 1.1.2. → §QS368
+
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 ## Done when — Block A
