@@ -40,7 +40,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore the corpus
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: artifacts/fuzz/corpus
           key: fuzz-corpus-${{ github.run_id }}
@@ -64,7 +64,7 @@ jobs:
 
       - name: Keep the corpus
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: artifacts/fuzz/corpus
           key: fuzz-corpus-${{ github.run_id }}
