@@ -27,6 +27,8 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
+- 📋 **QS372** (deps: —) **run-commit.cmd given paths still commits whatever another session had already staged** — It runs git add on the paths and then a bare git commit, which takes the whole index, so QS371's commit carried another session's site deletions until it was redone. → §QS372
+
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 ## Block M — The site on the design system

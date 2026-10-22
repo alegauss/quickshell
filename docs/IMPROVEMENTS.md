@@ -420,6 +420,21 @@ both sides' algorithm lists.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
+### §QS372 A path-scoped commit that takes the whole index
+
+run-commit.cmd with `-- <paths>` runs `git add -- <paths>` and then `git commit -m`,
+with no paths on the commit. git commits the index, not the paths just added, so
+anything already staged goes into the commit too. In this repository that is often
+another session's work: QS371 was committed while a session working on the site (QS370)
+had seven deletions and a rename staged, and the commit carried all of them under
+QS371's id. It was caught only because `git log -1 --stat` listed files the task never
+touched. It was redone with `git reset --soft` and `git commit --only -- <paths>`, which
+left the other session's index as it was.
+
+The fix is to pass the same pathspec to the commit, `git commit --only -m ... --
+<paths>`, so the commit holds exactly those paths whatever else is staged. When no paths
+are given, the script keeps its current behaviour and stages the whole tree.
+
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 ### §QS360 Windows Hello in front of the agent authority
