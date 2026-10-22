@@ -1,15 +1,14 @@
+<div align="center">
+
+<img src="site/public/logo.svg" alt="quickshell logo" width="120">
+
 # quickshell
 
-**SSH on Windows, without the suite around it.** A free SSH client for Windows 10 and 11 that
-does the part of MobaXterm most people open it for (sessions, keys, SFTP, tunnels, tabs and
-split panes) and leaves out the X server, the Cygwin userland and the rest of the bundle.
+**SSH on Windows, without the suite around it: sessions, keys, SFTP, tunnels, tabs and split panes, free and MIT, with your MobaXterm sessions imported in one command.**
 
-The terminal is drawn on the GPU (Direct3D 11 and DirectWrite, the whole grid in one draw call),
-and a window with nothing happening in it draws nothing at all. Every performance claim in this
-repository has a measurement behind it, with the machine, the date and the command that
-produced it.
+Windows 10 and 11 · no account, no telemetry, no update check · pre-release 0.1.0
 
-[Website](https://alegauss.github.io/quickshell/) ·
+**[alegauss.github.io/quickshell](https://alegauss.github.io/quickshell/)** ·
 [Install](docs/INSTALL.md) ·
 [Switching from MobaXterm](docs/SWITCHING.md) ·
 [Sessions](docs/SESSIONS.md) ·
@@ -18,10 +17,33 @@ produced it.
 [Performance budget](docs/PERFORMANCE.md) ·
 [Roadmap](docs/ROADMAP.md)
 
-> **Status: pre-release, version 0.1.0.** No release has been published yet. The SSH client,
-> SFTP, port forwards, tabs, split panes and the MobaXterm/PuTTY importers work today; the
-> installer is not signed yet, so Windows SmartScreen warns on first start. What is done and
-> what is still open is in the [roadmap](docs/ROADMAP.md) and the [changelog](docs/CHANGELOG.md).
+</div>
+
+quickshell does the part of MobaXterm most people open it for and leaves out the X server, the
+Cygwin userland and the rest of the bundle. The terminal is drawn on the GPU (Direct3D 11 and
+DirectWrite, the whole grid in one draw call), and a window with nothing happening in it draws
+nothing at all. Every performance claim in this repository has a measurement behind it, with the
+machine, the date and the command that produced it.
+
+## Install
+
+> **No release has been published yet.** The SSH client, SFTP, port forwards, tabs, split panes
+> and the MobaXterm/PuTTY importers work today. The installer is not signed yet, so Windows
+> SmartScreen warns on first start. What is done and what is still open is in the
+> [roadmap](docs/ROADMAP.md) and the [changelog](docs/CHANGELOG.md).
+
+Until the first release:
+
+- **Build it**: needs Windows x64 and the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+  `run-tests.cmd` builds everything and runs the tests; `run.cmd Release` builds the client and
+  starts it.
+- **CI builds** an unsigned `quickshell-<version>-win-x64.zip` on every push, kept for five days
+  under the workflow run's artifacts.
+
+The archive carries its own .NET runtime. Unzip it anywhere and it runs as a portable copy, or
+install it for yourself with `quickshell.exe --install` (no administrator prompt) or for every
+user with `--install --all-users`. [INSTALL.md](docs/INSTALL.md) lists everything it does to
+your machine, which is not much.
 
 ## Coming from MobaXterm
 
@@ -130,21 +152,6 @@ sitting, the comparison holds better than either number on its own.
 - **Diagnostics.** Connection traces, a crash report that tells you where it is, and a
   diagnostics bundle for bug reports. Nothing leaves your machine on its own: no telemetry, no
   update check, no account.
-
-## Install
-
-There is no release yet. Until there is one:
-
-- **Build it**: needs Windows x64 and the [.NET 10 SDK](https://dotnet.microsoft.com/download).
-  `run-tests.cmd` builds everything and runs the tests; `run.cmd Release` builds the client and
-  starts it.
-- **CI builds** an unsigned `quickshell-<version>-win-x64.zip` on every push, kept for five days
-  under the workflow run's artifacts.
-
-The archive carries its own .NET runtime. Unzip it anywhere and it runs as a portable copy, or
-install it for yourself with `quickshell.exe --install` (no administrator prompt) or for every
-user with `--install --all-users`. [INSTALL.md](docs/INSTALL.md) lists everything it does to
-your machine, which is not much.
 
 ## How this repository works
 
