@@ -1,18 +1,28 @@
 @import "tailwindcss";
+/* The ground, the chrome and the type come from the design system (QS370): tokens.css is the
+   preset as plain custom properties, keyed by data-tone="cool" on <html> and data-theme for
+   the mode, and site.css styles the nav, hero, section heads, buttons, sponsor and footer. */
+@import "@viglet/viglet-design-system/tokens.css";
+@import "@viglet/viglet-design-system/site.css";
 
 /* ============================================================================
-   Design tokens. The palette is light-first on bare :root; the dark values are
-   redefined under prefers-color-scheme (guarded so an explicit light toggle wins)
-   and again under [data-theme="dark"] so the toggle wins in both directions.
+   The product's own colours. Everything else on this page reads a --vg-* token.
 
-   Two families of colour:
-   - brand constants (--iris*) do not change with the theme;
-   - surface and accent tokens swap, so the page chrome inverts while the embedded
-     terminals keep the dark palette a terminal actually has.
+   The brand is re-keyed from the cool tone's orange to the hub's accent for
+   Quickshell, iris (124,92,245, bright #a78bfa, projects.json), so the buttons,
+   the headline gradient, the eyebrows and the glow all speak it. The button and
+   the badge keep the iris constants in both themes, as they did before the move.
+
+   The local names below (--bg, --panel, --text, --accent...) are what the
+   product sections were written against; each now reads the design system's
+   token, so a section follows the shared ground without being rewritten.
 
    The terminals on this page are always dark and never follow the toggle. A
    screenshot that inverts with the page is a screenshot of nothing: this client
    draws its own grid, and what it draws is what those blocks show.
+
+   The design system's pre-paint script always sets data-theme, so the dark
+   values key on that attribute alone, as the preset's do.
    ============================================================================ */
 
 :root {
@@ -21,35 +31,37 @@
   --iris-bright: #a78bfa;
   --iris-deep: #4c35b8;
 
-  /* surfaces, light */
-  --bg: #f8f7fd;
-  --bg-2: #efedf9;
-  --panel: #ffffff;
-  --panel-2: #f5f3fc;
-  --line: #ded9f0;
-  --text: #14102a;
-  --muted: #4c4668;
-  --muted-2: #635c80;
+  /* the brand, re-keyed from the cool tone's orange to iris */
+  --vg-brand: #5b3fd6;
+  --vg-brand-dark: var(--iris-deep);
+  --vg-brand-light: var(--iris);
+  --vg-brand-lighter: var(--iris-bright);
+  --vg-brand-bg: rgba(124, 92, 245, 0.12);
+  --vg-brand-mid: rgba(124, 92, 245, 0.18);
+  --vg-brand-border: rgba(124, 92, 245, 0.35);
+  --vg-brand-on: #ede7ff;
+  /* the headline gradient, deepened in light so the bright end stays legible */
+  --vg-gradient: linear-gradient(120deg, var(--iris), var(--iris-deep) 55%, #3a2691);
 
-  /* accent as text, tuned for contrast on the current surface */
-  --accent: #5b3fd6;
+  /* the names the product sections read, on the shared ground */
+  --bg: var(--vg-background);
+  --bg-2: var(--vg-muted);
+  --panel: var(--vg-card);
+  --panel-2: var(--vg-muted);
+  --line: var(--vg-border);
+  --text: var(--vg-foreground);
+  --muted: var(--vg-muted-foreground);
+  --muted-2: var(--vg-muted-foreground);
+  --accent: var(--vg-brand);
   --accent-strong: #4a30bd;
-
-  /* the hero gradient, deepened in light so the bright end stays legible */
-  --grad-1: var(--iris);
-  --grad-2: var(--iris-deep);
-  --grad-3: #3a2691;
+  --radius: var(--vg-radius-panel);
+  --maxw: var(--vg-site-max-width);
 
   /* verdicts, as text */
   --pass: #1a7f37;
   --warn: #8a6100;
   --off: #5f5a72;
   --red: #c9353a;
-
-  /* chrome */
-  --nav-bg: rgba(248, 247, 253, 0.78);
-  --glow-1: rgba(124, 92, 245, 0.1);
-  --glow-2: rgba(124, 92, 245, 0.05);
 
   /* the cell band, back layer to front: the grid this client draws, taken down until it
      sits on the page as scenery. Scenery that outshines the copy is a bug. */
@@ -58,73 +70,19 @@
   --cell-3: #9781e8;
   --cell-caret: #7c5cf5;
 
-  --radius: 18px;
-  --maxw: 1120px;
-
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0c0a1a;
-    --bg-2: #110e24;
-    --panel: #171331;
-    --panel-2: #1f1a41;
-    --line: #2f2857;
-    --text: #ece9fb;
-    --muted: #a9a2cc;
-    --muted-2: #8a82b3;
-
-    --accent: #9b87fc;
-    --accent-strong: #b8a6ff;
-
-    --grad-1: var(--iris-bright);
-    --grad-2: var(--iris);
-    --grad-3: var(--iris-deep);
-
-    --pass: #2ea043;
-    --warn: #d29a00;
-    --off: #8b87a4;
-    --red: #e5484d;
-
-    --nav-bg: rgba(12, 10, 26, 0.74);
-    --glow-1: rgba(124, 92, 245, 0.22);
-    --glow-2: rgba(124, 92, 245, 0.1);
-
-    --cell-1: #2b2358;
-    --cell-2: #372c6e;
-    --cell-3: #453885;
-    --cell-caret: #7c5cf5;
-
-    color-scheme: dark;
-  }
-}
-
 :root[data-theme="dark"] {
-  --bg: #0c0a1a;
-  --bg-2: #110e24;
-  --panel: #171331;
-  --panel-2: #1f1a41;
-  --line: #2f2857;
-  --text: #ece9fb;
-  --muted: #a9a2cc;
-  --muted-2: #8a82b3;
+  --vg-brand: #9b87fc;
+  --vg-gradient: linear-gradient(120deg, var(--iris-bright), var(--iris) 55%, var(--iris-deep));
 
-  --accent: #9b87fc;
   --accent-strong: #b8a6ff;
-
-  --grad-1: var(--iris-bright);
-  --grad-2: var(--iris);
-  --grad-3: var(--iris-deep);
 
   --pass: #2ea043;
   --warn: #d29a00;
   --off: #8b87a4;
   --red: #e5484d;
-
-  --nav-bg: rgba(12, 10, 26, 0.74);
-  --glow-1: rgba(124, 92, 245, 0.22);
-  --glow-2: rgba(124, 92, 245, 0.1);
 
   --cell-1: #2b2358;
   --cell-2: #372c6e;
@@ -146,319 +104,59 @@
 html {
   scroll-behavior: smooth;
 }
-body {
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
-a {
-  color: inherit;
-  text-decoration: none;
-}
 code,
 kbd {
-  font-family:
-    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-.wrap {
-  max-width: var(--maxw);
-  margin: 0 auto;
-  padding: 0 24px;
-}
-.wrap.narrow {
-  max-width: 820px;
+  font-family: var(--vg-font-mono);
 }
 
-/* ambient background glow */
-body::before {
-  content: "";
+/* ---------- the shared chrome, where this product departs from it ---------- */
+
+/* the bottom padding is the cell band's room: the grid closes the hero, and the pills
+   would otherwise stand in it */
+.vg-site-hero {
+  padding-bottom: 152px;
+}
+/* No border-top: the cell band is the seam, and a rule drawn a few pixels above it reads as
+   a divider somebody forgot to take out. The top padding is the band's room. */
+.vg-site-footer {
+  padding-top: 96px;
+  border-top: 0;
+}
+.vg-site-disclaimer code {
+  color: var(--accent-strong);
+}
+.consent-settings {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--vg-brand);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.consent {
   position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(900px 500px at 80% -5%, var(--glow-1), transparent 60%),
-    radial-gradient(700px 600px at -10% 20%, var(--glow-2), transparent 55%),
-    linear-gradient(180deg, var(--bg), var(--bg-2));
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 60;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 18px 20px;
+  border: 1px solid var(--vg-border);
+  border-radius: var(--vg-radius-panel);
+  background: var(--vg-card);
+  color: var(--vg-foreground);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.45);
+  font-size: 0.92rem;
 }
-
-/* ---------- nav ---------- */
-nav {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  background: var(--nav-bg);
-  border-bottom: 1px solid var(--line);
-}
-nav .wrap {
+.consent-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 64px;
-  gap: 16px;
-}
-.nav-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex: 0 0 auto;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 800;
-  font-size: 1.05rem;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-/* The mark carries its own silhouette, so it is sized by height and left to find its width.
-   A square box and a corner radius belong to a tile, which this is not. */
-.brand img {
-  height: 30px;
-  width: auto;
-  flex: 0 0 auto;
-}
-.parent {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-  padding: 7px 13px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
-}
-.parent b {
-  color: var(--text);
-  font-weight: 600;
-}
-.parent svg {
-  width: 12px;
-  height: 12px;
-  color: var(--muted-2);
-  transition: transform 0.2s, color 0.2s;
-}
-.parent:hover {
-  background: var(--panel);
-  border-color: var(--iris);
-  color: var(--text);
-}
-.parent:hover svg {
-  color: var(--iris);
-  transform: translate(1.5px, -1.5px);
-}
-/* "part of" is the most decorative 40px in the row, so it goes first when the row is tight */
-@media (max-width: 1240px) {
-  .parent .pre {
-    display: none;
-  }
-}
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-}
-.nav-links a:not(.btn) {
-  color: var(--muted);
-  font-weight: 500;
-  font-size: 0.95rem;
-  transition: color 0.2s;
-  /* a two-word label is one item, not two: without this the row's height is set by the
-     narrowest label rather than by its content */
-  white-space: nowrap;
-}
-.nav-links a:not(.btn):hover {
-  color: var(--text);
-}
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 11px 20px;
-  border-radius: 11px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.btn-primary {
-  background: linear-gradient(135deg, var(--iris), var(--iris-deep));
-  color: #fff;
-  box-shadow: 0 8px 24px -8px rgba(124, 92, 245, 0.7);
-}
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 32px -10px rgba(124, 92, 245, 0.85);
-}
-.btn-ghost {
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--line);
-}
-.btn-ghost:hover {
-  background: var(--panel-2);
-  transform: translateY(-2px);
-}
-/* Below 1180px the labels go and the buttons stay: a reader who cannot reach the download
-   has lost more than one who cannot reach an anchor. Above it the gap tightens first, so
-   there is a band that keeps everything rather than dropping straight to the buttons. */
-@media (max-width: 1240px) {
-  .nav-links {
-    gap: 16px;
-  }
-}
-@media (max-width: 1180px) {
-  .nav-links a:not(.btn) {
-    display: none;
-  }
-}
-
-/* theme toggle */
-.theme-toggle {
-  display: inline-grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 auto;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  color: var(--muted);
-  cursor: pointer;
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
-}
-.theme-toggle:hover {
-  color: var(--text);
-  border-color: var(--iris);
-}
-.theme-toggle svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* ---------- hero ---------- */
-.hero {
-  /* the bottom padding is the cell band's room: the grid closes the hero, and the pills
-     would otherwise stand in it */
-  padding: 84px 0 152px;
-  text-align: center;
-  position: relative;
-}
-.hero .wrap {
-  position: relative;
-  z-index: 1;
-}
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 15px;
-  border-radius: 999px;
-  background: rgba(124, 92, 245, 0.12);
-  border: 1px solid rgba(124, 92, 245, 0.35);
-  color: var(--accent);
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  margin-bottom: 28px;
-}
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--iris);
-  box-shadow: 0 0 10px var(--iris);
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-.hero h1 {
-  font-size: clamp(2.6rem, 6.5vw, 4.6rem);
-  line-height: 1.04;
-  font-weight: 900;
-  letter-spacing: -0.035em;
-  margin-bottom: 22px;
-}
-.hero h1 .grad {
-  background: linear-gradient(120deg, var(--grad-1), var(--grad-2) 55%, var(--grad-3));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.hero p.sub {
-  font-size: clamp(1.05rem, 2.2vw, 1.32rem);
-  color: var(--muted);
-  max-width: 720px;
-  margin: 0 auto 36px;
-  line-height: 1.55;
-}
-.hero-cta {
-  display: flex;
-  gap: 14px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.hero-meta {
-  display: flex;
-  gap: 22px;
-  justify-content: center;
-  flex-wrap: wrap;
-  color: var(--muted-2);
-  font-size: 0.85rem;
-  margin-top: 8px;
-}
-.hero-meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.pills {
-  display: flex;
+  justify-content: flex-end;
   gap: 10px;
-  justify-content: center;
+  margin-top: 14px;
   flex-wrap: wrap;
-  margin-top: 34px;
-}
-.pill {
-  padding: 8px 14px;
-  border-radius: 10px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  font-size: 0.82rem;
-  color: var(--muted);
-  font-weight: 500;
-}
-.pill b {
-  color: var(--text);
-}
-/* A box-shadow follows the element's box rather than the artwork's outline, so it would
-   hang a rectangle behind a shape that has none. drop-shadow filters the alpha channel
-   instead, and traces the mark. */
-.hero-icon {
-  height: 96px;
-  width: auto;
-  margin: 0 auto 30px;
-  display: block;
-  filter: drop-shadow(0 18px 30px rgba(43, 30, 95, 0.4));
 }
 
 /* ============================================================================
@@ -562,7 +260,7 @@ nav .wrap {
   mask-image: linear-gradient(to top, #000 0 62%, transparent 100%);
 }
 @media (max-width: 600px) {
-  .hero {
+  .vg-site-hero {
     padding-bottom: 112px;
   }
   .cells {
@@ -577,33 +275,6 @@ nav .wrap {
 section {
   padding: 72px 0;
   position: relative;
-}
-.sec-head {
-  text-align: center;
-  max-width: 720px;
-  margin: 0 auto 52px;
-}
-.eyebrow {
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-}
-.sec-head h2 {
-  font-size: clamp(1.9rem, 4vw, 2.7rem);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.12;
-  margin-bottom: 16px;
-}
-.sec-head p {
-  color: var(--muted);
-  font-size: 1.05rem;
-}
-.sec-head code {
-  color: var(--accent-strong);
 }
 
 /* ---------- feature grid ---------- */
@@ -1029,200 +700,6 @@ figcaption code {
   font-family: inherit;
   white-space: nowrap;
 }
-.copy-btn {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  background: #1f1a41;
-  border: 1px solid #2f2857;
-  color: #a9a2cc;
-  font-family: "Inter", sans-serif;
-  font-size: 0.8rem;
-  font-weight: 600;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
-}
-.copy-btn:hover {
-  background: #7c5cf5;
-  color: #fff;
-  border-color: #7c5cf5;
-}
-.copy-btn.copied {
-  background: rgba(46, 160, 67, 0.2);
-  color: #7ee6a0;
-  border-color: rgba(46, 160, 67, 0.5);
-}
-
-/* ---------- footer ---------- */
-footer {
-  /* no border-top: the cell band is the seam, and a rule drawn a few pixels above it reads
-     as a divider someone forgot to take out */
-  padding: 96px 0 38px;
-  margin-top: 30px;
-  position: relative;
-  overflow: hidden;
-}
-footer .wrap {
-  position: relative;
-  z-index: 1;
-}
-.foot-grid {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-.foot-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 800;
-}
-.foot-brand img {
-  height: 28px;
-  width: auto;
-}
-.foot-links {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-.foot-links a {
-  color: var(--muted);
-  font-size: 0.9rem;
-  transition: color 0.2s;
-}
-.foot-links a:hover {
-  color: var(--accent);
-}
-.disclaimer {
-  color: var(--muted-2);
-  font-size: 0.8rem;
-  margin-top: 22px;
-  text-align: center;
-  max-width: 820px;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.6;
-}
-.disclaimer code {
-  color: var(--accent-strong);
-}
-
-/* ---------- sponsor block ----------
-   Mirrors alegauss.github.io/sponsor.json. Sits between the footer links and the
-   disclaimer. Product tiles keep a white plate under the logo so the marks render as
-   published in both themes, never recoloured to fit this palette. */
-.sponsor {
-  margin-top: 30px;
-  padding-top: 26px;
-  border-top: 1px solid var(--line);
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-}
-.sponsor-mark {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  background: #fff;
-  padding: 3px;
-  flex: none;
-}
-.sponsor-body {
-  min-width: 0;
-}
-.sponsor-label {
-  display: block;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted-2);
-}
-.sponsor-name {
-  display: block;
-  margin-top: 2px;
-  font-weight: 800;
-  font-size: 1.02rem;
-  letter-spacing: -0.01em;
-  color: var(--text);
-  text-decoration: none;
-}
-.sponsor-name:hover {
-  color: var(--accent);
-}
-.sponsor-body p {
-  margin-top: 6px;
-  max-width: 640px;
-  color: var(--muted);
-  font-size: 0.88rem;
-  line-height: 1.6;
-}
-.sponsor-body p a {
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.sponsor-products {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 14px;
-}
-.sponsor-product {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 14px 9px 10px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel);
-  color: var(--text);
-  text-decoration: none;
-  transition: border-color 0.2s, transform 0.15s ease;
-}
-.sponsor-product:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
-}
-.sponsor-product img {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: #fff;
-  padding: 2px;
-  flex: none;
-}
-.sponsor-product b {
-  display: block;
-  font-size: 0.86rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-.sponsor-product small {
-  display: block;
-  max-width: 280px;
-  color: var(--muted-2);
-  font-size: 0.76rem;
-  line-height: 1.45;
-}
-@media (max-width: 620px) {
-  .sponsor {
-    flex-direction: column;
-  }
-  .sponsor-product {
-    width: 100%;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sponsor-product:hover {
-    transform: none;
-  }
-}
 
 /* reveal on scroll: this animates its own opacity, it never moves the window */
 .reveal {
@@ -1240,7 +717,6 @@ footer .wrap {
     transform: none;
     transition: none;
   }
-  .dot,
   .cell-drift,
   .cell-caret,
   .term .cur {

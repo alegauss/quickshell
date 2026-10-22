@@ -1,16 +1,14 @@
 import { shell } from "../../lib/site-content";
-import { Rich } from "../ui/Rich";
+import { SiteRich as Rich, SiteSectionHead } from "@viglet/viglet-design-system/site";
 
 export function Shell() {
   return (
     <section id="shell">
-      <div className="wrap">
-        <div className="sec-head reveal">
-          <div className="eyebrow">{shell.eyebrow}</div>
-          <h2>{shell.heading}</h2>
-          <p>
+      <div className="vg-site-wrap">
+        <div className="reveal">
+          <SiteSectionHead eyebrow={shell.eyebrow} title={shell.heading}>
             <Rich runs={shell.intro} />
-          </p>
+          </SiteSectionHead>
         </div>
         <ul className="feat-list two reveal">
           {shell.points.map(([lead, rest]) => (

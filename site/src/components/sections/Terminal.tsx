@@ -1,19 +1,17 @@
 import { terminal } from "../../lib/site-content";
 import { protocolTerminal } from "../../lib/diagrams";
-import { Rich } from "../ui/Rich";
+import { SiteRich as Rich, SiteSectionHead } from "@viglet/viglet-design-system/site";
 
 // The emulator. Reversed against the section above it, so the two figures do not stack down
 // one column of the page.
 export function Terminal() {
   return (
     <section id="terminal">
-      <div className="wrap">
-        <div className="sec-head reveal">
-          <div className="eyebrow">{terminal.eyebrow}</div>
-          <h2>{terminal.heading}</h2>
-          <p>
+      <div className="vg-site-wrap">
+        <div className="reveal">
+          <SiteSectionHead eyebrow={terminal.eyebrow} title={terminal.heading}>
             <Rich runs={terminal.intro} />
-          </p>
+          </SiteSectionHead>
         </div>
         <div className="split rev">
           <div className="split-txt reveal">

@@ -1,18 +1,16 @@
 import { transfer } from "../../lib/site-content";
-import { Rich } from "../ui/Rich";
+import { SiteRich as Rich, SiteSectionHead } from "@viglet/viglet-design-system/site";
 
 // Files and ports in one section, because they are the same claim twice: a channel on the
 // session you already authenticated, rather than a second connection wearing a second name.
 export function Transfer() {
   return (
     <section id="transfer">
-      <div className="wrap">
-        <div className="sec-head reveal">
-          <div className="eyebrow">{transfer.eyebrow}</div>
-          <h2>{transfer.heading}</h2>
-          <p>
+      <div className="vg-site-wrap">
+        <div className="reveal">
+          <SiteSectionHead eyebrow={transfer.eyebrow} title={transfer.heading}>
             <Rich runs={transfer.intro} />
-          </p>
+          </SiteSectionHead>
         </div>
         <div className="split">
           {[transfer.files, transfer.ports].map((column) => (

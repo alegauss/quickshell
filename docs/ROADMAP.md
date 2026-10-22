@@ -31,10 +31,6 @@
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
-## Block M — The site on the design system
-
-- 📋 **QS370** (deps: viglet-design-system: VDS213–VDS215, claude-tray: T389) **The site keeps its own copy of the template that eight product sites share** — The shared Nav, Hero, Footer and sponsor slot drift apart in each copy, and the design system now carries them once. → §QS370
-
 ## Done when — Block A
 
 - **A session survives a sixty-second link outage** Settled by the reconnect soak: a

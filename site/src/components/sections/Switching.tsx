@@ -1,16 +1,14 @@
 import { switching } from "../../lib/site-content";
-import { Rich } from "../ui/Rich";
+import { SiteRich as Rich, SiteSectionHead } from "@viglet/viglet-design-system/site";
 
 export function Switching() {
   return (
     <section id="switching">
-      <div className="wrap">
-        <div className="sec-head reveal">
-          <div className="eyebrow">{switching.eyebrow}</div>
-          <h2>{switching.heading}</h2>
-          <p>
+      <div className="vg-site-wrap">
+        <div className="reveal">
+          <SiteSectionHead eyebrow={switching.eyebrow} title={switching.heading}>
             <Rich runs={switching.intro} />
-          </p>
+          </SiteSectionHead>
         </div>
         <div className="steps">
           {switching.steps.map((step, i) => (

@@ -1,18 +1,16 @@
 import { numbers } from "../../lib/site-content";
-import { Rich } from "../ui/Rich";
+import { SiteRich as Rich, SiteSectionHead } from "@viglet/viglet-design-system/site";
 
 // The performance budget, as six tiles. The figure is the headline and the method is the
 // body, because a figure quoted without the run that produced it is not a measurement.
 export function Numbers() {
   return (
     <section id="numbers">
-      <div className="wrap">
-        <div className="sec-head reveal">
-          <div className="eyebrow">{numbers.eyebrow}</div>
-          <h2>{numbers.heading}</h2>
-          <p>
+      <div className="vg-site-wrap">
+        <div className="reveal">
+          <SiteSectionHead eyebrow={numbers.eyebrow} title={numbers.heading}>
             <Rich runs={numbers.intro} />
-          </p>
+          </SiteSectionHead>
         </div>
         <div className="figures">
           {numbers.figures.map((figure) => (

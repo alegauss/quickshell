@@ -1,19 +1,17 @@
 import { session } from "../../lib/site-content";
 import { sessionTerminal } from "../../lib/diagrams";
-import { Rich } from "../ui/Rich";
+import { SiteRich as Rich, SiteSectionHead } from "@viglet/viglet-design-system/site";
 
 // The connection, and what happens when it fails. The terminal beside the list is the point
 // of the section: both of these are failures, and neither of them is an exception dialog.
 export function Session() {
   return (
     <section id="session">
-      <div className="wrap">
-        <div className="sec-head reveal">
-          <div className="eyebrow">{session.eyebrow}</div>
-          <h2>{session.heading}</h2>
-          <p>
+      <div className="vg-site-wrap">
+        <div className="reveal">
+          <SiteSectionHead eyebrow={session.eyebrow} title={session.heading}>
             <Rich runs={session.intro} />
-          </p>
+          </SiteSectionHead>
         </div>
         <div className="split">
           <div className="split-txt reveal">

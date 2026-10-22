@@ -488,31 +488,3 @@ A second run, after the client's version changes and before the plugin is instal
 again, should show the gateway refusing with its message in `claude mcp list`.
 
 Proven by the audit log holding that `exec`, its exit code and the session it ran on.
-
-## Block M — The site on the design system
-
-### §QS370 The site on the design system's shared template
-
-site/ carries its own copy of the template the eight React product sites share:
-components/Nav.tsx and Footer.tsx, sections/Hero.tsx and NonGoals.tsx, and ui/Rich.tsx
-and ThemeToggle.tsx, with lib/theme.ts behind them. scripts/prerender.mjs and
-scripts/og-image.mjs are the build's copies of the same two steps. The tokens live in
-src/index.css, with --iris, --iris-bright and --iris-deep as the brand constants. It has
-no Ad slot, feature index or feature page, so whether it takes the sponsor slot `./site`
-carries is decided in the commit, not assumed.
-
-The move follows claude-tray's pilot, T389. The page takes `data-tone="cool"` because
-its ground is already cool: #f8f7fd in light and #0c0a1a in dark, both violet. The
-accent comes from projects.json, `124,92,245` with `#a78bfa` as the bright step, the
---iris pair. Shared components come from `./site`; ui/Cells.tsx, the product sections
-and the terminals, which stay dark in both themes, stay local. The build calls the
-`./vite` prerender and OG-card helpers in place of the two scripts. The Google tag in
-index.html loads only after consent, as the hub's AG1.
-
-Done when:
-
-- site/src holds none of the files `./site` provides.
-- The prerendered HTML of every route holds the same text as before.
-- Light and dark screenshots of each route are compared before and after, and the commit
-  lists every difference.
-- The site appears in the design system's consumers.json.

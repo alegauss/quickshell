@@ -1,16 +1,14 @@
 import { nonGoals } from "../../lib/site-content";
-import { Rich } from "../ui/Rich";
+import { SiteRich as Rich, SiteSectionHead } from "@viglet/viglet-design-system/site";
 
 export function NonGoals() {
   return (
     <section id="non-goals">
-      <div className="wrap">
-        <div className="sec-head reveal">
-          <div className="eyebrow">{nonGoals.eyebrow}</div>
-          <h2>{nonGoals.heading}</h2>
-          <p>
+      <div className="vg-site-wrap">
+        <div className="reveal">
+          <SiteSectionHead eyebrow={nonGoals.eyebrow} title={nonGoals.heading}>
             <Rich runs={nonGoals.intro} />
-          </p>
+          </SiteSectionHead>
         </div>
         <div className="nots reveal">
           {nonGoals.items.map((item) => (

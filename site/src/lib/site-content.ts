@@ -21,11 +21,10 @@
 // measurement invented here.
 // ---------------------------------------------------------------------------------------
 
-export type Run =
-  | string
-  | { code: string }
-  | { b: string }
-  | { i: string };
+import type { SiteRun, SponsorDeclaration } from "@viglet/viglet-design-system/site";
+
+// The run shape is the design system's, which SiteRich renders.
+export type Run = SiteRun;
 
 export type Rich = Run[];
 
@@ -51,6 +50,10 @@ export const parentUrl = "https://alegauss.github.io/";
 // release has been published, since that link answers a 404 until one is (QS286).
 export const releasesUrl = `${repoUrl}/releases`;
 
+// Where the light/dark choice is stored: read by the pre-paint script vite.config.ts inlines
+// and by the toggle, so the two agree on one key.
+export const THEME_KEY = "qs-theme";
+
 export const navLinks = [
   { href: "#session", label: "Session" },
   { href: "#terminal", label: "Terminal" },
@@ -75,16 +78,20 @@ export const footer = {
 // Mirrors alegauss.github.io/sponsor.json, the canonical sponsor declaration for these
 // projects. Transcribed here rather than fetched at runtime: this site is prerendered, and
 // the whole point of naming a sponsor is that crawlers and LLMs read it in the served HTML.
-export const sponsor = {
-  label: "Sponsored by",
-  name: "Viglet",
-  url: "https://www.viglet.org",
-  siteLabel: "viglet.org",
-  logo: "/quickshell/viglet/viglet-logo.png",
-  summary:
-    "Open source search and content tools for organisations with a lot to publish. Run on your own servers, with no per-user licence.",
+// Shaped as the design system's SponsorDeclaration, which SiteSponsor renders.
+export const sponsor: SponsorDeclaration = {
+  sponsor: {
+    label: "Sponsored by",
+    name: "Viglet",
+    url: "https://www.viglet.org",
+    siteLabel: "viglet.org",
+    logo: "/quickshell/viglet/viglet-logo.png",
+    summary:
+      "Open source search and content tools for organisations with a lot to publish. Run on your own servers, with no per-user licence.",
+  },
   products: [
     {
+      id: "turing",
       name: "Viglet Turing",
       url: "https://turing.viglet.org",
       logo: "/quickshell/viglet/turing-logo.png",
@@ -92,6 +99,7 @@ export const sponsor = {
         "so visitors find what they came for, with AI answers drawn only from your own content",
     },
     {
+      id: "shio",
       name: "Viglet Shio",
       url: "https://shio.viglet.org",
       logo: "/quickshell/viglet/shio-logo.png",
@@ -99,7 +107,7 @@ export const sponsor = {
         "so a new page goes live the same day, reviewed and approved by your own team",
     },
   ],
-} as const;
+};
 
 /* ------------------------------------------------------------------ hero */
 

@@ -409,3 +409,4 @@
 
 ## Block M — The site on the design system
 
+- ✅ **QS370** **The site keeps its own copy of the template that eight product sites share** — The site's nav, hero, section heads, buttons, sponsor, footer, theme toggle, prerender and social card now come from the design system's site layer on the cool tone, re-keyed to iris.

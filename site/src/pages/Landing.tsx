@@ -1,6 +1,8 @@
-import { Nav } from "../components/Nav";
-import { Footer } from "../components/Footer";
-import { Hero } from "../components/sections/Hero";
+import { SiteButton, SiteHero, SiteRich } from "@viglet/viglet-design-system/site";
+import { Footer, Nav } from "../components/Chrome";
+import { HeroTerminal } from "../components/sections/HeroTerminal";
+import { Cells } from "../components/ui/Cells";
+import { download, hero, repoUrl } from "../lib/site-content";
 import { Why } from "../components/sections/Why";
 import { Session } from "../components/sections/Session";
 import { Terminal } from "../components/sections/Terminal";
@@ -21,7 +23,30 @@ export function Landing() {
   return (
     <>
       <Nav />
-      <Hero />
+      <SiteHero
+        icon={{ src: "/quickshell/logo.svg", alt: "Quickshell logo", logoShape: "mark" }}
+        badge={hero.badge}
+        title={hero.titleLead}
+        titleAccent={hero.titleAccent}
+        sub={<SiteRich runs={hero.sub} />}
+        // The first button scrolls to the section that says what the installer touches,
+        // because that is the question between a reader and an install.
+        actions={
+          <>
+            <SiteButton href="#download">{download.cta}</SiteButton>
+            <SiteButton variant="ghost" href={repoUrl}>
+              ★ View on GitHub
+            </SiteButton>
+          </>
+        }
+        feature={<HeroTerminal />}
+        meta={hero.meta}
+        pills={hero.pills.map((runs, i) => (
+          <SiteRich runs={runs} key={i} />
+        ))}
+      >
+        <Cells />
+      </SiteHero>
       <Why />
       <Session />
       <Terminal />
