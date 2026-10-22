@@ -206,4 +206,37 @@ public sealed class GateTests
 
         Assert.Equal(Verdict.Noisy, judged.Verdict);
     }
+
+    /// <summary>
+    /// QS375: a sitting quieter than the baseline allows the baseline's noise and no less. The rounds are
+    /// 2026-10-22's at 1fa8c98, parse 0.7 % worse in every round with 0.6 % of spread, which refused a
+    /// release where the baseline had measured 1.46 %. A worsening past the floor still fails.
+    /// </summary>
+    [Fact]
+    public void AQuietSittingAllowsTheBaselinesOwnNoise()
+    {
+        Dictionary<string, Standing> floors = new() { ["parse"] = new(1155, 0.0146, [1155, 1150]) };
+        double[] reference = [1192, 1190, 1195, 1191];
+
+        Judgement within = Assert.Single(Gate.JudgeSideBySide(
+            new Dictionary<string, Paired> { ["parse"] = new([1184, 1180, 1185, 1183], reference) }, [], floors));
+        Judgement past = Assert.Single(Gate.JudgeSideBySide(
+            new Dictionary<string, Paired> { ["parse"] = new([.. reference.Select(rate => rate * 0.97)], reference) }, [], floors));
+
+        Assert.Equal(Verdict.Held, within.Verdict);
+        Assert.Equal(0.0146, within.Threshold, 4);
+        Assert.Equal(Verdict.Worse, past.Verdict);
+    }
+
+    /// <summary>And a floor above the noisy bound does not make every sitting too noisy: emulate's is 17.7 %.</summary>
+    [Fact]
+    public void AFloorAboveTheNoisyBoundStillJudges()
+    {
+        Dictionary<string, Standing> floors = new() { ["emulate"] = new(53.6, 0.177, [53.6, 51.2]) };
+
+        Judgement judged = Assert.Single(Gate.JudgeSideBySide(
+            new Dictionary<string, Paired> { ["emulate"] = new([246, 247, 245, 246], [56.2, 56.0, 56.4, 56.1]) }, [], floors));
+
+        Assert.Equal(Verdict.Better, judged.Verdict);
+    }
 }

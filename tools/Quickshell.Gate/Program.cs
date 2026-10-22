@@ -290,7 +290,7 @@ public static class Program
         Dictionary<string, double> now = rounds.ToDictionary(pair => pair.Key, pair => Gate.Median(pair.Value.Now), StringComparer.Ordinal);
 
         IReadOnlyList<Move> moves = Gate.Moves(Git(root, "log", "--format=%H%x00%B%x01", $"{standing.Commit}..HEAD"));
-        IReadOnlyList<Judgement> judged = Gate.JudgeSideBySide(rounds, moves);
+        IReadOnlyList<Judgement> judged = Gate.JudgeSideBySide(rounds, moves, standing.Figures);
 
         Console.WriteLine();
         Console.WriteLine($"  {"figure",-8} {standing.Commit[..7] + " today",12} {"this tree",12} {"worse by",9} {"allowed",8}   verdict");

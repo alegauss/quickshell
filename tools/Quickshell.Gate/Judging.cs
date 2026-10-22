@@ -198,11 +198,19 @@ public static partial class Gate
     /// verdict is the median ratio, and the allowance is derived from those same ratios' spread, so a
     /// sitting that could not tell the two apart lets a difference that size through and no
     /// larger.</para>
+    ///
+    /// <para><b>And no finer than the baseline could see (QS375).</b> Four rounds on a quiet desk can
+    /// spread by less than the baseline's seven samples did, and an allowance read off them alone then
+    /// refused parse 0.7 % worse where the baseline had measured 1.46 % of noise. So a figure is allowed
+    /// the larger of the two. Whether the sitting was too noisy to judge is still the sitting's own
+    /// spread: emulate's baseline threshold is above <see cref="Steadiest"/>, and would judge nothing.</para>
     /// </summary>
     /// <param name="measured">Each figure's paired rounds, by name.</param>
     /// <param name="moves">What commits since the baseline said they moved on purpose.</param>
+    /// <param name="floors">The baseline's standings, whose thresholds no allowance falls below.</param>
     public static IReadOnlyList<Judgement> JudgeSideBySide(IReadOnlyDictionary<string, Paired> measured,
-                                                           IReadOnlyList<Move> moves)
+                                                           IReadOnlyList<Move> moves,
+                                                           IReadOnlyDictionary<string, Standing>? floors = null)
     {
         ArgumentNullException.ThrowIfNull(measured);
         ArgumentNullException.ThrowIfNull(moves);
@@ -228,14 +236,15 @@ public static partial class Gate
             double ratio = Median(ratios);
 
             double worse = figure.Better == Better.Higher ? 1 - ratio : ratio - 1;
-            double threshold = Threshold(ratios);
+            double spread = Threshold(ratios);
+            double threshold = Floored(spread, figure, floors);
 
             Move? because = moves.FirstOrDefault(move => string.Equals(move.Figure, figure.Name, StringComparison.OrdinalIgnoreCase));
             Verdict verdict = Weigh(worse, threshold, because);
 
             // A worsening past even this sitting's wide allowance is still a worsening; anything
             // short of it, on a sitting that noisy, is nothing anybody can bank.
-            if (threshold > Steadiest && verdict is not (Verdict.Worse or Verdict.Accepted))
+            if (spread > Steadiest && verdict is not (Verdict.Worse or Verdict.Accepted))
             {
                 verdict = Verdict.Noisy;
             }
@@ -246,6 +255,10 @@ public static partial class Gate
 
         return judged;
     }
+
+    /// <summary>A sitting's allowance for a figure, raised to the baseline's own where there is one.</summary>
+    private static double Floored(double spread, Figure figure, IReadOnlyDictionary<string, Standing>? floors) =>
+        floors is not null && floors.TryGetValue(figure.Name, out Standing? floor) ? Math.Max(spread, floor.Threshold) : spread;
 
     /// <summary>What a worsening of this size makes a figure, given its allowance and any trade that named it.</summary>
     private static Verdict Weigh(double worse, double threshold, Move? because)
