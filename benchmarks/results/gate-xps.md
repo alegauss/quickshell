@@ -27,3 +27,4 @@ was measured with uncommitted changes on top of it, the gate's own files aside.
 | 2026-10-13 12:42 | e3bb78d+ | 874 | 158.6 | 1229 | worse: start - beside 40fb448 |
 | 2026-10-13 12:50 | e3bb78d+ | 944 | 185.7 | 810 | not judged, too noisy: parse, emulate, start - beside 40fb448 |
 | 2026-10-22 16:07 | c5d6056 | 1056 | 212.6 | 676 | not judged, too noisy: emulate, start - beside 40fb448 |
+| 2026-10-22 16:10 | 00e7e1a | 997 | 205.6 | 669 | not judged, too noisy: parse, emulate, start - beside 40fb448 |
