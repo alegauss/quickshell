@@ -456,6 +456,24 @@ The fix is to pass the same pathspec to the commit, `git commit --only -m ... --
 <paths>`, so the commit holds exactly those paths whatever else is staged. When no paths
 are given, the script keeps its current behaviour and stages the whole tree.
 
+### §QS374 A gate that checks the desk before it measures
+
+Found 2026-10-22. release.cmd was run straight after run-startup-vm and run-tests-vm had
+timed QS373 in the guest. Both runners leave the VM running when they finish, and the
+gate's sitting came out with every figure's rounds spread past 10 %: start 516 ms
+against 501 for 40fb448, allowed 11.7 %, not judged. The gate's own history already
+names the guest as the cause twice (2026-10-07 20:00 and 2026-10-10 18:38). Each attempt
+costs the whole publish and four paired rounds before it says this.
+
+What to build: before the first round, the gate asks vmrun whether any VM is running,
+and refuses with the remedy if one is. Suspending an encrypted guest needs
+vm-guest.ps1's credentials, so that remedy is a suspend-vm.cmd that goes through
+Invoke-VmRun the way the runners do. A bare `vmrun suspend` is refused with "a password
+is required".
+
+Falsified when a sitting with no VM running is still too noisy on this desk, which would
+put the noise somewhere else.
+
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 ### §QS360 Windows Hello in front of the agent authority
