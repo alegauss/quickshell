@@ -20,6 +20,7 @@
 
 - ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
+- ⏳ **QS373** (deps: —) **The menu bar on screen by default is built before a shell start's first frame, so the gate fails on start** — The performance gate on the reference desk has not yet judged start with the fix, and release.cmd is refused until it holds. → §QS373
 
 ## Block I — An error a user can act on
 
@@ -307,6 +308,12 @@
   tools/Quickshell.Photon at full screen in the client's own host on the reference desk,
   before and after wait-first, with the echoes reported as overlay or independent flip
   rather than composed.
+
+## Done when — QS373
+
+- **The gate holds start on the reference desk** release.cmd, or run-perf-gate.cmd, run
+  on xps at the commit with the fix judges start as held beside 40fb448, and the row it
+  appends to benchmarks/results/gate-xps.md says so.
 
 ## Non-goals
 

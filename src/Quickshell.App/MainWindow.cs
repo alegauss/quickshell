@@ -1967,7 +1967,9 @@ public sealed partial class MainWindow : Window
     /// wired to a session. They are written and read faithfully, which is what keeps a user's choice
     /// from being lost in the meantime.</para>
     /// </summary>
-    public void Apply(Settings settings)
+    /// <param name="settings">What the file says.</param>
+    /// <param name="starting">A start's first application, which leaves the menu bar for idle (QS373).</param>
+    public void Apply(Settings settings, bool starting = false)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
@@ -2015,8 +2017,15 @@ public sealed partial class MainWindow : Window
         PaintInset();
 
         // The menu bar as the file says (QS354, on screen by default since QS366): built only where it is
-        // to be on screen, and only now, after the first paint.
-        PlaceMenuBar();
+        // to be on screen, and on a start only once the first pane has drawn (QS373).
+        if (starting)
+        {
+            PlaceMenuBarAtIdle();
+        }
+        else
+        {
+            PlaceMenuBar();
+        }
     }
 
     /// <summary>

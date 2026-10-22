@@ -13,10 +13,13 @@ namespace Quickshell.App;
 public sealed partial class MainWindow
 {
     /// <summary>
-    /// The bar, made the first time it is shown and not before: the settings file is applied after the
-    /// window's first paint, so even a default window that shows the bar does not build it on the way there.
+    /// The bar, made the first time it is shown and not before. A start's settings are applied after the
+    /// window is shown but before its first pane draws, so a start places it at idle (QS373) and not then.
     /// </summary>
     private Menu? _menuBar;
+
+    /// <summary>Whether a start has asked for the bar at idle, which any placement asked for before then waits for.</summary>
+    private bool _menuBarAtIdle;
 
     private DockPanel? _menuDock;
 
@@ -187,9 +190,35 @@ public sealed partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// The bar placed once the window is idle, after its first pane, not on the way to it (QS373): a shell
+    /// start applies the settings twice before its first frame, and each rebuilt the bar from every
+    /// binding, which was 35 ms of a 546 ms start in the guest.
+    /// </summary>
+    private void PlaceMenuBarAtIdle()
+    {
+        if (_menuBarAtIdle)
+        {
+            return;
+        }
+
+        _menuBarAtIdle = true;
+
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, () =>
+        {
+            _menuBarAtIdle = false;
+            PlaceMenuBar();
+        });
+    }
+
     /// <summary>The bar as the setting says it should be: up for Always, away otherwise.</summary>
     private void PlaceMenuBar()
     {
+        if (_menuBarAtIdle)
+        {
+            return;
+        }
+
         if (Settings.MenuBar == MenuBarMode.Always)
         {
             ShowMenuBar();

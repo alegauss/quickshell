@@ -124,6 +124,36 @@ public sealed class MenuBarTests : IDisposable
         Assert.False(hiddenToggled, "the bar stayed on screen with the setting at Hidden");
     }
 
+    /// <summary>
+    /// A start's settings leave the bar for idle (QS373), and so does the second application a shell start
+    /// makes as its tab opens; once the window is idle it is on screen as the setting says.
+    /// </summary>
+    [Fact]
+    public void AStartPlacesTheMenuBarOnlyOnceTheWindowIsIdle()
+    {
+        (bool atStart, bool asTheTabOpens, bool atIdle) = Sta.Run(() =>
+        {
+            MainWindow window = Window();
+
+            window.Apply(Settings.Default, starting: true);
+
+            bool start = window.MenuBarShowing;
+
+            window.Apply(Settings.Default);
+
+            bool tab = window.MenuBarShowing;
+
+            // Everything above idle and idle itself, then this.
+            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.SystemIdle);
+
+            return (start, tab, window.MenuBarShowing);
+        });
+
+        Assert.False(atStart, "a start built the menu bar on the way to its first pane");
+        Assert.False(asTheTabOpens, "the tab a shell start opens built the menu bar before idle");
+        Assert.True(atIdle, "the menu bar was not on screen once the window was idle");
+    }
+
     [Theory]
     [InlineData("Copy the selection", "_Edit")]
     [InlineData("Find in the scrollback", "_Edit")]

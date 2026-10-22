@@ -388,6 +388,27 @@ before changing anything.
 
 Falsified when the gate's start holds against 40fb448 on the reference desk.
 
+### §QS373 The menu bar, placed once the window is idle
+
+Found 2026-10-22: release.cmd was refused three times running on the reference desk,
+start worse than 40fb448 timed beside it. Timed in the guest with the startup harness, a
+shell start (`--shell`), 11 starts each: fe69a45, the commit before QS366, reaches
+interactive at a warm median of 511 ms; 7d14260, QS366 itself, at 546 ms. That is 6.8 %,
+against an allowance of 3.6 %, and the step that moved is `applied`, from 439 to 461 ms.
+
+The comment beside PlaceMenuBar says the bar is built after the first paint. It is built
+after the window is shown, which is not the same: Apply runs before the first pane's
+first frame, and a shell start calls it twice, once for the settings file and again as
+the tab opens, and each call in Always mode rebuilds the bar from every binding.
+
+What to build: the start's Apply asks for the bar to be placed at ApplicationIdle, as
+QS288 did for the sidebar's sessions, and any placement asked for before then waits for
+that one. Every other Apply places it at once, as now, so a settings change still shows
+or hides the bar immediately.
+
+Falsified when the guest's interactive median with the fix is not back near fe69a45's,
+or when the gate on the reference desk still fails on start.
+
 ## Block I — An error a user can act on
 
 ### §QS128 A trace that carries both sides of the negotiation

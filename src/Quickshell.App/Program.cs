@@ -161,7 +161,7 @@ public static class Entry
         // not to be warned, and it is needed when the window closes rather than when it opens.
         Settings settings = SettingsFile.ReadFrom(Locations.Current.Settings);
 
-        window.Apply(settings);
+        window.Apply(settings, starting: true);
         window.PlaceAt(WindowPlacements.ReadFrom(Placements()).For(Screens()));
 
         // Each step between the window on the desk and its first pane, which is where a start that
