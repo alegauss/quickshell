@@ -2,7 +2,7 @@
 
 <img src="site/public/logo.svg" alt="quickshell logo" width="120">
 
-# quickshell
+# Quickshell
 
 **SSH on Windows, without the suite around it: sessions, keys, SFTP, tunnels, tabs and split panes, free and MIT, with your MobaXterm sessions imported in one command.**
 
