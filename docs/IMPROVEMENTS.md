@@ -548,21 +548,6 @@ both sides' algorithm lists.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS372 A path-scoped commit that takes the whole index
-
-run-commit.cmd with `-- <paths>` runs `git add -- <paths>` and then `git commit -m`,
-with no paths on the commit. git commits the index, not the paths just added, so
-anything already staged goes into the commit too. In this repository that is often
-another session's work: QS371 was committed while a session working on the site (QS370)
-had seven deletions and a rename staged, and the commit carried all of them under
-QS371's id. It was caught only because `git log -1 --stat` listed files the task never
-touched. It was redone with `git reset --soft` and `git commit --only -- <paths>`, which
-left the other session's index as it was.
-
-The fix is to pass the same pathspec to the commit, `git commit --only -m ... --
-<paths>`, so the commit holds exactly those paths whatever else is staged. When no paths
-are given, the script keeps its current behaviour and stages the whole tree.
-
 ### §QS374 A gate that checks the desk before it measures
 
 Found 2026-10-22. release.cmd was run straight after run-startup-vm and run-tests-vm had
@@ -580,6 +565,22 @@ is required".
 
 Falsified when a sitting with no VM running is still too noisy on this desk, which would
 put the noise somewhere else.
+
+### §QS383 The commit rule names a script that was removed
+
+`.claude/skills/roadmap-docs/SKILL.md` says every task closes with `.\run-commit.cmd -m
+"<title>" -- <paths>`, and its description names the script too. c5d6056 removed that
+script from the repository. A bare `run-commit.cmd` now resolves to the one in
+`D:\Dev\bin`, which runs `git add *` and writes its own message through commitclerk.
+That is the whole-tree sweep the repository's script was written to avoid, and with
+another session in the checkout its staged work lands under the wrong id.
+
+The fix is to rewrite the commit rule in that skill to the path the repository uses now:
+`git add -- <paths>` for the paths the claim declared (the line `ship` prints), check
+`git diff --cached --stat`, then `git commit -F <message file>` with an ASCII
+conventional-commits title ending in the id. Drop the paragraphs about the leading `.\`
+and the PATH collision, since there is no repository script left for them to protect.
+Change the description to match. Keep the one-task-one-commit rule as it is.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

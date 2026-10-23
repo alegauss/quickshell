@@ -378,6 +378,7 @@
 - ✅ **QS368** **Winwright 1.1.2's repair of the tab case's typed substitution is unproven, so winwright's WW545 stays blocked** — The tab case passed 300 of 300 guest runs on winwright 1.1.2, the repair firing on two; run-tests-vm -Soak repeats any one case on one build.
 - ✅ **QS369** **The UI cases still carry a synthesised-input workaround for a foreground winwright 1.1.3 now takes itself** — The UI cases run on winwright 1.1.3, which takes the foreground at launch, so the nudge is gone and the tab case soaked alone passed 20 of 20.
 - ✅ **QS375** **On a quiet sitting the side-by-side gate allows less than the baseline's own noise, and refuses parse 0.7 % worse** — A side-by-side figure is allowed the larger of its sitting's spread and the baseline's threshold, while too noisy still reads the sitting alone; parse 0.7 % now holds.
+- 🗑 **QS372** **run-commit.cmd given paths still commits whatever another session had already staged** — abandoned: Not built: c5d6056 removed run-commit.cmd from the repository three minutes after this was filed, and commits are now made with git add -- and git commit -F by hand.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

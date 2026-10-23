@@ -34,8 +34,8 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS372** (deps: —) **run-commit.cmd given paths still commits whatever another session had already staged** — It runs git add on the paths and then a bare git commit, which takes the whole index, so QS371's commit carried another session's site deletions until it was redone. → §QS372
 - 📋 **QS374** (deps: —) **The release gate runs while the guest VM a runner left up is still running, and the sitting comes out too noisy to judge** — run-startup-vm and run-tests-vm leave the guest running, and a release attempt after one spends ten minutes to learn nothing; it could say so first. → §QS374
+- 📋 **QS383** (deps: —) **The shipping discipline tells every task to commit through run-commit.cmd, which the repository no longer has** — A bare run-commit.cmd now finds the one on PATH, which stages the whole tree and writes its own message, so an agent following the skill sweeps another session's work. → §QS383
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
