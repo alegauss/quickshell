@@ -33,6 +33,7 @@
 - ⏸ **QS253** (deps: —) **The gate fails unchanged code, because the desk runs a seventh slower some days than when the baseline was taken** — set aside (Needs the reference desk with nothing else running.): A check on a quiet desk at an unchanged commit has not yet been seen to hold within the 10 % bound. → §QS253
 - ⏸ **QS255** (deps: —) **An idle pane costs 0.6 % of a core and GPU work even with the cursor blink off, and four cost nearly three times one** — set aside (Needs ten quiet minutes on the reference desk.): With zero frames the pane still spends 0.16 % of a core on a busy desk, over the 0.1 % bound. → §QS255
 - ⏸ **QS288** (deps: —) **A shell start takes a third longer than at 40fb448, and the performance gate fails on start** — set aside (Waits for the host desk to be cleared for the gate.): The gate's start judged held against 40fb448 on a quiet reference desk; its last sitting was too noisy to judge. → §QS288
+- ⏸ **QS373** (deps: —) **The menu bar on screen by default is built before a shell start's first frame, so the gate fails on start** — set aside (Waits for a host gate run, user's ok.): The performance gate on the reference desk has not yet judged start with the fix, and release.cmd is refused until it holds. → §QS373
 
 ## Block I — An error a user can act on
 
