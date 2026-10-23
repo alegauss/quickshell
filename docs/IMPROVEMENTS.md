@@ -409,6 +409,113 @@ or hides the bar immediately.
 Falsified when the guest's interactive median with the fix is not back near fe69a45's,
 or when the gate on the reference desk still fails on start.
 
+### §QS377 A release archive built by GitHub Actions from a tag
+
+The free route to a certificate a clean Windows trusts is the SignPath Foundation, which
+signs open-source projects at no cost. Its condition is that the binary it signs is the
+one built from the checked-in source: the signing request comes from a CI run, and
+SignPath checks the artifact's origin against the repository, the commit and the
+workflow that made it. An archive zipped on this desk and uploaded cannot meet that,
+however reproducible it is.
+
+So a workflow triggered by a version tag runs tools\release.ps1 -Unsigned -Ungated on a
+GitHub runner and uploads the archive as a workflow artifact. The performance gate stays
+where it is meaningful, on this desk against its baseline (QS79): the gate is run on the
+same commit before the tag is pushed, and the tag is the statement that it passed.
+
+Done when a pushed tag produces quickshell-<version>-unsigned.zip as an artifact of that
+run, its SHA256SUMS.txt beside it.
+
+### §QS378 Every shipped component under an OSI-approved licence
+
+SignPath Foundation's conditions are that every component of what it signs carries an
+OSI-approved licence, that none is commercially dual-licensed, and that no proprietary
+code ships beside it; system libraries are allowed. The application asks for this and
+the foundation, which is the named publisher on the certificate, can revoke it later if
+it turns out false.
+
+The audit lists each assembly in artifacts\publish\quickshell with the package it came
+from and that package's licence expression, and records the result in a file the release
+carries (THIRD-PARTY-NOTICES.txt), which the MIT licences of the dependencies ask for
+anyway. A package with no licence expression or a non-OSI one is either replaced or
+named in the application with the reason it is acceptable.
+
+Done when the notices file lists every shipped assembly with an OSI licence and
+release.ps1 puts it in the archive.
+
+### §QS379 A published code signing policy
+
+SignPath Foundation requires the project's home page to carry a code signing policy
+before it signs anything: the line "Free code signing provided by SignPath.io,
+certificate by SignPath Foundation", the roles (committers and reviewers, and the
+approver of each signing request, which here is the maintainer), and a privacy statement
+saying what the program sends over the network and to whom. For quickshell that
+statement is short: connections the user configures, and the update check of QS77, which
+fetches a static file and sends nothing about the user.
+
+The policy lives in docs\CODE-SIGNING.md and is linked from README.md and from the site,
+so the download page that describes the program and the policy are one click apart, as
+the conditions ask.
+
+Done when the page is published on the site and README.md links it.
+
+### §QS380 Applying to SignPath Foundation for a free certificate
+
+A certificate that SmartScreen and corporate policy accept costs money everywhere except
+in one place: SignPath Foundation issues one free to open-source projects, holds its key
+in its own HSM, and signs on request from the project's CI. quickshell is MIT and
+public, which is the licence half. The rest is what the application asks for: the
+project actively maintained and already released in the form to be signed (a first
+-unsigned archive on GitHub Releases, QS371), its function described on the download
+page, every component OSI-licensed (QS378), a published policy (QS379), and an automated
+build (QS377).
+
+The application is the form at signpath.org/apply.html, filled in by the maintainer: it
+is an act in their name, not something this desk can do. The certificate names SignPath
+Foundation as publisher, which is the price of it being free.
+
+Microsoft's Artifact Signing ($9.99 a month) takes individuals only in the USA and
+Canada, so it is not a route from here.
+
+Done when the project appears in SignPath with a signing policy and an approval role
+assigned to the maintainer.
+
+### §QS381 Certum Open Source as the paid fallback
+
+SignPath Foundation can decline, and has been reported to weigh how established a
+project is. The cheapest certificate an individual outside the USA and Canada can buy is
+Certum's Open Source Code Signing: issued to a natural person after an identity check (a
+passport or national ID and a link to the project's public repository), in the low tens
+of euros a year, with the key in Certum's cloud HSM (SimplySign) or on a card the buyer
+pays for. The certificate names the developer as "Open Source Developer".
+
+SimplySign exposes the certificate in the current user's store while its desktop app is
+signed in, so release.ps1 -Certificate <thumbprint> signs with it unchanged; the signing
+then happens on this desk, after the performance gate, as release.ps1 already assumes.
+
+Neither route skips SmartScreen's reputation: since 2024 an EV certificate no longer
+does either, so the first downloads warn until the signed file has a history.
+
+Done when the decision between this and SignPath is recorded, with the price paid if
+this is taken.
+
+### §QS382 Signing the tagged build through SignPath
+
+release.ps1 signs with a thumbprint in the local store, which suits a certificate on a
+token. SignPath works the other way round: the key stays in its HSM and the CI run asks
+for a signature. The tag workflow of QS377 therefore gains a step using
+signpath/github-action-submit-signing-request, which uploads the archive, has SignPath
+sign quickshell.exe and the Quickshell assemblies inside it (deep signing of a zip),
+waits for the maintainer to approve the request in SignPath, and downloads the signed
+archive.
+
+The workflow then recomputes SHA256SUMS.txt for the signed archive and hands both to
+publish-release (QS371), so what is published is what was signed. The -Certificate path
+stays for a certificate on this desk, should the fallback of QS381 be taken.
+
+Done when a pushed tag ends in a GitHub release whose quickshell.exe and assemblies
+verify Valid and timestamped under Get-AuthenticodeSignature on the guest.
+
 ## Block I — An error a user can act on
 
 ### §QS128 A trace that carries both sides of the negotiation
