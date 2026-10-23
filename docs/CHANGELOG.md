@@ -289,6 +289,7 @@
 - ✅ **QS288 (the fixes, gate not yet judged)** **A shell start takes a third longer than at 40fb448, and the performance gate fails on start** — No XAML parser on start, sessions listed once the window is idle, one context menu: a shell start timed level with 40fb448 back to back on the reference desk.
 - ✅ **QS371** **A release archive is built on this desk but never reaches GitHub, so nobody can download one** — publish-release.cmd refuses a dirty, unpushed or already-tagged tree, builds through release.ps1, tags v<version> and creates the GitHub release with the archive and checksum.
 - ✅ **QS373 (the fix, gate not yet judged)** **The menu bar on screen by default is built before a shell start's first frame, so the gate fails on start** — A start places the menu bar at idle; in the guest a shell start's shown-to-interactive fell from 151 to 119 ms, against 111 before QS366.
+- ✅ **QS376** **publish-release refuses a gated build because the gate's own history row counts as a change to the tree** — Both of publish-release's cleanliness checks set benchmarks/results/gate-*.md aside, and the end of a release names the row left to commit.
 
 ## Block I — An error a user can act on
 

@@ -108,8 +108,11 @@ if (-not (Get-Command 'gh' -ErrorAction SilentlyContinue)) {
 }
 if (-not (Test-Native gh auth status)) { Refuse 'the GitHub CLI is not signed in' 'gh auth login.' }
 
-# The tree the archive is built from is the tree the tag names, or the tag is a lie about it.
-$dirty = Read-Git status --porcelain
+# The tree the archive is built from is the tree the tag names, or the tag is a lie about it. The gate's
+# history is not part of that tree (QS376): every judged run appends a row about the commit, a refused
+# run leaves its row behind, and the gate sets its own files aside the same way when it marks a commit dirty.
+$history = 'benchmarks/results/gate-*.md'
+$dirty = Read-Git status --porcelain -- . ":(exclude)$history"
 if ($null -eq $dirty) { Refuse 'git could not read the working tree' }
 if ($dirty) {
     Refuse 'the working tree has changes, and a release is built from a commit' 'Commit or stash them first; git status lists them.'
@@ -160,7 +163,7 @@ foreach ($file in @($zip, $sums)) {
 }
 
 # The build can write nothing git tracks; if it did, the archive is not of the commit about to be tagged.
-if (Read-Git status --porcelain) {
+if (Read-Git status --porcelain -- . ":(exclude)$history") {
     Refuse 'the build left changes in the working tree' 'git status lists them; .gitignore should cover what a build writes.'
 }
 
@@ -193,4 +196,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "  released   $url"
+
+# Left for the person, not committed here: a commit now would move HEAD past the tag, and want a push.
+$row = Read-Git ls-files --modified --others --exclude-standard -- $history
+if ($row) {
+    Write-Host "  gate row   $(($row -split "`n") -join ', ') has this run's row; commit it with what comes next" -ForegroundColor Yellow
+}
 exit 0
