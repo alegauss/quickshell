@@ -276,7 +276,9 @@ warns on every push once the last campaign is more than a week old.
 times parse and emulate throughput and warm start against `benchmarks\gate\<machine>.json`, and fails
 a figure worse than that baseline's own noise allows unless a commit since then carries
 `Performance-Moved: <figure> - <why>`. `--baseline` takes a new one, which is committed. It starts the
-client on the desk it runs on, so it runs on the reference machine and nowhere else.
+client on the desk it runs on, so it runs on the reference machine and nowhere else. It refuses while
+any VM is running there (QS374), since the VM runners leave the guest up; `.\suspend-vm.cmd` clears
+the desk for it.
 
 A terminal client is judged on behaviour under a real connection, so its own tasks are held to that:
 

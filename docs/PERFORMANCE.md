@@ -153,6 +153,12 @@ nothing** and exits 3: it could not have seen a regression that size, and a hold
 nobody could bank. Every check adds a row to `benchmarks/results/gate-<machine>.md` whatever the
 verdict: a threshold catches a step, and only that file shows one per cent a month.
 
+**A guest VM left running is refused before anything is built** (QS374). The VM runners leave the
+guest up when they finish, and a sitting beside one came out at 11.7 % on 2026-10-22, after both
+publishes and four rounds. So the gate, and `release.cmd` through it, first asks `vmrun list`, which
+needs no password, and exits 3 while any VM is running. `suspend-vm.cmd` suspends them, through
+`tools/vm-guest.ps1` for an encrypted guest's password, and waits for a run holding the guest desk.
+
 **A regression that was meant is said, not hidden.** The commit that trades a figure for something
 carries a trailer naming it, `Performance-Moved: start - the find bar is built up front`, and the
 gate lets that figure through, naming the commit. The excuse is one-shot: `release.cmd` refuses to

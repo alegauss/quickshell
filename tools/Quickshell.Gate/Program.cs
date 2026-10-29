@@ -116,6 +116,9 @@ public static class Program
         Console.WriteLine($"gate  {machine}, {(baseline ? "taking a baseline" : "checking")} at {commit[..7]}"
                           + (dirty ? " with uncommitted changes" : string.Empty));
 
+        // Before the publishes and the rounds, which is where a guest left running used to be found (QS374).
+        Desk.RefuseARunningGuest();
+
         Say("building the startup harness");
         Exec(root, "dotnet", "build", Path.Combine("tools", "Quickshell.Startup", "Quickshell.Startup.csproj"),
              "-c", "Release", "--nologo", "-v", "quiet");

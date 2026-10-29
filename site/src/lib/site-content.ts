@@ -93,7 +93,7 @@ export const sponsor: SponsorDeclaration = {
     {
       id: "turing",
       name: "Viglet Turing",
-      url: "https://turing.viglet.org",
+      url: "https://openviglet.github.io/turing/",
       logo: "/quickshell/viglet/turing-logo.png",
       inline:
         "so visitors find what they came for, with AI answers drawn only from your own content",
@@ -101,7 +101,7 @@ export const sponsor: SponsorDeclaration = {
     {
       id: "shio",
       name: "Viglet Shio",
-      url: "https://shio.viglet.org",
+      url: "https://openviglet.github.io/shio/",
       logo: "/quickshell/viglet/shio-logo.png",
       inline:
         "so a new page goes live the same day, reviewed and approved by your own team",
