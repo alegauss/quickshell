@@ -459,26 +459,24 @@ the conditions ask.
 
 Done when the page is published on the site and README.md links it.
 
-### §QS380 Applying to SignPath Foundation for a free certificate
+### §QS380 Distributing through the Microsoft Store, with SignPath as the fallback
 
-A certificate that SmartScreen and corporate policy accept costs money everywhere except
-in one place: SignPath Foundation issues one free to open-source projects, holds its key
-in its own HSM, and signs on request from the project's CI. quickshell is MIT and
-public, which is the licence half. The rest is what the application asks for: the
-project actively maintained and already released in the form to be signed (a first
--unsigned archive on GitHub Releases, QS371), its function described on the download
-page, every component OSI-licensed (QS378), a published policy (QS379), and an automated
-build (QS377).
+Rewritten after the portfolio review of 30/10/2026 (visibility,
+`estrategia/portfolio.md`): the decision for all of the author's Windows apps is the
+Microsoft Store, which signs the MSIX package itself, in place of a code signing
+certificate. claude-tray tests the path first (visibility VS58); this line follows what
+that test learns, and the SignPath Foundation application (QS377 to QS379, QS382) and
+Certum (QS381) become the fallback if the Store rules this client out.
 
-The application is the form at signpath.org/apply.html, filled in by the maintainer: it
-is an act in their name, not something this desk can do. The certificate names SignPath
-Foundation as publisher, which is the price of it being free.
+Quickshell's own points to check: the per-user install and the portable archive both
+stay, so the Store is one more way in, not the only one; a Store package updates through
+the Store, so the update check of QS77 is off in that build; the machine-wide install
+for managed deployment stays outside MSIX; the importers read MobaXterm's and PuTTY's
+settings (the registry and files in the user profile), which a packaged app must still
+be able to read.
 
-Microsoft's Artifact Signing ($9.99 a month) takes individuals only in the USA and
-Canada, so it is not a route from here.
-
-Done when the project appears in SignPath with a signing policy and an approval role
-assigned to the maintainer.
+Done when the client is listed in the Store and installs without a SmartScreen warning,
+or the reason it cannot be is recorded here and the SignPath route resumes.
 
 ### §QS381 Certum Open Source as the paid fallback
 
@@ -515,6 +513,64 @@ stays for a certificate on this desk, should the fallback of QS381 be taken.
 
 Done when a pushed tag ends in a GitHub release whose quickshell.exe and assemblies
 verify Valid and timestamped under Get-AuthenticodeSignature on the guest.
+
+### §QS384 QS384 — Carrying the new name through the product
+
+From the portfolio review of 30/10/2026 (visibility, `produtos/quickshell.md`), where
+the author decided to review the name. Quickshell is already the name of a well-known
+Linux project (a QtQuick toolkit for desktop shells, popular with Hyprland users), and
+winget lists a "Quick Shell" by another author. A search for the name leads to them, and
+a post announcing this client would start with a comment pointing it out.
+
+The choice of the new name is made in the visibility repository (its VS59, together with
+pportal's), with the checks that come with it: the name free on GitHub, winget, the
+Microsoft Store and as a domain, and no registered mark in software. This line is the
+product side once the name is chosen: the executable, the window title, the README, the
+site, the `llms.txt`, the repository name (GitHub redirects the old one), the release
+archive and the install folder, with an existing per-user install moved or recognised so
+nobody loses their sessions. The task prefix stays `QS`, as FreeWilly kept `DD` after
+its own rename. The non-goal "No Linux or macOS build" is untouched: Linux appears here
+only as the home of the colliding project.
+
+Done when the new name is the only one a user sees from download to window, and an
+install made under the old name upgrades into it with sessions intact.
+
+### §QS385 QS385 — Stating the measured start-up, not the budget
+
+From the portfolio review of 30/10/2026 (visibility, `produtos/quickshell.md`). The
+GitHub description, the site's meta description, its hero and `llms.txt` promise "a cold
+start to a live prompt under 400 ms". That is figure 5 of `docs/PERFORMANCE.md`, a
+budget. The measurement in `benchmarks/results/startup-h.md` says it is not met: 647 ms
+to an interactive prompt (warm, median), and the README itself reports 612 ms until the
+window shows. A product whose argument is measured performance cannot advertise its
+target as its result; the first reader who runs the harness finds the gap.
+
+Until a measurement meets the budget, every public surface states the measured figure,
+with the date and the machine, and names 400 ms only as the target. The site's figure
+comes from the results file rather than from a typed string, so the claim moves when the
+measurement does. If the work on start-up reaches the budget first, the text can keep
+400 ms with the new measurement behind it.
+
+Done when no public text claims under 400 ms without a measurement that shows it.
+
+### §QS386 QS386 — The first release
+
+From the portfolio review of 30/10/2026 (visibility, `produtos/quickshell.md` and
+`estrategia/portfolio.md`). There is no release and no tag: the README says "No release
+has been published yet", and the only download is a CI artefact that expires in five
+days. Every channel in the plan (alternativeto, r/sysadmin, winget, Show HN) waits for
+this, because a link today sends a reader to something they must build. QS371 already
+makes a release archive reach GitHub; it has never been run for real.
+
+The first release waits for the new name (it is the first thing anyone downloads, and a
+rename after it splits the history), and then ships unsigned, as 0.1.0, with the
+README's SmartScreen note, `SHA256SUMS` and notes that say what works and what does not
+yet (local shells beyond `cmd.exe`, agent forwarding, X11, the MobaXterm key import
+defect QS276). It is also the release the Store submission (QS380) and any certificate
+application need to exist.
+
+Done when GitHub's latest release carries the archive under the new name, and the README
+and the site link to it instead of to building from source.
 
 ## Block I — An error a user can act on
 

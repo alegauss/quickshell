@@ -18,14 +18,17 @@
 
 ## Block H — The reason to leave the incumbent
 
-- ⏳ **QS77** (deps: a code-signing certificate, an update signing key) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
+- ⏳ **QS77** (deps: an update signing key, QS380) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
 - ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
 - 📋 **QS377** (deps: —) **The release archive is built only on this desk, so no signing service can prove it came from the source** — SignPath Foundation signs only what a CI build of the public repository produced, verified by origin, so a tagged GitHub Actions run must build it. → §QS377
 - 📋 **QS378** (deps: —) **Nobody has checked that every component the archive ships is under an OSI-approved licence** — SignPath Foundation refuses a project that ships proprietary or commercially dual-licensed code, so the archive's NuGet and runtime components are audited first. → §QS378
 - 📋 **QS379** (deps: —) **The project publishes no code signing policy, which a free open-source certificate requires** — SignPath Foundation requires a code signing policy on the project's home page naming who commits, who reviews and who approves each signing request. → §QS379
-- 📋 **QS380** (deps: QS377, QS378, QS379, a first unsigned release on GitHub) **No certificate has been asked for, so every release still ships unsigned** — The free route is an application to SignPath Foundation, which needs a released, described, OSI-licensed project with a published signing policy. → §QS380
+- 📋 **QS380** (deps: QS386, visibility VS58) **Every release still ships unsigned, so SmartScreen warns on the first download and managed machines refuse it** — The Store signs the MSIX itself, and claude-tray tests that path first (VS58); SignPath and Certum become the fallback. → §QS380
 - 💭 **QS381** (deps: QS380) **If SignPath Foundation declines the project, there is no affordable certificate lined up** — Certum's Open Source Code Signing certificate is issued to individuals anywhere for tens of euros a year, and release.ps1 -Certificate can use it. → §QS381
 - 📋 **QS382** (deps: QS380) **Once a certificate exists, nothing sends the tagged build to SignPath and publishes what comes back** — With SignPath the key never reaches this desk, so the tag workflow submits its archive, waits for the maintainer's approval and publishes the signed result. → §QS382
+- 📋 **QS384** (deps: visibility VS59) **A search for the name finds the Linux Quickshell and winget's Quick Shell, not this client** — The author decided to rename it, and the name has to change before a first release fixes it in downloads and links. → §QS384
+- 📋 **QS385** (deps: —) **The description and the site promise a live prompt under 400 ms, while the published measurement is 612 to 647 ms** — A product sold on measured performance cannot advertise its target as its result, and the first reader who runs the harness finds the gap. → §QS385
+- 📋 **QS386** (deps: QS384) **There is nothing to download: no release or tag, only a CI artefact that expires in five days** — Every channel waits for a first release, and the Store and any certificate application need one to exist. → §QS386
 
 ## Block I — An error a user can act on
 
