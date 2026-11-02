@@ -1,0 +1,52 @@
+name: Release archive
+
+# QS377: the release archive built from the tag, on GitHub's runner and not on the maintainer's desk.
+# A signing service that signs open-source projects for free (SignPath Foundation) signs only what a
+# CI run of the public repository produced, checked against the repository, the commit and this
+# workflow. An archive zipped on the desk cannot meet that, however reproducible it is.
+#
+# It builds and keeps the archive, and publishes nothing: publish-release.cmd still makes the GitHub
+# release (QS371), and sending this run's archive to be signed is QS382. The performance gate stays
+# on the desk that took its baseline (QS79): it is run on the commit before the tag is pushed, and
+# the tag is the statement that it passed - so the build here is -Ungated, as CI's is.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      # The tag is the version's name, and the archive is named from the project: a tag that says
+      # one version over a project that says another would ship an archive nobody can match to it.
+      - name: Tag names the project's version
+        shell: pwsh
+        run: |
+          $version = (dotnet msbuild src/Quickshell.App/Quickshell.App.csproj -nologo -getProperty:Version | Out-String).Trim()
+          if ("v$version" -ne "${{ github.ref_name }}") {
+            Write-Output "::error title=release::the tag is ${{ github.ref_name }}, and Directory.Build.props says $version - tag v$version, or change <Version> first"
+            exit 1
+          }
+          "version=$version" >> $env:GITHUB_ENV
+
+      - name: Release archive (unsigned)
+        run: .\release.cmd -Unsigned -Ungated
+
+      - name: Keep the archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: quickshell-${{ env.version }}
+          path: artifacts/release/
+          retention-days: 90
+          if-no-files-found: error
