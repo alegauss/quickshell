@@ -62,7 +62,7 @@ public sealed class PolicyGuardTests : IDisposable
         JsonObject held = (await gateway.AnswerAsync(Exec(2, "systemctl", "restart", "nginx"), Stop))!;
 
         Assert.True(held["result"]!["isError"]!.GetValue<bool>());
-        Assert.Contains("changed outside quickshell", held["result"]!["structuredContent"]!["rule"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Contains("changed outside Aduzi", held["result"]!["structuredContent"]!["rule"]!.GetValue<string>(), StringComparison.Ordinal);
         Assert.True(await IsErrorAsync(gateway, 3, "uptime"));
 
         // The person rejects it, and the approved policy is what the gateway judges by again.

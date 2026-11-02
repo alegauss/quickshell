@@ -45,7 +45,7 @@ public sealed class FileBrowser : Window
     {
         ArgumentNullException.ThrowIfNull(local);
 
-        Title = remote is null ? "Files — quickshell" : $"Files on {remote.Title} — quickshell";
+        Title = remote is null ? "Files — Aduzi" : $"Files on {remote.Title} — Aduzi";
         Width = 1100;
         Height = 640;
         MinWidth = 480;

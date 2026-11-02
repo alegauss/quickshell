@@ -657,14 +657,14 @@ public sealed class WindowTests : IDisposable
             return (before, during, window.Title);
         });
 
-        Assert.Equal("quickshell", quiet);
+        Assert.Equal("Aduzi", quiet);
         Assert.Contains("recording", recording, StringComparison.Ordinal);
 
         // Leading, because a taskbar button shows the first few characters and nothing else.
         Assert.StartsWith("●", recording, StringComparison.Ordinal);
 
         // And it goes away again, so the indication means what it says.
-        Assert.Equal("quickshell", after);
+        Assert.Equal("Aduzi", after);
     }
 
     // ---- QS161: the title a host writes, with one tab and no strip ----
@@ -703,10 +703,10 @@ public sealed class WindowTests : IDisposable
 
         // Before the host says anything, the title of last resort: what this tab is connected to.
         // The same ranking the strip uses, and the reason a window is never called nothing.
-        Assert.Equal("local — quickshell", before);
+        Assert.Equal("local — Aduzi", before);
 
         Assert.Contains("C:\\Users\\someone\\work", after, StringComparison.Ordinal);
-        Assert.EndsWith("quickshell", after, StringComparison.Ordinal);
+        Assert.EndsWith("Aduzi", after, StringComparison.Ordinal);
         Assert.NotEqual(before, after);
     }
 
@@ -736,7 +736,7 @@ public sealed class WindowTests : IDisposable
             return window.Title;
         });
 
-        Assert.Equal("the build box — quickshell", titled);
+        Assert.Equal("the build box — Aduzi", titled);
     }
 
     /// <summary>
@@ -746,11 +746,11 @@ public sealed class WindowTests : IDisposable
     /// says only spaces all mean the same thing: there is nothing to add.</para>
     /// </summary>
     [Theory]
-    [InlineData(null, "quickshell")]
-    [InlineData("", "quickshell")]
-    [InlineData("   ", "quickshell")]
-    [InlineData("quickshell", "quickshell")]
-    [InlineData("vim", "vim — quickshell")]
+    [InlineData(null, "Aduzi")]
+    [InlineData("", "Aduzi")]
+    [InlineData("   ", "Aduzi")]
+    [InlineData("Aduzi", "Aduzi")]
+    [InlineData("vim", "vim — Aduzi")]
     public void ATitleIsWhatTheSessionIsCalledThenWhoseWindowItIs(string? said, string expected)
     {
         Assert.Equal(expected, MainWindow.Naming(recording: false, said));
@@ -764,7 +764,7 @@ public sealed class WindowTests : IDisposable
 
         Assert.StartsWith("●", titled, StringComparison.Ordinal);
         Assert.Contains("cmd.exe", titled, StringComparison.Ordinal);
-        Assert.EndsWith("quickshell", titled, StringComparison.Ordinal);
+        Assert.EndsWith("Aduzi", titled, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -790,7 +790,7 @@ public sealed class WindowTests : IDisposable
 
         string bundle = File.ReadAllText(written);
 
-        Assert.Contains("quickshell diagnostics", bundle, StringComparison.Ordinal);
+        Assert.Contains("Aduzi diagnostics", bundle, StringComparison.Ordinal);
         Assert.Contains("has not been sent to anybody", bundle, StringComparison.Ordinal);
     }
 

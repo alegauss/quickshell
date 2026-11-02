@@ -94,7 +94,7 @@ public static class DiagnosticBundle
 
         StringBuilder bundle = new();
 
-        bundle.AppendLine("quickshell diagnostics")
+        bundle.AppendLine("Aduzi diagnostics")
               .AppendLine()
               .AppendLine("Read this before sending it anywhere. It was written by your own client,")
               .AppendLine("it has not been sent to anybody, and nothing here will send it.")

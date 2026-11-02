@@ -189,7 +189,7 @@ public sealed class ClaudePluginTests : IDisposable
         Assert.Contains("--agent-hook", asked, StringComparison.Ordinal);
         Assert.Contains("claude plugin install quickshell@quickshell-local -s user", asked, StringComparison.Ordinal);
         Assert.Equal(3, ran.Length);
-        Assert.StartsWith("Installed: quickshell ", said, StringComparison.Ordinal);
+        Assert.StartsWith("Installed: Aduzi ", said, StringComparison.Ordinal);
         Assert.True(written, "the plugin was not written before it was installed");
     }
 
@@ -297,7 +297,7 @@ public sealed class ClaudePluginTests : IDisposable
         Assert.StartsWith("No WSL distribution here finds claude", none, StringComparison.Ordinal);
         Assert.Contains("Turn Claude Code's sandbox on in that distribution", asked, StringComparison.Ordinal);
         Assert.Equal(3, ran);
-        Assert.StartsWith("Installed into Ubuntu: quickshell ", said, StringComparison.Ordinal);
+        Assert.StartsWith("Installed into Ubuntu: Aduzi ", said, StringComparison.Ordinal);
     }
 
     private static JsonNode Read(string path) => JsonNode.Parse(File.ReadAllText(path))!;

@@ -26,7 +26,7 @@ public static class Setup
     /// <summary>ERROR_ELEVATION_REQUIRED, which deployment tools already know how to read.</summary>
     public const int NeedsAdministrator = 740;
 
-    private const string Caption = "quickshell";
+    private const string Caption = "Aduzi";
 
     /// <summary>Whether the palette's install is copying. Read and written on the window's thread alone.</summary>
     private static bool _installing;
@@ -159,7 +159,7 @@ public static class Setup
 
         if (quiet || !Directory.Exists(settings))
         {
-            Tell(quiet, "quickshell is removed.", MessageBoxImage.Information);
+            Tell(quiet, "Aduzi is removed.", MessageBoxImage.Information);
 
             return 0;
         }
@@ -168,7 +168,7 @@ public static class Setup
         // window can be the destructive act; removing them takes a click on the button that says so.
         string? answer = Choice.Ask(
             null, Caption,
-            $"quickshell is removed.\n\nYour settings and saved sessions are still in {settings}, and a "
+            $"Aduzi is removed.\n\nYour settings and saved sessions are still in {settings}, and a "
             + "later install finds them there.",
             new ChoiceButton("Keep them", "keep") { IsWayOut = true },
             new ChoiceButton("Remove them too", "remove"));
@@ -191,7 +191,7 @@ public static class Setup
                 : "The copy you ran it from is unchanged and keeps its own settings in its data folder.")
             : string.Empty;
 
-        return $"quickshell {Version} is installed {whom}, in {target.Folder} ({bytes / (1024 * 1024)} MB), "
+        return $"Aduzi {Version} is installed {whom}, in {target.Folder} ({bytes / (1024 * 1024)} MB), "
                + $"and it is in the Start menu. Installed apps, in Settings, is where it is removed.{portable}";
     }
 
@@ -205,7 +205,7 @@ public static class Setup
 
         string doing = uninstalling ? "removed" : "installed";
 
-        return $"quickshell could not be {doing}: {failure.Message}";
+        return $"Aduzi could not be {doing}: {failure.Message}";
     }
 
     private static void Tell(bool quiet, string message, MessageBoxImage image)

@@ -40,7 +40,7 @@
       // string the machine decides and no case could assert it. `matches` is what makes it
       // assertable — the claim is that the title ENDS in this client's name, whatever the host put
       // in front of it, which is the part of the title this project actually decides.
-      "name": "a default installation puts a window named quickshell on the desk",
+      "name": "a default installation puts a window named Aduzi on the desk",
       "catches": "an application that builds its window correctly and then shows something else, or nothing at all — which every test running inside the process would pass",
       "filed": "QS147",
       "tags": ["smoke", "window"],
@@ -51,7 +51,7 @@
           // Selected by kind and read for its name, so the locator does not fix the reading.
           "locator": "TitleBar",
           "act": "read",
-          "matches": "quickshell$",
+          "matches": "Aduzi$",
           "reads": "name",
           "named": "the title bar ends in the application's own name"
         }
@@ -165,7 +165,7 @@
           "locator": "TitleBar",
           "act": "read",
           "reads": "name",
-          "matches": "quickshell$",
+          "matches": "Aduzi$",
           "named": "the title bar is back"
         },
         {

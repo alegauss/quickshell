@@ -251,7 +251,7 @@ gives the format with an example.
 
 ### `agentCertificateHello`
 
-Whether Windows Hello asks for you before quickshell signs an agent a certificate. Off by default; on, an agent signs in only while you are at the desk to answer.
+Whether Windows Hello asks for you before Aduzi signs an agent a certificate. Off by default; on, an agent signs in only while you are at the desk to answer.
 
 On a session set up to take its agent in on a certificate (`AgentCertificate`, [SESSIONS.md](SESSIONS.md)),
 the gateway asks quickshell's window before each signing, and the window shows the Windows Hello prompt

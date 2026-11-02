@@ -58,7 +58,7 @@ public sealed class AgentSetupDialog : Window
         {
             Text = $"An account on {host} that the agent gateway signs in as, with a key of its own that only works from {from} "
                    + "and opens no terminal or forwarding. As root it may run the commands listed below, each exactly as written, "
-                   + "and nothing else. The server enforces these limits, even when the agent policy in quickshell is turned off.",
+                   + "and nothing else. The server enforces these limits, even when the agent policy in Aduzi is turned off.",
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 640,
         });

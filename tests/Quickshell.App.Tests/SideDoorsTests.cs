@@ -29,7 +29,7 @@ public sealed class SideDoorsTests
         string? why = SideDoors.Check(command);
 
         Assert.NotNull(why);
-        Assert.Contains("quickshell", why, StringComparison.Ordinal);
+        Assert.Contains("Aduzi", why, StringComparison.Ordinal);
     }
 
     [Theory]

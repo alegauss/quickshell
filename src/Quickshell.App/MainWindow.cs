@@ -119,7 +119,7 @@ public sealed partial class MainWindow : Window
         Appearance = appearance ?? Appearance.Default;
         Chrome = chrome ?? Chrome.Default;
 
-        Title = "quickshell";
+        Title = "Aduzi";
         Width = 960;
         Height = 600;
         MinWidth = 320;
@@ -1863,7 +1863,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>The name this client answers to, which every title ends in.</summary>
-    private const string Client = "quickshell";
+    private const string Client = "Aduzi";
 
     /// <summary>
     /// The window's title: what the session is called, then whose window it is.
@@ -2557,7 +2557,7 @@ public sealed partial class MainWindow : Window
 
         Window asking = new()
         {
-            Title = "quickshell",
+            Title = "Aduzi",
             Content = body,
             Owner = this,
             ThemeMode = ThemeMode,
@@ -2651,7 +2651,7 @@ public sealed partial class MainWindow : Window
     private static void Told(string path)
     {
         string? answer = Choice.Ask(
-            null, "quickshell diagnostics",
+            null, "Aduzi diagnostics",
             $"What your client was doing is written to {path}.\n\n"
             + "Read it before sending it to anybody. Nothing has been sent, and passwords and key "
             + "material are not in it.",
@@ -2806,7 +2806,7 @@ public sealed partial class MainWindow : Window
 
         Window asking = new()
         {
-            Title = "quickshell",
+            Title = "Aduzi",
             Content = body,
             Owner = this,
             ThemeMode = ThemeMode,
@@ -3837,7 +3837,7 @@ public sealed partial class MainWindow : Window
     private sealed class Installing(MainWindow window) : Doing(window)
     {
         /// <inheritdoc/>
-        public override string Name => "Install quickshell for this user";
+        public override string Name => "Install Aduzi for this user";
 
         /// <inheritdoc/>
         public override bool CanExecute(object? parameter) => Window.Installs is not null;
@@ -4348,7 +4348,7 @@ public sealed partial class MainWindow : Window
     private bool AskedToDelete(string path) =>
         Choice.Ask(this, "Delete session",
                    $"Delete {path} from your saved sessions?\n\nThe file keeps no copy, and nothing in "
-                   + "quickshell brings it back. An open tab stays connected.",
+                   + "Aduzi brings it back. An open tab stays connected.",
                    new ChoiceButton("Delete it", "delete"),
                    new ChoiceButton("Keep it", "keep")) == "delete";
 
@@ -4582,7 +4582,7 @@ public sealed partial class MainWindow : Window
             // closing the window both mean "do not connect".
             string? answer = Choice.Ask(
                 this, "Unknown host key",
-                $"quickshell has not seen {question.Endpoint.Host}'s key before.\n\n"
+                $"Aduzi has not seen {question.Endpoint.Host}'s key before.\n\n"
                 + $"{question.Key.Algorithm} SHA256:{question.Key.Fingerprint}\n\n"
                 + "Compare it with the fingerprint the server's owner gave you.",
                 new ChoiceButton("Trust and remember it", "remember"),

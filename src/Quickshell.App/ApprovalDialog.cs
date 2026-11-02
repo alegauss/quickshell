@@ -234,7 +234,7 @@ public sealed class ApprovalDialog : Window
 
             grant["commands"] = new JsonArray([.. on.Select(call => (JsonNode?)new JsonArray([.. call.Words.Select(word => (JsonNode?)JsonValue.Create(word))]))]);
             grant["until"] = now.AddMinutes(minutes).ToString("O", CultureInfo.InvariantCulture);
-            grant["why"] = $"approved in quickshell, plan {request.ShortHash}";
+            grant["why"] = $"approved in Aduzi, plan {request.ShortHash}";
             grants.Add(grant);
         }
 

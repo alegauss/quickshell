@@ -292,6 +292,7 @@
 - ✅ **QS376** **publish-release refuses a gated build because the gate's own history row counts as a change to the tree** — Both of publish-release's cleanliness checks set benchmarks/results/gate-*.md aside, and the end of a release names the row left to commit.
 - ✅ **QS377 (the tag workflow)** **The release archive is built only on this desk, so no signing service can prove it came from the source** — A v-tag push runs release.yml, which refuses a tag that is not the project's version and keeps the unsigned archive and SHA256SUMS.txt.
 - ✅ **QS378** **Nobody has checked that every component the archive ships is under an OSI-approved licence** — All 18 shipped packages are MIT or ISC, and release.cmd refuses an archive whose notices do not list each at its version under an OSI licence (design recorded in `tools/check-notices.ps1`).
+- ✅ **QS384 (the name a person reads)** **A search for the name finds the Linux Quickshell and winget's Quick Shell, not this client** — The window, its dialogs, crash and setup messages, the agent gateway's prose and the README name the client Aduzi; identifiers are untouched.
 
 ## Block I — An error a user can act on
 

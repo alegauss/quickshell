@@ -42,7 +42,7 @@ public sealed class AgentFeed
 
         AgentFeed feed = new(Path.Combine(folder, run + ".vt"));
 
-        feed.Append($"{Escape}]0;agent {run}\u0007{Escape}[2mAn agent is working through quickshell's gateway (run {run}). "
+        feed.Append($"{Escape}]0;agent {run}\u0007{Escape}[2mAn agent is working through Aduzi's gateway (run {run}). "
                     + $"This tab only shows what it does; Ctrl+Shift+F12 stops every agent.{Escape}[0m\r\n");
 
         return feed;

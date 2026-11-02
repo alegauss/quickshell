@@ -16,7 +16,7 @@ namespace Quickshell.App;
 public sealed class VaultExport : IDisposable
 {
     /// <summary>What the vault's root group, and so the database, is called.</summary>
-    public const string DatabaseName = "Quickshell sessions";
+    public const string DatabaseName = "Aduzi sessions";
 
     private readonly List<Secret> _held = [];
 

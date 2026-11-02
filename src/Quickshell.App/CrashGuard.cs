@@ -121,7 +121,7 @@ public sealed class CrashGuard : IDisposable
     {
         if (notice.Path.Length == 0)
         {
-            MessageBox.Show(notice.Sentence, "quickshell has stopped", MessageBoxButton.OK,
+            MessageBox.Show(notice.Sentence, "Aduzi has stopped", MessageBoxButton.OK,
                             MessageBoxImage.Error);
 
             return;
@@ -129,7 +129,7 @@ public sealed class CrashGuard : IDisposable
 
         // Buttons that say what they do, and the folder as well as the file: a report's path is long
         // enough to wrap, and the folder is usually what somebody wants to attach from (QS131).
-        string? answer = Choice.Ask(null, "quickshell has stopped", notice.Sentence,
+        string? answer = Choice.Ask(null, "Aduzi has stopped", notice.Sentence,
                                     new ChoiceButton("Open the report", "file"),
                                     new ChoiceButton("Open its folder", "folder"),
                                     new ChoiceButton("Close", "close"));

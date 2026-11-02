@@ -52,7 +52,7 @@ public sealed class InstallationTests : IDisposable
         using RegistryKey? entry = Registry.CurrentUser.OpenSubKey(_entry);
 
         Assert.NotNull(entry);
-        Assert.Equal("quickshell", entry.GetValue("DisplayName"));
+        Assert.Equal("Aduzi", entry.GetValue("DisplayName"));
         Assert.Equal("9.8.7", entry.GetValue("DisplayVersion"));
         Assert.Equal(installed.Folder, entry.GetValue("InstallLocation"));
         Assert.Equal($"\"{installed.Program}\" --uninstall", entry.GetValue("UninstallString"));
@@ -150,8 +150,8 @@ public sealed class InstallationTests : IDisposable
             SetupException install = Assert.Throws<SetupException>(() => installed.Install(download, "1.0.1"));
             SetupException uninstall = Assert.Throws<SetupException>(() => installed.Uninstall());
 
-            Assert.Equal($"quickshell is running from {installed.Folder}. Close it, and install again.", install.Message);
-            Assert.Equal($"quickshell is running from {installed.Folder}. Close it, and uninstall again.", uninstall.Message);
+            Assert.Equal($"Aduzi is running from {installed.Folder}. Close it, and install again.", install.Message);
+            Assert.Equal($"Aduzi is running from {installed.Folder}. Close it, and uninstall again.", uninstall.Message);
 
             Assert.True(File.Exists(installed.Shortcut), "a refused uninstall removed the shortcut anyway");
             Assert.NotNull(Registry.CurrentUser.OpenSubKey(_entry));
@@ -312,7 +312,7 @@ public sealed class InstallationTests : IDisposable
     [Fact]
     public void ThePaletteOffersTheInstallOnlyWhereThereIsACopyToInstall()
     {
-        const string Install = "Install quickshell for this user";
+        const string Install = "Install Aduzi for this user";
 
         (bool before, bool after, int asked) = Sta.Run(() =>
         {

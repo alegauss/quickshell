@@ -379,7 +379,7 @@ public sealed class TerminalLeaf : IAsyncDisposable
             // write from here for the one reason that matters: no pipeline started, so this is the
             // only writer the render loop has.
             Emulator.Feed(System.Text.Encoding.UTF8.GetBytes(
-                $"quickshell could not start {Host}\r\n{failed.Message}\r\n"));
+                $"Aduzi could not start {Host}\r\n{failed.Message}\r\n"));
 
             _damage.Set();
         }

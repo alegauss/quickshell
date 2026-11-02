@@ -184,7 +184,7 @@ public sealed class SessionRecording : IAsyncDisposable
     {
         string said = string.Create(
             System.Globalization.CultureInfo.InvariantCulture,
-            $"\u0018\r\n[quickshell: this recording stopped here, at its limit of "
+            $"\u0018\r\n[Aduzi: this recording stopped here, at its limit of "
             + $"{Limit / (1024 * 1024.0):0.###} MB compressed, after {_bytes:N0} bytes from the host]\r\n");
 
         _compressing.Write(System.Text.Encoding.UTF8.GetBytes(said));

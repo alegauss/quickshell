@@ -142,8 +142,8 @@ public static class CrashReport
         StringBuilder report = new();
 
         report.AppendLine(kind == CrashKind.DeviceLost
-                              ? "quickshell stopped: the graphics device went away"
-                              : "quickshell stopped: a defect in the client")
+                              ? "Aduzi stopped: the graphics device went away"
+                              : "Aduzi stopped: a defect in the client")
               .AppendLine(Line("when", when.ToString("yyyy-MM-dd HH:mm:ss.fff 'UTC'",
                                                      CultureInfo.InvariantCulture)))
               .AppendLine(Line("version", what.Version))
@@ -217,9 +217,9 @@ public static class CrashReport
         StringBuilder said = new();
 
         said.Append(kind == CrashKind.DeviceLost
-                        ? "quickshell has stopped because the graphics device went away, which is "
+                        ? "Aduzi has stopped because the graphics device went away, which is "
                           + "usually a driver update or a reset."
-                        : "quickshell has stopped because of a defect in it.");
+                        : "Aduzi has stopped because of a defect in it.");
 
         if (what.Sessions > 0)
         {

@@ -46,7 +46,7 @@ public sealed class SettingsWindow : Window
         ("tagColours", "Tag colours", "Which tags a tab shows besides prod, and in which colour, as staging=caution, db=accent. Empty, the default, shows prod alone."),
         ("agentGateway", "Agent gateway", "Whether an agent such as Claude Code may run commands on your saved sessions through quickshell --mcp. Off by default. What it may run on each is the agent policy's to say."),
         ("claudeCommand", "Claude Code command", "What Open Claude Code runs in its pane, found on the path: claude by default."),
-        ("agentCertificateHello", "Windows Hello before an agent signs in", "Whether Windows Hello asks for you before quickshell signs an agent a certificate. Off by default; on, an agent signs in only while you are at the desk to answer."),
+        ("agentCertificateHello", "Windows Hello before an agent signs in", "Whether Windows Hello asks for you before Aduzi signs an agent a certificate. Off by default; on, an agent signs in only while you are at the desk to answer."),
         ("menuBar", "Menu bar", "When the menu bar of every action is on screen: Hidden, Alt (shown by pressing and releasing Alt) or Always (the default)."),
     ];
 
@@ -186,7 +186,7 @@ public sealed class SettingsWindow : Window
         PluginStep last = ran[^1];
 
         _pluginSaid.Text = last.ExitCode == 0
-            ? $"Installed: quickshell {Setup.Version}'s plugin is in Claude Code for your user. Start a new Claude Code session to use it."
+            ? $"Installed: Aduzi {Setup.Version}'s plugin is in Claude Code for your user. Start a new Claude Code session to use it."
             : $"Not installed: {claude} {string.Join(' ', last.Command)} said: {last.Said}";
         _plugin.IsEnabled = true;
 
@@ -265,7 +265,7 @@ public sealed class SettingsWindow : Window
         PluginStep last = ran[^1];
 
         _pluginSaid.Text = last.ExitCode == 0
-            ? $"Installed into {picked}: quickshell {Setup.Version}'s plugin is in its Claude Code. Start a new Claude Code session there to use it."
+            ? $"Installed into {picked}: Aduzi {Setup.Version}'s plugin is in its Claude Code. Start a new Claude Code session there to use it."
             : $"Not installed into {picked}: claude {string.Join(' ', last.Command)} said: {last.Said}";
 
         return ran;
@@ -277,7 +277,7 @@ public sealed class SettingsWindow : Window
         ClaudeFound = ClaudePlugin.Find(now.ClaudeCommand);
         _plugin.IsEnabled = ClaudeFound is not null;
         _pluginSaid.Text = ClaudeFound is { } found
-            ? $"Claude Code is at {found}. Installing adds quickshell's agent gateway to it in one step, and says first what it changes."
+            ? $"Claude Code is at {found}. Installing adds Aduzi's agent gateway to it in one step, and says first what it changes."
             : $"{now.ClaudeCommand} is not on the path, so there is no Claude Code to install the plugin into.";
     }
 

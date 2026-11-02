@@ -82,9 +82,9 @@ public static partial class SideDoors
                 return program.ToLowerInvariant() switch
                 {
                     "scp" or "pscp" or "sftp" or "psftp" =>
-                        $"{program} copies files over SSH around quickshell. Use the gateway's read_file and edit_file, or exec, "
+                        $"{program} copies files over SSH around Aduzi. Use the gateway's read_file and edit_file, or exec, "
                         + "on a session hosts_list names.",
-                    _ => $"{program} opens an SSH connection around quickshell, where no rule applies. Use the gateway's exec "
+                    _ => $"{program} opens an SSH connection around Aduzi, where no rule applies. Use the gateway's exec "
                          + "with argv on a session hosts_list names, or job_start for a long command.",
                 };
             }
@@ -92,12 +92,12 @@ public static partial class SideDoors
             if (program.Equals("rsync", StringComparison.OrdinalIgnoreCase) && (rest.Contains("ssh", StringComparison.OrdinalIgnoreCase)
                                                                                    || Regex.IsMatch(rest, @"(^|\s)[^\s/]+:[^\s]*")))
             {
-                return "rsync to a host goes over SSH around quickshell. Use the gateway's exec, or read_file and edit_file.";
+                return "rsync to a host goes over SSH around Aduzi. Use the gateway's exec, or read_file and edit_file.";
             }
 
             if (program.Equals("git", StringComparison.OrdinalIgnoreCase) && GitOverSsh.IsMatch(rest))
             {
-                return "git with an SSH address connects around quickshell. Use an HTTPS remote, or run git on the server "
+                return "git with an SSH address connects around Aduzi. Use an HTTPS remote, or run git on the server "
                        + "through the gateway's exec.";
             }
 
@@ -106,12 +106,12 @@ public static partial class SideDoors
                  || program.Equals("Invoke-Command", StringComparison.OrdinalIgnoreCase))
                 && rest.Contains("-HostName", StringComparison.OrdinalIgnoreCase))
             {
-                return $"{program} -HostName is PowerShell remoting over SSH, around quickshell. Use the gateway's exec.";
+                return $"{program} -HostName is PowerShell remoting over SSH, around Aduzi. Use the gateway's exec.";
             }
 
             if (program.StartsWith("python", StringComparison.OrdinalIgnoreCase) && Libraries.Match(part) is { Success: true } library)
             {
-                return $"A script using {library.Value} connects over SSH around quickshell. Use the gateway's exec.";
+                return $"A script using {library.Value} connects over SSH around Aduzi. Use the gateway's exec.";
             }
         }
 

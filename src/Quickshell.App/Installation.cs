@@ -161,7 +161,7 @@ public sealed class Installation
 
         using (RegistryKey entry = _hive.CreateSubKey(_entry, writable: true))
         {
-            entry.SetValue("DisplayName", "quickshell");
+            entry.SetValue("DisplayName", "Aduzi");
             entry.SetValue("DisplayVersion", version);
             entry.SetValue("DisplayIcon", Program);
             entry.SetValue("InstallLocation", Folder);
@@ -232,7 +232,7 @@ public sealed class Installation
         // a person to delete, rather than handed to a command that would read it as something else.
         if (folder.Contains('%', StringComparison.Ordinal))
         {
-            throw new SetupException($"{folder} could not be removed, because its name has a % in it. Delete it once quickshell has closed.");
+            throw new SetupException($"{folder} could not be removed, because its name has a % in it. Delete it once Aduzi has closed.");
         }
 
         string quoted = $"\"{folder}\"";
@@ -265,8 +265,8 @@ public sealed class Installation
         if (running > 0)
         {
             throw new SetupException(running == 1
-                ? $"quickshell is running from {Folder}. Close it, and {doing} again."
-                : $"{running} copies of quickshell are running from {Folder}. Close them, and {doing} again.");
+                ? $"Aduzi is running from {Folder}. Close it, and {doing} again."
+                : $"{running} copies of Aduzi are running from {Folder}. Close them, and {doing} again.");
         }
     }
 

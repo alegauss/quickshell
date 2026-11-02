@@ -990,7 +990,7 @@ public static class Entry
 
         if (!SettingsFile.ReadFrom(Locations.Current.Settings).AgentGateway)
         {
-            Console.Error.WriteLine("quickshell --mcp: the agent gateway is off. Turn on agentGateway in quickshell's "
+            Console.Error.WriteLine("quickshell --mcp: the agent gateway is off. Turn on agentGateway in Aduzi's "
                                     + "settings to let an agent run commands on your saved sessions.");
 
             return 2;

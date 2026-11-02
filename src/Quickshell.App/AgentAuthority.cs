@@ -47,7 +47,7 @@ public sealed record AgentSigning(AgentAuthority Authority, TimeSpan Lifetime)
         {
             if (!AgentAsks.WindowOpen())
             {
-                return "no quickshell window is open to ask Windows Hello in";
+                return "no Aduzi window is open to ask Windows Hello in";
             }
 
             ApprovalRequest request = new(Guid.NewGuid().ToString("N"), "sign",
@@ -135,7 +135,7 @@ public sealed class AgentAuthority
 
         if (!Exists)
         {
-            throw new AgentSetupRefusal("There is no agent certificate authority in quickshell's folder yet. Set the agent account up "
+            throw new AgentSetupRefusal("There is no agent certificate authority in Aduzi's folder yet. Set the agent account up "
                                         + "again from the session menu, which makes one.");
         }
 

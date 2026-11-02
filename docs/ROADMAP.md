@@ -24,10 +24,10 @@
 - 📋 **QS380** (deps: QS386, visibility VS58) **Every release still ships unsigned, so SmartScreen warns on the first download and managed machines refuse it** — The Store signs the MSIX itself, and claude-tray tests that path first (VS58); SignPath and Certum become the fallback. → §QS380
 - 💭 **QS381** (deps: QS380) **If SignPath Foundation declines the project, there is no affordable certificate lined up** — Certum's Open Source Code Signing certificate is issued to individuals anywhere for tens of euros a year, and release.ps1 -Certificate can use it. → §QS381
 - 📋 **QS382** (deps: QS380) **Once a certificate exists, nothing sends the tagged build to SignPath and publishes what comes back** — With SignPath the key never reaches this desk, so the tag workflow submits its archive, waits for the maintainer's approval and publishes the signed result. → §QS382
-- 📋 **QS384** (deps: —) **A search for the name finds the Linux Quickshell and winget's Quick Shell, not this client** — The author renamed it Aduzi, and the name has to change before a first release fixes the old one in downloads and links. → §QS384
+- ⏳ **QS384** (deps: —) **A search for the name finds the Linux Quickshell and winget's Quick Shell, not this client** — The exe, archive, install and data folders, Claude plugin, user docs, site and repository still say quickshell, and an old install must upgrade. → §QS384
 - 📋 **QS385** (deps: —) **The description and the site promise a live prompt under 400 ms, while the published measurement is 612 to 647 ms** — A product sold on measured performance cannot advertise its target as its result, and the first reader who runs the harness finds the gap. → §QS385
-- 📋 **QS386** (deps: QS384) **There is nothing to download: no release or tag, only a CI artefact that expires in five days** — Every channel waits for a first release, and the Store and any certificate application need one to exist. → §QS386
-- 📋 **QS387** (deps: QS384) **A reader who looks the name up finds Portuguese dictionaries and a bean, never why the client is called Aduzi** — The name is meant to be opaque until someone searches it, so the meaning has to be written where that search lands. → §QS387
+- 📋 **QS386** (deps: QS384 ⏳) **There is nothing to download: no release or tag, only a CI artefact that expires in five days** — Every channel waits for a first release, and the Store and any certificate application need one to exist. → §QS386
+- 📋 **QS387** (deps: QS384 ⏳) **A reader who looks the name up finds Portuguese dictionaries and a bean, never why the client is called Aduzi** — The name is meant to be opaque until someone searches it, so the meaning has to be written where that search lands. → §QS387
 
 ## Block I — An error a user can act on
 
@@ -327,6 +327,15 @@
 - **A pushed tag's run keeps the unsigned archive and its checksum** Settled by the
   first v<version> tag pushed (QS386): its Release archive run on GitHub is green and
   lists quickshell-<version>-win-x64-unsigned.zip and SHA256SUMS.txt as an artifact.
+
+## Done when — QS384
+
+- **Aduzi is the only name from download to window** Settled by unzipping a release
+  archive and installing it in the guest: archive, executable, install folder, Start
+  menu entry, uninstall entry and window all say Aduzi.
+- **An install made under the old name upgrades with sessions intact** Settled by
+  run-install-vm.cmd: install a quickshell build, save a session, install the Aduzi
+  build over it, and read the same session in the new window, with the old entry gone.
 
 ## Non-goals
 

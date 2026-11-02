@@ -30,7 +30,7 @@ public sealed class PolicyChangeDialog : Window
 
         TextBlock said = new()
         {
-            Text = "The agent policy was changed outside quickshell. Until you accept or reject the change, every call an agent "
+            Text = "The agent policy was changed outside Aduzi. Until you accept or reject the change, every call an agent "
                    + "makes is refused. An agent that can write files could have made it.",
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 640,

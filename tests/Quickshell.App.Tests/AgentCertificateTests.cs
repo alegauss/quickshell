@@ -203,7 +203,7 @@ public sealed class AgentCertificateTests : IDisposable
         Assert.False(File.Exists(key + "-cert.pub"), "a certificate was signed though the signing was not confirmed");
 
         Assert.False(AgentAsks.WindowOpen(), "a quickshell window holds the asks name in this test process");
-        Assert.Equal("no quickshell window is open to ask Windows Hello in",
+        Assert.Equal("no Aduzi window is open to ask Windows Hello in",
                      await AgentSigning.ByHello(Path.Combine(_here, "asks"))(session, "agent", Stop));
     }
 

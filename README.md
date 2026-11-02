@@ -1,12 +1,16 @@
 <div align="center">
 
-<img src="site/public/logo.svg" alt="quickshell logo" width="120">
+<img src="site/public/logo.svg" alt="Aduzi logo" width="120">
 
-# Quickshell
+# Aduzi
 
 **SSH on Windows, without the suite around it: sessions, keys, SFTP, tunnels, tabs and split panes, free and MIT, with your MobaXterm sessions imported in one command.**
 
 Windows 10 and 11 · no account, no telemetry, no update check · pre-release 0.1.0
+
+Formerly quickshell. The executable, the release archive, the install folder and this repository
+still carry the old name until the rename reaches them; the window and everything it says already
+use the new one.
 
 **[alegauss.github.io/quickshell](https://alegauss.github.io/quickshell/)** ·
 [Install](docs/INSTALL.md) ·
@@ -19,7 +23,7 @@ Windows 10 and 11 · no account, no telemetry, no update check · pre-release 0.
 
 </div>
 
-quickshell does the part of MobaXterm most people open it for and leaves out the X server, the
+Aduzi does the part of MobaXterm most people open it for and leaves out the X server, the
 Cygwin userland and the rest of the bundle. The terminal is drawn on the GPU (Direct3D 11 and
 DirectWrite, the whole grid in one draw call), and a window with nothing happening in it draws
 nothing at all. Every performance claim in this repository has a measurement behind it, with the
@@ -54,7 +58,7 @@ quickshell.exe --import
 ```
 
 Or `Ctrl+Shift+I` inside the client. MobaXterm session files and PuTTY's saved sessions are
-both read. A session type quickshell doesn't support (RDP, VNC, serial and so on) is named in
+both read. A session type Aduzi doesn't support (RDP, VNC, serial and so on) is named in
 the import report instead of being dropped silently. Known issue: a key file that MobaXterm
 stored as `_ProfileDir_\...` is not found after import yet, so point the session at the key
 again ([QS276](docs/ROADMAP.md)).
@@ -62,14 +66,14 @@ again ([QS276](docs/ROADMAP.md)).
 Your `~/.ssh/config` is read live as well, `ProxyJump` and `Include` included, so hosts you
 already defined there appear without being retyped.
 
-## quickshell vs MobaXterm
+## Aduzi vs MobaXterm
 
-MobaXterm is a suite. quickshell is an SSH client. The table shows both sides: what you gain,
+MobaXterm is a suite. Aduzi is an SSH client. The table shows both sides: what you gain,
 and what you give up if you used MobaXterm for more than SSH.
 
 ### Price and licence limits
 
-| | quickshell | MobaXterm Home | MobaXterm Professional |
+| | Aduzi | MobaXterm Home | MobaXterm Professional |
 |---|---|---|---|
 | Price | Free | Free | $69 per user |
 | Saved sessions | Unlimited | 12 | Unlimited |
@@ -82,7 +86,7 @@ and [Home Edition licence](https://mobaxterm.mobatek.net/license.html), read 202
 
 ### SSH and files
 
-| | quickshell | MobaXterm |
+| | Aduzi | MobaXterm |
 |---|---|---|
 | Password, public key, keyboard-interactive, 2FA | Yes | Yes |
 | Windows OpenSSH agent and Pageant | Yes | Yes |
@@ -95,12 +99,12 @@ and [Home Edition licence](https://mobaxterm.mobatek.net/license.html), read 202
 | Type into several sessions at once | Yes (`Ctrl+Shift+B`) | Yes (MultiExec) |
 | Portable copy that writes nothing to your profile | Yes | Yes |
 
-### What quickshell does not do
+### What Aduzi does not do
 
 These are decisions, published as [non-goals](docs/ROADMAP.md), not gaps waiting to be
 filled. If you depend on one of them, keep MobaXterm for that job.
 
-| | quickshell | MobaXterm |
+| | Aduzi | MobaXterm |
 |---|---|---|
 | X11 server / X11 forwarding | No | Yes |
 | RDP, VNC, Telnet, serial, FTP | No | Yes |
@@ -114,13 +118,13 @@ filled. If you depend on one of them, keep MobaXterm for that job.
 Same machine (Intel Core i7-14700, RTX 4060, Windows 11 Pro), same sitting, same observer for
 both programs.
 
-| | quickshell | MobaXterm | Run |
+| | Aduzi | MobaXterm | Run |
 |---|---|---|---|
 | Start to window shown, warm, median of 10 | **612 ms** | 894 ms | [startup-h.md](benchmarks/results/startup-h.md), 2026-10-10 |
 | CPU time of an idle empty window, over 10 minutes | **0 ms** | 3,625 ms | [idle-h.md](benchmarks/results/idle-h.md), 2026-08-31 |
 | Private memory, empty window | 79.4 MB | **62.4 MB** | [idle-h.md](benchmarks/results/idle-h.md), 2026-08-31 |
 
-MobaXterm uses less memory: about 79 MB of quickshell's figure is the .NET runtime and the WPF
+MobaXterm uses less memory: about 79 MB of Aduzi's figure is the .NET runtime and the WPF
 window before any session exists, and another ~47 MB is the graphics driver's share once
 Direct3D is opened. One connected session plus a local tab holds 142 to 145 MB. The budget for
 that is 160 MB, and [PERFORMANCE.md](docs/PERFORMANCE.md) explains why.

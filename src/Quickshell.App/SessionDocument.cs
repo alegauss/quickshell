@@ -60,7 +60,7 @@ public static class SessionDocument
         PdfDocumentRenderer renderer = new() { Document = Build(sessions, when, version, saved) };
 
         renderer.RenderDocument();
-        renderer.PdfDocument.Info.Creator = $"quickshell {version}";
+        renderer.PdfDocument.Info.Creator = $"Aduzi {version}";
         renderer.PdfDocument.Save(file);
     }
 
@@ -71,7 +71,7 @@ public static class SessionDocument
         Document document = new();
 
         document.Info.Title = "Sessions";
-        document.Info.Subject = $"{sessions.Count} sessions, as quickshell resolves them";
+        document.Info.Subject = $"{sessions.Count} sessions, as Aduzi resolves them";
 
         Styles(document);
 
@@ -92,7 +92,7 @@ public static class SessionDocument
 
         cover.AddParagraph("Sessions", Cover);
         cover.AddParagraph(string.Create(CultureInfo.InvariantCulture,
-            $"Written {when.ToLocalTime():yyyy-MM-dd HH:mm} by quickshell {version}."));
+            $"Written {when.ToLocalTime():yyyy-MM-dd HH:mm} by Aduzi {version}."));
 
         string[] folders = [.. sessions.Select(session => Folder(session.Path)).Distinct(StringComparer.OrdinalIgnoreCase)
                                        .Order(StringComparer.OrdinalIgnoreCase)];

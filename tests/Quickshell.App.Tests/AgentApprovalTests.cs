@@ -83,7 +83,7 @@ public sealed class AgentApprovalTests : IDisposable
         JsonObject asked = (await gateway.AnswerAsync(Exec(1, "db", "systemctl", "restart", "nginx"), Stop))!;
         JsonObject read = (await gateway.AnswerAsync(Exec(2, "db", "uptime"), Stop))!;
 
-        Assert.Contains("no quickshell window is open", asked["result"]!["structuredContent"]!["error"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Contains("no Aduzi window is open", asked["result"]!["structuredContent"]!["error"]!.GetValue<string>(), StringComparison.Ordinal);
         Assert.False(read["result"]!["isError"]!.GetValue<bool>());
         Assert.Equal(["uptime"], connection.Commands.Select(command => command[CommandPrompts.PosixPreamble.Length..]));
     }

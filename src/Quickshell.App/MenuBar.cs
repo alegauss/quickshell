@@ -19,7 +19,7 @@ public static class MenuBar
     private static readonly (string Heading, string[] Words)[] Rules =
     [
         ("_Agents", ["agent", "claude"]),
-        ("_Help", ["help", "diagnostic", "log folder", "install quickshell", "show all commands"]),
+        ("_Help", ["help", "diagnostic", "log folder", "install Aduzi", "show all commands"]),
         ("_Forward", ["forward"]),
         ("T_ransfer", ["browse", "send file", "upload", "download"]),
         ("Tab and _Pane", ["tab", "pane", "divider", "split", "broadcast"]),

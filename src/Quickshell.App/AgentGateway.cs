@@ -135,7 +135,7 @@ public sealed class AgentGateway : IAsyncDisposable
         ["capabilities"] = new JsonObject { ["tools"] = new JsonObject() },
         ["serverInfo"] = new JsonObject { ["name"] = "quickshell", ["version"] = _version },
         ["instructions"] =
-            "Runs commands on the SSH sessions saved in quickshell. hosts_list names them; exec runs an argument "
+            "Runs commands on the SSH sessions saved in Aduzi. hosts_list names them; exec runs an argument "
             + "vector on one and answers its exit code, stdout and stderr apart. read_file and edit_file read a text "
             + "file there and change one exact piece of it, keeping the original beside it. Every call is judged by the "
             + "person's policy first: a refusal names its rule; report it rather than working around it.",
@@ -152,7 +152,7 @@ public sealed class AgentGateway : IAsyncDisposable
         new JsonObject
         {
             ["name"] = "exec",
-            ["description"] = "Runs a program on a saved session over quickshell's own connection, which is kept for the next "
+            ["description"] = "Runs a program on a saved session over Aduzi's own connection, which is kept for the next "
                               + "call. Takes the program and its arguments as an array, so nothing is quoted by hand; answers "
                               + "exitCode, stdout and stderr apart. The server's shell must be POSIX.",
             ["inputSchema"] = new JsonObject
@@ -256,7 +256,7 @@ public sealed class AgentGateway : IAsyncDisposable
                  ["pattern"] = new JsonObject { ["type"] = "string", ["description"] = "What to look for." },
              }, "output", "pattern"),
         Tool("plan", "Several calls (exec, edit_file, job_start, read_file) judged together and, where the policy asks, approved by the "
-                     + "person in quickshell once, as a batch bound to its hash; then run in order, stopping at the first that fails. "
+                     + "person in Aduzi once, as a batch bound to its hash; then run in order, stopping at the first that fails. "
                      + "Prefer one plan to many asks.",
              new JsonObject
              {
@@ -341,7 +341,7 @@ public sealed class AgentGateway : IAsyncDisposable
         if (PolicyFile is { } changed && !PolicyApproval.Approved(changed))
         {
             return new PolicyVerdict(Verdict.Refuse,
-                "the agent policy was changed outside quickshell and waits for the person to accept or reject the change there", false);
+                "the agent policy was changed outside Aduzi and waits for the person to accept or reject the change there", false);
         }
 
         AgentPolicy policy = PolicyFile is { } file ? AgentPolicy.Load(file) : AgentPolicy.None;
@@ -408,8 +408,8 @@ public sealed class AgentGateway : IAsyncDisposable
             {
                 Decision.Refuse => $"The person refused {said}" + (answer.Note.Length > 0 ? $": {answer.Note}" : ".") + " Do not retry it as it was.",
                 Decision.TimedOut => string.Create(CultureInfo.InvariantCulture,
-                    $"approval timed out: nobody answered {said} in quickshell within {AgentAsks.Patience.TotalMinutes:0} minutes."),
-                _ => $"This needs the person's approval ({calls[0].Rule}), and no quickshell window is open to ask in, so it is refused.",
+                    $"approval timed out: nobody answered {said} in Aduzi within {AgentAsks.Patience.TotalMinutes:0} minutes."),
+                _ => $"This needs the person's approval ({calls[0].Rule}), and no Aduzi window is open to ask in, so it is refused.",
             };
 
             return (Content(new JsonObject
@@ -714,7 +714,7 @@ public sealed class AgentGateway : IAsyncDisposable
     }
 
     private const string StoppedReason =
-        "The person stopped every agent from quickshell, so nothing runs through the gateway until they let it run again. "
+        "The person stopped every agent from Aduzi, so nothing runs through the gateway until they let it run again. "
         + "Report this to them rather than retrying.";
 
     private async Task<JsonObject> CallAsync(JsonObject? call, CancellationToken cancellationToken)
@@ -1105,7 +1105,7 @@ public sealed class AgentGateway : IAsyncDisposable
 
             throw new SshException(refused.Kind, $"{target.Host}'s host key is not trusted yet.",
                                    "The gateway asks nobody, so it refuses a key it has not seen. Connect to the session once "
-                                   + "from the quickshell window and remember its key, then call again.");
+                                   + "from the Aduzi window and remember its key, then call again.");
         }
         catch
         {
@@ -1136,7 +1136,7 @@ public sealed class AgentGateway : IAsyncDisposable
         {
             throw new SshException(SshFailureKind.CredentialRejected, $"No certificate was signed for {session.Path}'s agent account: {refused}.",
                                    "The person asked for Windows Hello before each signing (agentCertificateHello), and it did not confirm them.",
-                                   "The person answers the Windows Hello prompt over quickshell's window, or turns the setting off.");
+                                   "The person answers the Windows Hello prompt over Aduzi's window, or turns the setting off.");
         }
 
         try

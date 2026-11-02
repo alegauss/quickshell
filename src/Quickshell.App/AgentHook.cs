@@ -66,7 +66,7 @@ public static class AgentHook
             && guarded.FirstOrDefault(each => Within(path, each)) is { } hit)
         {
             why = $"{Path.GetFileName(hit)} limits or watches what agents do, so an agent's tools do not write it. "
-                  + "The person changes it in quickshell.";
+                  + "The person changes it in Aduzi.";
         }
         else if (input?["command"]?.GetValue<string>() is { } command)
         {
@@ -74,7 +74,7 @@ public static class AgentHook
                   ?? (guarded.FirstOrDefault(each => command.Contains(Path.GetFileName(each), StringComparison.OrdinalIgnoreCase)
                                                      && Path.GetFileName(each) is not "audit") is { } named
                       ? $"The command names {Path.GetFileName(named)}, which limits or watches what agents do; an agent's shell does not touch it. "
-                        + "The person changes it in quickshell."
+                        + "The person changes it in Aduzi."
                       : null);
         }
 
