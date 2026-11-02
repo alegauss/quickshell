@@ -529,24 +529,6 @@ one. The scheme keeps answering to `quickshell` so settings files that name it s
 load. Code namespaces and the QS prefix stay. The old site path redirects to the new
 one.
 
-### §QS385 QS385 — Stating the measured start-up, not the budget
-
-From the portfolio review of 30/10/2026 (visibility, `produtos/quickshell.md`). The
-GitHub description, the site's meta description, its hero and `llms.txt` promise "a cold
-start to a live prompt under 400 ms". That is figure 5 of `docs/PERFORMANCE.md`, a
-budget. The measurement in `benchmarks/results/startup-h.md` says it is not met: 647 ms
-to an interactive prompt (warm, median), and the README itself reports 612 ms until the
-window shows. A product whose argument is measured performance cannot advertise its
-target as its result; the first reader who runs the harness finds the gap.
-
-Until a measurement meets the budget, every public surface states the measured figure,
-with the date and the machine, and names 400 ms only as the target. The site's figure
-comes from the results file rather than from a typed string, so the claim moves when the
-measurement does. If the work on start-up reaches the budget first, the text can keep
-400 ms with the new measurement behind it.
-
-Done when no public text claims under 400 ms without a measurement that shows it.
-
 ### §QS386 QS386 — The first release
 
 From the portfolio review of 30/10/2026 (visibility, `produtos/quickshell.md` and
