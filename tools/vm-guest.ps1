@@ -401,20 +401,26 @@ function Connect-Guest {
         # while reporting that everything is present.
         $start = Invoke-VmRun -Arguments @('start', $vmxPath, 'gui')
         if (-not $start.Ok) { Refuse "the guest would not start: $($start.Output)" }
-
-        $deadline = (Get-Date).AddMinutes(10)
-        do {
-            Start-Sleep -Seconds 10
-            $tools = Invoke-VmRun -Arguments @('checkToolsState', $vmxPath)
-        } while ($tools.Output -notmatch 'running' -and (Get-Date) -lt $deadline)
-        if ($tools.Output -notmatch 'running') { Refuse 'VMware Tools never answered in the guest within ten minutes' }
     }
 
+    # QS388: waited for whoever started the guest. A guest another run, a person or Workstation's
+    # own resume started seconds ago is already in the list and still booting, and its Tools
+    # answer "installed" or "unknown" until Windows inside it has loaded them. Checked once, that
+    # read as a guest with no Tools at all.
+    $waited = [Diagnostics.Stopwatch]::StartNew()
+    $deadline = [TimeSpan]::FromMinutes(10)
     $tools = Invoke-VmRun -Arguments @('checkToolsState', $vmxPath)
     if ($tools.Output -notmatch 'running') {
-        Refuse "VMware Tools is '$($tools.Output.Trim())' in the guest" 'Install VMware Tools there. Without it vmrun can run nothing.'
+        Write-Host "  waiting     VMware Tools says '$($tools.Output.Trim())'; the guest may still be starting" -ForegroundColor Yellow
     }
-    Write-Host '  guest       running, tools answering'
+    while ($tools.Output -notmatch 'running' -and $waited.Elapsed -lt $deadline) {
+        Start-Sleep -Seconds 10
+        $tools = Invoke-VmRun -Arguments @('checkToolsState', $vmxPath)
+    }
+    if ($tools.Output -notmatch 'running') {
+        Refuse "VMware Tools still says '$($tools.Output.Trim())' after $([int]$waited.Elapsed.TotalMinutes) minutes of waiting" 'A guest that has finished starting and still has no Tools running needs VMware Tools installed. Without it vmrun can run nothing.'
+    }
+    Write-Host "  guest       running, tools answering$(if ($waited.Elapsed.TotalSeconds -ge 10) { " after $([int]$waited.Elapsed.TotalSeconds) s" })"
 
     return $vmxPath
 }

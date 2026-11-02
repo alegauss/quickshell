@@ -617,24 +617,6 @@ both sides' algorithm lists.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS388 A guest that is listed before it is ready
-
-Found 2026-11-02 running QS374's suite. The VM process started at 11:19:30, and
-run-tests-vm began twenty seconds later. `vmrun list` already named the .vmx, so
-Connect-Guest took the guest as running, skipped its ten-minute wait for VMware Tools,
-and asked `checkToolsState` once. The guest was still booting, Tools answered
-"installed", and the run was refused with "Install VMware Tools there", a remedy for a
-guest that has no Tools at all.
-
-The wait exists only on the branch where this run started the guest itself. A guest that
-another run, a person or Workstation's own resume started a moment earlier is in the
-list and not yet ready, and nothing waits for it.
-
-What to build: in vm-guest.ps1, the poll for `running` runs on both branches, so a
-listed guest whose Tools say "installed" is waited for up to the same deadline. Only
-"not installed", or a deadline that passes, is refused, and each refusal names what
-Tools said and how long it waited.
-
 ## Block L — An agent at the controls, held to a policy it cannot edit
 
 ### §QS360 Windows Hello in front of the agent authority
