@@ -25,7 +25,7 @@
 - 💭 **QS381** (deps: QS380) **If SignPath Foundation declines the project, there is no affordable certificate lined up** — Certum's Open Source Code Signing certificate is issued to individuals anywhere for tens of euros a year, and release.ps1 -Certificate can use it. → §QS381
 - 📋 **QS382** (deps: QS380) **Once a certificate exists, nothing sends the tagged build to SignPath and publishes what comes back** — With SignPath the key never reaches this desk, so the tag workflow submits its archive, waits for the maintainer's approval and publishes the signed result. → §QS382
 - ⏳ **QS384** (deps: the repository renamed on GitHub) **A search for the name finds the Linux Quickshell and winget's Quick Shell, not this client** — The exe, archive, install and data folders, Claude plugin, user docs, repository and site address still say quickshell; an old install must upgrade. → §QS384
-- 📋 **QS385** (deps: —) **The description and the site promise a live prompt under 400 ms, while the published measurement is 612 to 647 ms** — A product sold on measured performance cannot advertise its target as its result, and the first reader who runs the harness finds the gap. → §QS385
+- ⏳ **QS385** (deps: the maintainer's edit of the GitHub description) **The description and the site promise a live prompt under 400 ms, while the published measurement is 612 to 647 ms** — The GitHub description still promises a prompt under 400 ms; editing it is the maintainer's. → §QS385
 - 📋 **QS386** (deps: QS384 ⏳) **There is nothing to download: no release or tag, only a CI artefact that expires in five days** — Every channel waits for a first release, and the Store and any certificate application need one to exist. → §QS386
 - 📋 **QS387** (deps: QS384 ⏳) **A reader who looks the name up finds Portuguese dictionaries and a bean, never why the client is called Aduzi** — The name is meant to be opaque until someone searches it, so the meaning has to be written where that search lands. → §QS387
 
@@ -336,6 +336,12 @@
 - **An install made under the old name upgrades with sessions intact** Settled by
   run-install-vm.cmd: install a quickshell build, save a session, install the Aduzi
   build over it, and read the same session in the new window, with the old entry gone.
+
+## Done when — QS385
+
+- **The GitHub description states the measured start, not the budget** Settled by gh
+  repo view alegauss/quickshell --json description: it names no figure under 400 ms, or
+  names the measured one beside the budget.
 
 ## Non-goals
 

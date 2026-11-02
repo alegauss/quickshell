@@ -57,7 +57,9 @@ build rather than reaching a release.
   over an idle interval, no measurable core occupancy, and no raised system timer resolution
   held by the process. Small is not a pass here; the number is zero.
 - **Cold start, under 400 ms.** Process creation to an interactive local shell, meaning a
-  prompt that accepts a keystroke rather than a window that has appeared.
+  prompt that accepts a keystroke rather than a window that has appeared. Not met yet:
+  measured at 647 ms warm on the reference machine on 2026-09-10
+  (`benchmarks/results/startup-h.md`).
 - **Resident memory, under 160 MB.** One connected session at default scrollback, private
   working set after it has settled, and flat across a seventy-two-hour soak.
 

@@ -293,6 +293,7 @@
 - ✅ **QS377 (the tag workflow)** **The release archive is built only on this desk, so no signing service can prove it came from the source** — A v-tag push runs release.yml, which refuses a tag that is not the project's version and keeps the unsigned archive and SHA256SUMS.txt.
 - ✅ **QS378** **Nobody has checked that every component the archive ships is under an OSI-approved licence** — All 18 shipped packages are MIT or ISC, and release.cmd refuses an archive whose notices do not list each at its version under an OSI licence (design recorded in `tools/check-notices.ps1`).
 - ✅ **QS384 (the name a person reads)** **A search for the name finds the Linux Quickshell and winget's Quick Shell, not this client** — The window, its dialogs and messages, the agent gateway's prose, the README, the site and llms.txt name the client Aduzi; identifiers are untouched.
+- ✅ **QS385 (the site and llms.txt)** **The description and the site promise a live prompt under 400 ms, while the published measurement is 612 to 647 ms** — The site states start-up as measured, 647 ms against a 400 ms budget, read from startup-h.md at build time, and the build stops if it cannot be read.
 
 ## Block I — An error a user can act on
 

@@ -18,10 +18,18 @@
 // rest is open, so this is the page the finished client gets rather than a report on the
 // one in the tree. Every figure it states is the budget from docs/PERFORMANCE.md or a
 // "Done when" criterion from the roadmap, quoted as the threshold it is; none of them is a
-// measurement invented here.
+// measurement invented here. The one measurement it states, cold start, is read from
+// benchmarks/results/startup-h.md by ./measured.ts, so it moves when the measurement does
+// (QS385).
 // ---------------------------------------------------------------------------------------
 
 import type { SiteRun, SponsorDeclaration } from "@viglet/viglet-design-system/site";
+import { startBudgetMs, startMachine, startMeasuredMs, startMeasuredOn, startMet } from "./measured";
+
+// A start-up result where the page states one: the measurement, and the budget beside it.
+const startResult = startMet
+  ? `under ${startBudgetMs} ms (measured ${startMeasuredMs} ms)`
+  : `measured at ${startMeasuredMs} ms against a ${startBudgetMs} ms budget`;
 
 // The run shape is the design system's, which SiteRich renders.
 export type Run = SiteRun;
@@ -33,7 +41,7 @@ export type Rich = Run[];
 export const meta = {
   title: "Aduzi: SSH on Windows, without the suite around it",
   description:
-    "A native Windows SSH client that draws the terminal grid on the GPU: one instanced draw call per frame, none at all when nothing changed, and a cold start to a live prompt under 400 ms. Sessions, keys, SFTP and port forwards, and nothing bolted on beside them.",
+    `A native Windows SSH client that draws the terminal grid on the GPU: one instanced draw call per frame, none at all when nothing changed, and a cold start to a live prompt ${startResult}. Sessions, keys, SFTP and port forwards, and nothing bolted on beside them.`,
   og: {
     title: "Aduzi",
     description:
@@ -137,11 +145,11 @@ export const hero = {
 };
 
 export const heroTerminal = {
-  title: "prod-eu-1 — Aduzi",
+  title: "Aduzi · prod-eu-1",
   caption: [
     "The prompt is drawable ",
-    { b: "under 400 ms" },
-    " from process creation. The second line is the one that catches most terminals out: Latin, CJK and emoji in one row, each taking the number of cells the remote shell believes it took.",
+    { b: `${startMeasuredMs} ms` },
+    ` after process creation on the reference machine, measured ${startMeasuredOn} against a ${startBudgetMs} ms budget. The second line is the one that catches most terminals out: Latin, CJK and emoji in one row, each taking the number of cells the remote shell believes it took.`,
   ] as Rich,
 };
 
@@ -465,7 +473,9 @@ export const numbers = {
       value: "< 400 ms",
       unit: "to a live prompt",
       body: [
-        "Process creation to an interactive local shell, which means a prompt that accepts a keystroke and not a window that has appeared. Reported for a cold file cache, with the warm figure beside it where a cold one cannot be arranged.",
+        "Process creation to an interactive local shell, which means a prompt that accepts a keystroke and not a window that has appeared. Reported for a cold file cache, with the warm figure beside it where a cold one cannot be arranged. ",
+        { b: `Measured ${startMeasuredOn} on a ${startMachine}: ${startMeasuredMs} ms warm` },
+        startMet ? ", within the budget." : ", so the budget is not met yet.",
       ] as Rich,
     },
     {

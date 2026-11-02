@@ -3,3 +3,4 @@ dist
 dist-server
 *.local
 .vite
+src/lib/measured.generated.ts
