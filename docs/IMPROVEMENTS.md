@@ -507,27 +507,27 @@ verify Valid and timestamped under Get-AuthenticodeSignature on the guest.
 
 ### §QS384 QS384 — Carrying the name Aduzi through the product
 
-From the portfolio review of 30/10/2026 (visibility, `produtos/quickshell.md`).
-Quickshell is already the name of a well-known Linux project (a QtQuick toolkit for
-desktop shells, popular with Hyprland users), and winget lists a "Quick Shell" by
-another author. A search for the name leads to them, and a post announcing this client
-would start with a comment pointing it out.
+From the portfolio review of 30/10/2026. Quickshell is already the name of a well-known
+Linux project (a QtQuick toolkit for desktop shells), and winget lists a "Quick Shell"
+by another author, so a search for the name leads to them. The new name is **Aduzi**,
+chosen by the author on 02/11/2026, when nothing by that name was on NuGet, PyPI, npm,
+winget or GitHub; no trademark search was done. Listings read "Aduzi SSH".
 
-The new name is **Aduzi**, chosen by the author on 02/11/2026. On that day there was no
-`aduzi` package on NuGet, PyPI, npm or winget, no repository by that name with any stars
-on GitHub, and no product by that name on the web; aduzi.com is parked for sale, and the
-site stays on alegauss.github.io. A trademark search was not done. Where the name stands
-alone in a listing (winget, the Store, alternativeto) it reads "Aduzi SSH", so the
-listing says what it is.
+Done (e04f88d, e79e4fa): what a person reads. The window title, dialogs, crash and setup
+messages, the gateway's prose, the README, the site's copy and llms.txt say Aduzi, and
+the README and llms.txt say the rest still carries the old name.
 
-This line is the product side: the executable, the window title, the README, the site,
-the `llms.txt`, the repository name (GitHub redirects the old one), the release archive
-and the install folder, with an existing per-user install moved or recognised so nobody
-loses their sessions. The task prefix stays `QS`, as FreeWilly kept `DD`. The old page
-redirects to the new one rather than returning 404 as /freewilly/ did.
-
-Done when the new name is the only one a user sees from download to window, and an
-install made under the old name upgrades into it with sessions intact.
+Left, in one commit once the repository is renamed on GitHub (the maintainer's action;
+GitHub redirects the old URL): `aduzi.exe`, the archive `aduzi-<version>-win-x64.zip`,
+the install folder `Programs\Aduzi`, the uninstall key and Start menu entry, the data
+folder `%AppData%\Aduzi`, the site's BASE and every repository link. An install under
+the old name is recognised by its uninstall key: installing over it moves
+`%AppData%\quickshell` to the new folder when the new one is absent, removes the old
+entry and shortcut, and keeps QUICKSHELL_DATA as an alias. The Claude plugin and MCP
+server become `aduzi`; Settings removes the `quickshell` plugin when it writes the new
+one. The scheme keeps answering to `quickshell` so settings files that name it still
+load. Code namespaces and the QS prefix stay. The old site path redirects to the new
+one.
 
 ### §QS385 QS385 — Stating the measured start-up, not the budget
 
