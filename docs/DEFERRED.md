@@ -34,6 +34,7 @@
 - ⏸ **QS255** (deps: —) **An idle pane costs 0.6 % of a core and GPU work even with the cursor blink off, and four cost nearly three times one** — set aside (Needs ten quiet minutes on the reference desk.): With zero frames the pane still spends 0.16 % of a core on a busy desk, over the 0.1 % bound. → §QS255
 - ⏸ **QS288** (deps: —) **A shell start takes a third longer than at 40fb448, and the performance gate fails on start** — set aside (Waits for the host desk to be cleared for the gate.): The gate's start judged held against 40fb448 on a quiet reference desk; its last sitting was too noisy to judge. → §QS288
 - ⏸ **QS373** (deps: —) **The menu bar on screen by default is built before a shell start's first frame, so the gate fails on start** — set aside (Waits for a host gate run, user's ok.): The performance gate on the reference desk has not yet judged start with the fix, and release.cmd is refused until it holds. → §QS373
+- ⏸ **QS379** (deps: —) **The project publishes no code signing policy, which a free open-source certificate requires** — set aside (Until SignPath is the route): SignPath Foundation requires a code signing policy on the project's home page naming who commits, who reviews and who approves each signing request. → §QS379
 
 ## Block I — An error a user can act on
 

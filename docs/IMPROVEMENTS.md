@@ -442,6 +442,14 @@ the conditions ask.
 
 Done when the page is published on the site and README.md links it.
 
+Set aside on 2026-11-02. QS380 now tries the Microsoft Store first, which signs the MSIX
+itself, and keeps SignPath as the fallback, so this page may never be needed. Published
+before SignPath accepts the project, its required line would state a signing arrangement
+that does not exist, and its roles name people, which is the maintainer's decision. The
+privacy statement also needs a fresh read: QS77's update check has not been built, and
+the agent gateway (Block L) is a network surface it does not mention. Resume when
+SignPath is the route.
+
 ### §QS380 Distributing through the Microsoft Store, with SignPath as the fallback
 
 Rewritten after the portfolio review of 30/10/2026 (visibility,
