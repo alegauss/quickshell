@@ -1,6 +1,6 @@
 ---
 name: roadmap-docs
-description: quickshell's own shipping discipline — the one-task-one-commit rule and the `run-commit.cmd` that closes every task, design-before-ship, the blocks A–K that are reused rather than opened, the `## Done when` criteria a block is read against before it is called finished, and the user-facing surface a shipped feature must reach. The roadmap/changelog/rationale write path itself is NOT here: roadkeep owns it, and its own skill says which command to call. Use whenever a task is finished, before committing, when picking the next task, or when a governed file needs to change.
+description: quickshell's own shipping discipline — the one-task-one-commit rule and the `run-commit.cmd -m` on PATH that closes every task (it stages the whole tree, so the tree must hold only that task), design-before-ship, the blocks A–K that are reused rather than opened, the `## Done when` criteria a block is read against before it is called finished, and the user-facing surface a shipped feature must reach. The roadmap/changelog/rationale write path itself is NOT here: roadkeep owns it, and its own skill says which command to call. Use whenever a task is finished, before committing, when picking the next task, or when a governed file needs to change.
 ---
 
 # Shipping discipline
@@ -57,23 +57,22 @@ what a person sees — a pane, a keybinding, a settings key, an error message �
   that defers commits.
 - **Self-check before starting task N+1:** run `git status` / `git log -1`. If the previous task's
   work is not committed, stop and commit it first.
-- `.\run-commit.cmd -m "<ascii conventional-commits title>" -- <path> ...` from the repo root.
-  **`-m` always**, and ASCII.
-  - **The leading `.\` is not decoration.** `run-commit.cmd` is also a name on this machine's
-    `PATH` — a different script, which writes its own commit message and stages everything — and
-    `NoDefaultCurrentDirectoryInExePath` is set here, so a bare `run-commit.cmd` finds *that* one
-    and not the repository's.
-  - **Pass the paths.** They are the scope the task's claim declared, and `roadkeep ship` prints
-    them as a `git add --` line at the moment it releases the claim — copy that line's paths in.
-    Then the commit contains this task and nothing else, which is the whole point of the rule
-    above.
-  - **Without them the whole tree is staged.** That is fine for one session in one checkout, and it
-    is how a second session's half-written work once landed inside another task's commit, credited
-    to the wrong id in a history nobody can correct afterwards. The script now lists what it is
-    about to sweep before it does; read the list.
-  - Either way a stray scratch file rides along, and in a .NET tree that means `bin/`, `obj/` and a
+- `run-commit.cmd -m "<ascii conventional-commits title>"` from the repo root, **always**, and
+  never a hand-run `git commit`. It is the user's commit tool on `PATH` (`D:\Dev\bin`); the
+  repository's own copy was removed in c5d6056. **`-m` always**, and ASCII: the title is used
+  verbatim and commitclerk writes only the body, from the diff, which would otherwise read prose
+  about shipped work in the governed docs as new work.
+  - **It stages the whole tree** (`git add *`) and takes no paths. So the tree is the commit:
+    before running it, `git status --short` lists this task's files — the code and tests it
+    changed and the docs roadkeep wrote — and nothing else. Another session's half-written work
+    left in the tree lands inside this task's commit, credited to the wrong id in a history
+    nobody can correct afterwards. When the tree holds someone else's change, wait for it to be
+    committed, or stop and say so.
+  - A stray scratch file rides along too, and in a .NET tree that means `bin/`, `obj/` and a
     `.user` file. **`.gitignore` earns its keep here:** if it does not yet cover the build output,
     that is the first thing to fix.
+  - **No attribution**: no `Co-Authored-By` trailer, and nothing is pushed. The commit is the
+    user's.
 - **`roadkeep lint` must be clean for what you touched** before that commit. The `Stop` guard runs it
   for you, but the commit is yours to hold: never let a task add a finding.
 

@@ -617,22 +617,6 @@ both sides' algorithm lists.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS383 The commit rule names a script that was removed
-
-`.claude/skills/roadmap-docs/SKILL.md` says every task closes with `.\run-commit.cmd -m
-"<title>" -- <paths>`, and its description names the script too. c5d6056 removed that
-script from the repository. A bare `run-commit.cmd` now resolves to the one in
-`D:\Dev\bin`, which runs `git add *` and writes its own message through commitclerk.
-That is the whole-tree sweep the repository's script was written to avoid, and with
-another session in the checkout its staged work lands under the wrong id.
-
-The fix is to rewrite the commit rule in that skill to the path the repository uses now:
-`git add -- <paths>` for the paths the claim declared (the line `ship` prints), check
-`git diff --cached --stat`, then `git commit -F <message file>` with an ASCII
-conventional-commits title ending in the id. Drop the paragraphs about the leading `.\`
-and the PATH collision, since there is no repository script left for them to protect.
-Change the description to match. Keep the one-task-one-commit rule as it is.
-
 ### §QS388 A guest that is listed before it is ready
 
 Found 2026-11-02 running QS374's suite. The VM process started at 11:19:30, and

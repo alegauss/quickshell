@@ -35,7 +35,6 @@
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-- 📋 **QS383** (deps: —) **The shipping discipline tells every task to commit through run-commit.cmd, which the repository no longer has** — A bare run-commit.cmd now finds the one on PATH, which stages the whole tree and writes its own message, so an agent following the skill sweeps another session's work. → §QS383
 - 📋 **QS388** (deps: —) **A guest run that starts while the VM is still booting is refused as though the guest had no VMware Tools** — Connect-Guest waits for Tools only when it started the guest itself, so a VM another run started seconds earlier is checked once and refused. → §QS388
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
