@@ -12,7 +12,7 @@ Formerly quickshell. The executable, the release archive, the install folder and
 still carry the old name until the rename reaches them; the window and everything it says already
 use the new one.
 
-**[alegauss.github.io/quickshell](https://alegauss.github.io/quickshell/)** ·
+**[alegauss.github.io/aduzi](https://alegauss.github.io/aduzi/)** ·
 [Install](docs/INSTALL.md) ·
 [Switching from MobaXterm](docs/SWITCHING.md) ·
 [Sessions](docs/SESSIONS.md) ·

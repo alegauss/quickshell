@@ -14,7 +14,7 @@
 # ┌─────────────────────────────────────────────────────────────────────────────────────┐
 # │ ONE-TIME REPOSITORY SETTING, the deploy is inert until it is changed:                │
 # │   Settings → Pages → Build and deployment → Source: "GitHub Actions"                 │
-# │ The site is served at alegauss.github.io/quickshell/, which Pages derives from the   │
+# │ The site is served at alegauss.github.io/aduzi/, which Pages derives from the        │
 # │ repository name rather than from anything in this file.                              │
 # └─────────────────────────────────────────────────────────────────────────────────────┘
 

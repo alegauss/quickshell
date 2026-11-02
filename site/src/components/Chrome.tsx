@@ -22,7 +22,7 @@ import { Cells } from "./ui/Cells";
 // here is this product's half of it: which links, which words, and the grid the footer stands on.
 
 // The mark carries its own silhouette, so it is sized by height rather than boxed as a tile.
-const brand = { href: "/quickshell/", name: "Aduzi", logo: "/quickshell/logo.svg", logoShape: "mark" } as const;
+const brand = { href: "/aduzi/", name: "Aduzi", logo: "/aduzi/logo.svg", logoShape: "mark" } as const;
 
 const themeLabel = (next: string) => `Switch to ${next} theme`;
 

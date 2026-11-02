@@ -168,7 +168,7 @@ public sealed class Installation
             entry.SetValue("InstallDate", DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture));
             entry.SetValue("UninstallString", $"\"{Program}\" --uninstall");
             entry.SetValue("QuietUninstallString", $"\"{Program}\" --uninstall --quiet");
-            entry.SetValue("URLInfoAbout", "https://github.com/alegauss/quickshell");
+            entry.SetValue("URLInfoAbout", "https://github.com/alegauss/aduzi");
             entry.SetValue("EstimatedSize", (int)Math.Min(int.MaxValue, bytes / 1024), RegistryValueKind.DWord);
             entry.SetValue("NoModify", 1, RegistryValueKind.DWord);
             entry.SetValue("NoRepair", 1, RegistryValueKind.DWord);

@@ -24,7 +24,7 @@ export function Landing() {
     <>
       <Nav />
       <SiteHero
-        icon={{ src: "/quickshell/logo.svg", alt: "Aduzi logo", logoShape: "mark" }}
+        icon={{ src: "/aduzi/logo.svg", alt: "Aduzi logo", logoShape: "mark" }}
         badge={hero.badge}
         title={hero.titleLead}
         titleAccent={hero.titleAccent}

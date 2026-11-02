@@ -17,7 +17,7 @@ the release archive still carry the old name until the rename reaches them.
 **Status: pre-release, version 0.1.0.** No release has been published yet, and the build is not
 signed yet. The SSH client, SFTP, port forwards, tabs, split panes and the MobaXterm and PuTTY
 importers work today; what is done and what is still open is in the roadmap,
-<https://github.com/alegauss/quickshell/blob/main/docs/ROADMAP.md>, and the changelog.
+<https://github.com/alegauss/aduzi/blob/main/docs/ROADMAP.md>, and the changelog.
 Every figure on the site is a budget from `docs/PERFORMANCE.md` or a "Done when" criterion
 from the roadmap, quoted as the threshold it is.
 
@@ -27,9 +27,9 @@ This site answers a coding agent in files it can grep, not only in hydrated mark
 route has a Markdown twin beside it, the same page converted from the same render, with the
 navigation, the footer and the call to action dropped. Read `<route>/index.md` instead of
 the HTML: the landing page is
-[`/index.md`](https://alegauss.github.io/quickshell/index.md). The full list of routes,
+[`/index.md`](https://alegauss.github.io/aduzi/index.md). The full list of routes,
 their twins and their byte sizes is in
-[`manifest.json`](https://alegauss.github.io/quickshell/manifest.json).
+[`manifest.json`](https://alegauss.github.io/aduzi/manifest.json).
 
 ## Why it exists
 
@@ -157,7 +157,7 @@ and a figure quoted without the run that produced it is not a measurement.
 ## Installation
 
 - **From the releases page**, once one is published:
-  <https://github.com/alegauss/quickshell/releases>, with `SHA256SUMS.txt` beside it. None is yet.
+  <https://github.com/alegauss/aduzi/releases>, with `SHA256SUMS.txt` beside it. None is yet.
   Windows 10 or 11, x64.
 - **Per-user, no administrator prompt.** It installs under `%LOCALAPPDATA%`, which is what
   reaches a managed laptop. The build is not signed yet, so SmartScreen warns on first start.
@@ -192,7 +192,7 @@ every project builds with nullable, warnings as errors and the allocation analyz
 
 ## Licence
 
-MIT (<https://github.com/alegauss/quickshell/blob/main/LICENSE>). The libraries the release carries
+MIT (<https://github.com/alegauss/aduzi/blob/main/LICENSE>). The libraries the release carries
 beside it are MIT or ISC, credited in `THIRD-PARTY-NOTICES.md`.
 
 ## Sponsor
@@ -215,10 +215,10 @@ organisations with a lot to publish. Run on your own servers, with no per-user l
 
 ## Links
 
-- [Website](https://alegauss.github.io/quickshell/): project page
-- [Manifest](https://alegauss.github.io/quickshell/manifest.json): the routes and their Markdown twins
-- [GitHub repository](https://github.com/alegauss/quickshell): source code
-- [Roadmap](https://github.com/alegauss/quickshell/blob/main/docs/ROADMAP.md): what is open, and why each line exists
-- [Changelog](https://github.com/alegauss/quickshell/blob/main/docs/CHANGELOG.md): what has shipped
-- [Performance budget](https://github.com/alegauss/quickshell/blob/main/docs/PERFORMANCE.md): the six figures and the machine
+- [Website](https://alegauss.github.io/aduzi/): project page
+- [Manifest](https://alegauss.github.io/aduzi/manifest.json): the routes and their Markdown twins
+- [GitHub repository](https://github.com/alegauss/aduzi): source code
+- [Roadmap](https://github.com/alegauss/aduzi/blob/main/docs/ROADMAP.md): what is open, and why each line exists
+- [Changelog](https://github.com/alegauss/aduzi/blob/main/docs/CHANGELOG.md): what has shipped
+- [Performance budget](https://github.com/alegauss/aduzi/blob/main/docs/PERFORMANCE.md): the six figures and the machine
 - [Sponsor](https://www.viglet.org): Viglet, open source search and content management

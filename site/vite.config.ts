@@ -5,9 +5,9 @@ import { siteThemeScript } from "@viglet/viglet-design-system/site";
 import { THEME_KEY } from "./src/lib/site-content.ts";
 
 // GitHub Pages derives this from the repository name, so it is not a preference: the site is
-// served at https://alegauss.github.io/quickshell/ and every canonical, asset path and sitemap
+// served at https://alegauss.github.io/aduzi/ and every canonical, asset path and sitemap
 // entry carries the prefix. Written here and in src/routes.tsx, and nowhere else.
-export const BASE = "/quickshell/";
+export const BASE = "/aduzi/";
 
 // The pre-paint theme script comes from the design system rather than being typed into
 // index.html, so the page and the toggle cannot disagree about the rule. Replace-or-throw, like

@@ -46,11 +46,11 @@ export const meta = {
     title: "Aduzi",
     description:
       "The terminal grid on the GPU, one draw call a frame and none while you read. Sessions, keys, SFTP and forwards on Windows, with a stated list of what it will never grow.",
-    url: "https://alegauss.github.io/quickshell/",
+    url: "https://alegauss.github.io/aduzi/",
   },
 } as const;
 
-export const repoUrl = "https://github.com/alegauss/quickshell";
+export const repoUrl = "https://github.com/alegauss/aduzi";
 export const parentUrl = "https://alegauss.github.io/";
 
 // The releases page rather than a file: the installer carries its version in its name, so
@@ -93,7 +93,7 @@ export const sponsor: SponsorDeclaration = {
     name: "Viglet",
     url: "https://www.viglet.org",
     siteLabel: "viglet.org",
-    logo: "/quickshell/viglet/viglet-logo.png",
+    logo: "/aduzi/viglet/viglet-logo.png",
     summary:
       "Open source search and content tools for organisations with a lot to publish. Run on your own servers, with no per-user licence.",
   },
@@ -102,7 +102,7 @@ export const sponsor: SponsorDeclaration = {
       id: "turing",
       name: "Viglet Turing",
       url: "https://openviglet.github.io/turing/",
-      logo: "/quickshell/viglet/turing-logo.png",
+      logo: "/aduzi/viglet/turing-logo.png",
       inline:
         "so visitors find what they came for, with AI answers drawn only from your own content",
     },
@@ -110,7 +110,7 @@ export const sponsor: SponsorDeclaration = {
       id: "shio",
       name: "Viglet Shio",
       url: "https://openviglet.github.io/shio/",
-      logo: "/quickshell/viglet/shio-logo.png",
+      logo: "/aduzi/viglet/shio-logo.png",
       inline:
         "so a new page goes live the same day, reviewed and approved by your own team",
     },
