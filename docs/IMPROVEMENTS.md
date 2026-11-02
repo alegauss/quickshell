@@ -626,24 +626,6 @@ both sides' algorithm lists.
 
 ## Block K — The build and the harness — what a green run is evidence of
 
-### §QS374 A gate that checks the desk before it measures
-
-Found 2026-10-22. release.cmd was run straight after run-startup-vm and run-tests-vm had
-timed QS373 in the guest. Both runners leave the VM running when they finish, and the
-gate's sitting came out with every figure's rounds spread past 10 %: start 516 ms
-against 501 for 40fb448, allowed 11.7 %, not judged. The gate's own history already
-names the guest as the cause twice (2026-10-07 20:00 and 2026-10-10 18:38). Each attempt
-costs the whole publish and four paired rounds before it says this.
-
-What to build: before the first round, the gate asks vmrun whether any VM is running,
-and refuses with the remedy if one is. Suspending an encrypted guest needs
-vm-guest.ps1's credentials, so that remedy is a suspend-vm.cmd that goes through
-Invoke-VmRun the way the runners do. A bare `vmrun suspend` is refused with "a password
-is required".
-
-Falsified when a sitting with no VM running is still too noisy on this desk, which would
-put the noise somewhere else.
-
 ### §QS383 The commit rule names a script that was removed
 
 `.claude/skills/roadmap-docs/SKILL.md` says every task closes with `.\run-commit.cmd -m
@@ -659,6 +641,24 @@ The fix is to rewrite the commit rule in that skill to the path the repository u
 conventional-commits title ending in the id. Drop the paragraphs about the leading `.\`
 and the PATH collision, since there is no repository script left for them to protect.
 Change the description to match. Keep the one-task-one-commit rule as it is.
+
+### §QS388 A guest that is listed before it is ready
+
+Found 2026-11-02 running QS374's suite. The VM process started at 11:19:30, and
+run-tests-vm began twenty seconds later. `vmrun list` already named the .vmx, so
+Connect-Guest took the guest as running, skipped its ten-minute wait for VMware Tools,
+and asked `checkToolsState` once. The guest was still booting, Tools answered
+"installed", and the run was refused with "Install VMware Tools there", a remedy for a
+guest that has no Tools at all.
+
+The wait exists only on the branch where this run started the guest itself. A guest that
+another run, a person or Workstation's own resume started a moment earlier is in the
+list and not yet ready, and nothing waits for it.
+
+What to build: in vm-guest.ps1, the poll for `running` runs on both branches, so a
+listed guest whose Tools say "installed" is waited for up to the same deadline. Only
+"not installed", or a deadline that passes, is refused, and each refusal names what
+Tools said and how long it waited.
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

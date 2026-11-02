@@ -379,6 +379,7 @@
 - ✅ **QS369** **The UI cases still carry a synthesised-input workaround for a foreground winwright 1.1.3 now takes itself** — The UI cases run on winwright 1.1.3, which takes the foreground at launch, so the nudge is gone and the tab case soaked alone passed 20 of 20.
 - ✅ **QS375** **On a quiet sitting the side-by-side gate allows less than the baseline's own noise, and refuses parse 0.7 % worse** — A side-by-side figure is allowed the larger of its sitting's spread and the baseline's threshold, while too noisy still reads the sitting alone; parse 0.7 % now holds.
 - 🗑 **QS372** **run-commit.cmd given paths still commits whatever another session had already staged** — abandoned: Not built: c5d6056 removed run-commit.cmd from the repository three minutes after this was filed, and commits are now made with git add -- and git commit -F by hand.
+- ✅ **QS374** **The release gate runs while the guest VM a runner left up is still running, and the sitting comes out too noisy to judge** — The gate refuses in a second while any VM runs on the desk, and suspend-vm.cmd suspends it once a run holding the guest is done (design recorded in `docs/PERFORMANCE.md`).
 
 ## Block L — An agent at the controls, held to a policy it cannot edit
 

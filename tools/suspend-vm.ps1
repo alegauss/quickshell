@@ -43,7 +43,9 @@ function Get-Running {
         Where-Object { $_ -and $_ -notmatch '^Total running VMs' })
 }
 
-$running = Get-Running
+# Wrapped again at the call: PowerShell unrolls what a function returns, so one VM would come back
+# as a bare string with no Count.
+$running = @(Get-Running)
 if ($running.Count -eq 0) {
     Write-Host 'suspend-vm: no VM is running on this host' -ForegroundColor Green
     exit 0
@@ -54,7 +56,7 @@ Enter-DeskClaim -VmxPath $(if ($configured) { $configured } else { $running[0] }
 
 # Read again once the claim is held: a run that held it may have been the one that started a guest.
 $left = @()
-foreach ($vmx in Get-Running) {
+foreach ($vmx in @(Get-Running)) {
     Write-Host "  suspending  $vmx"
     $suspended = Invoke-VmRun -Arguments @('suspend', $vmx)
     if (-not $suspended.Ok) {
