@@ -426,23 +426,6 @@ same commit before the tag is pushed, and the tag is the statement that it passe
 Done when a pushed tag produces quickshell-<version>-unsigned.zip as an artifact of that
 run, its SHA256SUMS.txt beside it.
 
-### §QS378 Every shipped component under an OSI-approved licence
-
-SignPath Foundation's conditions are that every component of what it signs carries an
-OSI-approved licence, that none is commercially dual-licensed, and that no proprietary
-code ships beside it; system libraries are allowed. The application asks for this and
-the foundation, which is the named publisher on the certificate, can revoke it later if
-it turns out false.
-
-The audit lists each assembly in artifacts\publish\quickshell with the package it came
-from and that package's licence expression, and records the result in a file the release
-carries (THIRD-PARTY-NOTICES.txt), which the MIT licences of the dependencies ask for
-anyway. A package with no licence expression or a non-OSI one is either replaced or
-named in the application with the reason it is acceptable.
-
-Done when the notices file lists every shipped assembly with an OSI licence and
-release.ps1 puts it in the archive.
-
 ### §QS379 A published code signing policy
 
 SignPath Foundation requires the project's home page to carry a code signing policy

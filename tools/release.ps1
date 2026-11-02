@@ -122,6 +122,12 @@ if (Test-Path -LiteralPath $publish) { Remove-Item -LiteralPath $publish -Recurs
     -p:PublishReadyToRun=true --output $publish --nologo -v quiet
 if ($LASTEXITCODE -ne 0) { Refuse 'the publish failed' }
 
+# Before the gate's ten minutes: the notices are the claim that every shipped component is
+# OSI-licensed, and it is read against what this publish resolved (QS378).
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'check-notices.ps1') `
+    -Deps (Join-Path $publish 'quickshell.deps.json') -Notices (Join-Path $root 'THIRD-PARTY-NOTICES.md')
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 if ($Ungated) {
     Write-Host '  UNGATED    the performance gate was not run on this build' -ForegroundColor Yellow
 }
