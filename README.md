@@ -178,7 +178,7 @@ For Claude Code:
 For Windows developers:
 
 - **[winwright](https://alegauss.github.io/winwright/)**: drives a Windows desktop app from a test and reports what was actually observed.
-- **[FreeWilly](https://alegauss.github.io/freewilly/)**: Docker on Windows without Docker Desktop, with no admin prompt and no telemetry.
+- **[FreeHarbor](https://alegauss.github.io/freeharbor/)**: Docker on Windows without Docker Desktop, with no admin prompt and no telemetry.
 
 All of them: [alegauss.github.io](https://alegauss.github.io/)
 
