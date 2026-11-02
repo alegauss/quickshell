@@ -82,6 +82,7 @@
 
 - ✅ **QS82** **The tree targets net8.0, where WPF has no Fluent theme, so the chrome the sibling clients share cannot be built here** — The tree targets net10.0-windows: WPF's Fluent theme and ThemeMode arrived in .NET 9, and that is what lets the chrome be borrowed from the sibling clients instead of rewritten.
 - ✅ **QS85** **The commit script stages the whole tree, so a second session's half-written work lands inside another task's commit** — A commit stages the paths its task's claim declared, passed to run-commit.cmd after --; sweeping the whole tree stays available and is listed before it happens.
+- ✅ **QS79** **A change that costs performance is caught by whoever happens to notice it** — The performance gate is optional: no CI run, commit or release requires it; release.cmd -Gated runs it.
 
 ## Block I — An error a user can act on
 

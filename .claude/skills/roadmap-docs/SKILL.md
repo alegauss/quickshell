@@ -273,7 +273,8 @@ fails on it from then on. It also runs every night in CI (`.github/workflows/fuz
 the corpus kept in the Actions cache and a crash uploaded as the run's `fuzz-findings` artifact; CI
 warns on every push once the last campaign is more than a week old.
 
-**`.\run-perf-gate.cmd` is the performance gate, and `release.cmd` runs it before it archives.** It
+**`.\run-perf-gate.cmd` is the performance gate, and it is optional:** nothing requires it, and
+`release.cmd -Gated` runs it before it archives. It
 times parse and emulate throughput and warm start against `benchmarks\gate\<machine>.json`, and fails
 a figure worse than that baseline's own noise allows unless a commit since then carries
 `Performance-Moved: <figure> - <why>`. `--baseline` takes a new one, which is committed. It starts the

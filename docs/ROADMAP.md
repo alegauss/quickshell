@@ -19,7 +19,6 @@
 ## Block H — The reason to leave the incumbent
 
 - ⏳ **QS77** (deps: an update signing key, QS380) **There is no way to install this client, so it can only be run from a build directory** — Signing with a real certificate and an update check verified against a pinned key are still owed, and the machine-wide install has not run elevated. → §QS77
-- ⏳ **QS79** (deps: QS3 ✅, QS196 ✅, a CI runner that is always the same machine) **A change that costs performance is caught by whoever happens to notice it** — CI still has to run the gate on every commit on a runner that is the same machine each time, and frame cost has to join it once QS196 measures it. → §QS79
 - ⏳ **QS377** (deps: QS386) **The release archive is built only on this desk, so no signing service can prove it came from the source** — No tag has been pushed yet, so GitHub has not shown that release.yml produces the archive. → §QS377
 - 📋 **QS380** (deps: QS386, visibility VS58) **Every release still ships unsigned, so SmartScreen warns on the first download and managed machines refuse it** — The Store signs the MSIX itself, and claude-tray tests that path first (VS58); SignPath and Certum become the fallback. → §QS380
 - 💭 **QS381** (deps: QS380) **If SignPath Foundation declines the project, there is no affordable certificate lined up** — Certum's Open Source Code Signing certificate is issued to individuals anywhere for tens of euros a year, and release.ps1 -Certificate can use it. → §QS381
@@ -218,16 +217,6 @@
   run-install-vm's checks repeated with --all-users from an elevated prompt: Program
   Files, every user's Start menu and the HKLM entry written, the installed copy started,
   then all three removed.
-
-## Done when — QS79
-
-- **The gate runs on every commit, on a runner that is the same machine each time**
-  Settled by a CI job on that runner that fails a pushed commit carrying an injected
-  emulate slowdown, passes the commit that removes it, and leaves one row per commit in
-  its gate history.
-- **Frame cost is one of the gated figures** Settled when the gate's figures include the
-  arm QS196 adds, a baseline carries its threshold, and a check prints it beside parse,
-  emulate and start.
 
 ## Done when — QS40
 

@@ -7,7 +7,7 @@ rem   publish-release.cmd -Certificate <thumbprint>
 rem   publish-release.cmd -Unsigned                    published as a pre-release
 rem   publish-release.cmd -Unsigned -DryRun            every check and the build, nothing published
 rem
-rem Also -Ungated, -Timestamp <url> (as release.cmd), -Notes <file> and -Draft.
+rem Also -Gated, -Timestamp <url> (as release.cmd), -Notes <file> and -Draft.
 rem A new release is a new <Version> in Directory.Build.props.
 setlocal
 

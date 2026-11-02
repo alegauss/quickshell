@@ -166,8 +166,8 @@ sitting, the comparison holds better than either number on its own.
 - `src/Quickshell.App`: the WPF client, the only project allowed to reference the other three.
 - `benchmarks/`: the replay corpus, the harnesses and every committed result.
 
-`docs/PERFORMANCE.md` sets six figures before the code they bind, and `run-perf-gate.cmd` fails a
-release that regresses one. The roadmap, changelog and decision records are written by
+`docs/PERFORMANCE.md` sets six figures before the code they bind, and `run-perf-gate.cmd`, run when
+asked for, fails a build that regresses one. The roadmap, changelog and decision records are written by
 [roadkeep](https://github.com/alegauss/roadkeep), not by hand.
 
 ## More tools by alegauss

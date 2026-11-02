@@ -289,33 +289,6 @@ three weeks in.
 
 Falsified when a watched counter rises across the run and the run is called a pass.
 
-### §QS79 Making the number a gate instead of a report
-
-The measurements had been watched long enough for their noise to be known, which is the
-precondition this line waited for: a gate built on a number nobody trusts is disabled
-inside a month, and then there is no gate and no measurement.
-
-The first half is built and is described where it runs: `run-perf-gate.cmd`, and
-`release.cmd` before it archives, hold `parse`, `emulate` and warm `start` on the
-machine that took the baseline. Each threshold is derived from that baseline's own
-samples and written beside them. A worsening past it fails; one a commit named with a
-`Performance-Moved` trailer passes once and then owes a new baseline before a release;
-every judged run is a row in `benchmarks/results/gate-<machine>.md`. PERFORMANCE.md says
-how, and what it does not hold.
-
-What is left needs a machine this repository does not have: the same gate run by CI on
-every commit, on a runner that is the same machine each time, so drift is read per
-commit without anybody remembering to run it. A hosted runner is a different machine
-every run. Frame cost joins it through the replay's `--only cat-log:frame` arm (QS196):
-its JSON entry carries CPU and GPU median and 99th-percentile milliseconds, lower being
-better.
-
-The allocation assertion is not part of it: it is exact rather than statistical, zero is
-zero, and the suite checks it on every run already.
-
-Falsified when the gate is disabled to land a change and the disabling is not itself a
-filed line.
-
 ### §QS253 A baseline judged by its numbers, on a desk that drifts
 
 Found shipping QS197. On 2026-10-10 the gate judged d972ff7 against the 2026-10-07

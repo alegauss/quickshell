@@ -124,7 +124,9 @@ build of this architecture could meet would be a figure nobody reads.
 ## How a regression is caught
 
 **`run-perf-gate.cmd` fails when a figure gets worse than its own noise explains**, and
-`release.cmd` runs it before it archives, so a regression fails a release rather than reaching one.
+`release.cmd -Gated` runs it before it archives, so a regression fails that release rather than
+reaching it. The gate is optional, by the maintainer's call (QS79): no commit, CI run or release
+requires it, and a release built without it prints UNGATED.
 It holds two of the six figures today, `parse` (the arm figure 2 governs) and `start` (figure 5,
 warm), and one figure the budget has no number for, `emulate`, which is what a session actually
 costs. All three are timed on the very build being archived. `start` launches it; `parse` and
@@ -161,10 +163,9 @@ needs no password, and exits 3 while any VM is running. `suspend-vm.cmd` suspend
 
 **A regression that was meant is said, not hidden.** The commit that trades a figure for something
 carries a trailer naming it, `Performance-Moved: start - the find bar is built up front`, and the
-gate lets that figure through, naming the commit. The excuse is one-shot: `release.cmd` refuses to
-archive until a new baseline has been taken at or after that commit, because a trailer left in range
-would go on excusing the figure by any amount. Switching the gate off is `release.cmd -Ungated`,
-which prints that it was.
+gate lets that figure through, naming the commit. The excuse is one-shot: `release.cmd -Gated`
+refuses to archive until a new baseline has been taken at or after that commit, because a trailer
+left in range would go on excusing the figure by any amount.
 
 What it does not hold, said plainly: figure 3 has no measurement at all yet (QS196), figure 1 is
 measured by its own tool and not gated, since it puts a window on the desk for minutes, figures 4 and 6 are measured over minutes and days by their own tools rather

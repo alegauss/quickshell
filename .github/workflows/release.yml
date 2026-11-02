@@ -6,9 +6,9 @@ name: Release archive
 # workflow. An archive zipped on the desk cannot meet that, however reproducible it is.
 #
 # It builds and keeps the archive, and publishes nothing: publish-release.cmd still makes the GitHub
-# release (QS371), and sending this run's archive to be signed is QS382. The performance gate stays
-# on the desk that took its baseline (QS79): it is run on the commit before the tag is pushed, and
-# the tag is the statement that it passed - so the build here is -Ungated, as CI's is.
+# release (QS371), and sending this run's archive to be signed is QS382. The performance gate is
+# optional and means something only on the desk that took its baseline (QS79), so the build here is
+# not -Gated, as CI's is not.
 
 on:
   push:
@@ -41,7 +41,7 @@ jobs:
           "version=$version" >> $env:GITHUB_ENV
 
       - name: Release archive (unsigned)
-        run: .\release.cmd -Unsigned -Ungated
+        run: .\release.cmd -Unsigned
 
       - name: Keep the archive
         uses: actions/upload-artifact@v7

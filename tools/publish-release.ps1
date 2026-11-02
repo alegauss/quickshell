@@ -28,8 +28,8 @@
 .PARAMETER Unsigned
   Passed to release.ps1. The archive is named ...-unsigned.zip and the release is a pre-release.
 
-.PARAMETER Ungated
-  Passed to release.ps1: build without the performance gate, and say so.
+.PARAMETER Gated
+  Passed to release.ps1: run the performance gate on the build before it is tagged.
 
 .PARAMETER Notes
   A file whose text is the release's description. Without it GitHub writes one from the commits
@@ -50,7 +50,7 @@ param(
 
     [switch] $Unsigned,
 
-    [switch] $Ungated,
+    [switch] $Gated,
 
     [string] $Notes,
 
@@ -151,7 +151,7 @@ $build = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSSc
 if ($Certificate) { $build += @('-Certificate', $Certificate) }
 if ($Timestamp) { $build += @('-Timestamp', $Timestamp) }
 if ($Unsigned) { $build += '-Unsigned' }
-if ($Ungated) { $build += '-Ungated' }
+if ($Gated) { $build += '-Gated' }
 & powershell @build
 if ($LASTEXITCODE -ne 0) { Refuse 'release.ps1 refused the build, so nothing was tagged or published' 'What it printed above says why.' }
 

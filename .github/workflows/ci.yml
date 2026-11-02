@@ -2,9 +2,8 @@ name: CI
 
 # Builds and tests on every push. It deliberately does not gate on performance: a hosted
 # runner is a different machine every time, and a figure only means something against the
-# desk it was measured on. The gate is run-perf-gate.cmd, on the machine that took its
-# baseline, and release.cmd runs it before it archives (QS79). A runner that is always the
-# same machine is what would move it here.
+# desk it was measured on. The gate is optional (QS79): run-perf-gate.cmd, or release.cmd
+# -Gated, on the machine that took its baseline.
 
 on:
   push:
@@ -48,11 +47,11 @@ jobs:
       # restore, a ReadyToRun compile error, a property the SDK refuses for WPF - and this is where
       # those surface, on the push that caused them rather than on the day of a release.
       #
-      # Unsigned, because the certificate is the maintainer's and the archive's name says so. Ungated,
-      # because the performance gate means something only on the desk that took its baseline, which a
-      # hosted runner never is - the header above says the same.
+      # Unsigned, because the certificate is the maintainer's and the archive's name says so. Not
+      # -Gated, because the performance gate means something only on the desk that took its baseline,
+      # which a hosted runner never is - the header above says the same.
       - name: Release archive (unsigned)
-        run: .\release.cmd -Unsigned -Ungated
+        run: .\release.cmd -Unsigned
 
       - name: Keep the archive
         uses: actions/upload-artifact@v7

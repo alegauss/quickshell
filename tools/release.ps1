@@ -19,13 +19,14 @@
   signs and refuses a signature this machine does not verify, and without one it refuses to run
   unless -Unsigned says so - and then the archive's own name says so too, where nobody can miss it.
 
-  And it does not ship a regression by accident (QS79). Once the client is published, the
+  With -Gated it does not ship a regression by accident (QS79). Once the client is published, the
   performance gate times that build's start, and the parse and emulate arms of the replay harness
   run on that build's own assemblies and runtime settings, against this machine's baseline. A figure worse than the baseline's
   own noise allows refuses the release before anything is signed or zipped. So does one a commit
   since the baseline said was meant: that trade is allowed, and a new baseline is owed before the
   release, or the trailer would go on excusing the figure by any amount. A machine with no baseline
-  is refused too, unless -Ungated says so.
+  is refused too. The gate is optional, by the maintainer's call: without -Gated the run says
+  UNGATED where it would have printed the verdict.
 
 .PARAMETER Certificate
   The thumbprint of a code-signing certificate in the current user's store. Its private key may be
@@ -38,9 +39,9 @@
 .PARAMETER Unsigned
   Build without signing. The archive is named ...-unsigned.zip, so it cannot pass for a release.
 
-.PARAMETER Ungated
-  Build without running the performance gate - on a machine that has no baseline, say. The run says
-  UNGATED where it would have printed the verdict.
+.PARAMETER Gated
+  Run the performance gate on the published build before signing it, on a machine that has a
+  baseline.
 
 .PARAMETER Output
   Where the archive and SHA256SUMS.txt go: artifacts\release unless given, which .gitignore covers.
@@ -53,7 +54,7 @@ param(
 
     [switch] $Unsigned,
 
-    [switch] $Ungated,
+    [switch] $Gated,
 
     [string] $Output
 )
@@ -128,8 +129,8 @@ if ($LASTEXITCODE -ne 0) { Refuse 'the publish failed' }
     -Deps (Join-Path $publish 'quickshell.deps.json') -Notices (Join-Path $root 'THIRD-PARTY-NOTICES.md')
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-if ($Ungated) {
-    Write-Host '  UNGATED    the performance gate was not run on this build' -ForegroundColor Yellow
+if (-not $Gated) {
+    Write-Host '  UNGATED    the performance gate was not run on this build; -Gated runs it' -ForegroundColor Yellow
 }
 else {
     # The build just published, timed where it lies: the start the gate measures is the start of the
@@ -146,7 +147,7 @@ else {
         0 { }
         1 { Refuse 'the performance gate found a figure worse than its baseline allows' 'Find what cost it, or say in the commit that made it: Performance-Moved: <figure> - <what it bought>.' }
         2 { Refuse 'a commit since the baseline traded a figure, and no baseline has been taken since' 'Take one at this commit with run-perf-gate.cmd --baseline, commit it, and release again.' }
-        default { Refuse 'the performance gate could not judge this build' 'What it printed above says why; -Ungated builds without it, and says so.' }
+        default { Refuse 'the performance gate could not judge this build' 'What it printed above says why; without -Gated the build skips it, and says so.' }
     }
 }
 
