@@ -39,7 +39,7 @@ export const sessionTerminal = `<span class="warn">link lost</span>  prod-eu-1  
 <span class="cur"> </span>`;
 
 /** What a remote program is answered, and what it is refused. */
-export const protocolTerminal = `<span class="c">quickshell · protocol trace · session prod-eu-1 · secrets redacted</span>
+export const protocolTerminal = `<span class="c">Aduzi · protocol trace · session prod-eu-1 · secrets redacted</span>
 
 <span class="rem">→ host</span>  CSI c                        <span class="c">"what are you"</span>
 <span class="ok">← us</span>    ESC [ ? 65 ; 1 ; 9 ; 15 ; 22 c   <span class="c">a VT500-series terminal, and here is what it has</span>

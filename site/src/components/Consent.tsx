@@ -83,7 +83,7 @@ export function ConsentBanner() {
     <section className="consent" aria-label="Analytics consent">
       <p>
         This site counts visits with Google Analytics only if you allow it. Nothing is loaded
-        until you choose, and Quickshell itself collects nothing either way.
+        until you choose, and Aduzi itself collects nothing either way.
       </p>
       <div className="consent-actions">
         {/* SiteButton is an anchor, and these act rather than go somewhere: its classes on a button */}

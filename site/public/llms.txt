@@ -1,4 +1,4 @@
-# Quickshell
+# Aduzi
 
 > A native SSH client for Windows 10 and 11 (x64). It draws the terminal grid on the GPU
 > through D3D11: DirectWrite rasterises each glyph once into an atlas keyed on its subpixel
@@ -10,6 +10,9 @@
 > the list of what will never be added is published rather than implied. Built in C# on
 > .NET 10, WPF host with a child HWND per pane. Per-user install, no service, no telemetry,
 > no account.
+
+Formerly quickshell. The repository, the site's address, the executable (`quickshell.exe`) and
+the release archive still carry the old name until the rename reaches them.
 
 **Status: pre-release, version 0.1.0.** No release has been published yet, and the build is not
 signed yet. The SSH client, SFTP, port forwards, tabs, split panes and the MobaXterm and PuTTY
@@ -33,7 +36,7 @@ their twins and their byte sizes is in
 The incumbent on Windows is a suite: an X11 server, a Cygwin userland, a macro recorder, a
 plugin host and an FTP client, wrapped around a terminal that still redraws the whole screen
 to move a cursor. Most of that is never used, all of it is installed, and the part that is
-used is the part that performs worst. Quickshell is the other trade: a small surface, drawn
+used is the part that performs worst. Aduzi is the other trade: a small surface, drawn
 properly, with the cost of every part written down before it was built.
 
 ## The performance budget

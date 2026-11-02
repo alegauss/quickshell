@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "The public site for Quickshell. The copy lives in one module and the sections only render it.",
+  "description": "The public site for Aduzi. The copy lives in one module and the sections only render it.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && vite build --ssr src/entry-server.tsx --outDir dist-server && node scripts/prerender.mjs",

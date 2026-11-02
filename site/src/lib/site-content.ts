@@ -31,11 +31,11 @@ export type Rich = Run[];
 /* ------------------------------------------------------------------ meta + chrome */
 
 export const meta = {
-  title: "Quickshell: SSH on Windows, without the suite around it",
+  title: "Aduzi: SSH on Windows, without the suite around it",
   description:
     "A native Windows SSH client that draws the terminal grid on the GPU: one instanced draw call per frame, none at all when nothing changed, and a cold start to a live prompt under 400 ms. Sessions, keys, SFTP and port forwards, and nothing bolted on beside them.",
   og: {
-    title: "Quickshell",
+    title: "Aduzi",
     description:
       "The terminal grid on the GPU, one draw call a frame and none while you read. Sessions, keys, SFTP and forwards on Windows, with a stated list of what it will never grow.",
     url: "https://alegauss.github.io/quickshell/",
@@ -70,7 +70,7 @@ export const footer = {
     { href: `${repoUrl}/blob/main/docs/CHANGELOG.md`, label: "Changelog" },
   ],
   disclaimer:
-    "Unofficial / community project, not affiliated with, endorsed by, or sponsored by Mobatek, Simon Tatham or the OpenSSH project. “MobaXterm” is a trademark of Mobatek; PuTTY and OpenSSH are named here only because Quickshell reads the files they write. The SSH protocol itself is not implemented in this repository: the transport sits behind a seam, and the client's own code is the terminal, the renderer and everything a person touches. © 2026 Alexandre Oliveira, released under the MIT licence.",
+    "Unofficial / community project, not affiliated with, endorsed by, or sponsored by Mobatek, Simon Tatham or the OpenSSH project. “MobaXterm” is a trademark of Mobatek; PuTTY and OpenSSH are named here only because Aduzi reads the files they write. The SSH protocol itself is not implemented in this repository: the transport sits behind a seam, and the client's own code is the terminal, the renderer and everything a person touches. © 2026 Alexandre Oliveira, released under the MIT licence.",
 } as const;
 
 /* --------------------------------------------------------------- sponsor */
@@ -116,7 +116,7 @@ export const hero = {
   titleLead: "SSH on Windows,",
   titleAccent: "without the suite around it.",
   sub: [
-    "Quickshell draws the terminal grid on the GPU: one ",
+    "Aduzi draws the terminal grid on the GPU: one ",
     { code: "DrawInstanced" },
     " of twenty-byte cells per frame, and no draw call at all on a frame where nothing changed. Sessions, keys, SFTP and port forwards are in the window. Nothing else is, and the list of what will never be added is published.",
   ] as Rich,
@@ -137,7 +137,7 @@ export const hero = {
 };
 
 export const heroTerminal = {
-  title: "quickshell · prod-eu-1",
+  title: "prod-eu-1 — Aduzi",
   caption: [
     "The prompt is drawable ",
     { b: "under 400 ms" },
@@ -151,7 +151,7 @@ export const why = {
   eyebrow: "Why leave the incumbent",
   heading: "The terminal is the product, not one tab of a toolkit",
   intro: [
-    "The clients this replaces grew an X server, a POSIX userland, a macro recorder and a plugin host around a terminal that still redraws the whole screen to move a cursor. Quickshell is the other trade: a small surface, drawn properly, with the cost of every part written down before it was built.",
+    "The clients this replaces grew an X server, a POSIX userland, a macro recorder and a plugin host around a terminal that still redraws the whole screen to move a cursor. Aduzi is the other trade: a small surface, drawn properly, with the cost of every part written down before it was built.",
   ] as Rich,
   cards: [
     {
@@ -167,7 +167,7 @@ export const why = {
       icon: "🌙",
       title: "Nothing to draw while you read",
       body: [
-        "Every mutation moves a generation the renderer compares against the one it last drew, and a scroll dirties one row rather than the screen. When the host stops writing, the window authorises no further frame: an idle Quickshell submits zero draw calls and holds no raised timer resolution.",
+        "Every mutation moves a generation the renderer compares against the one it last drew, and a scroll dirties one row rather than the screen. When the host stops writing, the window authorises no further frame: an idle Aduzi submits zero draw calls and holds no raised timer resolution.",
       ] as Rich,
     },
     {
