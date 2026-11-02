@@ -514,23 +514,26 @@ stays for a certificate on this desk, should the fallback of QS381 be taken.
 Done when a pushed tag ends in a GitHub release whose quickshell.exe and assemblies
 verify Valid and timestamped under Get-AuthenticodeSignature on the guest.
 
-### §QS384 QS384 — Carrying the new name through the product
+### §QS384 QS384 — Carrying the name Aduzi through the product
 
-From the portfolio review of 30/10/2026 (visibility, `produtos/quickshell.md`), where
-the author decided to review the name. Quickshell is already the name of a well-known
-Linux project (a QtQuick toolkit for desktop shells, popular with Hyprland users), and
-winget lists a "Quick Shell" by another author. A search for the name leads to them, and
-a post announcing this client would start with a comment pointing it out.
+From the portfolio review of 30/10/2026 (visibility, `produtos/quickshell.md`).
+Quickshell is already the name of a well-known Linux project (a QtQuick toolkit for
+desktop shells, popular with Hyprland users), and winget lists a "Quick Shell" by
+another author. A search for the name leads to them, and a post announcing this client
+would start with a comment pointing it out.
 
-The choice of the new name is made in the visibility repository (its VS59, together with
-pportal's), with the checks that come with it: the name free on GitHub, winget, the
-Microsoft Store and as a domain, and no registered mark in software. This line is the
-product side once the name is chosen: the executable, the window title, the README, the
-site, the `llms.txt`, the repository name (GitHub redirects the old one), the release
-archive and the install folder, with an existing per-user install moved or recognised so
-nobody loses their sessions. The task prefix stays `QS`, as FreeWilly kept `DD` after
-its own rename. The non-goal "No Linux or macOS build" is untouched: Linux appears here
-only as the home of the colliding project.
+The new name is **Aduzi**, chosen by the author on 02/11/2026. On that day there was no
+`aduzi` package on NuGet, PyPI, npm or winget, no repository by that name with any stars
+on GitHub, and no product by that name on the web; aduzi.com is parked for sale, and the
+site stays on alegauss.github.io. A trademark search was not done. Where the name stands
+alone in a listing (winget, the Store, alternativeto) it reads "Aduzi SSH", so the
+listing says what it is.
+
+This line is the product side: the executable, the window title, the README, the site,
+the `llms.txt`, the repository name (GitHub redirects the old one), the release archive
+and the install folder, with an existing per-user install moved or recognised so nobody
+loses their sessions. The task prefix stays `QS`, as FreeWilly kept `DD`. The old page
+redirects to the new one rather than returning 404 as /freewilly/ did.
 
 Done when the new name is the only one a user sees from download to window, and an
 install made under the old name upgrades into it with sessions intact.
@@ -571,6 +574,25 @@ application need to exist.
 
 Done when GitHub's latest release carries the archive under the new name, and the README
 and the site link to it instead of to building from source.
+
+### §QS387 The name explains itself to whoever looks it up
+
+Aduzi is a formal Portuguese verb that most Portuguese speakers do not know and no one
+else does, and that is the intent (decided by the author on 02/11/2026): the name tells
+a reader nothing at first, and has a meaning for whoever looks it up. *Aduzi* is "I
+brought", from the Latin *adducere*, to lead something toward you, which is what an SSH
+client does with a remote machine.
+
+That only works if the lookup lands on the product. On 02/11/2026 a search for "aduzi"
+returned Portuguese dictionaries and the adzuki bean, never the client. What it should
+do: one short "About the name" passage in the README and on the site, in English, along
+the lines of
+
+> *Aduzi* is Portuguese for "I brought": from the Latin *adducere*, to lead something toward you.
+> That is what an SSH client does with a remote machine.
+
+and the same sentence in `llms.txt`, so an assistant asked what the name means answers
+from the source.
 
 ## Block I — An error a user can act on
 
